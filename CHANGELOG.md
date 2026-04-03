@@ -9,7 +9,8 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 ### Changed
 
 - **Task 40: Removed dead Application module** — Deleted `lib/onchain_evm/application.ex` (empty supervision tree, never wired up) and the commented `mod:` line in `mix.exs`.
-- **Task 41: Documented Generator options** — Added Options section to `Onchain.Contract.Generator` moduledoc covering all 6 input options (`:abi_json`, `:abi_file`, `:sol`, `:sol_file`, `:remappings`, `:root_contract`).
+- **Task 41: Documented Generator options** — Added Options section to `Onchain.Contract.Generator` moduledoc covering all 6 input options (`:abi_json`, `:abi_file`, `:sol`, `:sol_file`, `:remappings`, `:root_contract`). Post-review fix: corrected three doc/implementation mismatches — "exactly one source required" → documents precedence order, `:abi_file` no longer claims project-root resolution, `:remappings` now correctly documented as Foundry-style string list.
+- **Cleaned `.sobelow-skips`** — Regenerated from current code, removing stale entries from prior line-number shifts (30 → 15 entries).
 - **Fixed ROADMAP.md Eff scores** — Recalculated all efficiency scores using the correct formula `(B + U) / (2 × D)`. Previous values were miscalculated (0.1–0.5 instead of 1.38–2.25).
 
 ### Fixed
