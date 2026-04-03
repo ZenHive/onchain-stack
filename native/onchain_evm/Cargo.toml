@@ -1,0 +1,20 @@
+[package]
+name = "onchain_evm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "onchain_evm"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.37"
+revm = { version = "19", features = ["std", "alloydb"] }
+alloy-eips = "0.7"
+alloy-primitives = "0.8"
+alloy-provider = { version = "0.7", features = ["reqwest"] }
+alloy-transport-http = "0.7"
+reqwest = "0.12"
+tokio = { version = "1", features = ["rt"] }
+serde_json = "1"
+hex = "0.4"
