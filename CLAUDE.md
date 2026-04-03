@@ -56,7 +56,7 @@ priv/
 |--------|----------|
 | `Onchain.Address` | Validation |
 | `Onchain.Hex` | Hex encoding/decoding |
-| `Onchain.RPC.Helpers` | Shared RPC helpers (Trace module) |
+| `Onchain.RPC.Helpers` | Shared RPC helpers (Trace + EVM: `ensure_hex_address`, `ensure_hex_data`, `normalize_block`) |
 | `Onchain.Contract` | Generic contract call (Generator runtime) |
 | `Onchain.ABI` | ABI encoding (Generator runtime) |
 | `Onchain.Signer` | Transaction signing (Generator runtime) |

@@ -9,8 +9,8 @@ defmodule Onchain.EVMTest do
 
   describe "simulate_call/3 input validation" do
     test "returns error when rpc_url is missing" do
-      assert {:error, {:evm_error, msg}} = EVM.simulate_call(@valid_address, @valid_data, [])
-      assert msg =~ "rpc_url"
+      assert {:error, {:invalid_rpc_url, :missing}} =
+               EVM.simulate_call(@valid_address, @valid_data, [])
     end
 
     test "returns error for invalid address" do
@@ -43,12 +43,166 @@ defmodule Onchain.EVMTest do
     end
   end
 
+  describe "simulate_call/3 rpc_url validation" do
+    test "returns error for empty rpc_url" do
+      assert {:error, {:invalid_rpc_url, :empty}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: "")
+    end
+
+    test "returns error for whitespace-only rpc_url" do
+      assert {:error, {:invalid_rpc_url, :empty}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: "   ")
+    end
+
+    test "returns error for non-HTTP scheme" do
+      assert {:error, {:invalid_rpc_url, {:invalid_scheme, "ftp://example.com"}}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: "ftp://example.com")
+    end
+
+    test "returns error for bare string without scheme" do
+      assert {:error, {:invalid_rpc_url, {:invalid_scheme, "not-a-url"}}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: "not-a-url")
+    end
+
+    test "returns error for non-string rpc_url" do
+      assert {:error, {:invalid_rpc_url, {:not_a_string, 12_345}}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: 12_345)
+    end
+
+    test "returns error for http:// with no host" do
+      assert {:error, {:invalid_rpc_url, {:missing_host, "http://"}}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: "http://")
+    end
+
+    test "returns error for https:// with no host" do
+      assert {:error, {:invalid_rpc_url, {:missing_host, "https://"}}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: "https://")
+    end
+
+    test "accepts http:// URL" do
+      result = EVM.simulate_call(@valid_address, @valid_data, rpc_url: "http://localhost:8545")
+      refute match?({:error, {:invalid_rpc_url, _}}, result)
+    end
+
+    test "accepts https:// URL" do
+      result = EVM.simulate_call(@valid_address, @valid_data, rpc_url: "https://eth.example.com")
+      refute match?({:error, {:invalid_rpc_url, _}}, result)
+    end
+  end
+
+  describe "simulate_call/3 block validation" do
+    test "accepts string block tag 'latest'" do
+      result = EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: "latest")
+      refute match?({:error, {:invalid_block, _}}, result)
+    end
+
+    test "accepts string block tag 'finalized'" do
+      result = EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: "finalized")
+      refute match?({:error, {:invalid_block, _}}, result)
+    end
+
+    test "accepts string block tag 'safe'" do
+      result = EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: "safe")
+      refute match?({:error, {:invalid_block, _}}, result)
+    end
+
+    test "accepts string block tag 'earliest'" do
+      result = EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: "earliest")
+      refute match?({:error, {:invalid_block, _}}, result)
+    end
+
+    test "accepts string block tag 'pending'" do
+      result = EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: "pending")
+      refute match?({:error, {:invalid_block, _}}, result)
+    end
+
+    test "accepts hex block string" do
+      result = EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: "0x1234")
+      refute match?({:error, {:invalid_block, _}}, result)
+    end
+
+    test "accepts integer block number" do
+      result = EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: 12_345_678)
+      refute match?({:error, {:invalid_block, _}}, result)
+    end
+
+    test "rejects invalid block string" do
+      assert {:error, {:invalid_block, "bogus"}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: "bogus")
+    end
+
+    test "rejects negative integer block" do
+      assert {:error, {:invalid_block, -1}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: -1)
+    end
+
+    test "rejects invalid hex block" do
+      assert {:error, {:invalid_block, "0xZZZZ"}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: "0xZZZZ")
+    end
+
+    test "rejects bare 0x block" do
+      assert {:error, {:invalid_block, "0x"}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: "0x")
+    end
+  end
+
   describe "simulate_call/3 :from validation" do
     test "returns error for invalid :from address" do
       assert {:error, {:invalid_address, "not-valid"}} =
                EVM.simulate_call(@valid_address, @valid_data,
                  rpc_url: @valid_rpc_url,
                  from: "not-valid"
+               )
+    end
+  end
+
+  describe "simulate_call/3 option validation" do
+    test "returns error for non-string value" do
+      assert {:error, {:invalid_value, 123}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 value: 123
+               )
+    end
+
+    test "returns error for negative gas_limit" do
+      assert {:error, {:invalid_gas_limit, -1}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 gas_limit: -1
+               )
+    end
+
+    test "returns error for zero gas_limit" do
+      assert {:error, {:invalid_gas_limit, 0}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 gas_limit: 0
+               )
+    end
+
+    test "returns error for string gas_limit" do
+      assert {:error, {:invalid_gas_limit, "30000"}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 gas_limit: "30000"
+               )
+    end
+
+    test "returns error for non-map state_overrides" do
+      assert {:error, {:invalid_state_overrides, "invalid"}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 state_overrides: "invalid"
+               )
+    end
+
+    test "returns error for list state_overrides" do
+      assert {:error, {:invalid_state_overrides, []}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 state_overrides: []
                )
     end
   end
@@ -69,7 +223,8 @@ defmodule Onchain.EVMTest do
 
   describe "simulate_transaction/3 input validation" do
     test "returns error when rpc_url is missing" do
-      assert {:error, {:evm_error, _}} = EVM.simulate_transaction(@valid_address, @valid_data, [])
+      assert {:error, {:invalid_rpc_url, :missing}} =
+               EVM.simulate_transaction(@valid_address, @valid_data, [])
     end
 
     test "returns error for invalid address" do
@@ -89,7 +244,7 @@ defmodule Onchain.EVMTest do
   describe "simulate_batch/2 input validation" do
     test "returns error when rpc_url is missing" do
       calls = [{@valid_address, @valid_data}]
-      assert {:error, {:evm_error, _}} = EVM.simulate_batch(calls, [])
+      assert {:error, {:invalid_rpc_url, :missing}} = EVM.simulate_batch(calls, [])
     end
 
     test "returns error for invalid address in calls list" do

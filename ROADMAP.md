@@ -14,7 +14,8 @@
 
 All foundational tasks are complete. This package provides Solidity ABI parsing (Alloy NIF), contract codegen from `.sol` files, local EVM execution (revm NIF), and debug/trace APIs.
 
-### Recently Fixed (2026-04-03)
+### Recently Completed (2026-04-03)
+- **Bundle 1: EVM Input Validation** — Tasks 34, 35, 36 all complete. String block tags, rpc_url validation, and strict option validation.
 - **Struct name collision** — types in interfaces/contracts now get qualified canonical names (`IA.Data`, `IB.Data`)
 - **Struct array from_raw** — `from_raw/1` now recursively converts arrays of structs
 - **Enum runtime access** — enum constants are generated as callable functions, not compile-time-only attributes
@@ -52,9 +53,9 @@ Bundles identified via code review — grouped by shared code and common goals.
 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
-| 34 | Support string block tags (`"latest"`, `"finalized"`) in EVM — consistent with `Onchain.Trace` | ⬜ | 4 | 7 | 8 | 1.88 🚀 | `Onchain.EVM` |
-| 35 | Validate `rpc_url` input — reject empty/invalid strings before reaching NIF | ⬜ | 4 | 8 | 8 | 2.00 🎯 | `Onchain.EVM` |
-| 36 | Fix silent value dropping — error on invalid `value`, `gas_limit`, `state_overrides` instead of silently ignoring | ⬜ | 5 | 8 | 7 | 1.50 📋 | `Onchain.EVM`, `Onchain.Trace` |
+| 34 | Support string block tags (`"latest"`, `"finalized"`) in EVM — consistent with `Onchain.Trace` | ✅ | 4 | 7 | 8 | 1.88 🚀 | `Onchain.EVM` |
+| 35 | Validate `rpc_url` input — reject empty/invalid strings before reaching NIF | ✅ | 4 | 8 | 8 | 2.00 🎯 | `Onchain.EVM` |
+| 36 | Fix silent value dropping — error on invalid `value`, `gas_limit`, `state_overrides` instead of silently ignoring | ✅ | 5 | 8 | 7 | 1.50 📋 | `Onchain.EVM`, `Onchain.Trace` |
 
 ### Bundle 2: Rust Safety Hardening
 

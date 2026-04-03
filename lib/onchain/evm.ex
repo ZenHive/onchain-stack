@@ -21,6 +21,10 @@ defmodule Onchain.EVM do
   | Fork/RPC connection error | `{:error, {:fork_error, reason}}` |
   | Invalid address input | `{:error, {:invalid_address, input}}` |
   | Invalid hex data input | `{:error, {:invalid_data, input}}` |
+  | Invalid RPC URL | `{:error, {:invalid_rpc_url, reason}}` |
+  | Invalid value option | `{:error, {:invalid_value, input}}` |
+  | Invalid gas_limit option | `{:error, {:invalid_gas_limit, input}}` |
+  | Invalid state_overrides option | `{:error, {:invalid_state_overrides, input}}` |
 
   ## Functions
 
@@ -37,7 +41,7 @@ defmodule Onchain.EVM do
   use Descripex, namespace: "/evm"
   use Rustler, otp_app: :onchain_evm, crate: "onchain_evm"
 
-  import Onchain.RPC.Helpers, only: [ensure_hex_address: 1, ensure_hex_data: 1]
+  import Onchain.RPC.Helpers, only: [ensure_hex_address: 1, ensure_hex_data: 1, normalize_block: 1]
 
   # --- Types ---
 
@@ -83,8 +87,7 @@ defmodule Onchain.EVM do
   @typedoc "Options for EVM simulation functions."
   @type sim_opts :: [
           rpc_url: String.t(),
-          # TODO: Support string block tags ("latest", "finalized") — requires RPC resolution before NIF call
-          block: non_neg_integer(),
+          block: non_neg_integer() | String.t(),
           from: String.t() | binary(),
           value: String.t(),
           gas_limit: non_neg_integer(),
@@ -265,14 +268,10 @@ defmodule Onchain.EVM do
          {:ok, hex_data} <- ensure_hex_data(data),
          {:ok, rpc_url} <- require_rpc_url(opts),
          {:ok, base} <- maybe_put_block(%{"rpc_url" => rpc_url, "to" => hex_addr, "data" => hex_data}, opts),
-         {:ok, params} <- maybe_put_from(base, opts) do
-      params =
-        params
-        |> maybe_put_value(opts)
-        |> maybe_put_gas_limit(opts)
-        |> maybe_put_state_overrides(opts)
-
-      {:ok, params}
+         {:ok, params} <- maybe_put_from(base, opts),
+         {:ok, params} <- maybe_put_value(params, opts),
+         {:ok, params} <- maybe_put_gas_limit(params, opts) do
+      maybe_put_state_overrides(params, opts)
     end
   end
 
@@ -282,13 +281,9 @@ defmodule Onchain.EVM do
     with {:ok, rpc_url} <- require_rpc_url(opts),
          {:ok, validated_calls} <- validate_calls(calls),
          {:ok, base} <- maybe_put_block(%{"rpc_url" => rpc_url, "calls" => validated_calls}, opts),
-         {:ok, params} <- maybe_put_from(base, opts) do
-      params =
-        params
-        |> maybe_put_gas_limit(opts)
-        |> maybe_put_state_overrides(opts)
-
-      {:ok, params}
+         {:ok, params} <- maybe_put_from(base, opts),
+         {:ok, params} <- maybe_put_gas_limit(params, opts) do
+      maybe_put_state_overrides(params, opts)
     end
   end
 
@@ -311,21 +306,78 @@ defmodule Onchain.EVM do
   end
 
   @doc false
-  # Extracts and requires the :rpc_url option.
+  # Extracts, requires, and validates the :rpc_url option.
+  # Rejects missing, empty, whitespace-only, and non-HTTP(S) URLs.
   defp require_rpc_url(opts) do
     case Keyword.get(opts, :rpc_url) do
-      nil -> {:error, {:evm_error, "rpc_url option is required"}}
-      url when is_binary(url) -> {:ok, url}
-      other -> {:error, {:evm_error, "rpc_url must be a string, got: #{inspect(other)}"}}
+      nil ->
+        {:error, {:invalid_rpc_url, :missing}}
+
+      url when is_binary(url) ->
+        validate_rpc_url(url)
+
+      other ->
+        {:error, {:invalid_rpc_url, {:not_a_string, other}}}
     end
   end
 
   @doc false
+  # TODO: URI.parse/1 is soft-deprecated — migrate to URI.new/1 (Elixir 1.13+)
+  defp validate_rpc_url(url) do
+    trimmed = String.trim(url)
+    uri = URI.parse(trimmed)
+
+    cond do
+      trimmed == "" ->
+        {:error, {:invalid_rpc_url, :empty}}
+
+      uri.scheme not in ["http", "https"] ->
+        {:error, {:invalid_rpc_url, {:invalid_scheme, trimmed}}}
+
+      is_nil(uri.host) or uri.host == "" ->
+        {:error, {:invalid_rpc_url, {:missing_host, trimmed}}}
+
+      true ->
+        {:ok, trimmed}
+    end
+  end
+
+  @block_tags ~w(latest finalized pending earliest safe)
+
+  @doc false
+  # Validates block input and adds either "block_number" (u64) or "block_tag" (string) to params.
+  # The NIF handles both via resolve_block_id — tag strings are resolved natively by Alloy.
   defp maybe_put_block(params, opts) do
     case Keyword.get(opts, :block) do
-      nil -> {:ok, params}
-      n when is_integer(n) and n >= 0 -> {:ok, Map.put(params, "block_number", n)}
-      other -> {:error, {:invalid_block, other}}
+      nil ->
+        {:ok, params}
+
+      tag when tag in @block_tags ->
+        {:ok, Map.put(params, "block_tag", tag)}
+
+      n when is_integer(n) and n >= 0 ->
+        {:ok, Map.put(params, "block_number", n)}
+
+      "0x" <> _ = hex ->
+        parse_hex_block(params, hex)
+
+      other ->
+        {:error, {:invalid_block, other}}
+    end
+  end
+
+  @doc false
+  # Validates hex format and parses to integer for the NIF's u64 block_number param.
+  defp parse_hex_block(params, "0x" <> rest = hex) do
+    case normalize_block(hex) do
+      {:ok, _} ->
+        case Integer.parse(rest, 16) do
+          {n, ""} -> {:ok, Map.put(params, "block_number", n)}
+          _ -> {:error, {:invalid_block, hex}}
+        end
+
+      {:error, _} = err ->
+        err
     end
   end
 
@@ -345,29 +397,32 @@ defmodule Onchain.EVM do
   end
 
   @doc false
+  # Validates and adds :value (must be a hex string) to params.
   defp maybe_put_value(params, opts) do
     case Keyword.get(opts, :value) do
-      nil -> params
-      val when is_binary(val) -> Map.put(params, "value", val)
-      _other -> params
+      nil -> {:ok, params}
+      val when is_binary(val) -> {:ok, Map.put(params, "value", val)}
+      other -> {:error, {:invalid_value, other}}
     end
   end
 
   @doc false
+  # Validates and adds :gas_limit (must be a positive integer) to params.
   defp maybe_put_gas_limit(params, opts) do
     case Keyword.get(opts, :gas_limit) do
-      nil -> params
-      gl when is_integer(gl) and gl > 0 -> Map.put(params, "gas_limit", gl)
-      _other -> params
+      nil -> {:ok, params}
+      gl when is_integer(gl) and gl > 0 -> {:ok, Map.put(params, "gas_limit", gl)}
+      other -> {:error, {:invalid_gas_limit, other}}
     end
   end
 
   @doc false
+  # Validates and adds :state_overrides (must be a map) to params.
   defp maybe_put_state_overrides(params, opts) do
     case Keyword.get(opts, :state_overrides) do
-      nil -> params
-      overrides when is_map(overrides) -> Map.put(params, "state_overrides", overrides)
-      _other -> params
+      nil -> {:ok, params}
+      overrides when is_map(overrides) -> {:ok, Map.put(params, "state_overrides", overrides)}
+      other -> {:error, {:invalid_state_overrides, other}}
     end
   end
 end

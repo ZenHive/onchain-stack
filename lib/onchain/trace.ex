@@ -238,7 +238,7 @@ defmodule Onchain.Trace do
          {:ok, data} <- fetch_and_validate_data(params),
          base = %{"to" => to, "data" => data},
          {:ok, result} <- maybe_put_address(base, params, :from) do
-      {:ok, maybe_put_value(result, params)}
+      maybe_put_value(result, params)
     end
   end
 
@@ -276,11 +276,13 @@ defmodule Onchain.Trace do
   end
 
   @doc false
-  @spec maybe_put_value(map(), map()) :: map()
+  # Validates and adds :value (must be a hex string) to the RPC params map.
+  @spec maybe_put_value(map(), map()) :: {:ok, map()} | {:error, term()}
   defp maybe_put_value(result, params) do
     case Map.get(params, :value) do
-      nil -> result
-      value -> Map.put(result, "value", value)
+      nil -> {:ok, result}
+      val when is_binary(val) -> {:ok, Map.put(result, "value", val)}
+      other -> {:error, {:invalid_value, other}}
     end
   end
 

@@ -205,7 +205,27 @@ type ForkDB = CacheDB<AlloyDB<HttpTransport, alloy_provider::network::Ethereum, 
 
 // --- EVM execution core ---
 
-fn build_fork_db(rpc_url: &str, block_number: Option<u64>) -> Result<ForkDB, EvmError> {
+// Resolves block_number (u64) and block_tag (string) params into a BlockId.
+// block_number takes precedence if both are present; defaults to latest.
+fn resolve_block_id<'a>(params: &HashMap<String, Term<'a>>) -> Result<BlockId, EvmError> {
+    let block_number = get_optional_u64_param(params, "block_number")?;
+    let block_tag = get_optional_string_param(params, "block_tag")?;
+
+    match (block_number, block_tag) {
+        (Some(n), _) => Ok(BlockId::number(n)),
+        (None, Some(tag)) => match tag.as_str() {
+            "latest" => Ok(BlockId::latest()),
+            "finalized" => Ok(BlockId::finalized()),
+            "safe" => Ok(BlockId::safe()),
+            "pending" => Ok(BlockId::pending()),
+            "earliest" => Ok(BlockId::earliest()),
+            other => Err(EvmError::ExecutionError(format!("unknown block tag: {}", other))),
+        },
+        (None, None) => Ok(BlockId::latest()),
+    }
+}
+
+fn build_fork_db(rpc_url: &str, block_id: BlockId) -> Result<ForkDB, EvmError> {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -216,11 +236,6 @@ fn build_fork_db(rpc_url: &str, block_number: Option<u64>) -> Result<ForkDB, Evm
         .map_err(|e| EvmError::ForkError(format!("invalid RPC URL: {}", e)))?;
 
     let provider = alloy_provider::ProviderBuilder::new().on_http(url);
-
-    let block_id = match block_number {
-        Some(n) => BlockId::number(n),
-        None => BlockId::latest(),
-    };
 
     let alloy_db = AlloyDB::with_runtime(provider, block_id, rt);
     let cache_db = CacheDB::new(alloy_db);
@@ -370,10 +385,10 @@ fn extract_tx_result(result: ExecutionResult) -> Result<TxResult, EvmError> {
 
 fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, EvmError> {
     let rpc_url = get_string_param(params, "rpc_url")?;
-    let block_number = get_optional_u64_param(params, "block_number")?;
+    let block_id = resolve_block_id(params)?;
     let cp = extract_call_params(params)?;
 
-    let mut db = build_fork_db(&rpc_url, block_number)?;
+    let mut db = build_fork_db(&rpc_url, block_id)?;
     apply_state_overrides(&mut db, params)?;
 
     let data_bytes = Bytes::from(cp.data.clone());
@@ -407,10 +422,10 @@ fn do_simulate_transaction<'a>(
     params: &HashMap<String, Term<'a>>,
 ) -> Result<TxResult, EvmError> {
     let rpc_url = get_string_param(params, "rpc_url")?;
-    let block_number = get_optional_u64_param(params, "block_number")?;
+    let block_id = resolve_block_id(params)?;
     let cp = extract_call_params(params)?;
 
-    let mut db = build_fork_db(&rpc_url, block_number)?;
+    let mut db = build_fork_db(&rpc_url, block_id)?;
     apply_state_overrides(&mut db, params)?;
 
     let data_bytes = Bytes::from(cp.data.clone());
@@ -432,7 +447,7 @@ fn do_simulate_batch<'a>(
     params: &HashMap<String, Term<'a>>,
 ) -> Result<Vec<TxResult>, EvmError> {
     let rpc_url = get_string_param(params, "rpc_url")?;
-    let block_number = get_optional_u64_param(params, "block_number")?;
+    let block_id = resolve_block_id(params)?;
     let from_hex = get_optional_string_param(params, "from")?;
     let gas_limit = get_optional_u64_param(params, "gas_limit")?;
 
@@ -451,7 +466,7 @@ fn do_simulate_batch<'a>(
             EvmError::ExecutionError("calls must be list of {address, data} tuples".into())
         })?;
 
-    let mut db = build_fork_db(&rpc_url, block_number)?;
+    let mut db = build_fork_db(&rpc_url, block_id)?;
     apply_state_overrides(&mut db, params)?;
 
     let mut results = Vec::with_capacity(calls.len());

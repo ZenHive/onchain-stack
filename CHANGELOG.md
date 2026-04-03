@@ -6,6 +6,12 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Added
+
+- **Task 34: String block tags in EVM** — `Onchain.EVM` now accepts `block: "latest"`, `"finalized"`, `"safe"`, `"pending"`, `"earliest"`, and `"0x..."` hex strings in addition to integers. Tag strings are passed to the NIF and resolved natively by Alloy's provider. Updated Rust `build_fork_db` to accept `BlockId` directly via a new `resolve_block_id` helper. Hex block parsing extracted to `parse_hex_block/2` with defensive `Integer.parse` handling (bare `"0x"` no longer crashes).
+- **Task 35: rpc_url validation** — `require_rpc_url/1` now rejects empty strings, whitespace-only strings, non-HTTP(S) URLs, and hostless URLs (e.g. `"http://"`) with `{:error, {:invalid_rpc_url, reason}}` tuples. Missing rpc_url now returns `{:error, {:invalid_rpc_url, :missing}}` (was `{:error, {:evm_error, ...}}`). Previously, empty or malformed URLs passed through to the NIF and produced cryptic connection errors.
+- **Task 36: Strict option validation** — `maybe_put_value/2`, `maybe_put_gas_limit/2`, and `maybe_put_state_overrides/2` now return `{:error, {:invalid_*, input}}` instead of silently dropping invalid inputs. Also fixed `Trace.maybe_put_value/2` to validate that `:value` is a binary string. All three functions integrated into the `with` chain for fail-fast behavior.
+
 ### Changed
 
 - **Task 40: Removed dead Application module** — Deleted `lib/onchain_evm/application.ex` (empty supervision tree, never wired up) and the commented `mod:` line in `mix.exs`.
