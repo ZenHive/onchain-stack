@@ -33,8 +33,6 @@ defmodule OnchainEvm.MixProject do
   def application do
     [
       extra_applications: [:logger]
-      # TODO: Enable when supervised children are needed (see lib/onchain_evm/application.ex)
-      # mod: {OnchainEvm.Application, []}
     ]
   end
 

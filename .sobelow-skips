@@ -16,3 +16,14 @@ DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:374,
 DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:285,DBB860
 
 DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:685,4B99743
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:340,1EF818D
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:583,22F27A7
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:339,3235D4A
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:301,4A76544
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:399,4F8725F
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:390,62B6D51
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:587,62F620C
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:302,7045D33
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:401,75732BC
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:701,77DD2E0
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:618,7952E1D

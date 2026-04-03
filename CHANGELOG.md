@@ -6,6 +6,12 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **Task 40: Removed dead Application module** — Deleted `lib/onchain_evm/application.ex` (empty supervision tree, never wired up) and the commented `mod:` line in `mix.exs`.
+- **Task 41: Documented Generator options** — Added Options section to `Onchain.Contract.Generator` moduledoc covering all 6 input options (`:abi_json`, `:abi_file`, `:sol`, `:sol_file`, `:remappings`, `:root_contract`).
+- **Fixed ROADMAP.md Eff scores** — Recalculated all efficiency scores using the correct formula `(B + U) / (2 × D)`. Previous values were miscalculated (0.1–0.5 instead of 1.38–2.25).
+
 ### Fixed
 
 - **High: Struct name collision across interfaces** — `qualify_user_type` now namespaces types from all contract types (interface, contract, abstract), not just libraries. Previously, `IA.Data` and `IB.Data` collapsed to `Data` in the type registry, causing wrong ABI encodings. Added context-aware type resolution (`resolve_struct`/`resolve_enum`) that tries `Owner.TypeName` before falling back to the short name.

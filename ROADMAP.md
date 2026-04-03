@@ -52,43 +52,43 @@ Bundles identified via code review — grouped by shared code and common goals.
 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
-| 34 | Support string block tags (`"latest"`, `"finalized"`) in EVM — consistent with `Onchain.Trace` | ⬜ | 4 | 7 | 8 | 0.3 | `Onchain.EVM` |
-| 35 | Validate `rpc_url` input — reject empty/invalid strings before reaching NIF | ⬜ | 4 | 8 | 8 | 0.3 | `Onchain.EVM` |
-| 36 | Fix silent value dropping — error on invalid `value`, `gas_limit`, `state_overrides` instead of silently ignoring | ⬜ | 5 | 8 | 7 | 0.5 | `Onchain.EVM`, `Onchain.Trace` |
+| 34 | Support string block tags (`"latest"`, `"finalized"`) in EVM — consistent with `Onchain.Trace` | ⬜ | 4 | 7 | 8 | 1.88 🚀 | `Onchain.EVM` |
+| 35 | Validate `rpc_url` input — reject empty/invalid strings before reaching NIF | ⬜ | 4 | 8 | 8 | 2.00 🎯 | `Onchain.EVM` |
+| 36 | Fix silent value dropping — error on invalid `value`, `gas_limit`, `state_overrides` instead of silently ignoring | ⬜ | 5 | 8 | 7 | 1.50 📋 | `Onchain.EVM`, `Onchain.Trace` |
 
 ### Bundle 2: Rust Safety Hardening
 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
-| 30 | Add RPC call timeouts — configure `reqwest::Client` with timeout to prevent indefinite blocking | ⬜ | 5 | 9 | 8 | 0.5 | `native/onchain_evm` |
-| 31 | Replace `.expect()` with proper error handling — 6× in EVM encoder, 1× in Solidity `map_put` | ⬜ | 5 | 9 | 7 | 0.5 | Both native crates |
-| 32 | Add input size limits — reject oversized Solidity source files | ⬜ | 4 | 7 | 6 | 0.3 | `native/onchain_solidity` |
+| 30 | Add RPC call timeouts — configure `reqwest::Client` with timeout to prevent indefinite blocking | ⬜ | 5 | 9 | 8 | 1.70 🚀 | `native/onchain_evm` |
+| 31 | Replace `.expect()` with proper error handling — 6× in EVM encoder, 1× in Solidity `map_put` | ⬜ | 5 | 9 | 7 | 1.60 🚀 | Both native crates |
+| 32 | Add input size limits — reject oversized Solidity source files | ⬜ | 4 | 7 | 6 | 1.63 🚀 | `native/onchain_solidity` |
 
 ### Bundle 3: Elixir Code Quality
 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
-| 37 | Eliminate bang-function duplication — introduce `defbang` macro to replace 9 copies of the same `case` pattern | ⬜ | 4 | 6 | 7 | 0.5 | All Elixir modules |
-| 38 | Add specific error union types — replace `{:error, term()}` with typed unions in `evm.ex` and `trace.ex` specs | ⬜ | 4 | 7 | 7 | 0.5 | `Onchain.EVM`, `Onchain.Trace` |
-| 40 | Remove dead Application module — delete `lib/onchain_evm/application.ex` and commented `mod:` in `mix.exs` | ⬜ | 2 | 3 | 4 | 0.1 | `mix.exs`, `lib/onchain_evm/` |
+| 37 | Eliminate bang-function duplication — introduce `defbang` macro to replace 9 copies of the same `case` pattern | ⬜ | 4 | 6 | 7 | 1.63 🚀 | All Elixir modules |
+| 38 | Add specific error union types — replace `{:error, term()}` with typed unions in `evm.ex` and `trace.ex` specs | ⬜ | 4 | 7 | 7 | 1.75 🚀 | `Onchain.EVM`, `Onchain.Trace` |
+| 40 | Remove dead Application module — delete `lib/onchain_evm/application.ex` and commented `mod:` in `mix.exs` | ✅ | 2 | 3 | 4 | 1.75 🚀 | `mix.exs`, `lib/onchain_evm/` |
 
 ### Bundle 4: Documentation & Specs
 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
-| 39 | Add `@spec` to public Generator functions — `resolve_abi/1`, `to_snake_case/1`, `disambiguate/1` | ⬜ | 3 | 5 | 5 | 0.3 | `Onchain.Contract.Generator` |
-| 41 | Document Generator options — add `:remappings` and `:root_contract` to moduledoc | ⬜ | 2 | 4 | 5 | 0.2 | `Onchain.Contract.Generator` |
-| 42 | Add module-level Rust documentation — doc comments on both native crate entry points | ⬜ | 3 | 5 | 5 | 0.3 | Both native crates |
+| 39 | Add `@spec` to public Generator functions — `resolve_abi/1`, `to_snake_case/1`, `disambiguate/1` | ⬜ | 3 | 5 | 5 | 1.67 🚀 | `Onchain.Contract.Generator` |
+| 41 | Document Generator options — add `:abi_file`, `:remappings`, and `:root_contract` to moduledoc | ✅ | 2 | 4 | 5 | 2.25 🎯 | `Onchain.Contract.Generator` |
+| 42 | Add module-level Rust documentation — doc comments on both native crate entry points | ⬜ | 3 | 5 | 5 | 1.67 🚀 | Both native crates |
 
 ### Standalone Tasks
 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
-| 28 | Rust unit tests for `onchain_evm` crate — `CallParams` parsing, `EvmError` encoding, hex helpers, fork DB setup | ⬜ | 6 | 10 | 9 | 1.5 | `native/onchain_evm` |
-| 29 | Rust unit tests for `onchain_solidity` crate — ABI JSON parsing, type canonicalization, NatSpec extraction, import resolution | ⬜ | 6 | 10 | 9 | 1.5 | `native/onchain_solidity` |
-| 33 | Reuse tokio runtime — lazy-init a single `current_thread` runtime instead of creating one per EVM call | ⬜ | 5 | 8 | 7 | 0.5 | `native/onchain_evm` |
-| 43 | Add `cargo clippy` to CI — `#![warn(clippy::all)]` on both crates | ⬜ | 3 | 5 | 4 | 0.3 | Both native crates |
-| 44 | Fix `format!("{:?}", expr)` fallbacks — proper error types for unhandled Solidity expression types | ⬜ | 4 | 6 | 5 | 0.5 | `native/onchain_solidity` |
+| 28 | Rust unit tests for `onchain_evm` crate — `CallParams` parsing, `EvmError` encoding, hex helpers, fork DB setup | ⬜ | 6 | 10 | 9 | 1.58 🚀 | `native/onchain_evm` |
+| 29 | Rust unit tests for `onchain_solidity` crate — ABI JSON parsing, type canonicalization, NatSpec extraction, import resolution | ⬜ | 6 | 10 | 9 | 1.58 🚀 | `native/onchain_solidity` |
+| 33 | Reuse tokio runtime — lazy-init a single `current_thread` runtime instead of creating one per EVM call | ⬜ | 5 | 8 | 7 | 1.50 📋 | `native/onchain_evm` |
+| 43 | Add `cargo clippy` to CI — `#![warn(clippy::all)]` on both crates | ⬜ | 3 | 5 | 4 | 1.50 📋 | Both native crates |
+| 44 | Fix `format!("{:?}", expr)` fallbacks — proper error types for unhandled Solidity expression types | ⬜ | 4 | 6 | 5 | 1.38 📋 | `native/onchain_solidity` |
 
 ---
 

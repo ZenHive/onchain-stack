@@ -48,6 +48,22 @@ defmodule Onchain.Contract.Generator do
   `transfer(address,address,uint256)` become `transfer/3` and
   `transfer_address/4` (suffixed with the disambiguating extra param type).
 
+  ## Options
+
+  Exactly one source option is required:
+
+  - `:abi_json` — ABI as a JSON string (e.g., `File.read!("priv/abis/erc20.json")`)
+  - `:abi_file` — path to an ABI JSON file, resolved relative to the project root
+  - `:sol` — raw Solidity source code as a string (e.g., `File.read!("priv/contracts/IPool.sol")`)
+  - `:sol_file` — path to a `.sol` file, resolved relative to the calling module's source directory
+
+  Additional options (only valid with `:sol_file`):
+
+  - `:remappings` — a map of Solidity import path remappings
+    (e.g., `%{"@aave/" => "lib/aave-v3-core/"}`)
+  - `:root_contract` — name of the contract or interface to extract when the file
+    contains multiple definitions (e.g., `"IPoolV3"`)
+
   ## .sol Extras
 
   When using `sol:` source:
