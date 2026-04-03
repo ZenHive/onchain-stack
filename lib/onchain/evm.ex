@@ -94,6 +94,35 @@ defmodule Onchain.EVM do
           state_overrides: state_overrides()
         ]
 
+  # --- Error Types ---
+
+  @typedoc "RPC URL validation sub-reasons."
+  @type rpc_url_reason ::
+          :missing
+          | :empty
+          | {:not_a_string, term()}
+          | {:invalid_scheme, String.t()}
+          | {:missing_host, String.t()}
+
+  @typedoc "Validation errors from Elixir-side input checks."
+  @type validation_error ::
+          {:invalid_rpc_url, rpc_url_reason()}
+          | {:invalid_address, term()}
+          | {:invalid_data, term()}
+          | {:invalid_block, term()}
+          | {:invalid_value, term()}
+          | {:invalid_gas_limit, term()}
+          | {:invalid_state_overrides, term()}
+
+  @typedoc "Errors from the Rust NIF during EVM execution."
+  @type nif_error ::
+          {:evm_revert, String.t()}
+          | {:evm_error, String.t()}
+          | {:fork_error, String.t()}
+
+  @typedoc "All possible errors from EVM simulation functions."
+  @type evm_error :: validation_error() | nif_error()
+
   # --- simulate_call ---
 
   api(
@@ -115,13 +144,13 @@ defmodule Onchain.EVM do
       ]
     ],
     returns: %{
-      type: "{:ok, hex_string} | {:error, term}",
+      type: "{:ok, hex_string} | {:error, evm_error()}",
       description: "Raw 0x-prefixed hex output, compatible with ABI.decode_response/2"
     }
   )
 
   @spec simulate_call(String.t() | binary(), String.t(), sim_opts()) ::
-          {:ok, String.t()} | {:error, term()}
+          {:ok, String.t()} | {:error, evm_error()}
   def simulate_call(address, data, opts \\ []) do
     with {:ok, params} <- build_call_params(address, data, opts) do
       nif_simulate_call(params)
@@ -168,13 +197,13 @@ defmodule Onchain.EVM do
       ]
     ],
     returns: %{
-      type: "{:ok, tx_result()} | {:error, term}",
+      type: "{:ok, tx_result()} | {:error, evm_error()}",
       description: "Transaction result with :success, :gas_used, :output, :logs"
     }
   )
 
   @spec simulate_transaction(String.t() | binary(), String.t(), sim_opts()) ::
-          {:ok, tx_result()} | {:error, term()}
+          {:ok, tx_result()} | {:error, evm_error()}
   def simulate_transaction(address, data, opts \\ []) do
     with {:ok, params} <- build_call_params(address, data, opts) do
       nif_simulate_transaction(params)
@@ -217,13 +246,13 @@ defmodule Onchain.EVM do
       ]
     ],
     returns: %{
-      type: "{:ok, [tx_result()]} | {:error, term}",
+      type: "{:ok, [tx_result()]} | {:error, evm_error()}",
       description: "List of transaction results, one per call"
     }
   )
 
   @spec simulate_batch([{String.t() | binary(), String.t()}], sim_opts()) ::
-          {:ok, [tx_result()]} | {:error, term()}
+          {:ok, [tx_result()]} | {:error, evm_error()}
   def simulate_batch(calls, opts \\ []) do
     with {:ok, params} <- build_batch_params(calls, opts) do
       nif_simulate_batch(params)
@@ -263,6 +292,8 @@ defmodule Onchain.EVM do
 
   @doc false
   # Validates address and data, then builds the params map for NIF calls.
+  @spec build_call_params(String.t() | binary(), String.t(), sim_opts()) ::
+          {:ok, map()} | {:error, validation_error()}
   defp build_call_params(address, data, opts) do
     with {:ok, hex_addr} <- ensure_hex_address(address),
          {:ok, hex_data} <- ensure_hex_data(data),
@@ -277,6 +308,8 @@ defmodule Onchain.EVM do
 
   @doc false
   # Validates batch calls and builds the params map for NIF batch simulation.
+  @spec build_batch_params([{String.t() | binary(), String.t()}], sim_opts()) ::
+          {:ok, map()} | {:error, validation_error()}
   defp build_batch_params(calls, opts) do
     with {:ok, rpc_url} <- require_rpc_url(opts),
          {:ok, validated_calls} <- validate_calls(calls),
@@ -289,6 +322,8 @@ defmodule Onchain.EVM do
 
   @doc false
   # Validates each {address, data} tuple in a batch call list.
+  @spec validate_calls([{String.t() | binary(), String.t()}]) ::
+          {:ok, [{String.t(), String.t()}]} | {:error, {:invalid_address, term()} | {:invalid_data, term()}}
   defp validate_calls(calls) do
     calls
     |> Enum.reduce_while({:ok, []}, fn {addr, data}, {:ok, acc} ->
@@ -308,6 +343,7 @@ defmodule Onchain.EVM do
   @doc false
   # Extracts, requires, and validates the :rpc_url option.
   # Rejects missing, empty, whitespace-only, and non-HTTP(S) URLs.
+  @spec require_rpc_url(sim_opts()) :: {:ok, String.t()} | {:error, {:invalid_rpc_url, rpc_url_reason()}}
   defp require_rpc_url(opts) do
     case Keyword.get(opts, :rpc_url) do
       nil ->
@@ -323,6 +359,9 @@ defmodule Onchain.EVM do
 
   @doc false
   # TODO: URI.parse/1 is soft-deprecated — migrate to URI.new/1 (Elixir 1.13+)
+  @spec validate_rpc_url(String.t()) ::
+          {:ok, String.t()}
+          | {:error, {:invalid_rpc_url, :empty | {:invalid_scheme, String.t()} | {:missing_host, String.t()}}}
   defp validate_rpc_url(url) do
     trimmed = String.trim(url)
     uri = URI.parse(trimmed)
@@ -347,6 +386,7 @@ defmodule Onchain.EVM do
   @doc false
   # Validates block input and adds either "block_number" (u64) or "block_tag" (string) to params.
   # The NIF handles both via resolve_block_id — tag strings are resolved natively by Alloy.
+  @spec maybe_put_block(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_block, term()}}
   defp maybe_put_block(params, opts) do
     case Keyword.get(opts, :block) do
       nil ->
@@ -368,6 +408,7 @@ defmodule Onchain.EVM do
 
   @doc false
   # Validates hex format and parses to integer for the NIF's u64 block_number param.
+  @spec parse_hex_block(map(), String.t()) :: {:ok, map()} | {:error, {:invalid_block, term()}}
   defp parse_hex_block(params, "0x" <> rest = hex) do
     case normalize_block(hex) do
       {:ok, _} ->
@@ -383,6 +424,7 @@ defmodule Onchain.EVM do
 
   @doc false
   # Validates and adds the :from address to params. Returns error for invalid addresses.
+  @spec maybe_put_from(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_address, term()}}
   defp maybe_put_from(params, opts) do
     case Keyword.get(opts, :from) do
       nil ->
@@ -398,6 +440,7 @@ defmodule Onchain.EVM do
 
   @doc false
   # Validates and adds :value (must be a hex string) to params.
+  @spec maybe_put_value(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_value, term()}}
   defp maybe_put_value(params, opts) do
     case Keyword.get(opts, :value) do
       nil -> {:ok, params}
@@ -408,6 +451,7 @@ defmodule Onchain.EVM do
 
   @doc false
   # Validates and adds :gas_limit (must be a positive integer) to params.
+  @spec maybe_put_gas_limit(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_gas_limit, term()}}
   defp maybe_put_gas_limit(params, opts) do
     case Keyword.get(opts, :gas_limit) do
       nil -> {:ok, params}
@@ -418,6 +462,7 @@ defmodule Onchain.EVM do
 
   @doc false
   # Validates and adds :state_overrides (must be a map) to params.
+  @spec maybe_put_state_overrides(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_state_overrides, term()}}
   defp maybe_put_state_overrides(params, opts) do
     case Keyword.get(opts, :state_overrides) do
       nil -> {:ok, params}

@@ -12,6 +12,8 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 - **Task 35: rpc_url validation** — `require_rpc_url/1` now rejects empty strings, whitespace-only strings, non-HTTP(S) URLs, and hostless URLs (e.g. `"http://"`) with `{:error, {:invalid_rpc_url, reason}}` tuples. Missing rpc_url now returns `{:error, {:invalid_rpc_url, :missing}}` (was `{:error, {:evm_error, ...}}`). Previously, empty or malformed URLs passed through to the NIF and produced cryptic connection errors.
 - **Task 36: Strict option validation** — `maybe_put_value/2`, `maybe_put_gas_limit/2`, and `maybe_put_state_overrides/2` now return `{:error, {:invalid_*, input}}` instead of silently dropping invalid inputs. Also fixed `Trace.maybe_put_value/2` to validate that `:value` is a binary string. All three functions integrated into the `with` chain for fail-fast behavior.
 
+- **Task 38: Specific error union types** — Replaced `{:error, term()}` with named error type unions in `Onchain.EVM` and `Onchain.Trace`. EVM module defines `evm_error()` (union of `validation_error()` and `nif_error()`), Trace module defines `trace_error()` (union of `validation_error()` and `rpc_error()`). Per-function narrowing on `trace_transaction/2` and `storage_at/3` where the error surface is small. Added `@spec` to all private helper functions in both modules. Updated Descripex `api()` `returns.type` strings to match narrowed specs. Dialyzer can now verify error propagation through `with` chains end-to-end.
+
 ### Changed
 
 - **Task 40: Removed dead Application module** — Deleted `lib/onchain_evm/application.ex` (empty supervision tree, never wired up) and the commented `mod:` line in `mix.exs`.

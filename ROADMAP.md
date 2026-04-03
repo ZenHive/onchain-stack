@@ -16,6 +16,7 @@ All foundational tasks are complete. This package provides Solidity ABI parsing 
 
 ### Recently Completed (2026-04-03)
 - **Bundle 1: EVM Input Validation** — Tasks 34, 35, 36 all complete. String block tags, rpc_url validation, and strict option validation.
+- **Task 38: Error union types** — `{:error, term()}` replaced with named typed unions in `evm.ex` and `trace.ex` specs
 - **Struct name collision** — types in interfaces/contracts now get qualified canonical names (`IA.Data`, `IB.Data`)
 - **Struct array from_raw** — `from_raw/1` now recursively converts arrays of structs
 - **Enum runtime access** — enum constants are generated as callable functions, not compile-time-only attributes
@@ -70,7 +71,7 @@ Bundles identified via code review — grouped by shared code and common goals.
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
 | 37 | Eliminate bang-function duplication — introduce `defbang` macro to replace 9 copies of the same `case` pattern | ⬜ | 4 | 6 | 7 | 1.63 🚀 | All Elixir modules |
-| 38 | Add specific error union types — replace `{:error, term()}` with typed unions in `evm.ex` and `trace.ex` specs | ⬜ | 4 | 7 | 7 | 1.75 🚀 | `Onchain.EVM`, `Onchain.Trace` |
+| 38 | Add specific error union types — replace `{:error, term()}` with typed unions in `evm.ex` and `trace.ex` specs | ✅ | 4 | 7 | 7 | 1.75 🚀 | `Onchain.EVM`, `Onchain.Trace` |
 | 40 | Remove dead Application module — delete `lib/onchain_evm/application.ex` and commented `mod:` in `mix.exs` | ✅ | 2 | 3 | 4 | 1.75 🚀 | `mix.exs`, `lib/onchain_evm/` |
 
 ### Bundle 4: Documentation & Specs

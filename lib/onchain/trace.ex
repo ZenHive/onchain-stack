@@ -50,6 +50,25 @@ defmodule Onchain.Trace do
 
   @valid_tracers ~w(callTracer prestateTracer)
 
+  # --- Error Types ---
+
+  @typedoc "Validation errors from Elixir-side input checks."
+  @type validation_error ::
+          {:invalid_address, term()}
+          | {:invalid_data, term()}
+          | {:invalid_block, term()}
+          | {:invalid_tx_hash, term()}
+          | {:invalid_tracer, term()}
+          | {:invalid_slot, term()}
+          | {:invalid_value, term()}
+          | {:missing_param, atom()}
+
+  @typedoc "RPC/network errors from the Ethereum node."
+  @type rpc_error :: {:rpc_error, map()}
+
+  @typedoc "All possible errors from trace functions."
+  @type trace_error :: validation_error() | rpc_error()
+
   # --- trace_transaction ---
 
   api(:trace_transaction, "Get a full execution trace of a mined transaction (debug_traceTransaction).",
@@ -62,12 +81,13 @@ defmodule Onchain.Trace do
       ]
     ],
     returns: %{
-      type: "{:ok, map} | {:error, term}",
+      type: "{:ok, map} | {:error, {:invalid_tx_hash, term} | {:invalid_tracer, term} | rpc_error()}",
       description: "Raw trace output from the node (shape depends on tracer type)"
     }
   )
 
-  @spec trace_transaction(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec trace_transaction(String.t(), keyword()) ::
+          {:ok, map()} | {:error, {:invalid_tx_hash, term()} | {:invalid_tracer, term()} | rpc_error()}
   def trace_transaction(tx_hash, opts \\ []) do
     with {:ok, _hex} <- ensure_tx_hash(tx_hash),
          {:ok, tracer_config} <- build_tracer_config(opts) do
@@ -114,12 +134,13 @@ defmodule Onchain.Trace do
       ]
     ],
     returns: %{
-      type: "{:ok, map} | {:error, term}",
+      type: "{:ok, map} | {:error, trace_error()}",
       description: "Raw trace output from the node (shape depends on tracer type)"
     }
   )
 
-  @spec trace_call(map(), non_neg_integer() | String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec trace_call(map(), non_neg_integer() | String.t(), keyword()) ::
+          {:ok, map()} | {:error, trace_error()}
   def trace_call(call_params, block \\ "latest", opts \\ []) when is_map(call_params) do
     with {:ok, rpc_params} <- build_call_params(call_params),
          {:ok, block_hex} <- normalize_block(block),
@@ -156,13 +177,16 @@ defmodule Onchain.Trace do
       opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
     ],
     returns: %{
-      type: "{:ok, hex_string} | {:error, term}",
+      type:
+        "{:ok, hex_string} | {:error, {:invalid_address, term} | {:invalid_slot, term} | {:invalid_block, term} | rpc_error()}",
       description: "32-byte hex value at the storage slot",
       example: "0x0000000000000000000000000000000000000000000000000000000000000001"
     }
   )
 
-  @spec storage_at(String.t() | binary(), String.t(), keyword()) :: {:ok, String.t()} | {:error, term()}
+  @spec storage_at(String.t() | binary(), String.t(), keyword()) ::
+          {:ok, String.t()}
+          | {:error, {:invalid_address, term()} | {:invalid_slot, term()} | {:invalid_block, term()} | rpc_error()}
   def storage_at(address, slot, opts \\ []) do
     with {:ok, hex_addr} <- ensure_hex_address(address),
          {:ok, hex_slot} <- ensure_hex_slot(slot),
@@ -219,7 +243,7 @@ defmodule Onchain.Trace do
 
   @doc false
   # Builds the tracer configuration map from options.
-  @spec build_tracer_config(keyword()) :: {:ok, map()} | {:error, term()}
+  @spec build_tracer_config(keyword()) :: {:ok, map()} | {:error, {:invalid_tracer, term()}}
   defp build_tracer_config(opts) do
     tracer = Keyword.get(opts, :tracer, "callTracer")
 
@@ -232,7 +256,10 @@ defmodule Onchain.Trace do
 
   @doc false
   # Builds the call parameters map for debug_traceCall, validating required fields.
-  @spec build_call_params(map()) :: {:ok, map()} | {:error, term()}
+  @spec build_call_params(map()) ::
+          {:ok, map()}
+          | {:error,
+             {:missing_param, atom()} | {:invalid_address, term()} | {:invalid_data, term()} | {:invalid_value, term()}}
   defp build_call_params(params) do
     with {:ok, to} <- fetch_and_validate_address(params, :to),
          {:ok, data} <- fetch_and_validate_data(params),
@@ -243,7 +270,8 @@ defmodule Onchain.Trace do
   end
 
   @doc false
-  @spec fetch_and_validate_address(map(), atom()) :: {:ok, String.t()} | {:error, term()}
+  @spec fetch_and_validate_address(map(), atom()) ::
+          {:ok, String.t()} | {:error, {:missing_param, atom()} | {:invalid_address, term()}}
   defp fetch_and_validate_address(params, key) do
     case Map.get(params, key) do
       nil -> {:error, {:missing_param, key}}
@@ -252,7 +280,8 @@ defmodule Onchain.Trace do
   end
 
   @doc false
-  @spec fetch_and_validate_data(map()) :: {:ok, String.t()} | {:error, term()}
+  @spec fetch_and_validate_data(map()) ::
+          {:ok, String.t()} | {:error, {:missing_param, :data} | {:invalid_data, term()}}
   defp fetch_and_validate_data(params) do
     case Map.get(params, :data) do
       nil -> {:error, {:missing_param, :data}}
@@ -261,7 +290,7 @@ defmodule Onchain.Trace do
   end
 
   @doc false
-  @spec maybe_put_address(map(), map(), atom()) :: {:ok, map()} | {:error, term()}
+  @spec maybe_put_address(map(), map(), atom()) :: {:ok, map()} | {:error, {:invalid_address, term()}}
   defp maybe_put_address(result, params, key) do
     case Map.get(params, key) do
       nil ->
@@ -277,7 +306,7 @@ defmodule Onchain.Trace do
 
   @doc false
   # Validates and adds :value (must be a hex string) to the RPC params map.
-  @spec maybe_put_value(map(), map()) :: {:ok, map()} | {:error, term()}
+  @spec maybe_put_value(map(), map()) :: {:ok, map()} | {:error, {:invalid_value, term()}}
   defp maybe_put_value(result, params) do
     case Map.get(params, :value) do
       nil -> {:ok, result}
@@ -288,7 +317,7 @@ defmodule Onchain.Trace do
 
   @doc false
   # Validates that a slot is a 0x-prefixed hex string.
-  @spec ensure_hex_slot(term()) :: {:ok, String.t()} | {:error, term()}
+  @spec ensure_hex_slot(term()) :: {:ok, String.t()} | {:error, {:invalid_slot, term()}}
   defp ensure_hex_slot("0x" <> _ = slot) do
     if Onchain.Hex.valid?(slot), do: {:ok, slot}, else: {:error, {:invalid_slot, slot}}
   end
