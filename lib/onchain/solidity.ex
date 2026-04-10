@@ -57,6 +57,8 @@ defmodule Onchain.Solidity do
   use Descripex, namespace: "/solidity"
   use Rustler, otp_app: :onchain_evm, crate: "onchain_solidity"
 
+  import Onchain.BangHelper, only: [defbang: 2]
+
   @remappings_filename "remappings.txt"
   @source_file_marker_prefix "// onchain:resolved-source "
 
@@ -198,13 +200,11 @@ defmodule Onchain.Solidity do
   )
 
   @spec parse_abi_json!(String.t()) :: parsed_abi()
-  def parse_abi_json!(json) do
-    case parse_abi_json(json) do
-      {:ok, result} -> result
-      {:error, {:parse_error, reason}} -> raise "ABI parse failed: #{reason}"
-      {:error, reason} -> raise "ABI parse failed: #{inspect(reason)}"
-    end
-  end
+  # defbang expands to the same case/raise pattern, see Onchain.BangHelper
+  defbang(parse_abi_json!(json),
+    errors: [parse_error: "ABI parse failed"],
+    fallback: "ABI parse failed"
+  )
 
   # --- parse_abi_file ---
 
@@ -246,14 +246,11 @@ defmodule Onchain.Solidity do
   )
 
   @spec parse_abi_file!(String.t()) :: parsed_abi()
-  def parse_abi_file!(path) do
-    case parse_abi_file(path) do
-      {:ok, result} -> result
-      {:error, {:parse_error, reason}} -> raise "ABI parse failed: #{reason}"
-      {:error, {:file_error, reason}} -> raise "ABI file error: #{reason}"
-      {:error, reason} -> raise "ABI error: #{inspect(reason)}"
-    end
-  end
+  # defbang expands to the same case/raise pattern, see Onchain.BangHelper
+  defbang(parse_abi_file!(path),
+    errors: [parse_error: "ABI parse failed", file_error: "ABI file error"],
+    fallback: "ABI error"
+  )
 
   # --- parse_sol ---
 
@@ -293,13 +290,11 @@ defmodule Onchain.Solidity do
   )
 
   @spec parse_sol!(String.t()) :: parsed_sol()
-  def parse_sol!(source) do
-    case parse_sol(source) do
-      {:ok, result} -> result
-      {:error, {:parse_error, reason}} -> raise "Solidity parse failed: #{reason}"
-      {:error, reason} -> raise "Solidity parse failed: #{inspect(reason)}"
-    end
-  end
+  # defbang expands to the same case/raise pattern, see Onchain.BangHelper
+  defbang(parse_sol!(source),
+    errors: [parse_error: "Solidity parse failed"],
+    fallback: "Solidity parse failed"
+  )
 
   # --- resolve_sol_file ---
 
@@ -354,14 +349,11 @@ defmodule Onchain.Solidity do
   )
 
   @spec resolve_sol_file!(String.t(), parse_sol_file_opts()) :: resolved_sol_file()
-  def resolve_sol_file!(path, opts \\ []) do
-    case resolve_sol_file(path, opts) do
-      {:ok, result} -> result
-      {:error, {:parse_error, reason}} -> raise "Solidity parse failed: #{reason}"
-      {:error, {:file_error, reason}} -> raise "Solidity file error: #{reason}"
-      {:error, reason} -> raise "Solidity error: #{inspect(reason)}"
-    end
-  end
+  # defbang expands to the same case/raise pattern, see Onchain.BangHelper
+  defbang(resolve_sol_file!(path, opts \\ []),
+    errors: [parse_error: "Solidity parse failed", file_error: "Solidity file error"],
+    fallback: "Solidity error"
+  )
 
   # --- parse_sol_file ---
 
@@ -414,14 +406,11 @@ defmodule Onchain.Solidity do
   )
 
   @spec parse_sol_file!(String.t(), parse_sol_file_opts()) :: parsed_sol()
-  def parse_sol_file!(path, opts \\ []) do
-    case parse_sol_file(path, opts) do
-      {:ok, result} -> result
-      {:error, {:parse_error, reason}} -> raise "Solidity parse failed: #{reason}"
-      {:error, {:file_error, reason}} -> raise "Solidity file error: #{reason}"
-      {:error, reason} -> raise "Solidity error: #{inspect(reason)}"
-    end
-  end
+  # defbang expands to the same case/raise pattern, see Onchain.BangHelper
+  defbang(parse_sol_file!(path, opts \\ []),
+    errors: [parse_error: "Solidity parse failed", file_error: "Solidity file error"],
+    fallback: "Solidity error"
+  )
 
   @doc false
   def __parse_sol_root__(_source, _root_contract), do: :erlang.nif_error(:nif_not_loaded)

@@ -33,6 +33,7 @@ EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Eli
 
 ```
 lib/onchain/
+  bang_helper.ex              # defbang macro: generates bang (!) wrappers for ok/error functions
   evm.ex                      # Rustler NIF: revm local EVM execution
   solidity.ex                 # Rustler NIF: Alloy-powered Solidity ABI parser
   trace.ex                    # debug/trace APIs (trace_transaction, trace_call, storage_at)

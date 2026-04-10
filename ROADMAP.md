@@ -14,7 +14,8 @@
 
 All foundational tasks are complete. This package provides Solidity ABI parsing (Alloy NIF), contract codegen from `.sol` files, local EVM execution (revm NIF), and debug/trace APIs.
 
-### Recently Completed (2026-04-03)
+### Recently Completed (2026-04-10)
+- **Task 37: `defbang` macro** — Replaced 11 bang-function definitions with `Onchain.BangHelper.defbang/1-2` macro calls across EVM, Trace, and Solidity modules
 - **Bundle 1: EVM Input Validation** — Tasks 34, 35, 36 all complete. String block tags, rpc_url validation, and strict option validation.
 - **Task 38: Error union types** — `{:error, term()}` replaced with named typed unions in `evm.ex` and `trace.ex` specs
 - **Struct name collision** — types in interfaces/contracts now get qualified canonical names (`IA.Data`, `IB.Data`)
@@ -70,7 +71,7 @@ Bundles identified via code review — grouped by shared code and common goals.
 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
-| 37 | Eliminate bang-function duplication — introduce `defbang` macro to replace 9 copies of the same `case` pattern | ⬜ | 4 | 6 | 7 | 1.63 🚀 | All Elixir modules |
+| 37 | Eliminate bang-function duplication — introduce `defbang` macro to replace 11 copies of the same `case` pattern | ✅ | 4 | 6 | 7 | 1.63 🚀 | All Elixir modules |
 | 38 | Add specific error union types — replace `{:error, term()}` with typed unions in `evm.ex` and `trace.ex` specs | ✅ | 4 | 7 | 7 | 1.75 🚀 | `Onchain.EVM`, `Onchain.Trace` |
 | 40 | Remove dead Application module — delete `lib/onchain_evm/application.ex` and commented `mod:` in `mix.exs` | ✅ | 2 | 3 | 4 | 1.75 🚀 | `mix.exs`, `lib/onchain_evm/` |
 

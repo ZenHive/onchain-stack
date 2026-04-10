@@ -15,3 +15,6 @@ DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:392,
 DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:620,6684DB0
 DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:304,7D66373
 DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:403,E37B15
+Traversal.FileModule: Directory Traversal in `File.read`,lib/onchain/solidity.ex:609,1ED8F97
+Traversal.FileModule: Directory Traversal in `File.read`,lib/onchain/solidity.ex:516,404C4EA
+Traversal.FileModule: Directory Traversal in `File.read`,lib/onchain/solidity.ex:734,5520F1A

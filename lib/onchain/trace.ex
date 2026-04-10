@@ -46,6 +46,7 @@ defmodule Onchain.Trace do
 
   use Descripex, namespace: "/trace"
 
+  import Onchain.BangHelper, only: [defbang: 1]
   import Onchain.RPC.Helpers
 
   @valid_tracers ~w(callTracer prestateTracer)
@@ -106,12 +107,7 @@ defmodule Onchain.Trace do
   )
 
   @spec trace_transaction!(String.t(), keyword()) :: map()
-  def trace_transaction!(tx_hash, opts \\ []) do
-    case trace_transaction(tx_hash, opts) do
-      {:ok, result} -> result
-      {:error, reason} -> raise "trace_transaction failed: #{inspect(reason)}"
-    end
-  end
+  defbang(trace_transaction!(tx_hash, opts \\ []))
 
   # --- trace_call ---
 
@@ -161,12 +157,7 @@ defmodule Onchain.Trace do
   )
 
   @spec trace_call!(map(), non_neg_integer() | String.t(), keyword()) :: map()
-  def trace_call!(call_params, block \\ "latest", opts \\ []) do
-    case trace_call(call_params, block, opts) do
-      {:ok, result} -> result
-      {:error, reason} -> raise "trace_call failed: #{inspect(reason)}"
-    end
-  end
+  defbang(trace_call!(call_params, block \\ "latest", opts \\ []))
 
   # --- storage_at ---
 
@@ -207,12 +198,7 @@ defmodule Onchain.Trace do
   )
 
   @spec storage_at!(String.t() | binary(), String.t(), keyword()) :: String.t()
-  def storage_at!(address, slot, opts \\ []) do
-    case storage_at(address, slot, opts) do
-      {:ok, result} -> result
-      {:error, reason} -> raise "storage_at failed: #{inspect(reason)}"
-    end
-  end
+  defbang(storage_at!(address, slot, opts \\ []))
 
   # --- available? ---
 

@@ -41,6 +41,7 @@ defmodule Onchain.EVM do
   use Descripex, namespace: "/evm"
   use Rustler, otp_app: :onchain_evm, crate: "onchain_evm"
 
+  import Onchain.BangHelper, only: [defbang: 1]
   import Onchain.RPC.Helpers, only: [ensure_hex_address: 1, ensure_hex_data: 1, normalize_block: 1]
 
   # --- Types ---
@@ -169,12 +170,7 @@ defmodule Onchain.EVM do
   )
 
   @spec simulate_call!(String.t() | binary(), String.t(), sim_opts()) :: String.t()
-  def simulate_call!(address, data, opts \\ []) do
-    case simulate_call(address, data, opts) do
-      {:ok, result} -> result
-      {:error, reason} -> raise "simulate_call failed: #{inspect(reason)}"
-    end
-  end
+  defbang(simulate_call!(address, data, opts \\ []))
 
   # --- simulate_transaction ---
 
@@ -222,12 +218,7 @@ defmodule Onchain.EVM do
   )
 
   @spec simulate_transaction!(String.t() | binary(), String.t(), sim_opts()) :: tx_result()
-  def simulate_transaction!(address, data, opts \\ []) do
-    case simulate_transaction(address, data, opts) do
-      {:ok, result} -> result
-      {:error, reason} -> raise "simulate_transaction failed: #{inspect(reason)}"
-    end
-  end
+  defbang(simulate_transaction!(address, data, opts \\ []))
 
   # --- simulate_batch ---
 
@@ -270,12 +261,7 @@ defmodule Onchain.EVM do
   )
 
   @spec simulate_batch!([{String.t() | binary(), String.t()}], sim_opts()) :: [tx_result()]
-  def simulate_batch!(calls, opts \\ []) do
-    case simulate_batch(calls, opts) do
-      {:ok, results} -> results
-      {:error, reason} -> raise "simulate_batch failed: #{inspect(reason)}"
-    end
-  end
+  defbang(simulate_batch!(calls, opts \\ []))
 
   # --- NIF stubs (public for Rustler, prefixed to avoid clash with API functions) ---
 
