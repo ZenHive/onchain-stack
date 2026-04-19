@@ -118,12 +118,15 @@ defmodule Onchain.Contract.Generator do
   # --- ABI Resolution ---
 
   @doc false
+  @spec resolve_abi(keyword()) :: Onchain.Solidity.parsed_abi()
   def resolve_abi(opts) do
     resolve_contract_input(opts, nil).abi
   end
 
   @doc false
   # Resolves compile-time contract inputs, including real Solidity file graphs.
+  @spec resolve_contract_input(keyword(), Macro.Env.t() | nil) ::
+          %{abi: Onchain.Solidity.parsed_abi(), is_sol: boolean(), external_files: [String.t()]}
   def resolve_contract_input(opts, env) do
     cond do
       sol = Keyword.get(opts, :sol) ->
@@ -173,6 +176,7 @@ defmodule Onchain.Contract.Generator do
   # --- Name Conversion ---
 
   @doc false
+  @spec to_snake_case(String.t()) :: String.t()
   def to_snake_case(name) do
     name
     |> String.replace(~r/([A-Z]+)([A-Z][a-z])/, "\\1_\\2")
@@ -183,6 +187,7 @@ defmodule Onchain.Contract.Generator do
   # --- Overload Disambiguation ---
 
   @doc false
+  @spec disambiguate([map()]) :: [map()]
   def disambiguate(functions) do
     functions
     |> Enum.map(fn f -> Map.put(f, :elixir_name, to_snake_case(f.name)) end)

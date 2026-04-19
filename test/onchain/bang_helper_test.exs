@@ -7,8 +7,11 @@ defmodule Onchain.BangHelperTest do
     @moduledoc false
     import Onchain.BangHelper, only: [defbang: 1]
 
-    def greet(name), do: {:ok, "hello #{name}"}
-    def fail(_name), do: {:error, :not_found}
+    def greet(name) when is_binary(name), do: {:ok, "hello #{name}"}
+    def greet(_name), do: {:error, :invalid_name}
+
+    def fail(name) when is_binary(name), do: {:error, :not_found}
+    def fail(_name), do: {:ok, :never}
 
     defbang(greet!(name))
     defbang(fail!(name))
@@ -18,8 +21,13 @@ defmodule Onchain.BangHelperTest do
     @moduledoc false
     import Onchain.BangHelper, only: [defbang: 1]
 
-    def fetch(key, default \\ "none"), do: {:ok, "#{key}=#{default}"}
-    def fail_fetch(key, _default \\ "none"), do: {:error, {:missing, key}}
+    def fetch(key, default \\ "none")
+    def fetch(key, default) when is_binary(key), do: {:ok, "#{key}=#{default}"}
+    def fetch(_key, _default), do: {:error, :invalid_key}
+
+    def fail_fetch(key, default \\ "none")
+    def fail_fetch(key, _default) when is_binary(key), do: {:error, {:missing, key}}
+    def fail_fetch(_key, _default), do: {:ok, :never}
 
     defbang(fetch!(key, default \\ "none"))
     defbang(fail_fetch!(key, default \\ "none"))

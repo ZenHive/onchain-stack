@@ -18,3 +18,14 @@ DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:403,
 Traversal.FileModule: Directory Traversal in `File.read`,lib/onchain/solidity.ex:609,1ED8F97
 Traversal.FileModule: Directory Traversal in `File.read`,lib/onchain/solidity.ex:516,404C4EA
 Traversal.FileModule: Directory Traversal in `File.read`,lib/onchain/solidity.ex:734,5520F1A
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:708,1FFB16E
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:347,3875637
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:408,39E7DC5
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:590,4187932
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:406,453547E
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:625,52E1C4B
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:308,5D1843E
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:346,61C4D91
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:309,6C4B31
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:397,7AC2C60
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:594,A1B589

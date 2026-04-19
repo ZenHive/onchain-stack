@@ -344,26 +344,37 @@ defmodule Onchain.EVM do
   end
 
   @doc false
-  # TODO: URI.parse/1 is soft-deprecated — migrate to URI.new/1 (Elixir 1.13+)
   @spec validate_rpc_url(String.t()) ::
           {:ok, String.t()}
           | {:error, {:invalid_rpc_url, :empty | {:invalid_scheme, String.t()} | {:missing_host, String.t()}}}
   defp validate_rpc_url(url) do
     trimmed = String.trim(url)
-    uri = URI.parse(trimmed)
 
-    cond do
-      trimmed == "" ->
-        {:error, {:invalid_rpc_url, :empty}}
+    if trimmed == "" do
+      {:error, {:invalid_rpc_url, :empty}}
+    else
+      validate_parsed_rpc_url(trimmed)
+    end
+  end
 
-      uri.scheme not in ["http", "https"] ->
+  @spec validate_parsed_rpc_url(String.t()) ::
+          {:ok, String.t()}
+          | {:error, {:invalid_rpc_url, {:invalid_scheme, String.t()} | {:missing_host, String.t()}}}
+  defp validate_parsed_rpc_url(trimmed) do
+    case URI.new(trimmed) do
+      {:ok, %URI{scheme: scheme}} when scheme not in ["http", "https"] ->
         {:error, {:invalid_rpc_url, {:invalid_scheme, trimmed}}}
 
-      is_nil(uri.host) or uri.host == "" ->
+      {:ok, %URI{host: host}} when is_nil(host) or host == "" ->
         {:error, {:invalid_rpc_url, {:missing_host, trimmed}}}
 
-      true ->
+      {:ok, %URI{}} ->
         {:ok, trimmed}
+
+      # TODO: URI.new/1 returns {:error, part} only for `<`/`>` characters.
+      # We fold that into :invalid_scheme; consider a dedicated :malformed_uri tag.
+      {:error, _part} ->
+        {:error, {:invalid_rpc_url, {:invalid_scheme, trimmed}}}
     end
   end
 

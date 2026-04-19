@@ -18,6 +18,7 @@ All foundational tasks are complete. This package provides Solidity ABI parsing 
 - **Task 37: `defbang` macro** — Replaced 11 bang-function definitions with `Onchain.BangHelper.defbang/1-2` macro calls across EVM, Trace, and Solidity modules
 - **Bundle 1: EVM Input Validation** — Tasks 34, 35, 36 all complete. String block tags, rpc_url validation, and strict option validation.
 - **Task 38: Error union types** — `{:error, term()}` replaced with named typed unions in `evm.ex` and `trace.ex` specs
+- **Task 39: Generator typespecs** — Added `@spec` to `resolve_abi/1`, `resolve_contract_input/2`, `to_snake_case/1`, `disambiguate/1`
 - **Struct name collision** — types in interfaces/contracts now get qualified canonical names (`IA.Data`, `IB.Data`)
 - **Struct array from_raw** — `from_raw/1` now recursively converts arrays of structs
 - **Enum runtime access** — enum constants are generated as callable functions, not compile-time-only attributes
@@ -79,7 +80,7 @@ Bundles identified via code review — grouped by shared code and common goals.
 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
-| 39 | Add `@spec` to public Generator functions — `resolve_abi/1`, `to_snake_case/1`, `disambiguate/1` | ⬜ | 3 | 5 | 5 | 1.67 🚀 | `Onchain.Contract.Generator` |
+| 39 | Add `@spec` to public Generator functions — `resolve_abi/1`, `resolve_contract_input/2`, `to_snake_case/1`, `disambiguate/1` | ✅ | 3 | 5 | 5 | 1.67 🚀 | `Onchain.Contract.Generator` |
 | 41 | Document Generator options — add `:abi_file`, `:remappings`, and `:root_contract` to moduledoc | ✅ | 2 | 4 | 5 | 2.25 🎯 | `Onchain.Contract.Generator` |
 | 42 | Add module-level Rust documentation — doc comments on both native crate entry points | ⬜ | 3 | 5 | 5 | 1.67 🚀 | Both native crates |
 
@@ -124,6 +125,7 @@ Potential expansions — not yet scoped or scored:
 
 ```
 lib/onchain/
+  bang_helper.ex                  # defbang macro: generates bang (!) wrappers for ok/error functions
   evm.ex                          # Rustler NIF: revm local EVM execution
   solidity.ex                     # Rustler NIF: Alloy-powered Solidity ABI parser
   trace.ex                        # debug/trace APIs (trace_transaction, trace_call, storage_at)
