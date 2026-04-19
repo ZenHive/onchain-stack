@@ -22,7 +22,7 @@ EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Eli
 - All modules use `Onchain.*` namespace (e.g., `Onchain.EVM`) — same as when they lived in the monolith
 - Rust NIFs via Rustler: `otp_app: :onchain_evm` (not `:onchain`)
 - Two native crates: `native/onchain_evm/` (revm) and `native/onchain_solidity/` (Alloy + solang-parser)
-- Path dependency: `{:onchain, path: "../onchain"}`
+- Hex dependency: `{:onchain, "~> 0.5"}`
 - Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`
 
 ## Module Layout
@@ -71,5 +71,5 @@ Integration tests require `ETHEREUM_API_URL` or `ETH_RPC_URL` env var.
 
 ## Related Packages
 
-- **onchain** — Core Ethereum primitives: `{:onchain, path: "../onchain"}`
-- **onchain_aave** — Aave V3 wrappers: `{:onchain_aave, path: "../onchain_aave"}`
+- **onchain** — Core Ethereum primitives: `{:onchain, "~> 0.5"}`
+- **onchain_aave** — Aave V3 wrappers: `{:onchain_aave, "~> 0.1"}`

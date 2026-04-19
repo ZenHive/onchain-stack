@@ -96,6 +96,24 @@ Bundles identified via code review — grouped by shared code and common goals.
 
 ---
 
+## Path to hex.pm Release (`0.1.0`)
+
+Release when these are true:
+
+**Blockers (must close before `mix hex.publish`):**
+- [x] Credo on hex — swapped git dep for `~> 1.7` (1.7.18 shipped 2026-04-10)
+- [ ] Bundle 2 closed — Tasks 30 (RPC timeouts), 31 (`.expect()` → errors), 32 (input size limits). Public API contracts around reliability are hard to change post-release.
+- [ ] `rustler_precompiled` wrapping both native crates, with prebuilt artifacts published via GitHub Releases. Without this, every install requires a full Rust toolchain.
+
+**Should do (but not blockers):**
+- Task 28/29 — Rust unit tests for both crates (confidence in the NIFs users are compiling against)
+- Task 42 — module-level Rust doc comments (shows up in crate docs)
+- Task 43 — `cargo clippy` in CI
+
+**Version strategy:** release as `0.1.0` to signal API-may-still-shift. Bump to `0.2.0` for any breaking change in Elixir signatures or NIF ABI. Reserve `1.0.0` for when the debug/trace + codegen surfaces feel stable across a few real downstream users (`onchain_aave`, etc.).
+
+---
+
 ## Future Directions
 
 Potential expansions — not yet scoped or scored:
@@ -117,7 +135,7 @@ Potential expansions — not yet scoped or scored:
 1. **`Onchain.*` namespace** — modules keep the same namespace as when they lived in the monolith
 2. **Rustler `otp_app: :onchain_evm`** — NIFs must reference `:onchain_evm`, not `:onchain`
 3. **Two native crates** — `native/onchain_evm/` (revm, alloy) and `native/onchain_solidity/` (alloy-json-abi, solang-parser)
-4. **Path dependency** — `{:onchain, path: "../onchain"}`
+4. **Hex dependency** — `{:onchain, "~> 0.5"}` (was a path dep during the monolith split)
 5. **`priv_dir` references** — tests use `:code.priv_dir(:onchain_evm)` (not `:onchain`)
 6. **Standard error tuples** — `{:ok, result} | {:error, {:tag, reason}}`
 
