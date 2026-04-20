@@ -6,6 +6,10 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Roadmap reprioritization: V3 Math Validation before V4 implementation
+
+Reframed ROADMAP.md to gate V4 work on V3 math verification. Added a "🎯 Current Focus" section naming Tasks 40 → 41 as the active path; Task 43 (JS aggregation cross-validation) stays 🔶 gated until off-chain aggregation helpers exist. Bumped Task 40 (WadRayMath + MathUtils port) from U:7 → U:9 (Eff 1.50 📋 → 1.70 🚀) because it gates both Task 41 (V3 revm validation) and Task 42 (V4 revm validation) — it is now the verification bridge rather than isolated math work. Moved the Cleanup Backlog (Tasks 36, 38, 39) below Math Validation to reflect that it is polish, not a capability gate. No code changes.
+
 ### Task 44: V4 Hub-and-Spoke scoping
 
 **Completed** | [D:3/B:7/U:8 → Eff:2.50] 🎯

@@ -12,7 +12,15 @@
 
 ## Status
 
-All foundational V3 tasks are complete. This package provides full Aave V3 read + write coverage across mainnet and 6 chains. A small cleanup backlog (Tasks 36–39) was captured during the v0.1.0 staged-review pass; see below. A follow-on **Math Validation** backlog (Tasks 40–43) was added 2026-04-20 to expand `Aave.Math` with WadRayMath + MathUtils and cross-validate both against Solidity (via `onchain_evm`) and against Aave's frontend math (`@aave/math-utils` via `onchain_js`). The **Aave V4 Support** phase opened 2026-04-20 after V4 went live on Ethereum mainnet on 2026-03-30 with the Hub-and-Spoke architecture; Task 44 scoping completed 2026-04-20 (see [V4_SCOPING.md](V4_SCOPING.md)) and produced implementation Tasks 45–52.
+All foundational V3 tasks are complete. This package provides full Aave V3 read + write coverage across mainnet and 6 chains. A small cleanup backlog (Tasks 36–39) was captured during the v0.1.0 staged-review pass; see below. A follow-on **Math Validation** backlog (Tasks 40–43) was added 2026-04-20 to expand `Aave.Math` with WadRayMath + MathUtils and cross-validate both against Solidity (via `onchain_evm`) and against Aave's frontend math (`@aave/math-utils` via `onchain_js`). The **Aave V4 Support** phase opened 2026-04-20 after V4 went live on Ethereum mainnet on 2026-03-30 with the Hub-and-Spoke architecture; Task 44 scoping completed 2026-04-20 (see [V4_SCOPING.md](V4_SCOPING.md)) and produced implementation Tasks 45–52. Next priority: V3 math validation (Tasks 40–41) before V4 implementation work (Tasks 45+) proceeds.
+
+---
+
+## 🎯 Current Focus
+
+**V3 Math Validation** — before shipping V4 support, cross-validate `Aave.Math` against Solidity source-of-truth (revm) and Aave's frontend math (JS). This gates V4 confidence: Task 42 (V4 math validation) depends on Task 40.
+
+**Active path:** Tasks 40 → 41. JS validation (Task 43) stays 🔶 gated until off-chain aggregation helpers exist.
 
 ---
 
@@ -41,25 +49,6 @@ All foundational V3 tasks are complete. This package provides full Aave V3 read 
 
 ---
 
-## Cleanup Backlog (from initial-commit review)
-
-Discovered during the v0.1.0 staged-review pass. All deferred — library ships first, cleanup follows.
-
-| # | Task | Status | D | B | U | Eff | Module |
-|---|------|--------|---|---|---|-----|--------|
-| 36 | Extract shared Pool write helper (`send_pool_tx/4` across supply/withdraw/borrow/repay) | ⬜ | 3 | 6 | 5 | 1.83 🚀 | `Onchain.Aave.Pool` |
-| 37 | ~~Named module attributes for canonical Aave V3 pool/provider addresses~~ | ✅ | 1 | 5 | 4 | 4.50 🎯 | `Onchain.Aave.Contracts` — see [CHANGELOG](CHANGELOG.md#task-37-named-canonical-aave-v3-addresses) |
-| 38 | Consolidate Pool write integration test helpers + name testnet magic numbers | ⬜ | 2 | 4 | 3 | 1.75 🚀 | `test/onchain/aave/pool_write_integration_test.exs` |
-| 39 | Move per-module `@dialyzer` suppressions into `.dialyzer_ignore.exs` | ⬜ | 2 | 3 | 4 | 1.75 🚀 | `lib/onchain/aave/{pool,oracle,ui_pool_data_provider}.ex` |
-
-**Task 36 — Pool write helper extraction.** `supply`, `withdraw`, `borrow`, `repay` in `pool.ex` share identical `with`-chain structure (validate asset → validate obo/to → lookup address → encode calldata → send). Extract a private `send_pool_tx/4` taking the ABI sig + args. Consider whether `Faucet.mint` should share the same path. Keep backwards-compatible public APIs.
-
-**Task 38 — Test helper consolidation.** `pool_write_integration_test.exs` duplicates the approve+supply preamble across borrow and repay describe blocks. Extract `supply_weth_collateral!/4`. While there, add `TODO:`-tagged rationale for `@gas_limit_*` constants (testnet-calibrated) and `@oracle_jitter_tolerance "0.05"` (empirical 5% slack).
-
-**Task 39 — Centralize dialyzer suppressions.** `pool.ex`, `oracle.ex`, `ui_pool_data_provider.ex` each carry per-module `@dialyzer` suppressions for the `Signet.Hex` / `ABI.decode_response` `no_return()` cascade. Move them into `.dialyzer_ignore.exs` so the underlying upstream issue is tracked in one place. See also: sibling `onchain` — a `FIXME(upstream)` on the `Signet.Hex` spec would remove the need entirely.
-
----
-
 ## Math Validation
 
 Added 2026-04-20 after surveying Aave's math references. Two oracles at two different layers:
@@ -73,7 +62,7 @@ The revm NIF surface (`Onchain.EVM.simulate_call/3`, `simulate_transaction/3`, `
 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
-| 40 | Port Aave V3 WadRayMath + MathUtils to Elixir | ⬜ | 5 | 8 | 7 | 1.50 📋 | `Onchain.Aave.Math` |
+| 40 | Port Aave V3 WadRayMath + MathUtils to Elixir | ⬜ | 5 | 8 | 9 | 1.70 🚀 | `Onchain.Aave.Math` |
 | 41 | Cross-validate `Aave.Math` via revm against on-chain Aave V3 | ⬜ | 4 | 7 | 6 | 1.63 🚀 | `test/onchain/aave/math_revm_test.exs` (new) |
 | 42 | V4 math cross-validation via revm (V4 live on mainnet 2026-03-30) | ⬜ | 4 | 7 | 7 | 1.75 🚀 | `Onchain.Aave.Math.V4` |
 | 43 | Cross-validate aggregation helpers via `@aave/math-utils` (QuickBEAM) | 🔶 | 4 | 6 | 4 | 1.25 📋 | `Onchain.Aave.Summary` (future) |
@@ -85,6 +74,25 @@ The revm NIF surface (`Onchain.EVM.simulate_call/3`, `simulate_transaction/3`, `
 **Task 42 — V4 cross-validation via revm.** V4 is live on Ethereum mainnet as of 2026-03-30 (AIP executed; Snapshot passed 2026-03-23, 100% support). Repeat Task 41's harness against V4's math library: pin a mainnet block post-launch, call the V4 math contracts directly via `Onchain.EVM.simulate_call/3`, assert equality with a V4-specific Elixir port. Depends on Task 40 (WadRayMath port) — V4's math library may have diverged from V3; port the V4-specific variants under `Onchain.Aave.Math.V4` if so. `state_overrides["code"]` bytecode injection is now a secondary fallback (e.g. for variants we want to test before mainnet exposure), not the primary path. V4 contract addresses (Hubs, Spokes, `EXTERNAL_LIBRARIES LIQUIDATION_LOGIC`, etc.) come from [V4_SCOPING.md](V4_SCOPING.md) — the Aave address book does not flag a separate "math library" constant, so the first step is locating the WadRayMath-equivalent call site (likely the `LIQUIDATION_LOGIC` external library at `0x88dF535473C5adf1f57789734A05E555F7Deb8DB`, or inlined in Hub/Spoke bytecode).
 
 **Task 43 — Aggregation helpers via JS (gated on helpers existing).** When `onchain_aave` grows off-chain aggregation helpers (e.g. `Onchain.Aave.Summary.format_user_summary/2`, projected APY, weighted reserve averages — anything Aave's UI computes off-chain), validate them against `@aave/math-utils` via `onchain_js` (QuickBEAM). Load the npm bundle, call `formatUserSummaryAndIncentives` and friends with identical inputs, compare to Elixir output within a documented tolerance (BigNumber→Decimal conversion may introduce sub-wei noise). Gated (🔶) because the helpers don't exist yet — add the task to the active backlog when the first one lands. V2/V3 only today; re-check V4 JS availability before acting.
+
+---
+
+## Cleanup Backlog (from initial-commit review)
+
+Discovered during the v0.1.0 staged-review pass. Deprioritized below Math Validation — polish, not a capability gate.
+
+| # | Task | Status | D | B | U | Eff | Module |
+|---|------|--------|---|---|---|-----|--------|
+| 36 | Extract shared Pool write helper (`send_pool_tx/4` across supply/withdraw/borrow/repay) | ⬜ | 3 | 6 | 5 | 1.83 🚀 | `Onchain.Aave.Pool` |
+| 37 | ~~Named module attributes for canonical Aave V3 pool/provider addresses~~ | ✅ | 1 | 5 | 4 | 4.50 🎯 | `Onchain.Aave.Contracts` — see [CHANGELOG](CHANGELOG.md#task-37-named-canonical-aave-v3-addresses) |
+| 38 | Consolidate Pool write integration test helpers + name testnet magic numbers | ⬜ | 2 | 4 | 3 | 1.75 🚀 | `test/onchain/aave/pool_write_integration_test.exs` |
+| 39 | Move per-module `@dialyzer` suppressions into `.dialyzer_ignore.exs` | ⬜ | 2 | 3 | 4 | 1.75 🚀 | `lib/onchain/aave/{pool,oracle,ui_pool_data_provider}.ex` |
+
+**Task 36 — Pool write helper extraction.** `supply`, `withdraw`, `borrow`, `repay` in `pool.ex` share identical `with`-chain structure (validate asset → validate obo/to → lookup address → encode calldata → send). Extract a private `send_pool_tx/4` taking the ABI sig + args. Consider whether `Faucet.mint` should share the same path. Keep backwards-compatible public APIs.
+
+**Task 38 — Test helper consolidation.** `pool_write_integration_test.exs` duplicates the approve+supply preamble across borrow and repay describe blocks. Extract `supply_weth_collateral!/4`. While there, add `TODO:`-tagged rationale for `@gas_limit_*` constants (testnet-calibrated) and `@oracle_jitter_tolerance "0.05"` (empirical 5% slack).
+
+**Task 39 — Centralize dialyzer suppressions.** `pool.ex`, `oracle.ex`, `ui_pool_data_provider.ex` each carry per-module `@dialyzer` suppressions for the `Signet.Hex` / `ABI.decode_response` `no_return()` cascade. Move them into `.dialyzer_ignore.exs` so the underlying upstream issue is tracked in one place. See also: sibling `onchain` — a `FIXME(upstream)` on the `Signet.Hex` spec would remove the need entirely.
 
 ---
 
