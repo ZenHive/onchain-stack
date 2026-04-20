@@ -4,6 +4,16 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## [Unreleased]
+
+### Task 37: Named canonical Aave V3 addresses
+
+**Completed** | [D:1/B:5/U:4 → Eff:4.50] 🎯
+
+Extracted the CREATE2-shared V3 canonical pool (`0x794a61358D6845594F94dc1DB02A252b5b4814aD`) and pool-addresses-provider (`0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb`) into `@aave_v3_canonical_pool` / `@aave_v3_canonical_provider` module attributes in `Onchain.Aave.Contracts`. Arbitrum, Optimism, Polygon, and Avalanche now reference the attributes instead of inlining the literals four times each. Documents the shared-deployment intent and makes copy-paste drift syntactically impossible. Public API and stored values unchanged — `address/2` returns identical checksummed strings.
+
+---
+
 ## v0.1.0 — Initial Release (Split from onchain)
 
 Extracted from [onchain](../onchain) v0.3.0 monolith as a standalone package.

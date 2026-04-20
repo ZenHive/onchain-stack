@@ -12,7 +12,7 @@
 
 ## Status
 
-All foundational tasks are complete. This package provides full Aave V3 read + write coverage across mainnet and 6 chains. A small cleanup backlog (Tasks 36–39) was captured during the v0.1.0 staged-review pass; see below. A follow-on **Math Validation** backlog (Tasks 40–43) was added 2026-04-20 to expand `Aave.Math` with WadRayMath + MathUtils and cross-validate both against Solidity (via `onchain_evm`) and against Aave's frontend math (`@aave/math-utils` via `onchain_js`).
+All foundational tasks are complete. This package provides full Aave V3 read + write coverage across mainnet and 6 chains. A small cleanup backlog (Tasks 36–39) was captured during the v0.1.0 staged-review pass; see below. A follow-on **Math Validation** backlog (Tasks 40–43) was added 2026-04-20 to expand `Aave.Math` with WadRayMath + MathUtils and cross-validate both against Solidity (via `onchain_evm`) and against Aave's frontend math (`@aave/math-utils` via `onchain_js`). A separate **Aave V4 Support** backlog (Task 44+) opened 2026-04-20 after V4 went live on Ethereum mainnet on 2026-03-30 with the Hub-and-Spoke architecture.
 
 ---
 
@@ -48,13 +48,11 @@ Discovered during the v0.1.0 staged-review pass. All deferred — library ships 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
 | 36 | Extract shared Pool write helper (`send_pool_tx/4` across supply/withdraw/borrow/repay) | ⬜ | 3 | 6 | 5 | 1.83 🚀 | `Onchain.Aave.Pool` |
-| 37 | Named module attributes for canonical Aave V3 pool/provider addresses | ⬜ | 1 | 5 | 4 | 4.50 🎯 | `Onchain.Aave.Contracts` |
+| 37 | ~~Named module attributes for canonical Aave V3 pool/provider addresses~~ | ✅ | 1 | 5 | 4 | 4.50 🎯 | `Onchain.Aave.Contracts` — see [CHANGELOG](CHANGELOG.md#task-37-named-canonical-aave-v3-addresses) |
 | 38 | Consolidate Pool write integration test helpers + name testnet magic numbers | ⬜ | 2 | 4 | 3 | 1.75 🚀 | `test/onchain/aave/pool_write_integration_test.exs` |
 | 39 | Move per-module `@dialyzer` suppressions into `.dialyzer_ignore.exs` | ⬜ | 2 | 3 | 4 | 1.75 🚀 | `lib/onchain/aave/{pool,oracle,ui_pool_data_provider}.ex` |
 
 **Task 36 — Pool write helper extraction.** `supply`, `withdraw`, `borrow`, `repay` in `pool.ex` share identical `with`-chain structure (validate asset → validate obo/to → lookup address → encode calldata → send). Extract a private `send_pool_tx/4` taking the ABI sig + args. Consider whether `Faucet.mint` should share the same path. Keep backwards-compatible public APIs.
-
-**Task 37 — Named canonical addresses.** The Aave V3 canonical pool (`0x794a61358D6845594F94dc1DB02A252b5b4814aD`) and provider (`0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb`) are inlined 4x in `contracts.ex` for arbitrum/optimism/polygon/avalanche. Extract to `@aave_v3_canonical_pool` / `@aave_v3_canonical_provider` module attributes. Documents the intent and prevents silent copy-paste drift.
 
 **Task 38 — Test helper consolidation.** `pool_write_integration_test.exs` duplicates the approve+supply preamble across borrow and repay describe blocks. Extract `supply_weth_collateral!/4`. While there, add `TODO:`-tagged rationale for `@gas_limit_*` constants (testnet-calibrated) and `@oracle_jitter_tolerance "0.05"` (empirical 5% slack).
 
@@ -67,7 +65,7 @@ Discovered during the v0.1.0 staged-review pass. All deferred — library ships 
 Added 2026-04-20 after surveying Aave's math references. Two oracles at two different layers:
 
 - **revm via `onchain_evm`** — canonical for *protocol-level* math (WadRayMath, interest accrual). Validates our Elixir port against actual on-chain Solidity bytecode. Version-agnostic (V2/V3/V4).
-- **`@aave/math-utils` via `onchain_js`** (QuickBEAM) — canonical for *off-chain aggregation* (`formatUserSummaryAndIncentives`, estimated APY over time, weighted averages across reserves). Validates that our Elixir matches what Aave's frontend shows users. V2/V3 only (V4 JS lib does not exist as of 2026-04-20).
+- **`@aave/math-utils` via `onchain_js`** (QuickBEAM) — canonical for *off-chain aggregation* (`formatUserSummaryAndIncentives`, estimated APY over time, weighted averages across reserves). Validates that our Elixir matches what Aave's frontend shows users. V2/V3 only (no V4 JS lib as of 2026-04-20 — re-check before acting on Task 43; Aave's frontend will need one for V4 eventually).
 
 They cover different failure modes: revm catches drift from the contracts, JS catches drift from the UI. Use both where the relevant Elixir code exists.
 
@@ -77,16 +75,32 @@ The revm NIF surface (`Onchain.EVM.simulate_call/3`, `simulate_transaction/3`, `
 |---|------|--------|---|---|---|-----|--------|
 | 40 | Port Aave V3 WadRayMath + MathUtils to Elixir | ⬜ | 5 | 8 | 7 | 1.50 📋 | `Onchain.Aave.Math` |
 | 41 | Cross-validate `Aave.Math` via revm against on-chain Aave V3 | ⬜ | 4 | 7 | 6 | 1.63 🚀 | `test/onchain/aave/math_revm_test.exs` (new) |
-| 42 | V4 math cross-validation (blocked on V4 deployment or bytecode availability) | 🔶 | 4 | 7 | 5 | 1.50 📋 | `Onchain.Aave.Math.V4` (future) |
+| 42 | V4 math cross-validation via revm (V4 live on mainnet 2026-03-30) | ⬜ | 4 | 7 | 7 | 1.75 🚀 | `Onchain.Aave.Math.V4` |
 | 43 | Cross-validate aggregation helpers via `@aave/math-utils` (QuickBEAM) | 🔶 | 4 | 6 | 4 | 1.25 📋 | `Onchain.Aave.Summary` (future) |
 
 **Task 40 — WadRayMath + MathUtils port.** Port Aave V3's `rayMul`, `rayDiv`, `wadMul`, `wadDiv`, `calculateLinearInterest`, `calculateCompoundedInterest` from Solidity (`aave-v3-core/contracts/protocol/libraries/math/`) to Elixir over `Decimal.t()`. Preserve Aave's rounding semantics (half-up at the ray/wad midpoint — not trivial). Prerequisite for Task 41; the current `Math` module holds only trivial `div_pow10` scale conversions with nothing worth oracle-validating.
 
 **Task 41 — revm cross-validation.** Add `{:onchain_evm, path: "../onchain_evm"}` as a test-only dep. Either deploy a thin Solidity wrapper that exposes Aave V3's `WadRayMath` + `MathUtils` internal functions as public entrypoints, or call through an already-deployed Aave V3 library/contract that exercises them. For each function: generate inputs (including edge cases — overflow boundaries, rounding midpoints, zero, max-uint), encode via `Onchain.ABI.encode_call/2`, fire through `Onchain.EVM.simulate_call/3` on a pinned mainnet block, decode, assert equality with the Elixir port within zero tolerance. Property-based tests via StreamData.
 
-**Task 42 — V4 cross-validation (blocked).** When V4 is deployed or its compiled bytecode is published, repeat Task 41's harness against V4's math library. Two execution paths: (a) call the deployed address directly if V4 is live, (b) inject bytecode at a chosen address via `state_overrides["code"]` if not. The NIF supports both today — the block is external (V4 availability), not internal.
+**Task 42 — V4 cross-validation via revm.** V4 is live on Ethereum mainnet as of 2026-03-30 (EthCC launch, governance passed 2026-03-24). Repeat Task 41's harness against V4's math library: pin a mainnet block post-launch, call the V4 math contracts directly via `Onchain.EVM.simulate_call/3`, assert equality with a V4-specific Elixir port. Depends on Task 40 (WadRayMath port) — V4's math library may have diverged from V3; port the V4-specific variants under `Onchain.Aave.Math.V4` if so. `state_overrides["code"]` bytecode injection is now a secondary fallback (e.g. for variants we want to test before mainnet exposure), not the primary path. **Coordinate with Task 44** — the V4 contract-surface scoping feeds the address list used here.
 
-**Task 43 — Aggregation helpers via JS (gated on helpers existing).** When `onchain_aave` grows off-chain aggregation helpers (e.g. `Onchain.Aave.Summary.format_user_summary/2`, projected APY, weighted reserve averages — anything Aave's UI computes off-chain), validate them against `@aave/math-utils` via `onchain_js` (QuickBEAM). Load the npm bundle, call `formatUserSummaryAndIncentives` and friends with identical inputs, compare to Elixir output within a documented tolerance (BigNumber→Decimal conversion may introduce sub-wei noise). Gated (🔶) because the helpers don't exist yet — add the task to the active backlog when the first one lands. V2/V3 only; V4 has no JS lib.
+**Task 43 — Aggregation helpers via JS (gated on helpers existing).** When `onchain_aave` grows off-chain aggregation helpers (e.g. `Onchain.Aave.Summary.format_user_summary/2`, projected APY, weighted reserve averages — anything Aave's UI computes off-chain), validate them against `@aave/math-utils` via `onchain_js` (QuickBEAM). Load the npm bundle, call `formatUserSummaryAndIncentives` and friends with identical inputs, compare to Elixir output within a documented tolerance (BigNumber→Decimal conversion may introduce sub-wei noise). Gated (🔶) because the helpers don't exist yet — add the task to the active backlog when the first one lands. V2/V3 only today; re-check V4 JS availability before acting.
+
+---
+
+## Aave V4 Support
+
+V4 went live on Ethereum mainnet on 2026-03-30 (governance passed 2026-03-24 with 100% support) with a Hub-and-Spoke architecture. The launch surface includes **three Hubs** (Core, Prime, Plus — not just Core + Prime), **multiple Spoke families** (e-Mode and beyond, per [Hub-and-Spoke Initial Configurations](https://governance.aave.com/t/aave-v4-hub-and-spoke-initial-configurations/24233)), and new **tokenized positions**. V4's contract surface differs materially from V3's single-`Pool` model — this is not a drop-in interface addition.
+
+Sources: [aave.com/blog/aave-v4-live-ethereum](https://aave.com/blog/aave-v4-live-ethereum), [ARFC activation thread](https://governance.aave.com/t/arfc-aave-v4-activation-on-ethereum-mainnet/24293), [initial configurations](https://governance.aave.com/t/aave-v4-hub-and-spoke-initial-configurations/24233). Surface details below are **partial** — Task 44 must re-read sources before acting.
+
+The responsible first step is scoping, not implementation. Jumping straight to "add `Onchain.Aave.V4.Pool`" without reading the actual V4 addresses and ABIs would be guessing.
+
+| # | Task | Status | D | B | U | Eff | Module |
+|---|------|--------|---|---|---|-----|--------|
+| 44 | Research V4 Hub-and-Spoke contract surface and scope the V4 support phase | ⬜ | 3 | 7 | 8 | 2.50 🎯 | `ROADMAP.md` (scoping only) |
+
+**Task 44 — V4 scoping.** Start by re-reading the official launch sources linked above; the Hub/Spoke names cited in this section are **partial** and should not be treated as exhaustive. Enumerate **all live V4 surface** at mainnet launch: every Hub (Core, Prime, Plus, plus any added by governance since), every Spoke family (e-Mode and others documented in "Hub-and-Spoke Initial Configurations"), tokenized positions, oracle wiring, and any new periphery contracts. Pull addresses from Aave's address book and ABIs from the published artifacts. Compare the surface to V3's `Pool` + `UiPoolDataProvider` shape we currently wrap. Produce a follow-on task list scoped against concrete V4 surface: which V3 modules extend cleanly (e.g. `Contracts` registry), which need V4-specific siblings (e.g. `Onchain.Aave.V4.Hub`, `V4.Spoke`), and which concepts are genuinely new (Liquidity Hub routing, Spoke-specific liquidation rules, tokenized positions). Output goes back into this ROADMAP as Tasks 45+. Keep this task scoped to *research + planning*; no Elixir code written under Task 44.
 
 ---
 
@@ -94,7 +108,6 @@ The revm NIF surface (`Onchain.EVM.simulate_call/3`, `simulate_transaction/3`, `
 
 Potential expansions — not yet scoped or scored:
 
-- **Aave V4 support** — when V4 ships, add new pool/oracle interfaces alongside V3. Note (2026-04-20): V4 has no JS math library; revm via `onchain_evm` (Task 42 above) is the validation path when V4 is reachable on mainnet
 - **Flash loan wrappers** — typed flash loan construction and callback helpers
 - **Governance module** — Aave governance proposal reading and voting
 - **Liquidation helpers** — health factor monitoring, liquidation call wrappers
