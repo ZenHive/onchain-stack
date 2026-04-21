@@ -43,6 +43,7 @@ defmodule OnchainAave.MixProject do
       {:descripex, "~> 0.6"},
 
       # Dev/test tooling
+      {:onchain_evm, path: "../onchain_evm", only: [:dev, :test]},
       {:tidewave, "~> 0.5", only: :dev},
       {:bandit, "~> 1.0", only: :dev},
       {:ex_unit_json, "~> 0.4.3", only: [:dev, :test], runtime: false},
@@ -78,7 +79,7 @@ defmodule OnchainAave.MixProject do
   defp aliases do
     [
       tidewave: [
-        "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4008) end)'"
+        "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4012) end)'"
       ]
     ]
   end

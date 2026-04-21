@@ -4,22 +4,18 @@ Aave V3 protocol wrappers for Elixir. Depends on `onchain` core for RPC, ABI, si
 
 @~/.claude/includes/across-instances.md
 @~/.claude/includes/critical-rules.md
-@~/.claude/includes/skills-awareness.md
 @~/.claude/includes/task-prioritization.md
 @~/.claude/includes/task-writing.md
-@~/.claude/includes/web-command.md
-@~/.claude/includes/code-style.md
-@~/.claude/includes/development-philosophy.md
-@~/.claude/includes/documentation-guidelines.md
-@~/.claude/includes/ai-coder-docs.md
 @~/.claude/includes/workflow-philosophy.md
-@~/.claude/includes/agent-economy.md
-@~/.claude/includes/elixir-patterns.md
+@~/.claude/includes/web-command.md
 @~/.claude/includes/elixir-setup.md
-@~/.claude/includes/development-commands.md
 @~/.claude/includes/ex-unit-json.md
 @~/.claude/includes/dialyzer-json.md
-@~/.claude/includes/library-design.md
+@~/.claude/includes/code-style.md
+@~/.claude/includes/development-commands.md
+@~/.claude/includes/development-philosophy.md
+@~/.claude/includes/ethereum-rpc.md
+@~/.claude/includes/agent-economy.md
 
 ## Architecture
 
