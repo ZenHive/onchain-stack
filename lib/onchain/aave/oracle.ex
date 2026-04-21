@@ -47,60 +47,6 @@ defmodule Onchain.Aave.Oracle do
   alias Onchain.Address
   alias Onchain.Contract
 
-  # TODO: Contract.call/5 inherits the upstream Signet.Hex spec mismatch.
-  # Remove these suppressions once upstream is fixed.
-  @dialyzer {:no_match,
-             [
-               get_asset_price: 2,
-               get_asset_price!: 2,
-               get_asset_prices: 2,
-               get_asset_prices!: 2,
-               get_source_of_asset: 2,
-               get_source_of_asset!: 2,
-               get_base_currency: 1,
-               get_base_currency!: 1,
-               get_base_currency_unit: 1,
-               get_base_currency_unit!: 1,
-               get_fallback_oracle: 1,
-               get_fallback_oracle!: 1,
-               get_latest_round_data: 2,
-               get_latest_round_data!: 2
-             ]}
-  @dialyzer {:no_return,
-             [
-               get_asset_price!: 1,
-               get_asset_price!: 2,
-               get_asset_prices!: 1,
-               get_asset_prices!: 2,
-               get_source_of_asset!: 1,
-               get_source_of_asset!: 2,
-               get_base_currency!: 0,
-               get_base_currency!: 1,
-               get_base_currency_unit!: 0,
-               get_base_currency_unit!: 1,
-               get_fallback_oracle!: 0,
-               get_fallback_oracle!: 1,
-               get_latest_round_data!: 1,
-               get_latest_round_data!: 2
-             ]}
-  @dialyzer {:no_contracts,
-             [
-               get_asset_price!: 1,
-               get_asset_price!: 2,
-               get_asset_prices!: 1,
-               get_asset_prices!: 2,
-               get_source_of_asset!: 1,
-               get_source_of_asset!: 2,
-               get_base_currency!: 0,
-               get_base_currency!: 1,
-               get_base_currency_unit!: 0,
-               get_base_currency_unit!: 1,
-               get_fallback_oracle!: 0,
-               get_fallback_oracle!: 1,
-               get_latest_round_data!: 1,
-               get_latest_round_data!: 2
-             ]}
-
   # --- get_asset_price ---
 
   api(:get_asset_price, "Get the price of an asset in base currency units.",

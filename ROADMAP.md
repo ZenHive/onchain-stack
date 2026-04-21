@@ -83,10 +83,10 @@ Discovered during the v0.1.0 staged-review pass. Deprioritized below Math Valida
 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
-| 36 | Extract shared Pool write helper (`send_pool_tx/4` across supply/withdraw/borrow/repay) | ⬜ | 3 | 6 | 5 | 1.83 🚀 | `Onchain.Aave.Pool` |
+| 36 | ~~Extract shared Pool write helper (`send_pool_tx/4` across supply/withdraw/borrow/repay)~~ | ✅ | 3 | 6 | 5 | 1.83 🚀 | `Onchain.Aave.Pool` — see [CHANGELOG](CHANGELOG.md#task-36-extract-shared-pool-write-helper) |
 | 37 | ~~Named module attributes for canonical Aave V3 pool/provider addresses~~ | ✅ | 1 | 5 | 4 | 4.50 🎯 | `Onchain.Aave.Contracts` — see [CHANGELOG](CHANGELOG.md#task-37-named-canonical-aave-v3-addresses) |
-| 38 | Consolidate Pool write integration test helpers + name testnet magic numbers | ⬜ | 2 | 4 | 3 | 1.75 🚀 | `test/onchain/aave/pool_write_integration_test.exs` |
-| 39 | Move per-module `@dialyzer` suppressions into `.dialyzer_ignore.exs` | ⬜ | 2 | 3 | 4 | 1.75 🚀 | `lib/onchain/aave/{pool,oracle,ui_pool_data_provider}.ex` |
+| 38 | ~~Consolidate Pool write integration test helpers + name testnet magic numbers~~ | ✅ | 2 | 4 | 3 | 1.75 🚀 | `test/onchain/aave/pool_write_integration_test.exs` — see [CHANGELOG](CHANGELOG.md#task-38-consolidate-pool-write-integration-test-helpers) |
+| 39 | ~~Move per-module `@dialyzer` suppressions into `.dialyzer_ignore.exs`~~ | ✅ | 2 | 3 | 4 | 1.75 🚀 | `lib/onchain/aave/{pool,oracle,ui_pool_data_provider,faucet}.ex` — see [CHANGELOG](CHANGELOG.md#task-39-centralize-dialyzer-cascade-suppressions) |
 
 **Task 36 — Pool write helper extraction.** `supply`, `withdraw`, `borrow`, `repay` in `pool.ex` share identical `with`-chain structure (validate asset → validate obo/to → lookup address → encode calldata → send). Extract a private `send_pool_tx/4` taking the ABI sig + args. Consider whether `Faucet.mint` should share the same path. Keep backwards-compatible public APIs.
 

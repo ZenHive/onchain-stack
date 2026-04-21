@@ -19,7 +19,9 @@ defmodule Onchain.Aave.Pool.WriteIntegrationTest do
   @aave_sepolia_weth "0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c"
   @aave_sepolia_usdc "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8"
 
-  # Gas limits per operation type
+  # TODO: Gas limits are testnet-calibrated headroom. Sepolia gas estimates can spike during
+  # congestion; values picked to clear current Aave V3 ops with margin. May need bumping if
+  # upstream contracts redeploy with different gas profiles.
   @gas_limit_weth_deposit 60_000
   @gas_limit_faucet_mint 200_000
   @gas_limit_erc20_approve 120_000
@@ -31,7 +33,9 @@ defmodule Onchain.Aave.Pool.WriteIntegrationTest do
   # Amounts (raw integers — WETH has 18 decimals, USDC has 6)
   @weth_supply_amount 10_000_000_000_000_000
   @usdc_borrow_amount 1_000_000
-  # WETH deposit: wrap 0.1 ETH when balance drops below 0.05 ETH
+  # TODO: WETH deposit and faucet mint thresholds are cumulative-run sized — top up only when
+  # balance dips below threshold so the suite can run repeatedly without depleting the test
+  # account. WETH deposit: wrap 0.1 ETH when balance drops below 0.05 ETH.
   @weth_deposit_threshold 50_000_000_000_000_000
   @weth_deposit_amount 100_000_000_000_000_000
   @faucet_mint_threshold_usdc 10_000_000
@@ -119,9 +123,36 @@ defmodule Onchain.Aave.Pool.WriteIntegrationTest do
     Pool.get_user_account_data!(address, network: :sepolia, rpc_url: rpc_url)
   end
 
+  # Approves the Sepolia Pool to spend WETH and supplies it as collateral.
+  defp supply_weth_collateral!(amount, rpc_url, key, address) do
+    {:ok, pool_addr} = Contracts.address(:pool, network: :sepolia)
+
+    {:ok, approve_hash} =
+      ERC20.approve(
+        @aave_sepolia_weth,
+        pool_addr,
+        amount,
+        rpc_url |> send_opts(key, address) |> Keyword.put(:gas_limit, @gas_limit_erc20_approve)
+      )
+
+    send_and_wait!(approve_hash, rpc_url)
+
+    {:ok, supply_hash} =
+      Pool.supply(
+        @aave_sepolia_weth,
+        amount,
+        address,
+        pool_opts(rpc_url, key, address, @gas_limit_pool_supply)
+      )
+
+    send_and_wait!(supply_hash, rpc_url)
+  end
+
   # Asserts two Decimal values are within a relative tolerance (e.g. "0.05" = 5%).
   # Uses min base of 1 to avoid division by zero. Accounts for oracle price jitter
   # between reads on testnet.
+  # TODO: Empirical 5% slack covers Chainlink price drift between supply and withdraw
+  # reads on Sepolia; tighten if oracle stability improves.
   @oracle_jitter_tolerance "0.05"
   defp assert_approximately_restored(actual, expected, label) do
     diff = actual |> Decimal.sub(expected) |> Decimal.abs()
@@ -156,40 +187,19 @@ defmodule Onchain.Aave.Pool.WriteIntegrationTest do
         address
       )
 
-      # 2. Approve Sepolia Pool to spend WETH
-      {:ok, pool_addr} = Contracts.address(:pool, network: :sepolia)
-
-      {:ok, approve_hash} =
-        ERC20.approve(
-          @aave_sepolia_weth,
-          pool_addr,
-          @weth_supply_amount,
-          rpc_url |> send_opts(key, address) |> Keyword.put(:gas_limit, @gas_limit_erc20_approve)
-        )
-
-      send_and_wait!(approve_hash, rpc_url)
-
-      # 3. Snapshot account data before supply
+      # 2. Snapshot account data before supply
       pre_supply = account_data(address, rpc_url)
 
-      # 4. Supply WETH to pool
-      {:ok, supply_hash} =
-        Pool.supply(
-          @aave_sepolia_weth,
-          @weth_supply_amount,
-          address,
-          pool_opts(rpc_url, key, address, @gas_limit_pool_supply)
-        )
+      # 3. Approve Sepolia Pool to spend WETH and supply it as collateral
+      supply_weth_collateral!(@weth_supply_amount, rpc_url, key, address)
 
-      send_and_wait!(supply_hash, rpc_url)
-
-      # 5. Assert collateral increased
+      # 4. Assert collateral increased
       post_supply = account_data(address, rpc_url)
 
       assert Decimal.gt?(post_supply.total_collateral_base, pre_supply.total_collateral_base),
              "Collateral should increase after supply: #{post_supply.total_collateral_base} <= #{pre_supply.total_collateral_base}"
 
-      # 6. Withdraw same amount
+      # 5. Withdraw same amount
       {:ok, withdraw_hash} =
         Pool.withdraw(
           @aave_sepolia_weth,
@@ -200,13 +210,13 @@ defmodule Onchain.Aave.Pool.WriteIntegrationTest do
 
       send_and_wait!(withdraw_hash, rpc_url)
 
-      # 7. Assert collateral decreased from post-supply snapshot
+      # 6. Assert collateral decreased from post-supply snapshot
       post_withdraw = account_data(address, rpc_url)
 
       assert Decimal.lt?(post_withdraw.total_collateral_base, post_supply.total_collateral_base),
              "Collateral should decrease after withdraw: #{post_withdraw.total_collateral_base} >= #{post_supply.total_collateral_base}"
 
-      # 8. Assert collateral restored to approximately pre-supply level
+      # 7. Assert collateral restored to approximately pre-supply level
       assert_approximately_restored(
         post_withdraw.total_collateral_base,
         pre_supply.total_collateral_base,
@@ -242,27 +252,7 @@ defmodule Onchain.Aave.Pool.WriteIntegrationTest do
       pre_supply = account_data(address, rpc_url)
 
       # 3. Approve and supply WETH as collateral
-      {:ok, pool_addr} = Contracts.address(:pool, network: :sepolia)
-
-      {:ok, approve_hash} =
-        ERC20.approve(
-          @aave_sepolia_weth,
-          pool_addr,
-          @weth_supply_amount,
-          rpc_url |> send_opts(key, address) |> Keyword.put(:gas_limit, @gas_limit_erc20_approve)
-        )
-
-      send_and_wait!(approve_hash, rpc_url)
-
-      {:ok, supply_hash} =
-        Pool.supply(
-          @aave_sepolia_weth,
-          @weth_supply_amount,
-          address,
-          pool_opts(rpc_url, key, address, @gas_limit_pool_supply)
-        )
-
-      send_and_wait!(supply_hash, rpc_url)
+      supply_weth_collateral!(@weth_supply_amount, rpc_url, key, address)
 
       # 4. Snapshot account data before borrow
       pre_borrow = account_data(address, rpc_url)
@@ -287,6 +277,8 @@ defmodule Onchain.Aave.Pool.WriteIntegrationTest do
              "Debt should increase after borrow: #{post_borrow.total_debt_base} <= #{pre_borrow.total_debt_base}"
 
       # 7. Approve Pool to spend USDC — max_uint256 covers accumulated debt from prior runs
+      {:ok, pool_addr} = Contracts.address(:pool, network: :sepolia)
+
       {:ok, approve_usdc_hash} =
         ERC20.approve(
           @aave_sepolia_usdc,

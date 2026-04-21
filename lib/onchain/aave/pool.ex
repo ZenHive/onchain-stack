@@ -55,22 +55,6 @@ defmodule Onchain.Aave.Pool do
   @variable_rate 2
   @stable_rate 1
 
-  # TODO: ABI.decode_response/2 has upstream spec mismatch (success typing is no_return()
-  # due to Signet.Hex spec issues). Remove these suppressions once upstream is fixed.
-  # This cascades through the entire call chain:
-  # 1. {:ok, values} pattern in get_user_account_data/2 appears unreachable → no_match
-  # 2. Bang variant calls it, inherits "no return" → no_return, no_match, no_contracts
-  # Same root cause as @dialyzer annotations in abi.ex.
-  @dialyzer {:no_match, [get_user_account_data: 2, get_user_account_data!: 2]}
-  @dialyzer {:no_return, [get_user_account_data!: 1, get_user_account_data!: 2]}
-  @dialyzer {:no_contracts, [get_user_account_data!: 1, get_user_account_data!: 2]}
-
-  # TODO: Write functions inherit the same Signet.Hex spec cascade through ABI.encode_call/2.
-  @dialyzer {:no_match, [supply: 4, supply!: 4, withdraw: 4, withdraw!: 4]}
-  @dialyzer {:no_match, [borrow: 4, borrow!: 4, repay: 4, repay!: 4]}
-  @dialyzer {:no_return, [supply!: 4, withdraw!: 4, borrow!: 4, repay!: 4]}
-  @dialyzer {:no_contracts, [supply!: 4, withdraw!: 4, borrow!: 4, repay!: 4]}
-
   @user_account_data_response "(uint256,uint256,uint256,uint256,uint256,uint256)"
 
   # --- get_user_account_data ---
@@ -163,14 +147,13 @@ defmodule Onchain.Aave.Pool do
     {network_opts, _rate_mode, signer_opts} = split_write_opts(opts)
 
     with {:ok, asset_bin} <- Address.validate(asset),
-         {:ok, obo_bin} <- Address.validate(on_behalf_of),
-         {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
-         {:ok, calldata_hex} <-
-           ABI.encode_call(
-             "supply(address,uint256,address,uint16)",
-             [asset_bin, amount, obo_bin, @referral_code]
-           ) do
-      Signer.send_transaction(pool_addr, Hex.decode!(calldata_hex), signer_opts)
+         {:ok, obo_bin} <- Address.validate(on_behalf_of) do
+      send_pool_tx(
+        network_opts,
+        "supply(address,uint256,address,uint16)",
+        [asset_bin, amount, obo_bin, @referral_code],
+        signer_opts
+      )
     end
   end
 
@@ -224,14 +207,13 @@ defmodule Onchain.Aave.Pool do
     {network_opts, _rate_mode, signer_opts} = split_write_opts(opts)
 
     with {:ok, asset_bin} <- Address.validate(asset),
-         {:ok, to_bin} <- Address.validate(to),
-         {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
-         {:ok, calldata_hex} <-
-           ABI.encode_call(
-             "withdraw(address,uint256,address)",
-             [asset_bin, amount, to_bin]
-           ) do
-      Signer.send_transaction(pool_addr, Hex.decode!(calldata_hex), signer_opts)
+         {:ok, to_bin} <- Address.validate(to) do
+      send_pool_tx(
+        network_opts,
+        "withdraw(address,uint256,address)",
+        [asset_bin, amount, to_bin],
+        signer_opts
+      )
     end
   end
 
@@ -286,14 +268,13 @@ defmodule Onchain.Aave.Pool do
 
     with {:ok, rate} <- resolve_interest_rate_mode(rate_mode),
          {:ok, asset_bin} <- Address.validate(asset),
-         {:ok, obo_bin} <- Address.validate(on_behalf_of),
-         {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
-         {:ok, calldata_hex} <-
-           ABI.encode_call(
-             "borrow(address,uint256,uint256,uint16,address)",
-             [asset_bin, amount, rate, @referral_code, obo_bin]
-           ) do
-      Signer.send_transaction(pool_addr, Hex.decode!(calldata_hex), signer_opts)
+         {:ok, obo_bin} <- Address.validate(on_behalf_of) do
+      send_pool_tx(
+        network_opts,
+        "borrow(address,uint256,uint256,uint16,address)",
+        [asset_bin, amount, rate, @referral_code, obo_bin],
+        signer_opts
+      )
     end
   end
 
@@ -348,14 +329,13 @@ defmodule Onchain.Aave.Pool do
 
     with {:ok, rate} <- resolve_interest_rate_mode(rate_mode),
          {:ok, asset_bin} <- Address.validate(asset),
-         {:ok, obo_bin} <- Address.validate(on_behalf_of),
-         {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
-         {:ok, calldata_hex} <-
-           ABI.encode_call(
-             "repay(address,uint256,uint256,address)",
-             [asset_bin, amount, rate, obo_bin]
-           ) do
-      Signer.send_transaction(pool_addr, Hex.decode!(calldata_hex), signer_opts)
+         {:ok, obo_bin} <- Address.validate(on_behalf_of) do
+      send_pool_tx(
+        network_opts,
+        "repay(address,uint256,uint256,address)",
+        [asset_bin, amount, rate, obo_bin],
+        signer_opts
+      )
     end
   end
 
@@ -385,6 +365,18 @@ defmodule Onchain.Aave.Pool do
   end
 
   # --- Private helpers ---
+
+  # Pool-specific tx dispatch: looks up the Pool address, ABI-encodes the call,
+  # and delegates to Signer. Shared by supply/withdraw/borrow/repay. Pool-only
+  # by design — Faucet uses a different contract key and has only one call site.
+  @spec send_pool_tx(keyword(), String.t(), [term()], keyword()) ::
+          {:ok, String.t()} | {:error, term()}
+  defp send_pool_tx(network_opts, abi_sig, args, signer_opts) do
+    with {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
+         {:ok, calldata_hex} <- ABI.encode_call(abi_sig, args) do
+      Signer.send_transaction(pool_addr, Hex.decode!(calldata_hex), signer_opts)
+    end
+  end
 
   # Separates :network and :interest_rate_mode from opts; remainder passes to Signer.
   @spec split_write_opts(keyword()) :: {keyword(), atom(), keyword()}

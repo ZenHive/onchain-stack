@@ -47,37 +47,6 @@ defmodule Onchain.Aave.UiPoolDataProvider do
   alias Onchain.Address
   alias Onchain.RPC
 
-  # TODO: ABI.decode_response/2 has upstream spec mismatch (success typing is no_return()
-  # due to Signet.Hex spec issues). Remove these suppressions once upstream is fixed.
-  # Same root cause as @dialyzer annotations in pool.ex and abi.ex.
-  @dialyzer {:no_match,
-             [
-               get_reserves_list: 1,
-               get_reserves_data: 1,
-               get_user_reserves_data: 2,
-               get_reserves_list!: 1,
-               get_reserves_data!: 1,
-               get_user_reserves_data!: 2
-             ]}
-  @dialyzer {:no_return,
-             [
-               get_reserves_list!: 0,
-               get_reserves_list!: 1,
-               get_reserves_data!: 0,
-               get_reserves_data!: 1,
-               get_user_reserves_data!: 1,
-               get_user_reserves_data!: 2
-             ]}
-  @dialyzer {:no_contracts,
-             [
-               get_reserves_list!: 0,
-               get_reserves_list!: 1,
-               get_reserves_data!: 0,
-               get_reserves_data!: 1,
-               get_user_reserves_data!: 1,
-               get_user_reserves_data!: 2
-             ]}
-
   @reserves_list_response "(address[])"
 
   @reserves_data_response "((" <>

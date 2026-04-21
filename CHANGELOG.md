@@ -6,6 +6,24 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Task 39: Centralize dialyzer cascade suppressions
+
+**Completed** | [D:2/B:3/U:4 → Eff:1.75] 🚀
+
+Moved per-module `@dialyzer` blocks out of `pool.ex`, `oracle.ex`, `ui_pool_data_provider.ex`, and `faucet.ex` into `.dialyzer_ignore.exs` as file + warning-type tuples (`:pattern_match`, `:no_return`, `:invalid_contract`). One upstream-tracking `TODO(upstream:signet)` comment in `.dialyzer_ignore.exs` documents the `Signet.Hex` spec mismatch that produces the cascade — when upstream ships a fix, one block deletes instead of four. Trade-off: file-level granularity instead of per-function. Acceptable because the affected modules are thin wrappers around `Onchain.ABI` with no other realistic source for those warning types. `mix dialyzer.json --summary-only` stays at 0.
+
+### Task 38: Consolidate Pool write integration test helpers
+
+**Completed** | [D:2/B:4/U:3 → Eff:1.75] 🚀
+
+Extracted `supply_weth_collateral!/4` from `test/onchain/aave/pool_write_integration_test.exs` to remove the duplicated approve-WETH-then-supply-WETH preamble shared by the supply/withdraw and borrow/repay tests. Added `TODO:`-prefixed rationale to gas-limit constants (testnet-calibrated headroom), `@oracle_jitter_tolerance` (empirical 5% Chainlink drift slack), and the WETH/faucet threshold/amount constants (cumulative-run sizing). Test behavior unchanged.
+
+### Task 36: Extract shared Pool write helper
+
+**Completed** | [D:3/B:6/U:5 → Eff:1.83] 🚀
+
+Pulled the pool-address lookup + ABI encode + Signer dispatch shared by `Onchain.Aave.Pool.{supply,withdraw,borrow,repay}/4` into a private `send_pool_tx/4` helper. Each write function shrinks to argument validation followed by one helper call. Public API unchanged. `Faucet.mint/4` follows the same shape but stays separate — sharing across two call sites isn't worth promoting the helper to a shared module.
+
 ### Roadmap reprioritization: V3 Math Validation before V4 implementation
 
 Reframed ROADMAP.md to gate V4 work on V3 math verification. Added a "🎯 Current Focus" section naming Tasks 40 → 41 as the active path; Task 43 (JS aggregation cross-validation) stays 🔶 gated until off-chain aggregation helpers exist. Bumped Task 40 (WadRayMath + MathUtils port) from U:7 → U:9 (Eff 1.50 📋 → 1.70 🚀) because it gates both Task 41 (V3 revm validation) and Task 42 (V4 revm validation) — it is now the verification bridge rather than isolated math work. Moved the Cleanup Backlog (Tasks 36, 38, 39) below Math Validation to reflect that it is polish, not a capability gate. No code changes.

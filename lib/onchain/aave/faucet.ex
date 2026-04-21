@@ -33,13 +33,6 @@ defmodule Onchain.Aave.Faucet do
   alias Onchain.Hex
   alias Onchain.Signer
 
-  # TODO: mint/mint! inherit the upstream Signet.Hex spec cascade through
-  # ABI.encode_call/2. Remove these suppressions once upstream is fixed.
-  # Same root cause as @dialyzer annotations in pool.ex and oracle.ex.
-  @dialyzer {:no_match, [mint: 4, mint!: 4]}
-  @dialyzer {:no_return, [mint!: 4]}
-  @dialyzer {:no_contracts, [mint!: 4]}
-
   @default_gas_limit 200_000
 
   # --- mint ---
