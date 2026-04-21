@@ -12,15 +12,15 @@
 
 ## Status
 
-All foundational V3 tasks are complete. This package provides full Aave V3 read + write coverage across mainnet and 6 chains. A small cleanup backlog (Tasks 36–39) was captured during the v0.1.0 staged-review pass; see below. A follow-on **Math Validation** backlog (Tasks 40–43) was added 2026-04-20 to expand `Aave.Math` with WadRayMath + MathUtils and cross-validate both against Solidity (via `onchain_evm`) and against Aave's frontend math (`@aave/math-utils` via `onchain_js`). The **Aave V4 Support** phase opened 2026-04-20 after V4 went live on Ethereum mainnet on 2026-03-30 with the Hub-and-Spoke architecture; Task 44 scoping completed 2026-04-20 (see [V4_SCOPING.md](V4_SCOPING.md)) and produced implementation Tasks 45–52. Next priority: V3 math validation (Tasks 40–41) before V4 implementation work (Tasks 45+) proceeds.
+All foundational V3 tasks are complete. This package provides full Aave V3 read + write coverage across mainnet and 6 chains. A small cleanup backlog (Tasks 36–39) was captured during the v0.1.0 staged-review pass; see below. A follow-on **Math Validation** backlog (Tasks 40–43) was added 2026-04-20 to expand `Aave.Math` with WadRayMath + MathUtils and cross-validate both against Solidity (via `onchain_evm`) and against Aave's frontend math (`@aave/math-utils` via `onchain_js`). Task 40 landed 2026-04-21 (integer-native port of WadRayMath + MathUtils; source pinned to `aave-v3-origin@1e3d70c`); Task 41 (revm cross-validation) is now the active gate. The **Aave V4 Support** phase opened 2026-04-20 after V4 went live on Ethereum mainnet on 2026-03-30 with the Hub-and-Spoke architecture; Task 44 scoping completed 2026-04-20 (see [V4_SCOPING.md](V4_SCOPING.md)) and produced implementation Tasks 45–52.
 
 ---
 
 ## 🎯 Current Focus
 
-**V3 Math Validation** — before shipping V4 support, cross-validate `Aave.Math` against Solidity source-of-truth (revm) and Aave's frontend math (JS). This gates V4 confidence: Task 42 (V4 math validation) depends on Task 40.
+**V3 Math Validation** — before shipping V4 support, cross-validate `Aave.Math` against Solidity source-of-truth (revm) and Aave's frontend math (JS). This gates V4 confidence: Task 42 (V4 math validation) depends on Task 40 (now ✅).
 
-**Active path:** Tasks 40 → 41. JS validation (Task 43) stays 🔶 gated until off-chain aggregation helpers exist.
+**Active path:** Task 41 (V3 revm cross-validation), with Task 42 (V4 revm) unblocked in parallel. JS validation (Task 43) stays 🔶 gated until off-chain aggregation helpers exist.
 
 ---
 
@@ -62,12 +62,15 @@ The revm NIF surface (`Onchain.EVM.simulate_call/3`, `simulate_transaction/3`, `
 
 | # | Task | Status | D | B | U | Eff | Module |
 |---|------|--------|---|---|---|-----|--------|
-| 40 | Port Aave V3 WadRayMath + MathUtils to Elixir | ⬜ | 5 | 8 | 9 | 1.70 🚀 | `Onchain.Aave.Math` |
+| 40 | ~~Port Aave V3 WadRayMath + MathUtils to Elixir~~ | ✅ | 5 | 8 | 9 | 1.70 🚀 | `Onchain.Aave.Math` — see [CHANGELOG](CHANGELOG.md#task-40-port-aave-v3-wadraymath--mathutils-to-elixir) |
+| 40b | Port missing WadRayMath ceil/floor variants on demand | 🔶 | 3 | 4 | 3 | 1.17 📋 | `Onchain.Aave.Math` |
 | 41 | Cross-validate `Aave.Math` via revm against on-chain Aave V3 | ⬜ | 4 | 7 | 6 | 1.63 🚀 | `test/onchain/aave/math_revm_test.exs` (new) |
 | 42 | V4 math cross-validation via revm (V4 live on mainnet 2026-03-30) | ⬜ | 4 | 7 | 7 | 1.75 🚀 | `Onchain.Aave.Math.V4` |
 | 43 | Cross-validate aggregation helpers via `@aave/math-utils` (QuickBEAM) | 🔶 | 4 | 6 | 4 | 1.25 📋 | `Onchain.Aave.Summary` (future) |
 
 **Task 40 — WadRayMath + MathUtils port.** Port Aave V3's `rayMul`, `rayDiv`, `wadMul`, `wadDiv`, `calculateLinearInterest`, `calculateCompoundedInterest` from Solidity (`aave-v3-core/contracts/protocol/libraries/math/`) to Elixir over `Decimal.t()`. Preserve Aave's rounding semantics (half-up at the ray/wad midpoint — not trivial). Prerequisite for Task 41; the current `Math` module holds only trivial `div_pow10` scale conversions with nothing worth oracle-validating.
+
+**Task 40b — Missing WadRayMath variants (on-demand port).** `rayMulFloor` / `rayMulCeil` / `rayDivFloor` / `rayDivCeil` (from `WadRayMath.sol`) and `mulDivCeil` (from `MathUtils.sol`) exist in the pinned `aave-v3-origin@1e3d70c` source but aren't used by any Task 40 entrypoint, so Task 41's revm harness won't surface them as a gap. They *are* used by `TokenMath.sol`, `ReserveLogic.sol`, `GenericLogic.sol`, `LiquidationLogic.sol`. Gated 🔶 until a caller from `Pool`/`TokenMath` call paths in this repo needs them; port minimally on demand with matching round-half-up semantics and revm cross-validation.
 
 **Task 41 — revm cross-validation.** Add `{:onchain_evm, path: "../onchain_evm"}` as a test-only dep. Either deploy a thin Solidity wrapper that exposes Aave V3's `WadRayMath` + `MathUtils` internal functions as public entrypoints, or call through an already-deployed Aave V3 library/contract that exercises them. For each function: generate inputs (including edge cases — overflow boundaries, rounding midpoints, zero, max-uint), encode via `Onchain.ABI.encode_call/2`, fire through `Onchain.EVM.simulate_call/3` on a pinned mainnet block, decode, assert equality with the Elixir port within zero tolerance. Property-based tests via StreamData.
 

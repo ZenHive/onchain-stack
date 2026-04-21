@@ -6,6 +6,22 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Task 40: Port Aave V3 WadRayMath + MathUtils to Elixir
+
+**Completed** | [D:5/B:8/U:9 → Eff:1.70] 🚀
+
+Ported Aave's two protocol-level math libraries from Solidity into `Onchain.Aave.Math`: `WadRayMath` (`ray_mul/2`, `ray_div/2`, `wad_mul/2`, `wad_div/2`, `ray_to_wad/1`, `wad_to_ray/1`) and `MathUtils` (`calculate_linear_interest/3`, `calculate_compounded_interest/3`). Source pinned to [aave-dao/aave-v3-origin](https://github.com/aave-dao/aave-v3-origin) commit `1e3d70c4151a94166ebc59e2eaa4aff6e6ba6978` — `src/contracts/protocol/libraries/math/{WadRayMath,MathUtils}.sol` — and referenced from the `@moduledoc`.
+
+**Integer-native, not Decimal-wrapping.** Inputs and outputs are non-negative integers at ray (10^27) or wad (10^18) scale, matching Solidity's uint256 representation exactly. Rationale: Task 41's revm cross-validation asserts bit-exact equality against live Solidity, which would be obscured by Decimal round-trips. Existing `to_usd`, `to_ltv`, `to_health_factor`, `to_ray`, `to_wad` Decimal display helpers unchanged — the new integer primitives are a second layer. BEAM arbitrary-precision integers make `div(a * b + @half_ray, @ray)` a one-liner equivalent to Solidity's assembly `div(add(mul(a, b), HALF_RAY), RAY)`.
+
+**Rounding preserved.** `ray_mul` / `wad_mul` / `ray_div` / `wad_div` / `ray_to_wad` use Solidity's round-half-up idiom (add half the divisor before floor-dividing). Non-negative guards ensure BEAM's `div/2` truncate-toward-zero equals floor. `wad_to_ray` is exact.
+
+**`calculate_compounded_interest` matches the current v3.1 polynomial approximation**: `RAY + x + rayMul(x, x/2 + rayMul(x, x/6))` where `x = rate * exp / SECONDS_PER_YEAR`. This is the simpler form the v3-origin repo ships today — not the older `aave-v3-core` `(exp)(exp-1)(exp-2)` binomial I initially sketched in the plan. Bit-exact port is what Task 41 will validate.
+
+Fifty-four new unit tests cover identity, zero-absorption, rounding at / below / above midpoints, division by zero (guard), negative inputs (guard), and linear-vs-compounded compounding-premium parity. Property-based cross-validation via StreamData stays in Task 41's scope.
+
+Descripex `api(...)` annotations on all eight new functions; dialyzer 0; credo 0.
+
 ### Task 39: Centralize dialyzer cascade suppressions
 
 **Completed** | [D:2/B:3/U:4 → Eff:1.75] 🚀
