@@ -38,7 +38,7 @@ defmodule OnchainEvm.MixProject do
 
   defp deps do
     [
-      {:onchain, "~> 0.5"},
+      {:onchain, "~> 0.5.3"},
       {:descripex, "~> 0.6"},
       {:rustler, "~> 0.37", runtime: false},
 

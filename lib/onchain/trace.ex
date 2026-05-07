@@ -92,7 +92,7 @@ defmodule Onchain.Trace do
   def trace_transaction(tx_hash, opts \\ []) do
     with {:ok, _hex} <- ensure_tx_hash(tx_hash),
          {:ok, tracer_config} <- build_tracer_config(opts) do
-      do_rpc("debug_traceTransaction", [tx_hash, tracer_config], to_signet_opts(opts))
+      do_rpc("debug_traceTransaction", [tx_hash, tracer_config], to_rpc_opts(opts))
     end
   end
 
@@ -141,7 +141,7 @@ defmodule Onchain.Trace do
     with {:ok, rpc_params} <- build_call_params(call_params),
          {:ok, block_hex} <- normalize_block(block),
          {:ok, tracer_config} <- build_tracer_config(opts) do
-      do_rpc("debug_traceCall", [rpc_params, block_hex, tracer_config], to_signet_opts(opts))
+      do_rpc("debug_traceCall", [rpc_params, block_hex, tracer_config], to_rpc_opts(opts))
     end
   end
 
@@ -182,7 +182,7 @@ defmodule Onchain.Trace do
     with {:ok, hex_addr} <- ensure_hex_address(address),
          {:ok, hex_slot} <- ensure_hex_slot(slot),
          {:ok, block} <- normalize_block(Keyword.get(opts, :block, "latest")) do
-      do_rpc("eth_getStorageAt", [hex_addr, hex_slot, block], to_signet_opts(opts))
+      do_rpc("eth_getStorageAt", [hex_addr, hex_slot, block], to_rpc_opts(opts))
     end
   end
 
@@ -219,7 +219,7 @@ defmodule Onchain.Trace do
     probe_params = %{"to" => @zero_address, "data" => "0x"}
     tracer_config = %{"tracer" => "callTracer"}
 
-    case do_rpc("debug_traceCall", [probe_params, "latest", tracer_config], to_signet_opts(opts)) do
+    case do_rpc("debug_traceCall", [probe_params, "latest", tracer_config], to_rpc_opts(opts)) do
       {:ok, _} -> true
       {:error, _} -> false
     end
