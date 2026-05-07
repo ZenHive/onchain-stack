@@ -4,6 +4,9 @@ EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Eli
 
 @~/.claude/includes/across-instances.md
 @~/.claude/includes/critical-rules.md
+
+@~/.claude/includes/delegation.md
+@~/.claude/includes/onchain-workspace.md
 @~/.claude/includes/task-prioritization.md
 @~/.claude/includes/task-writing.md
 @~/.claude/includes/web-command.md
