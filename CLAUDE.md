@@ -4,6 +4,9 @@ Aave V3 protocol wrappers for Elixir. Depends on `onchain` core for RPC, ABI, si
 
 @~/.claude/includes/across-instances.md
 @~/.claude/includes/critical-rules.md
+
+@~/.claude/includes/delegation.md
+@~/.claude/includes/onchain-workspace.md
 @~/.claude/includes/task-prioritization.md
 @~/.claude/includes/task-writing.md
 @~/.claude/includes/workflow-philosophy.md

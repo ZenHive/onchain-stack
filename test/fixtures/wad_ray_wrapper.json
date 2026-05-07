@@ -1,0 +1,28 @@
+{
+  "solc_version": "0.8.10+commit.fc410830",
+  "optimizer": true,
+  "optimizer_runs": 100000,
+  "evm_version": "london",
+  "metadata_hash": "none",
+  "compiled_at": "2026-04-22",
+  "source_pin": "aave-v3-origin@1e3d70c4151a94166ebc59e2eaa4aff6e6ba6978",
+  "source_files": {
+    "src/contracts/protocol/libraries/math/WadRayMath.sol": {
+      "sha1": "258be66e2d4e35dfe6bb2302c2bc98ce75457d9f"
+    },
+    "src/contracts/protocol/libraries/math/MathUtils.sol": {
+      "sha1": "0f94a553f10854030f3908d2fe0ebe8168f05ac4"
+    }
+  },
+  "wrapper": {
+    "file": "wad_ray_wrapper.sol",
+    "contract": "WadRayWrapper",
+    "bin_file": "wad_ray_wrapper.bin",
+    "bin_kind": "runtime",
+    "bin_sha256": "c2e9cf2427264e6e06df480d3835a22df199de5b2a4b5ee3591f96f1bd3580ff"
+  },
+  "notes": {
+    "evm_version": "Plan called for `paris`, but solc 0.8.10 predates Paris and does not accept that flag. Aave V3 contracts were compiled with the default (`london`) at this solc version. `london` is what ships on mainnet and is what revm executes; zero impact on the pure arithmetic tested here.",
+    "calculateLinearInterestAt": "The wrapper exposes a 3-arg pure variant of MathUtils.calculateLinearInterest. Upstream is `view` (reads block.timestamp); the wrapper takes `currentTimestamp` explicitly so the revm test is deterministic without env-pinning."
+  }
+}

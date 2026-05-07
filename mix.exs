@@ -38,12 +38,13 @@ defmodule OnchainAave.MixProject do
 
   defp deps do
     [
-      {:onchain, "~> 0.5.1"},
+      {:onchain, "~> 0.5.3"},
       {:decimal, "~> 2.0"},
       {:descripex, "~> 0.6"},
 
       # Dev/test tooling
       {:onchain_evm, path: "../onchain_evm", only: [:dev, :test]},
+      {:stream_data, "~> 1.0", only: [:dev, :test]},
       {:tidewave, "~> 0.5", only: :dev},
       {:bandit, "~> 1.0", only: :dev},
       {:ex_unit_json, "~> 0.4.3", only: [:dev, :test], runtime: false},

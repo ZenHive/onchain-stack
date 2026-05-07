@@ -12,15 +12,15 @@
 
 ## Status
 
-All foundational V3 tasks are complete. This package provides full Aave V3 read + write coverage across mainnet and 6 chains. A small cleanup backlog (Tasks 36–39) was captured during the v0.1.0 staged-review pass; see below. A follow-on **Math Validation** backlog (Tasks 40–43) was added 2026-04-20 to expand `Aave.Math` with WadRayMath + MathUtils and cross-validate both against Solidity (via `onchain_evm`) and against Aave's frontend math (`@aave/math-utils` via `onchain_js`). Task 40 landed 2026-04-21 (integer-native port of WadRayMath + MathUtils; source pinned to `aave-v3-origin@1e3d70c`); Task 41 (revm cross-validation) is now the active gate. The **Aave V4 Support** phase opened 2026-04-20 after V4 went live on Ethereum mainnet on 2026-03-30 with the Hub-and-Spoke architecture; Task 44 scoping completed 2026-04-20 (see [V4_SCOPING.md](V4_SCOPING.md)) and produced implementation Tasks 45–52.
+All foundational V3 tasks are complete. This package provides full Aave V3 read + write coverage across mainnet and 6 chains. A small cleanup backlog (Tasks 36–39) was captured during the v0.1.0 staged-review pass; see below. A follow-on **Math Validation** backlog (Tasks 40–43) was added 2026-04-20 to expand `Aave.Math` with WadRayMath + MathUtils and cross-validate both against Solidity (via `onchain_evm`) and against Aave's frontend math (`@aave/math-utils` via `onchain_js`). Task 40 landed 2026-04-21 (integer-native port of WadRayMath + MathUtils; source pinned to `aave-v3-origin@1e3d70c`); Task 41 landed 2026-04-22 (revm cross-validation harness with zero-tolerance equality across deterministic + StreamData property vectors for all 8 Layer-2 functions). Task 42 (V4 math revm harness, reusing Task 41's shape) is now the active path. The **Aave V4 Support** phase opened 2026-04-20 after V4 went live on Ethereum mainnet on 2026-03-30 with the Hub-and-Spoke architecture; Task 44 scoping completed 2026-04-20 (see [V4_SCOPING.md](V4_SCOPING.md)) and produced implementation Tasks 45–52.
 
 ---
 
 ## 🎯 Current Focus
 
-**V3 Math Validation** — before shipping V4 support, cross-validate `Aave.Math` against Solidity source-of-truth (revm) and Aave's frontend math (JS). This gates V4 confidence: Task 42 (V4 math validation) depends on Task 40 (now ✅).
+**V3 Math Validation** — before shipping V4 support, cross-validate `Aave.Math` against Solidity source-of-truth (revm) and Aave's frontend math (JS). V3 revm validation is now complete; the harness is ready for V4 re-use.
 
-**Active path:** Task 41 (V3 revm cross-validation), with Task 42 (V4 revm) unblocked in parallel. JS validation (Task 43) stays 🔶 gated until off-chain aggregation helpers exist.
+**Active path:** Task 42 (V4 revm cross-validation) — primary path is direct calls against V4's deployed math contracts on mainnet, with Task 41's `state_overrides["code"]` wrapper-injection shape available as a secondary path for variants we want to exercise before mainnet exposure. JS validation (Task 43) stays 🔶 gated until off-chain aggregation helpers exist.
 
 ---
 
@@ -64,7 +64,7 @@ The revm NIF surface (`Onchain.EVM.simulate_call/3`, `simulate_transaction/3`, `
 |---|------|--------|---|---|---|-----|--------|
 | 40 | ~~Port Aave V3 WadRayMath + MathUtils to Elixir~~ | ✅ | 5 | 8 | 9 | 1.70 🚀 | `Onchain.Aave.Math` — see [CHANGELOG](CHANGELOG.md#task-40-port-aave-v3-wadraymath--mathutils-to-elixir) |
 | 40b | Port missing WadRayMath ceil/floor variants on demand | 🔶 | 3 | 4 | 3 | 1.17 📋 | `Onchain.Aave.Math` |
-| 41 | Cross-validate `Aave.Math` via revm against on-chain Aave V3 | ⬜ | 4 | 7 | 6 | 1.63 🚀 | `test/onchain/aave/math_revm_test.exs` (new) |
+| 41 | ~~Cross-validate `Aave.Math` via revm against on-chain Aave V3~~ | ✅ | 4 | 7 | 6 | 1.63 🚀 | `test/onchain/aave/math_revm_test.exs` — see [CHANGELOG](CHANGELOG.md#task-41-revm-cross-validation-of-aavemath) |
 | 42 | V4 math cross-validation via revm (V4 live on mainnet 2026-03-30) | ⬜ | 4 | 7 | 7 | 1.75 🚀 | `Onchain.Aave.Math.V4` |
 | 43 | Cross-validate aggregation helpers via `@aave/math-utils` (QuickBEAM) | 🔶 | 4 | 6 | 4 | 1.25 📋 | `Onchain.Aave.Summary` (future) |
 
@@ -72,7 +72,7 @@ The revm NIF surface (`Onchain.EVM.simulate_call/3`, `simulate_transaction/3`, `
 
 **Task 40b — Missing WadRayMath variants (on-demand port).** `rayMulFloor` / `rayMulCeil` / `rayDivFloor` / `rayDivCeil` (from `WadRayMath.sol`) and `mulDivCeil` (from `MathUtils.sol`) exist in the pinned `aave-v3-origin@1e3d70c` source but aren't used by any Task 40 entrypoint, so Task 41's revm harness won't surface them as a gap. They *are* used by `TokenMath.sol`, `ReserveLogic.sol`, `GenericLogic.sol`, `LiquidationLogic.sol`. Gated 🔶 until a caller from `Pool`/`TokenMath` call paths in this repo needs them; port minimally on demand with matching round-half-up semantics and revm cross-validation.
 
-**Task 41 — revm cross-validation.** Add `{:onchain_evm, path: "../onchain_evm"}` as a test-only dep. Either deploy a thin Solidity wrapper that exposes Aave V3's `WadRayMath` + `MathUtils` internal functions as public entrypoints, or call through an already-deployed Aave V3 library/contract that exercises them. For each function: generate inputs (including edge cases — overflow boundaries, rounding midpoints, zero, max-uint), encode via `Onchain.ABI.encode_call/2`, fire through `Onchain.EVM.simulate_call/3` on a pinned mainnet block, decode, assert equality with the Elixir port within zero tolerance. Property-based tests via StreamData.
+**Task 41 — revm cross-validation.** Shipped 2026-04-22. Vendored a Solidity wrapper (`test/fixtures/wad_ray_wrapper.sol`) that inlines Aave V3's 8 Layer-2 math function bodies verbatim from `aave-v3-origin@1e3d70c`; compiled once with solc 0.8.10 (optimizer runs 100000, london EVM, metadata hash stripped) into `test/fixtures/wad_ray_wrapper.bin`; SHA256-pinned in `wad_ray_wrapper.json` and verified at `setup_all`. Runtime bytecode is injected at a fake address via `Onchain.EVM.simulate_call/3`'s `state_overrides["code"]` — no deployment, no waiting on the archive node's historical state. For each of the 8 functions: hand-picked deterministic vectors (zero, identity, midpoint rounding at/above/below) plus 200 StreamData random runs per function within Aave's realistic uint256 ranges, assert bit-exact equality against `Onchain.Aave.Math`. Task 40b (floor/ceil variants) and Path B (live Pool reads) stay explicitly out of scope.
 
 **Task 42 — V4 cross-validation via revm.** V4 is live on Ethereum mainnet as of 2026-03-30 (AIP executed; Snapshot passed 2026-03-23, 100% support). Repeat Task 41's harness against V4's math library: pin a mainnet block post-launch, call the V4 math contracts directly via `Onchain.EVM.simulate_call/3`, assert equality with a V4-specific Elixir port. Depends on Task 40 (WadRayMath port) — V4's math library may have diverged from V3; port the V4-specific variants under `Onchain.Aave.Math.V4` if so. `state_overrides["code"]` bytecode injection is now a secondary fallback (e.g. for variants we want to test before mainnet exposure), not the primary path. V4 contract addresses (Hubs, Spokes, `EXTERNAL_LIBRARIES LIQUIDATION_LOGIC`, etc.) come from [V4_SCOPING.md](V4_SCOPING.md) — the Aave address book does not flag a separate "math library" constant, so the first step is locating the WadRayMath-equivalent call site (likely the `LIQUIDATION_LOGIC` external library at `0x88dF535473C5adf1f57789734A05E555F7Deb8DB`, or inlined in Hub/Spoke bytecode).
 
@@ -137,6 +137,53 @@ Dependency order: 45 (registry) and 46 (surface selection) ship first. 47–50 c
 
 ---
 
+## V3 Write Surface Gaps
+
+Consumer patterns observed on-chain that the current V3 write surface doesn't cover.
+
+| # | Task | Status | D | B | U | Eff | Module |
+|---|------|--------|---|---|---|-----|--------|
+| 53 | `Onchain.Aave.DebtToken` — wrap `approveDelegation` + `borrowAllowance` on variable/stable debt tokens | ⬜ | 3 | 6 | 6 | 2.00 🚀 | `Onchain.Aave.DebtToken` (new) |
+| 54 | Mine `defi-skills:intent-to-transaction` action surface for `onchain_aave` coverage gaps | ⬜ | 3 | 8 | 7 | 2.50 🎯 | (cross-cutting research) |
+
+**Task 53 — Credit delegation wrapper.** Aave V3 credit delegation (`approveDelegation(delegatee, amount)` on the variable/stable debt token) lets a position owner grant another address the right to `Pool.borrow(..., onBehalfOf=owner)` against the owner's collateral. Observed on-chain 2026-04-22 from the same Safe across two consecutive txs (`0xab8b04ba…a558f` approved 225,004 USDS delegation to a counterfactual address; `0x32c9f2a0…5347` deactivated DeFi Saver automation on the same position ~22 min later) — a real migration-off-automation flow that our current write surface doesn't support.
+
+`Onchain.Aave.Pool` covers supply/borrow/repay/withdraw but the delegation mechanism lives on the debt-token contract, not `Pool`. Build a thin wrapper exposing `approve_delegation/4` (write) and `borrow_allowance/3` (read) against the variable and stable debt token addresses. Debt-token addresses come from `Pool.getReserveData(asset).variableDebtTokenAddress` / `.stableDebtTokenAddress` — consider a helper that resolves (asset, rate_mode) → debt_token_address so callers don't need to know the reserve-data shape. Integration test on Sepolia mirroring the existing `pool_write_integration_test` shape.
+
+**Context observed 2026-04-22 (same Safe, end-to-end debt swap):** the full Aave V3 "Swap USDC debt → USDS debt" flow was traced on-chain and confirms the delegation pattern is the gate. Three user-signed approveDelegation txs all landed (225k, 5.5k, 5.5k) each to a *different* counterfactual CREATE2 adapter — Aave's UI re-derives the salt per session/amount, so allowances are not reusable across attempts. The third (`0x52b9712e…`) got consumed by a CoW Protocol settlement (`0xaa891278…b0671`, block 24933099) submitted by a CoW solver EOA (`0xA60De…dDeB`) — the solver paid gas, the adapter was deployed and used inside the settlement, and the `Mint(caller=0x074b…d5b2, onBehalfOf=Safe, …)` on `vdUSDS` confirmed the borrow consumed allowance #3. Route went USDC→DAI→USDS through Sky's DAI↔USDS PSM. **Implications for Task 53:** (a) `approve_delegation/4` is the 80% feature; (b) zero-out revocation (`approve_delegation(debt_token, delegatee, 0, …)`) is mandatory hygiene — sessions that don't complete leave dangling allowances to dead CREATE2 addresses; revocation was required in this flow (tx `0x5dc31131…b0671`, batch via MultiSend); (c) a future helper could wrap "revoke all orphan delegations on a given debt token for this account" by scanning `BorrowAllowanceDelegated` logs — nice-to-have, not core.
+
+---
+
+## Read-Path Multicall Adoption
+
+| # | Task | Status | D | B | U | Eff | Module |
+|---|------|--------|---|---|---|-----|--------|
+| 55 | Adopt `Onchain.Multicall` in Aave batch read paths | ⬜ | 3 | 6 | 6 | 2.00 🚀 | `Onchain.Aave.*` |
+
+**Task 55 — Adopt `Onchain.Multicall` in Aave batch read paths.** [D:3/B:6/U:6 → Eff:2.00 🚀]
+
+`Onchain.Multicall` is already shipped in the core `onchain` library. Audit `Onchain.Aave.*` read modules and adopt it where the protocol does not pre-batch (skip places like `UiPoolDataProvider.get_reserves_data` where Aave's own contracts already aggregate). Ship at least one batched read helper with unit + integration tests; or, if the audit shows no real wins, document the rationale in module docs and close ✅.
+
+---
+
+**Task 54 — Mine `defi-skills:intent-to-transaction` action surface for `onchain_aave` coverage gaps.** [D:3/B:8/U:7 → Eff:2.50 🎯]
+
+Planted 2026-04-30 from a cartouche session that surveyed cross-repo applicability of the `defi-skills` skill. Self-contained discovery exercise — execute it from a fresh `onchain_aave` Claude Code session so this repo's CLAUDE.md, hooks, and Aave V3 fixtures are loaded.
+
+**Prompt for the executing session:**
+
+> Invoke `/defi-skills:intent-to-transaction` to load the skill, then run `defi-skills actions --json` to enumerate the supported action surface (~50 actions across Aave, Uniswap, Lido, Compound, Balancer, Pendle, EigenLayer, Curve, MakerDAO, Rocket Pool, Fibrous, WETH).
+>
+> Map relevant actions to **`onchain_aave`'s scope: direct parity with defi-skills' 7 `aave_*` actions** — `aave_supply`, `aave_withdraw`, `aave_borrow`, `aave_repay`, `aave_set_collateral`, `aave_repay_with_atokens`, `aave_claim_rewards`. For each, check whether `Onchain.Aave.*` already covers it (read calldata-construction details from the action's JSON spec, compare against `Onchain.Aave.Pool` / sibling modules); flag any gap as a candidate ROADMAP entry. Also note any V3 Pool functions exposed by defi-skills that we don't model yet (e.g. interest-rate-mode toggling, eMode category selection, repay-with-permit flows if covered).
+>
+> For each gap or coverage opportunity, propose a ROADMAP entry with D/B/U scoring per `~/.claude/includes/task-prioritization.md`. Output: a "Proposed additions from defi-skills mining" section the user reviews and merges into `V3 Write Surface Gaps` (or a new section) before any implementation begins.
+>
+> Read-only exercise — discovery + scoring only, no `Onchain.Aave.*` code edits in this task itself. The skill is already installed (`pip install defi-skills`); no new deps. Companion tasks were planted in `hieroglyph`, `onchain`, and `onchain_evm` ROADMAPs the same day.
+
+**Acceptance:** a "Proposed additions from defi-skills mining" section lands in this ROADMAP listing each candidate task with D/B/U scores, the corresponding `defi-skills` action(s), and a coverage-status note (already-covered / partial / gap). The user merges accepted entries into `V3 Write Surface Gaps`.
+
+---
+
 ## Future Directions
 
 Potential expansions — not yet scoped or scored:
@@ -145,6 +192,8 @@ Potential expansions — not yet scoped or scored:
 - **Governance module** — Aave governance proposal reading and voting
 - **Liquidation helpers** — health factor monitoring, liquidation call wrappers
 - **More chains** — expand `Contracts` registry as Aave deploys to new L2s
+- **Safe + delegatecall automation ergonomics.** Real-world Aave V3 automation often goes: `EOA → Gnosis Safe → DELEGATECALL → automation-proxy contract (e.g. DeFi Saver's `AaveV3SubProxy` at `0x03486F…f712`) → protocol storage writes`. Observed on-chain (tx `0x32c9f2a0…5347`, block 24932739 — owner deactivated two DeFi Saver sub IDs in one call with `deactivateSub(bytes)` packing `uint32[2]` for gas efficiency). Implication for V4 design (Task 51 `PositionManager`): the primary user-facing write surface should compose cleanly when executed under DELEGATECALL from a Safe (no storage assumptions about `msg.sender` identity vs. Safe proxy). Not a new task today — a constraint to keep in mind while 51 is being specified, and a likely future "`Onchain.Aave.Safe` helper module" if we grow Safe-aware calldata builders.
+- **Debt-swap CREATE2 adapter + CoW solver pattern.** Aave V3's "Swap debt" UI (observed 2026-04-22) composes three mechanisms: (a) `approveDelegation` on the debt-token to a **counterfactual CREATE2 adapter** (the address the UI will deploy-and-use on settlement), (b) a CoW Protocol solver submits the settlement tx and pays gas, (c) inside settlement the adapter flash-loans, swaps (USDC↔DAI↔USDS via Sky PSM in the observed case), borrows via the allowance from (a), and repays. Implication for an eventual `Onchain.Aave.DebtSwap` helper: we'd need CREATE2 salt derivation compatible with Aave's UI contract factory, a CoW order builder, and — if we want full parity — integration with a solver / order-book. That's a large surface; for now `Onchain.Aave.DebtToken` (Task 53) plus a documented "submit flash-loan adapter call yourself" path is the pragmatic scope. The CREATE2 factory address + salt schema are the research gate for a future helper. Related: Safe + MultiSend batching for revoking orphaned delegations cleanly is a Safe concern — lives in a future `Onchain.Safe` sibling, not in onchain_aave.
 
 ---
 

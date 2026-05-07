@@ -6,6 +6,30 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Task 41: revm cross-validation of `Aave.Math`
+
+**Completed** | [D:4/B:7/U:6 → Eff:1.63] 🚀
+
+Added an integration test harness (`test/onchain/aave/math_revm_test.exs`) that runs the canonical Aave V3 Solidity bodies inside revm and asserts bit-exact equality with `Onchain.Aave.Math` across all 8 Layer-2 functions. No divergence found — all tests (8 deterministic + 8 StreamData property, 200 runs each) green on first full pass.
+
+**Bytecode provenance, not runtime compilation.** Vendored a pre-compiled Solidity wrapper rather than invoking solc at test time:
+
+- `test/fixtures/wad_ray_wrapper.sol` — inlines `rayMul`, `rayDiv`, `wadMul`, `wadDiv`, `rayToWad`, `wadToRay` from `WadRayMath.sol` and `calculateLinearInterest` / `calculateCompoundedInterest` from `MathUtils.sol`, copied verbatim from `aave-v3-origin@1e3d70c`. The file's header records the upstream commit + per-file SHA1 so drift is visible.
+- `test/fixtures/wad_ray_wrapper.bin` — runtime bytecode, metadata hash stripped for reproducibility.
+- `test/fixtures/wad_ray_wrapper.json` — solc version, optimizer flags, EVM version, upstream pin, bin SHA256. `setup_all` rehashes the `.bin` and flunks on mismatch.
+
+Compile recipe documented in `test/fixtures/README.md`: `svm use 0.8.10 && solc --bin-runtime --optimize --optimize-runs 100000 --metadata-hash none`. Regeneration is a rare one-off when the Aave pin moves.
+
+**Deviations from the plan.** The plan specified `--evm-version paris`, but solc 0.8.10 predates the Paris fork and rejects that flag; used `london` (the compiler default and what shipped on mainnet for Aave V3). No impact on the pure arithmetic under test — none of the functions touch fork-specific opcodes. Also dropped the planned copy of `Onchain.RPCCase` into `test/support/`: the sibling module from the `onchain` path dep is already compiled into this project's test env, so a second copy would duplicate without benefit.
+
+**Test shape.** `@moduletag :integration, :math_revm`, `async: false`, `timeout: :infinity`. `setup_all` validates the bytecode SHA256 then builds one `state_overrides` map injecting the wrapper at `0x...BEEF`; every test reuses that fork config. Property bounds stay well below the Solidity overflow reverts (10_000 × RAY for ray ops, 10_000 × WAD for wad ops, 10 × RAY for rates, 10-year elapsed window). On divergence, `flunk` surfaces the exact inputs plus both outputs.
+
+**Why wrapper injection and not Path B (live Pool reads).** The deployed Aave Pool exercises only 3 of 8 ported functions through production code paths, and Path B would have taken a blocking dependency on the archive node's historical storage re-index. The wrapper path validates every function individually and runs entirely off `state_overrides` at `"latest"`. Left as a follow-on to add only if the wrapper surfaces gaps.
+
+**Scope exclusions.** Task 40b (floor/ceil WadRayMath variants) stays 🔶 gated — no caller needs them today, so Task 41's harness has nothing to validate against. Path B deferred as above.
+
+Added `{:stream_data, "~> 1.0", only: [:dev, :test]}` and `{:onchain_evm, path: "../onchain_evm", only: [:dev, :test]}` (the latter was already pre-wired earlier this session). Tidewave alias port registered at `4012`.
+
 ### Task 40: Port Aave V3 WadRayMath + MathUtils to Elixir
 
 **Completed** | [D:5/B:8/U:9 → Eff:1.70] 🚀
