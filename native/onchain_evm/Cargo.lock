@@ -2124,6 +2124,7 @@ dependencies = [
  "alloy-eips",
  "alloy-primitives",
  "alloy-provider",
+ "alloy-rpc-client",
  "alloy-transport-http",
  "hex",
  "reqwest",

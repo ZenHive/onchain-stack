@@ -166,6 +166,42 @@ defmodule Onchain.EVM.IntegrationTest do
     end
   end
 
+  describe "simulate_call/3 :timeout_ms" do
+    # 192.0.2.1 is in RFC 5737 TEST-NET-1, guaranteed unrouted on the public
+    # Internet — TCP packets are black-holed, so the per-request timeout is the
+    # only thing that frees us. (Do not use 10.x — that's RFC1918 private space
+    # and dev VPNs often have routes into it.)
+    @black_hole_rpc "http://192.0.2.1:8545"
+
+    test "returns {:error, {:timeout, _}} when request exceeds timeout_ms" do
+      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+
+      started = System.monotonic_time(:millisecond)
+
+      result =
+        EVM.simulate_call(@usdc_address, calldata,
+          rpc_url: @black_hole_rpc,
+          timeout_ms: 500
+        )
+
+      elapsed = System.monotonic_time(:millisecond) - started
+
+      case result do
+        {:error, {:timeout, msg}} ->
+          assert is_binary(msg)
+          # The reqwest timer should fire ~500ms in; allow generous slack.
+          assert elapsed < 5_000,
+                 "Expected timeout within 5s, took #{elapsed}ms"
+
+        other ->
+          flunk("""
+          Expected {:error, {:timeout, _}} from black-hole RPC, got: #{inspect(other)}
+          Elapsed: #{elapsed}ms
+          """)
+      end
+    end
+  end
+
   describe "bang variants with integration" do
     test "simulate_call! returns hex directly" do
       {:ok, calldata} = ABI.encode_call("totalSupply()", [])

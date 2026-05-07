@@ -1,5 +1,6 @@
 use rustler::{Encoder, Env, NifResult, Term};
 use std::collections::HashMap;
+use std::time::Duration;
 
 use alloy_eips::BlockId;
 use alloy_primitives::{Address, Bytes, U256};
@@ -9,6 +10,12 @@ use revm::{
     Evm,
 };
 
+// Hard-coded TCP connect ceiling. Per-request total timeout (connect through
+// response body completion, per `reqwest::ClientBuilder::timeout`) is
+// caller-controlled via the `timeout_ms` NIF param (defaults below).
+const DEFAULT_TIMEOUT_MS: u64 = 30_000;
+const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 5_000;
+
 mod atoms {
     rustler::atoms! {
         ok,
@@ -16,6 +23,7 @@ mod atoms {
         evm_revert,
         evm_error,
         fork_error,
+        timeout,
 
         // Result map keys
         success,
@@ -66,6 +74,7 @@ enum EvmError {
     Revert(String),
     ExecutionError(String),
     ForkError(String),
+    Timeout(String),
 }
 
 fn encode_error<'a>(env: Env<'a>, err: EvmError) -> Term<'a> {
@@ -73,6 +82,27 @@ fn encode_error<'a>(env: Env<'a>, err: EvmError) -> Term<'a> {
         EvmError::Revert(msg) => (atoms::error(), (atoms::evm_revert(), msg)).encode(env),
         EvmError::ExecutionError(msg) => (atoms::error(), (atoms::evm_error(), msg)).encode(env),
         EvmError::ForkError(msg) => (atoms::error(), (atoms::fork_error(), msg)).encode(env),
+        EvmError::Timeout(msg) => (atoms::error(), (atoms::timeout(), msg)).encode(env),
+    }
+}
+
+// Maps a transport / RPC error display string to the right EvmError variant.
+// TODO(Task 49): Brittle — alloy/revm reformat the underlying reqwest::Error,
+// so we match the reformatted display for "operation timed out" / "deadline" /
+// "timed out". These markers are not guaranteed stable across alloy or revm
+// version bumps. Task 49 tracks moving to `reqwest::Error::is_timeout()` /
+// `is_connect()` once the underlying error type can be preserved through the
+// alloy/revm layers (and also restoring `:fork_error` from connect failures).
+fn classify_transport_error<E: std::fmt::Display>(err: E) -> EvmError {
+    let msg = format!("{}", err);
+    let lower = msg.to_lowercase();
+    if lower.contains("operation timed out")
+        || lower.contains("deadline")
+        || lower.contains("timed out")
+    {
+        EvmError::Timeout(msg)
+    } else {
+        EvmError::ExecutionError(msg)
     }
 }
 
@@ -225,7 +255,12 @@ fn resolve_block_id<'a>(params: &HashMap<String, Term<'a>>) -> Result<BlockId, E
     }
 }
 
-fn build_fork_db(rpc_url: &str, block_id: BlockId) -> Result<ForkDB, EvmError> {
+fn build_fork_db(
+    rpc_url: &str,
+    block_id: BlockId,
+    timeout_ms: u64,
+    connect_timeout_ms: u64,
+) -> Result<ForkDB, EvmError> {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -235,7 +270,16 @@ fn build_fork_db(rpc_url: &str, block_id: BlockId) -> Result<ForkDB, EvmError> {
         .parse()
         .map_err(|e| EvmError::ForkError(format!("invalid RPC URL: {}", e)))?;
 
-    let provider = alloy_provider::ProviderBuilder::new().on_http(url);
+    let reqwest_client = reqwest::Client::builder()
+        .timeout(Duration::from_millis(timeout_ms))
+        .connect_timeout(Duration::from_millis(connect_timeout_ms))
+        .build()
+        .map_err(|e| EvmError::ForkError(format!("http client: {}", e)))?;
+
+    let http = alloy_transport_http::Http::with_client(reqwest_client, url);
+    let is_local = http.guess_local();
+    let rpc_client = alloy_rpc_client::RpcClient::new(http, is_local);
+    let provider = alloy_provider::ProviderBuilder::new().on_client(rpc_client);
 
     let alloy_db = AlloyDB::with_runtime(provider, block_id, rt);
     let cache_db = CacheDB::new(alloy_db);
@@ -386,9 +430,10 @@ fn extract_tx_result(result: ExecutionResult) -> Result<TxResult, EvmError> {
 fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, EvmError> {
     let rpc_url = get_string_param(params, "rpc_url")?;
     let block_id = resolve_block_id(params)?;
+    let timeout_ms = get_optional_u64_param(params, "timeout_ms")?.unwrap_or(DEFAULT_TIMEOUT_MS);
     let cp = extract_call_params(params)?;
 
-    let mut db = build_fork_db(&rpc_url, block_id)?;
+    let mut db = build_fork_db(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
 
     let data_bytes = Bytes::from(cp.data.clone());
@@ -397,9 +442,7 @@ fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, Ev
         .modify_tx_env(|tx| configure_tx(tx, &cp, data_bytes))
         .build();
 
-    let result = evm
-        .transact()
-        .map_err(|e| EvmError::ExecutionError(format!("{}", e)))?;
+    let result = evm.transact().map_err(classify_transport_error)?;
 
     match result.result {
         ExecutionResult::Success { output, .. } => {
@@ -423,9 +466,10 @@ fn do_simulate_transaction<'a>(
 ) -> Result<TxResult, EvmError> {
     let rpc_url = get_string_param(params, "rpc_url")?;
     let block_id = resolve_block_id(params)?;
+    let timeout_ms = get_optional_u64_param(params, "timeout_ms")?.unwrap_or(DEFAULT_TIMEOUT_MS);
     let cp = extract_call_params(params)?;
 
-    let mut db = build_fork_db(&rpc_url, block_id)?;
+    let mut db = build_fork_db(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
 
     let data_bytes = Bytes::from(cp.data.clone());
@@ -434,9 +478,7 @@ fn do_simulate_transaction<'a>(
         .modify_tx_env(|tx| configure_tx(tx, &cp, data_bytes))
         .build();
 
-    let result = evm
-        .transact()
-        .map_err(|e| EvmError::ExecutionError(format!("{}", e)))?;
+    let result = evm.transact().map_err(classify_transport_error)?;
 
     extract_tx_result(result.result)
 }
@@ -448,6 +490,7 @@ fn do_simulate_batch<'a>(
 ) -> Result<Vec<TxResult>, EvmError> {
     let rpc_url = get_string_param(params, "rpc_url")?;
     let block_id = resolve_block_id(params)?;
+    let timeout_ms = get_optional_u64_param(params, "timeout_ms")?.unwrap_or(DEFAULT_TIMEOUT_MS);
     let from_hex = get_optional_string_param(params, "from")?;
     let gas_limit = get_optional_u64_param(params, "gas_limit")?;
 
@@ -466,7 +509,7 @@ fn do_simulate_batch<'a>(
             EvmError::ExecutionError("calls must be list of {address, data} tuples".into())
         })?;
 
-    let mut db = build_fork_db(&rpc_url, block_id)?;
+    let mut db = build_fork_db(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
 
     let mut results = Vec::with_capacity(calls.len());
@@ -489,9 +532,7 @@ fn do_simulate_batch<'a>(
             .modify_tx_env(|tx| configure_tx(tx, &cp, data_bytes))
             .build();
 
-        let result = evm
-            .transact_commit()
-            .map_err(|e| EvmError::ExecutionError(format!("{}", e)))?;
+        let result = evm.transact_commit().map_err(classify_transport_error)?;
 
         // transact_commit returns ExecutionResult directly (not ResultAndState)
         results.push(extract_tx_result(result)?);

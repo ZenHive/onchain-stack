@@ -31,6 +31,9 @@ onchain_evm-*.tar
 # Compiled NIF binaries (rebuilt on mix compile)
 /priv/native/
 
+# Dialyzer PLT files (rebuildable, large binary blobs)
+/priv/plts/
+
 # Library lock file (consumers generate their own)
 mix.lock
 

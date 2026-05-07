@@ -207,6 +207,60 @@ defmodule Onchain.EVMTest do
     end
   end
 
+  describe "simulate_call/3 :timeout_ms validation" do
+    test "accepts positive integer timeout_ms (passes validation)" do
+      result =
+        EVM.simulate_call(@valid_address, @valid_data,
+          rpc_url: @valid_rpc_url,
+          timeout_ms: 1_000
+        )
+
+      refute match?({:error, {:invalid_timeout_ms, _}}, result)
+    end
+
+    test "returns error for zero timeout_ms" do
+      assert {:error, {:invalid_timeout_ms, 0}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 timeout_ms: 0
+               )
+    end
+
+    test "returns error for negative timeout_ms" do
+      assert {:error, {:invalid_timeout_ms, -500}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 timeout_ms: -500
+               )
+    end
+
+    test "returns error for string timeout_ms" do
+      assert {:error, {:invalid_timeout_ms, "5000"}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 timeout_ms: "5000"
+               )
+    end
+
+    test "returns error for float timeout_ms" do
+      assert {:error, {:invalid_timeout_ms, 1.5}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 timeout_ms: 1.5
+               )
+    end
+
+    test "returns error for timeout_ms greater than u64::MAX" do
+      too_big = 0x1_0000_0000_0000_0000
+
+      assert {:error, {:invalid_timeout_ms, ^too_big}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 timeout_ms: too_big
+               )
+    end
+  end
+
   describe "simulate_call!/3" do
     test "raises on missing rpc_url" do
       assert_raise RuntimeError, ~r/simulate_call failed/, fn ->

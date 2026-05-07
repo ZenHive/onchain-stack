@@ -19,12 +19,22 @@ defmodule Onchain.EVM do
   | EVM execution reverted | `{:error, {:evm_revert, revert_data_hex}}` |
   | EVM execution error | `{:error, {:evm_error, reason}}` |
   | Fork/RPC connection error | `{:error, {:fork_error, reason}}` |
+  | RPC request timeout | `{:error, {:timeout, reason}}` |
   | Invalid address input | `{:error, {:invalid_address, input}}` |
   | Invalid hex data input | `{:error, {:invalid_data, input}}` |
   | Invalid RPC URL | `{:error, {:invalid_rpc_url, reason}}` |
   | Invalid value option | `{:error, {:invalid_value, input}}` |
   | Invalid gas_limit option | `{:error, {:invalid_gas_limit, input}}` |
+  | Invalid timeout_ms option | `{:error, {:invalid_timeout_ms, input}}` |
   | Invalid state_overrides option | `{:error, {:invalid_state_overrides, input}}` |
+
+  ## Timeouts
+
+  Each NIF call configures a `reqwest::Client` with a per-RPC-request timeout.
+  Default is 30 seconds (sufficient for archive-node reads). Pass `:timeout_ms`
+  to override. Note this caps each individual RPC request, not the aggregate
+  simulation time — a single `simulate_transaction` may issue many RPC reads
+  for accounts and storage slots.
 
   ## Functions
 
@@ -92,6 +102,7 @@ defmodule Onchain.EVM do
           from: String.t() | binary(),
           value: String.t(),
           gas_limit: non_neg_integer(),
+          timeout_ms: pos_integer(),
           state_overrides: state_overrides()
         ]
 
@@ -113,6 +124,7 @@ defmodule Onchain.EVM do
           | {:invalid_block, term()}
           | {:invalid_value, term()}
           | {:invalid_gas_limit, term()}
+          | {:invalid_timeout_ms, term()}
           | {:invalid_state_overrides, term()}
 
   @typedoc "Errors from the Rust NIF during EVM execution."
@@ -120,6 +132,7 @@ defmodule Onchain.EVM do
           {:evm_revert, String.t()}
           | {:evm_error, String.t()}
           | {:fork_error, String.t()}
+          | {:timeout, String.t()}
 
   @typedoc "All possible errors from EVM simulation functions."
   @type evm_error :: validation_error() | nif_error()
@@ -141,7 +154,7 @@ defmodule Onchain.EVM do
       opts: [
         kind: :value,
         default: [],
-        description: "Options: :rpc_url (required), :block, :from, :value, :gas_limit, :state_overrides"
+        description: "Options: :rpc_url (required), :block, :from, :value, :gas_limit, :timeout_ms, :state_overrides"
       ]
     ],
     returns: %{
@@ -189,7 +202,7 @@ defmodule Onchain.EVM do
       opts: [
         kind: :value,
         default: [],
-        description: "Options: :rpc_url (required), :block, :from, :value, :gas_limit, :state_overrides"
+        description: "Options: :rpc_url (required), :block, :from, :value, :gas_limit, :timeout_ms, :state_overrides"
       ]
     ],
     returns: %{
@@ -233,7 +246,7 @@ defmodule Onchain.EVM do
       opts: [
         kind: :value,
         default: [],
-        description: "Options: :rpc_url (required), :block, :from, :gas_limit, :state_overrides"
+        description: "Options: :rpc_url (required), :block, :from, :gas_limit, :timeout_ms, :state_overrides"
       ]
     ],
     returns: %{
@@ -287,7 +300,8 @@ defmodule Onchain.EVM do
          {:ok, base} <- maybe_put_block(%{"rpc_url" => rpc_url, "to" => hex_addr, "data" => hex_data}, opts),
          {:ok, params} <- maybe_put_from(base, opts),
          {:ok, params} <- maybe_put_value(params, opts),
-         {:ok, params} <- maybe_put_gas_limit(params, opts) do
+         {:ok, params} <- maybe_put_gas_limit(params, opts),
+         {:ok, params} <- maybe_put_timeout_ms(params, opts) do
       maybe_put_state_overrides(params, opts)
     end
   end
@@ -301,7 +315,8 @@ defmodule Onchain.EVM do
          {:ok, validated_calls} <- validate_calls(calls),
          {:ok, base} <- maybe_put_block(%{"rpc_url" => rpc_url, "calls" => validated_calls}, opts),
          {:ok, params} <- maybe_put_from(base, opts),
-         {:ok, params} <- maybe_put_gas_limit(params, opts) do
+         {:ok, params} <- maybe_put_gas_limit(params, opts),
+         {:ok, params} <- maybe_put_timeout_ms(params, opts) do
       maybe_put_state_overrides(params, opts)
     end
   end
@@ -465,6 +480,23 @@ defmodule Onchain.EVM do
       nil -> {:ok, params}
       overrides when is_map(overrides) -> {:ok, Map.put(params, "state_overrides", overrides)}
       other -> {:error, {:invalid_state_overrides, other}}
+    end
+  end
+
+  # u64::MAX — the NIF decodes timeout_ms as u64. Anything above this overflows
+  # the decoder and surfaces as a bare {:evm_error, "invalid param type: timeout_ms"}
+  # instead of the documented {:invalid_timeout_ms, _} contract.
+  @timeout_ms_max 0xFFFF_FFFF_FFFF_FFFF
+
+  @doc false
+  # Validates and adds :timeout_ms (must be a positive integer ≤ u64::MAX) to params.
+  # Caps each individual RPC request, not aggregate simulation time. NIF default is 30s.
+  @spec maybe_put_timeout_ms(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_timeout_ms, term()}}
+  defp maybe_put_timeout_ms(params, opts) do
+    case Keyword.get(opts, :timeout_ms) do
+      nil -> {:ok, params}
+      ms when is_integer(ms) and ms > 0 and ms <= @timeout_ms_max -> {:ok, Map.put(params, "timeout_ms", ms)}
+      other -> {:error, {:invalid_timeout_ms, other}}
     end
   end
 end
