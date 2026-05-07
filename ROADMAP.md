@@ -37,14 +37,18 @@
 
 | # | Task | Status | D | B | U | Eff | Notes |
 |---|------|--------|---|---|---|-----|-------|
-| 2 | solc-js compilation (`.sol` → ABI + bytecode) | ⬜ | 4 | 9 | 8 | 2.13 🎯 | Closes codegen pipeline |
+| 2 | solc-js compilation (`.sol` → ABI + bytecode) | ⬜ | 4 | 9 | 8 | 2.13 🎯 | Closes codegen pipeline; also feeds onchain Sleuth |
 | 3 | Uniswap v3 SDK routing (optimal swap paths, price impact) | ⬜ | 5 | 8 | 7 | 1.50 📋 | JS SDK handles tick math + multi-hop |
 | 4 | DeFiSaver recipe builder (`@defisaver/sdk`) | ⬜ | 5 | 8 | 7 | 1.50 📋 | Flash loan recipes → encoded calldata |
 | 5 | 1inch Fusion SDK (DEX aggregation) | ⬜ | 5 | 7 | 6 | 1.30 📋 | Complement to Task 3 |
 
 **Task descriptions:**
 
-**2 — solc-js compilation.** Load solc-js via QuickBEAM, expose `OnchainJs.Solc.compile/2` that takes `.sol` source and returns `{:ok, %{abi: [...], bytecode: "0x..."}}`. Closes onchain_evm's codegen pipeline — generate `.sol` → compile to bytecode → deploy via Signer.
+**2 — solc-js compilation.** Load solc-js via QuickBEAM, expose `OnchainJs.Solc.compile/2` that takes `.sol` source and returns `{:ok, %{abi: [...], bytecode: "0x..."}}`. Two consumers:
+- **onchain_evm codegen pipeline** — generate `.sol` → compile to bytecode → deploy via Signer.
+- **onchain Sleuth** (see [onchain/ROADMAP.md](../onchain/ROADMAP.md) Task 62) — compile a custom read-only `.sol` query to bytecode, hand off to `Onchain.Sleuth.query/3` which ships it in an `eth_call` for one-shot execution against live chain state.
+
+Both paths use the same output (`bytecode` field). Sleuth takes the creation bytecode directly; deployment flows prepend it with constructor args and send via Signer.
 
 **3 — Uniswap v3 SDK routing.** Load `@uniswap/v3-sdk` + `@uniswap/smart-order-router` via QuickBEAM. Expose `OnchainJs.Uniswap.route/4` for optimal swap paths. JS SDK handles tick math and multi-hop routing out of the box.
 
