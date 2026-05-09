@@ -84,5 +84,11 @@ jobs:
 
       # Dialyzer-in-CI: KEEP. mix.exs already pins `plt_add_deps: :apps_direct`
       # to avoid OOM on tidewave/bandit's transitive HTTP stack.
+      # MIX_ENV=dev override: job-level MIX_ENV=test would pull test/support and
+      # test-only deps into the PLT and analyze them; dialyzer wants the runtime
+      # call graph, not the test tree. (Project's cli/0 maps `dialyzer.json` →
+      # :dev via preferred_envs, but plain `mix dialyzer` doesn't auto-switch.)
       - name: Dialyzer
+        env:
+          MIX_ENV: dev
         run: mix dialyzer

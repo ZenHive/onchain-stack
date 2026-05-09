@@ -17,7 +17,7 @@
 ### 📋 Current Tasks
 | Task | Status | D | B | U | Eff | Notes |
 |------|--------|---|---|---|-----|-------|
-| 1 | ⬜ | 3 | 7 | 8 | 2.50 🎯 | QuickBEAM foundation (runtime lifecycle, npm setup, browser stubs) |
+| 1 `[CSR]` | 🔄 in-review | 3 | 7 | 8 | 2.50 🎯 | QuickBEAM foundation (runtime lifecycle, npm setup, browser stubs) — [INE-51](https://linear.app/inetpeople/issue/INE-51) |
 
 ---
 
@@ -25,7 +25,7 @@
 
 | # | Task | Status | D | B | U | Eff | Notes |
 |---|------|--------|---|---|---|-----|-------|
-| 1 | QuickBEAM foundation | ⬜ | 3 | 7 | 8 | 2.50 🎯 | Runtime lifecycle, npm setup, browser stubs |
+| 1 `[CSR]` | QuickBEAM foundation | 🔄 in-review | 3 | 7 | 8 | 2.50 🎯 | Runtime lifecycle, npm setup, browser stubs — [INE-51](https://linear.app/inetpeople/issue/INE-51) |
 
 **Task descriptions:**
 
