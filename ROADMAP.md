@@ -125,10 +125,26 @@ Discovered 2026-04-22 during `onchain_aave` Task 41 (first real consumer integra
 | 44 | Fix `format!("{:?}", expr)` fallbacks — proper error types for unhandled Solidity expression types | ⬜ | 4 | 6 | 5 | 1.38 📋 | `native/onchain_solidity` |
 | 51 | Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage | ⬜ | 3 | 8 | 7 | 2.50 🎯 | (cross-cutting research) |
 | 52 | Codegen-emit per-contract Multicall helper modules | ⬜ | 5 | 7 | 6 | 1.30 📋 | `Onchain.Contract.Generator` |
+| 53 | Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases | ⬜ | 5 | 8 | 8 | 1.60 🚀 | Both native crates |
 
 **Task 52 — Codegen-emit per-contract Multicall helper modules.** [D:5/B:7/U:6 → Eff:1.30 📋]
 
 Extend `Onchain.Contract.Generator` so each generated contract emits typed Multicall helpers — callers using both codegen and `Onchain.Multicall` (in the core `onchain` library) shouldn't have to hand-pack call tuples and lose the type safety the generator otherwise provides. Include unit and integration tests.
+
+---
+
+**Task 53 — Adopt `rustler_precompiled` for both native crates.** [D:5/B:8/U:8 → Eff:1.60 🚀]
+
+Hex-release blocker (see "Path to hex.pm Release"). Without prebuilt artifacts, every consumer of `onchain_evm` needs a working Rust toolchain plus several minutes to compile `revm` + `alloy` + `solang-parser` from source.
+
+**Scope:**
+- Wrap both `native/onchain_evm` (revm, alloy) and `native/onchain_solidity` (alloy-json-abi, solang-parser) with `RustlerPrecompiled.use/1` instead of plain `Rustler`.
+- GitHub Actions cross-compile matrix per release: Linux x86_64-gnu, x86_64-musl, aarch64-gnu; macOS x86_64, aarch64; Windows x86_64-msvc.
+- Attach `.so`/`.dylib`/`.dll` artifacts + `checksum-Elixir.RustlerPrecompiled-*.exs` to each GitHub Release.
+- Document `RUSTLER_PRECOMPILATION_*_BUILD=1` force-from-source fallback in README.
+- CI job to validate the checksum file is regenerated on every release.
+
+**Trade-offs:** 2× build matrix per release (two crates), more release ceremony (tag → wait for CI → publish), force-from-source fallback as support surface. Worth it once a real external consumer installs from hex.
 
 ---
 
@@ -157,7 +173,7 @@ Release when these are true:
 **Blockers (must close before `mix hex.publish`):**
 - [x] Credo on hex — swapped git dep for `~> 1.7` (1.7.18 shipped 2026-04-10)
 - [ ] Bundle 2 closed — Tasks 30 (RPC timeouts), 31 (`.expect()` → errors), 32 (input size limits). Public API contracts around reliability are hard to change post-release.
-- [ ] `rustler_precompiled` wrapping both native crates, with prebuilt artifacts published via GitHub Releases. Without this, every install requires a full Rust toolchain.
+- [ ] Task 53 — `rustler_precompiled` wrapping both native crates, with prebuilt artifacts published via GitHub Releases. Without this, every install requires a full Rust toolchain.
 
 **Should do (but not blockers):**
 - Task 28/29 — Rust unit tests for both crates (confidence in the NIFs users are compiling against)
