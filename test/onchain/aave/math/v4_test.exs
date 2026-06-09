@@ -63,6 +63,33 @@ defmodule Onchain.Aave.Math.V4Test do
     end
   end
 
+  describe "integer helpers" do
+    test "min/2 returns the smaller value" do
+      assert V4.min(3, 5) == 3
+      assert V4.min(5, 3) == 3
+      assert V4.min(4, 4) == 4
+    end
+
+    test "zero_floor_sub/2 floors the difference at zero" do
+      assert V4.zero_floor_sub(5, 3) == 2
+      assert V4.zero_floor_sub(3, 5) == 0
+      assert V4.zero_floor_sub(5, 5) == 0
+    end
+
+    test "add/2 accepts non-negative results and rejects underflow" do
+      assert V4.add(5, 3) == 8
+      assert V4.add(5, -3) == 2
+      assert V4.add(3, -3) == 0
+
+      assert_raise FunctionClauseError, fn -> V4.add(3, -5) end
+    end
+
+    test "mul_div_up/3 rounds the quotient up" do
+      assert V4.mul_div_up(7, 3, 5) == 5
+      assert V4.mul_div_up(10, 2, 5) == 4
+    end
+  end
+
   describe "calculate_liquidation_bonus/4" do
     test "returns max bonus at or below max-bonus health factor" do
       assert V4.calculate_liquidation_bonus(
