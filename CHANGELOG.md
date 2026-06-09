@@ -6,6 +6,22 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Task 55: Adopt `Onchain.Multicall` in Aave batch read paths
+
+**Completed** | [D:3/B:6/U:6 → Eff:2.0] 🎯
+
+Audited the `Onchain.Aave.*` read modules for places that issue N independent RPC round-trips where the protocol does **not** already pre-batch, and adopted Multicall3 there.
+
+- **`Onchain.Aave.Pool.get_user_account_data_many/2`** (+ `!` variant) — fetches full positions for a list of users in **one** Multicall3 round-trip instead of N `getUserAccountData` calls. Results are aligned positionally with the input; empty input short-circuits to `{:ok, []}` with no RPC. The obvious consumer is liquidation monitoring / dashboards tracking many accounts.
+
+**Audit — left as-is (already batched, no win):**
+- `UiPoolDataProvider.get_reserves_data/1` and `get_user_reserves_data/2` — Aave's own contract aggregates all reserves/user balances server-side in a single call.
+- `Oracle.get_asset_prices/2` — uses Aave's native `getAssetsPrices(address[])` batch.
+
+Single-asset/single-user reads (`get_asset_price`, `get_source_of_asset`, oracle config getters) are one RPC each; batching them is a future helper only if a multi-asset caller materializes.
+
+Tests: unit (validation, unsupported network, empty-list short-circuit, `!` raises) + integration (positional alignment, zero-position vs active borrower, binary addresses, parity with the single-user call).
+
 ### Dependency updates
 
 Updated all dependencies to latest (`@version` → `0.1.1`). Every dep now reports up-to-date via `mix hex.outdated`:
