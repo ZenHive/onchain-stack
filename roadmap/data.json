@@ -364,7 +364,7 @@
       "id": 42,
       "phase": 3,
       "bundle": "math_validation",
-      "status": "in_progress",
+      "status": "done",
       "title": "V4 math cross-validation via revm (V4 live on mainnet 2026-03-30)",
       "scores": {
         "d": 4,
@@ -379,9 +379,14 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aave.Math.V4",
+      "shipped_in": "f23d0384f6524b90dffda104cb9e802001c91f9e",
       "body": "V4 is live on Ethereum mainnet as of 2026-03-30. Repeat Task 41's harness against V4's math library: pin a mainnet block post-launch, call the V4 math contracts directly via Onchain.EVM.simulate_call/3, assert equality with a V4-specific Elixir port. Port V4-specific variants under Onchain.Aave.Math.V4 if V4's math diverged from V3. state_overrides[\"code\"] bytecode injection is now a secondary fallback (for variants to test before mainnet exposure), not the primary path. V4 contract addresses come from V4_SCOPING.md — the address book does not flag a separate math-library constant, so first locate the WadRayMath-equivalent call site (likely the LIQUIDATION_LOGIC external library at 0x88dF535473C5adf1f57789734A05E555F7Deb8DB, or inlined in Hub/Spoke bytecode).\n",
       "created_at": "2026-04-20",
       "started_at": "2026-06-09",
+      "done_at": "2026-06-09",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1780999094104-de6608e7, f23d0384f6524b90dffda104cb9e802001c91f9e).",
+      "delivered_by": "codex",
+      "verified": true,
       "cross_repo": []
     },
     {

@@ -21,9 +21,9 @@ All foundational V3 tasks are complete. This package provides full Aave V3 read 
 ## 🎯 Current Focus
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 3 — Math Validation (2 of 5 done · 1 in progress)
+**Focus phase:** 3 — Math Validation (3 of 5 done · 0 in progress)
 
-**Last shipped:** no recent shipments
+**Last shipped:** Task 42 — V4 math cross-validation via revm (V4 live on mainnet 2026-03-30) on 2026-06-09
 
 **Up next:** Task 54 — Mine defi-skills:intent-to-transaction action surface for onchain_aave coverage gaps [D:3/B:8/U:7 → Eff:2.5] 🎯
 <!-- FOCUS:END -->
@@ -65,7 +65,7 @@ They cover different failure modes: revm catches drift from the contracts, JS ca
 | Task 40 | ✅ | 🎁 **math_validation** · *Onchain.Aave.Math* · Port Aave V3 WadRayMath + MathUtils to Elixir [D:5/B:8/U:9 → Eff:1.7?] 🚀 |
 | Task 40b | 🔶 | 🎁 **math_validation** · *Onchain.Aave.Math* · Port missing WadRayMath ceil/floor variants on demand [D:3/B:4/U:3 → Eff:1.17?] 📋 ⛔ Gated until a caller from Pool/TokenMath call paths in this repo needs the floor/ceil variants. |
 | Task 41 | ✅ | 🎁 **math_validation** · *test/onchain/aave/math_revm_test.exs* · Cross-validate Aave.Math via revm against on-chain Aave V3 [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
-| Task 42 | 🔄 | 🎁 **math_validation** · *Onchain.Aave.Math.V4* · V4 math cross-validation via revm (V4 live on mainnet 2026-03-30) [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
+| Task 42 | ✅ | 🎁 **math_validation** · *Onchain.Aave.Math.V4* · V4 math cross-validation via revm (V4 live on mainnet 2026-03-30) [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
 | Task 43 | 🔶 | 🎁 **math_validation** · *Onchain.Aave.Summary* · Cross-validate aggregation helpers via @aave/math-utils (QuickBEAM) [D:4/B:6/U:4 → Eff:1.25?] 📋 ⛔ Gated until onchain_aave grows off-chain aggregation helpers; no V4 JS lib as of 2026-04-20 (re-check before acting). |
 <!-- TASKS:END -->
 
