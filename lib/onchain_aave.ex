@@ -17,6 +17,7 @@ defmodule OnchainAave do
       Onchain.Aave.Math,
       Onchain.Aave.Oracle,
       Onchain.Aave.Pool,
+      Onchain.Aave.DebtToken,
       Onchain.Aave.UiPoolDataProvider,
       Onchain.Aave.Faucet,
       Onchain.Aave.Types.UserAccountData,
