@@ -106,4 +106,46 @@ defmodule Onchain.Aave.Pool.IntegrationTest do
       assert %Decimal{} = data.health_factor
     end
   end
+
+  describe "get_user_account_data_many/2" do
+    # Ethereum address with no Aave position — all-zero result
+    @zero_position "0x0000000000000000000000000000000000000001"
+
+    test "returns one struct per input, aligned positionally" do
+      {:ok, [borrower, zero]} =
+        Pool.get_user_account_data_many([@known_borrower, @zero_position], Onchain.RPCCase.rpc_opts!())
+
+      assert %UserAccountData{} = borrower
+      assert %UserAccountData{} = zero
+
+      # The active borrower has a real position; the empty address is all zeros.
+      assert Decimal.gt?(borrower.total_collateral_base, Decimal.new(0))
+      assert Decimal.eq?(zero.total_collateral_base, Decimal.new(0))
+      assert Decimal.eq?(zero.total_debt_base, Decimal.new(0))
+    end
+
+    test "accepts 20-byte binary addresses" do
+      {:ok, borrower_bin} = Onchain.Address.validate(@known_borrower)
+
+      {:ok, [data]} = Pool.get_user_account_data_many([borrower_bin], Onchain.RPCCase.rpc_opts!())
+
+      assert %UserAccountData{} = data
+      assert Decimal.gt?(data.total_collateral_base, Decimal.new(0))
+    end
+
+    test "batched result matches the single-call result for the same user" do
+      opts = Onchain.RPCCase.rpc_opts!()
+
+      {:ok, single} = Pool.get_user_account_data(@known_borrower, opts)
+      {:ok, [batched]} = Pool.get_user_account_data_many([@known_borrower], opts)
+
+      assert Decimal.eq?(batched.total_collateral_base, single.total_collateral_base)
+      assert Decimal.eq?(batched.total_debt_base, single.total_debt_base)
+      assert Decimal.eq?(batched.ltv, single.ltv)
+    end
+
+    test "empty input short-circuits without an RPC call" do
+      assert {:ok, []} = Pool.get_user_account_data_many([], Onchain.RPCCase.rpc_opts!())
+    end
+  end
 end

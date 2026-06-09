@@ -47,6 +47,40 @@ defmodule Onchain.Aave.PoolTest do
     end
   end
 
+  describe "get_user_account_data_many/2" do
+    test "short-circuits to {:ok, []} on empty input (no RPC)" do
+      assert {:ok, []} = Pool.get_user_account_data_many([])
+    end
+
+    test "returns error for an invalid address in the list" do
+      assert {:error, {:invalid_address, "not_an_address"}} =
+               Pool.get_user_account_data_many([@valid_address, "not_an_address"])
+    end
+
+    test "returns error for unsupported network" do
+      assert {:error, {:unsupported_network, :solana}} =
+               Pool.get_user_account_data_many([@valid_address], network: :solana)
+    end
+  end
+
+  describe "get_user_account_data_many!/2" do
+    test "returns [] on empty input" do
+      assert [] = Pool.get_user_account_data_many!([])
+    end
+
+    test "raises on invalid address" do
+      assert_raise RuntimeError, ~r/get_user_account_data_many failed.*invalid_address/, fn ->
+        Pool.get_user_account_data_many!([@valid_address, "bad_address"])
+      end
+    end
+
+    test "raises on unsupported network" do
+      assert_raise RuntimeError, ~r/get_user_account_data_many failed.*unsupported_network/, fn ->
+        Pool.get_user_account_data_many!([@valid_address], network: :solana)
+      end
+    end
+  end
+
   # --- Write operations: input validation ---
 
   describe "supply/4" do

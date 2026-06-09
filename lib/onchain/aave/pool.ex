@@ -30,6 +30,8 @@ defmodule Onchain.Aave.Pool do
   |----------|---------|
   | `get_user_account_data/2` | Full position summary as `UserAccountData` struct |
   | `get_user_account_data!/2` | Same, raises on error |
+  | `get_user_account_data_many/2` | Batch many users' positions in one Multicall3 round-trip |
+  | `get_user_account_data_many!/2` | Same, raises on error |
   | `supply/4` | Supply asset to pool (returns tx hash) |
   | `supply!/4` | Same, raises on error |
   | `withdraw/4` | Withdraw asset from pool (returns tx hash) |
@@ -48,6 +50,7 @@ defmodule Onchain.Aave.Pool do
   alias Onchain.ABI
   alias Onchain.Address
   alias Onchain.Hex
+  alias Onchain.Multicall
   alias Onchain.RPC
   alias Onchain.Signer
 
@@ -119,6 +122,76 @@ defmodule Onchain.Aave.Pool do
     case get_user_account_data(user_address, opts) do
       {:ok, data} -> data
       {:error, reason} -> raise "get_user_account_data failed: #{inspect(reason)}"
+    end
+  end
+
+  # --- get_user_account_data_many ---
+
+  api(
+    :get_user_account_data_many,
+    "Batch-fetch many users' Aave V3 positions in a single Multicall3 round-trip.",
+    params: [
+      user_addresses: [
+        kind: :value,
+        description: "List of user addresses as 0x hex strings or 20-byte binaries"
+      ],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
+      ]
+    ],
+    returns: %{
+      type: "{:ok, [UserAccountData.t()]} | {:error, term()}",
+      description:
+        "List of UserAccountData structs aligned positionally with the input. Empty input returns {:ok, []} with no RPC call."
+    }
+  )
+
+  @spec get_user_account_data_many([String.t() | binary()], keyword()) ::
+          {:ok, [UserAccountData.t()]} | {:error, term()}
+  def get_user_account_data_many(user_addresses, opts \\ [])
+
+  def get_user_account_data_many([], _opts), do: {:ok, []}
+
+  def get_user_account_data_many(user_addresses, opts) when is_list(user_addresses) do
+    {network_opts, rpc_opts} = Opts.split_network(opts)
+
+    with {:ok, user_bins} <- validate_addresses(user_addresses),
+         {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
+         calls = build_account_data_calls(pool_addr, user_bins),
+         {:ok, results} <- Multicall.call_many(calls, rpc_opts) do
+      collect_account_data(results)
+    end
+  end
+
+  # --- get_user_account_data_many! ---
+
+  api(
+    :get_user_account_data_many!,
+    "Batch-fetch many users' Aave V3 positions in one round-trip. Raises on error.",
+    params: [
+      user_addresses: [
+        kind: :value,
+        description: "List of user addresses as 0x hex strings or 20-byte binaries"
+      ],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
+      ]
+    ],
+    returns: %{
+      type: "[UserAccountData.t()]",
+      description: "List of UserAccountData structs aligned positionally with the input"
+    }
+  )
+
+  @spec get_user_account_data_many!([String.t() | binary()], keyword()) :: [UserAccountData.t()]
+  def get_user_account_data_many!(user_addresses, opts \\ []) do
+    case get_user_account_data_many(user_addresses, opts) do
+      {:ok, data} -> data
+      {:error, reason} -> raise "get_user_account_data_many failed: #{inspect(reason)}"
     end
   end
 
@@ -365,6 +438,47 @@ defmodule Onchain.Aave.Pool do
   end
 
   # --- Private helpers ---
+
+  # Validates a list of addresses, preserving order. Halts on the first invalid one.
+  @spec validate_addresses([String.t() | binary()]) :: {:ok, [binary()]} | {:error, term()}
+  defp validate_addresses(addresses) do
+    addresses
+    |> Enum.reduce_while({:ok, []}, fn addr, {:ok, acc} ->
+      case Address.validate(addr) do
+        {:ok, bin} -> {:cont, {:ok, [bin | acc]}}
+        error -> {:halt, error}
+      end
+    end)
+    |> case do
+      {:ok, bins} -> {:ok, Enum.reverse(bins)}
+      error -> error
+    end
+  end
+
+  # Builds one getUserAccountData Multicall call spec per user against the Pool address.
+  @spec build_account_data_calls(String.t(), [binary()]) ::
+          [{String.t(), String.t(), [binary()], String.t()}]
+  defp build_account_data_calls(pool_addr, user_bins) do
+    Enum.map(user_bins, fn user_bin ->
+      {pool_addr, "getUserAccountData(address)", [user_bin], @user_account_data_response}
+    end)
+  end
+
+  # Converts Multicall call_many results into UserAccountData structs, preserving
+  # order. A reverted sub-call fails the whole batch loudly rather than silently.
+  @spec collect_account_data([{:ok, list()} | {:error, String.t()}]) ::
+          {:ok, [UserAccountData.t()]} | {:error, {:multicall_call_failed, String.t()}}
+  defp collect_account_data(results) do
+    results
+    |> Enum.reduce_while({:ok, []}, fn
+      {:ok, values}, {:ok, acc} -> {:cont, {:ok, [UserAccountData.from_raw(values) | acc]}}
+      {:error, data}, _acc -> {:halt, {:error, {:multicall_call_failed, data}}}
+    end)
+    |> case do
+      {:ok, list} -> {:ok, Enum.reverse(list)}
+      error -> error
+    end
+  end
 
   # Pool-specific tx dispatch: looks up the Pool address, ABI-encodes the call,
   # and delegates to Signer. Shared by supply/withdraw/borrow/repay. Pool-only
