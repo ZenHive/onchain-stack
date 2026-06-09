@@ -375,17 +375,22 @@ shipped_in = "20de4982b4c7be35569633dd8b410060664ec0c1"
 id = 46
 phase = 5
 bundle = "v4_support"
-status = "pending"
+status = "done"
 title = "Select V4 read surface by diffing IHub/ISpoke/IAaveOracle/ITokenizationSpoke against V3 IPool"
 scores = { d = 3, b = 6, u = 7 }
 markers = ["parallel"]
+depends_on = [45]
 assignee = "grok"
 module = "V4_SCOPING.md"
-depends_on = [45]
-created_at = "2026-04-20"
 body = """
 Read the V4 interface files from github.com/aave/aave-v4/src/{hub,spoke,config-engine}/interfaces/ (enumerated in V4_SCOPING.md § Sources) and diff against V3's IPool + IUiPoolDataProvider. Produce a mapping table: for each V4 function, whether it replaces a V3 function, is new, or has no V3 equivalent. Output feeds Tasks 47–50. Open questions to resolve: (a) does V4 have a UiPoolDataProvider analog, (b) which Hub/Spoke reads reproduce V3's getUserAccountData semantics. Research task, no Elixir code.
 """
+implemented = "Landed by grok via merge-train; reviewer-approved (run run-1780999094103-c6b44988, 8240c433d7d7973092554d7040a9e0d577075e80)."
+delivered_by = "grok"
+verified = true
+created_at = "2026-04-20"
+done_at = "2026-06-09"
+shipped_in = "8240c433d7d7973092554d7040a9e0d577075e80"
 
 [[task]]
 id = 47
