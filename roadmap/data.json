@@ -718,7 +718,7 @@
       "id": 53,
       "phase": 6,
       "bundle": "v3_write_gaps",
-      "status": "pending",
+      "status": "done",
       "title": "Onchain.Aave.DebtToken — wrap approveDelegation + borrowAllowance on variable/stable debt tokens",
       "scores": {
         "d": 3,
@@ -731,8 +731,13 @@
       "depends_on": [],
       "assignee": "grok",
       "module": "Onchain.Aave.DebtToken",
+      "shipped_in": "8451b5853fcb77c753a06948db03a94a0280222c",
       "body": "Aave V3 credit delegation (approveDelegation(delegatee, amount) on the variable/stable debt token) lets a position owner grant another address the right to Pool.borrow(..., onBehalfOf=owner) against the owner's collateral. Observed on-chain 2026-04-22 — a real migration-off-automation flow the current write surface doesn't support.\n\nOnchain.Aave.Pool covers supply/borrow/repay/withdraw but the delegation mechanism lives on the debt-token contract, not Pool. Build a thin wrapper exposing approve_delegation/4 (write) and borrow_allowance/3 (read) against the variable and stable debt token addresses. Debt-token addresses come from Pool.getReserveData(asset).variableDebtTokenAddress / .stableDebtTokenAddress — consider a helper that resolves (asset, rate_mode) → debt_token_address. Integration test on Sepolia mirroring pool_write_integration_test shape.\n\nContext observed 2026-04-22 (same Safe, end-to-end USDC→USDS debt swap): three user-signed approveDelegation txs each to a different counterfactual CREATE2 adapter (Aave's UI re-derives the salt per session/amount, so allowances are not reusable). Implications: (a) approve_delegation/4 is the 80% feature; (b) zero-out revocation (approve_delegation(debt_token, delegatee, 0, …)) is mandatory hygiene — incomplete sessions leave dangling allowances to dead CREATE2 addresses; (c) a future helper could wrap \"revoke all orphan delegations on a debt token for this account\" by scanning BorrowAllowanceDelegated logs — nice-to-have, not core.\n",
       "created_at": "2026-04-22",
+      "done_at": "2026-06-09",
+      "implemented": "Landed by grok via merge-train; reviewer-approved (run run-1780997382319-55065b84, 8451b5853fcb77c753a06948db03a94a0280222c).",
+      "delivered_by": "grok",
+      "verified": true,
       "cross_repo": []
     },
     {

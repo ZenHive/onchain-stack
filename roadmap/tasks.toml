@@ -490,12 +490,11 @@ Full read-path tests against a mainnet-forked RPC for Hubs, Spokes, Oracles, Tok
 id = 53
 phase = 6
 bundle = "v3_write_gaps"
-status = "pending"
+status = "done"
 title = "Onchain.Aave.DebtToken — wrap approveDelegation + borrowAllowance on variable/stable debt tokens"
 scores = { d = 3, b = 6, u = 6 }
 assignee = "grok"
 module = "Onchain.Aave.DebtToken"
-created_at = "2026-04-22"
 body = """
 Aave V3 credit delegation (approveDelegation(delegatee, amount) on the variable/stable debt token) lets a position owner grant another address the right to Pool.borrow(..., onBehalfOf=owner) against the owner's collateral. Observed on-chain 2026-04-22 — a real migration-off-automation flow the current write surface doesn't support.
 
@@ -503,6 +502,12 @@ Onchain.Aave.Pool covers supply/borrow/repay/withdraw but the delegation mechani
 
 Context observed 2026-04-22 (same Safe, end-to-end USDC→USDS debt swap): three user-signed approveDelegation txs each to a different counterfactual CREATE2 adapter (Aave's UI re-derives the salt per session/amount, so allowances are not reusable). Implications: (a) approve_delegation/4 is the 80% feature; (b) zero-out revocation (approve_delegation(debt_token, delegatee, 0, …)) is mandatory hygiene — incomplete sessions leave dangling allowances to dead CREATE2 addresses; (c) a future helper could wrap "revoke all orphan delegations on a debt token for this account" by scanning BorrowAllowanceDelegated logs — nice-to-have, not core.
 """
+implemented = "Landed by grok via merge-train; reviewer-approved (run run-1780997382319-55065b84, 8451b5853fcb77c753a06948db03a94a0280222c)."
+delivered_by = "grok"
+verified = true
+created_at = "2026-04-22"
+done_at = "2026-06-09"
+shipped_in = "8451b5853fcb77c753a06948db03a94a0280222c"
 
 [[task]]
 id = 54
