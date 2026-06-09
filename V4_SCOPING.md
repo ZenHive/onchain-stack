@@ -214,13 +214,61 @@ How each current `onchain_aave` V3 module maps to V4:
 
 ---
 
-## Open Questions (resolve before starting Tasks 45+)
+## Open Questions (resolved by Task 46)
 
-1. **`IHub` / `ISpoke` read surface.** The address book gives us every contract address, but the decision "which read calls do we wrap first" requires reading the ABIs. Task 46 should diff `IHub.sol` + `ISpoke.sol` against V3's `IPool.sol` and list the minimum read set that mirrors `getUserAccountData` behavior.
-2. **Tokenization spoke key shape.** 31 tokenization spokes today — a flat registry key per spoke would add 31 atoms to `Contracts`. A nested lookup (`v4_tokenization_spoke/2`) is likely cleaner. Decide during Task 45.
-3. **UiPoolDataProvider analog.** No address captured. Before Task 46 proposes a wrapper, confirm whether Aave deploys a V4 UI data provider or expects UIs to call Hubs/Spokes directly. (Check the Aave Interface repo — `pro.aave.com` — for the aggregation pattern it uses.)
-4. **Multi-chain rollout.** V4 live on Ethereum mainnet only as of 2026-04-20. Before adding V4 keys for other networks, confirm deployments exist. Do **not** pre-register empty V4 entries for chains where it's not live.
-5. **Coordination with Task 42 (V4 math cross-validation via revm).** Task 42 relies on a V4 math library address. The address book does not separately label a "math library" — V4 math likely lives inline in the Hub/Spoke bytecode or in the `EXTERNAL_LIBRARIES LIQUIDATION_LOGIC` contract (`0x88dF535473C5adf1f57789734A05E555F7Deb8DB`). Task 42's first step is to locate the WadRayMath-equivalent call site, either by inspecting the linked-library addresses or by calling methods directly on a live Spoke and diffing.
+1. **`IHub` / `ISpoke` read surface + getUserAccountData mapping.** Completed. See "V4 Read Surface Diff vs V3 IPool + IUiPoolDataProvider" below. Minimum read set that mirrors `getUserAccountData` behavior: `ISpoke.getUserAccountData(address)` (per-Spoke) plus supporting `getUser*` / `getReserve*` / `getLiquidation*` reads on the Spoke and price reads on its `IAaveOracle`. Hub reads are additive for credit-line / liquidity accounting (no V3 Pool equivalent).
+2. **Tokenization spoke key shape.** Deferred to Task 45 (per plan).
+3. **UiPoolDataProvider analog.** Completed. No V4 analog exists (no address in bgd-labs/aave-address-book AaveV4Ethereum entries; no `I*DataProvider` or equivalent bulk contract in `aave-v4/src/{hub,spoke,config-engine}/interfaces/`). V4 expects direct or multicall reads against `ISpoke` (per market/Spoke) + `IHub` + `IAaveOracle` + `ITokenizationSpoke` (ERC-4626). Aave Interface / pro.aave.com usage not required for this diff (contracts show the surface); downstream wrappers will compose or later add an aggregator if needed.
+4. **Multi-chain rollout.** Deferred (not in scope for read-surface diff).
+5. **Coordination with Task 42 (V4 math cross-validation via revm).** Deferred (not in scope for read-surface diff).
+
+---
+
+## V4 Read Surface Diff vs V3 IPool + IUiPoolDataProvider (Task 46)
+
+**Sources fetched (raw GitHub, 2026-04):**  
+- V4: `aave/aave-v4/src/{hub,spoke,config-engine}/interfaces/` → `IHub.sol` (incl `IHubBase`), `ISpoke.sol`, `ITokenizationSpoke.sol`, `IAaveOracle.sol` (incl `IPriceOracle`), `IPriceFeed.sol`, `ISpokeConfigurator.sol`, `IHubConfigurator.sol`, `IAaveV4ConfigEngine.sol` (config mostly writes), interest rate strategies.  
+- V3: `aave/aave-v3-core/.../IPool.sol`; `aave/aave-v3-periphery/.../IUiPoolDataProviderV3.sol`.  
+- Cross-checked against current `Onchain.Aave.Pool` (wraps `getUserAccountData`), `UiPoolDataProvider` (bulk `getReserves*` / `getUserReservesData`), and types.
+
+**Key structural diffs (confirmed in interfaces):**
+- V3 `IPool.getUserAccountData(address)` is global (aggregates all reserves). V4 equivalent is `ISpoke.getUserAccountData(address)` — per-Spoke only (Spoke defines its collateral/borrow set + e-Mode). Return shape differs (see table).
+- V3 bulk reserve/user data lives in `IUiPoolDataProviderV3` (one contract, huge `AggregatedReserveData` with 40+ fields incl rates, caps, eMode, prices). V4 has no such contract or bulk entrypoint; enumerate via `ISpoke.getReserveCount()` + `getReserve(reserveId)` / `get*` per-ID + `IAaveOracle.get*Price`.
+- V3 aToken balances via scaled amounts + `getUserReservesData`. V4 supply positions are ERC-4626 shares on per-(Hub,asset) `ITokenizationSpoke`.
+- V4 introduces Hub/Spoke credit-line accounting (drawn/premium shares, offsets, deficits, caps, previews for add/draw/restore) with no V3 Pool analog.
+- No stable rates in V4 (V3 `stableBorrowRate*` fields and modes gone).
+- Oracle is Spoke-scoped (`IAaveOracle` per Spoke) vs V3 single oracle.
+
+**Mapping table (view/pure reads only; writes and events omitted). "Replaces" = provides equivalent user/reserve/price/liquidity data under new model. "New" = no V3 IPool/UI equivalent (Hub credit lines, Spoke risk-premium, tokenization shares, per-Spoke e-Mode scoping). "No V3 equiv" = structural (constants, multicall helpers).**
+
+| V4 Interface | V4 Read Function | Classification | V3 Equivalent | Notes |
+|--------------|------------------|----------------|---------------|-------|
+| ISpoke | `getUserAccountData(address user)` | replaces (scoped) | `IPool.getUserAccountData` (the 6-tuple) | Core match for Task 46. Returns `UserAccountData {riskPremium, avgCollateralFactor, healthFactor, totalCollateralValue, totalDebtValueRay, activeCollateralCount, borrowCount}`. Per-Spoke (not Pool-global). No "availableBorrowsBase" or split LTV/threshold in same shape; health calc scoped to Spoke's reserves + dynamic config. |
+| ISpoke | `getUser*` (getUserReserveStatus, getUserSuppliedAssets/Shares, getUserDebt/TotalDebt, getUserPremiumDebtRay, getUserPosition, getUserLastRiskPremium, getLiquidationBonus) | replaces (per-reserve/user) | `IUiPoolDataProvider.getUserReservesData`, `IPool.getUserConfiguration`, direct aToken/debt token balances | Per-reserve (by reserveId) + aggregate counts on UserAccountData. `getUserPosition` is the V4 analog of V3 UserReserveData (drawn/premium/supplied shares + dynamicConfigKey). |
+| ISpoke | `getReserve*` (getReserveCount, getReserveSuppliedAssets/Shares, getReserveDebt/TotalDebt, getReserveId, getReserve, getReserveConfig, getDynamicReserveConfig) | replaces (per-reserve) | `IUiPoolDataProvider.getReservesData` (parts), `IPool.getReserveData`, `getReserveNormalized*`, `getConfiguration` | Spoke-local reserve metadata. No stable rate fields. Dynamic configs (collateralFactor, maxLiqBonus, liqFee) versioned by key (vs V3 mostly static per reserve + eMode). |
+| ISpoke | `getLiquidationConfig`, `isPositionManager*` | replaces (config) | parts of `IUiPoolDataProvider` (liq bonus/thresholds), V3 eMode/liquidation params | Per-Spoke liquidation params (targetHf, hfForMaxBonus, bonusFactor). Position managers are V4 concept (approval for delegated actions). |
+| ISpoke | `ORACLE()`, `MAX_USER_RESERVES_LIMIT()`, `getLiquidationLogic()`, typehashes, `SET_USER...` | new / no direct | (N/A; V3 had addresses provider, MAX_NUMBER_RESERVES) | Spoke-scoped oracle accessor; user reserve caps (collateral + borrow counted separately). |
+| IAaveOracle (IPriceOracle) | `getReservePrice(uint256 reserveId)`, `getReservesPrices(uint256[])` | replaces | V3 `AaveOracle.getAssetPrice`, price fields inside UI `AggregatedReserveData` | Per-reserveId (not asset address). Reverts on <=0 price. Spoke-scoped instance. `decimals()` and `spoke()` accessors. |
+| IAaveOracle | `getReserveSource(uint256 reserveId)` | replaces (support) | priceOracle field in UI reserve data | Returns the `IPriceFeed` (Chainlink-style) for the reserve. |
+| IHubBase | `getAsset*` (getAssetId, getAssetUnderlyingAndDecimals, getAssetDrawnIndex, getAddedAssets/Shares, getAssetOwed/TotalOwed, getAssetPremiumRay/Data, getAssetLiquidity, getAssetDeficitRay) | new | (no V3 Pool/Hub equiv) | Hub-level liquidity + owed accounting across spokes. Drawn/premium split is new (V3 had stable/variable debt). |
+| IHubBase | `getSpoke*` (getSpokeAddedAssets/Shares, getSpokeOwed/TotalOwed, getSpokePremiumRay/Data, getSpokeDrawnShares, getSpokeDeficitRay) | new | (no V3 equiv) | Per-spoke view of its position at the Hub (caps live in SpokeData on IHub). |
+| IHubBase | `preview*By*` (previewAdd/Remove/Draw/Restore ByAssets/ByShares) | new | (no direct; V3 had implicit 1:1 aToken) | Preview share/asset math for Hub add/remove/draw/restore flows. Defaults 1:1; IR strategy can affect. |
+| IHub | `getAsset*` (getAssetCount, getAsset, getAssetConfig, getAssetAccruedFees, getAssetSwept, getAssetDrawnRate) | new | (no V3 equiv) | Full Asset struct (liquidity, shares, rates, deficit, irStrategy, etc.). Accrued fees + swept are reinvestment/fee concepts. |
+| IHub | `getSpoke*` (getSpokeCount, isSpokeListed, getSpokeAddress, getSpoke, getSpokeConfig) | new | (no V3 equiv; V3 had reserve list) | Spoke registry + caps/riskPremiumThreshold/active/halted per (asset, spoke). |
+| IHub | `isUnderlyingListed`, `get*` constants (MAX_ALLOWED_*) | new / support | `IPool.MAX_NUMBER_RESERVES`, some config getters | Listing + cap/threshold/decimal bounds. |
+| ITokenizationSpoke (IERC4626 +) | `asset()`, `totalAssets()`, `totalSupply()`, `balanceOf()`, `convertTo*`, `max*`, `preview*` (deposit/mint/withdraw/redeem) | replaces (vault) | V3 aToken `balanceOf` + `scaledBalanceOf` + `getUserReservesData.scaledATokenBalance`; `IUi` liquidity fields | ERC-4626 supply-only position token per (Hub, asset). Replaces aToken entirely. Shares are the "supplied" position. |
+| ITokenizationSpoke | `hub()`, `assetId()`, `MAX_ALLOWED_SPOKE_CAP()`, permit/typehash/DOMAIN_SEPARATOR helpers | new | (aToken had permit in V3 but different) | Links to Hub/asset; EIP-2612 + intent nonces for gasless deposit/withdraw. |
+| (all) | Multicall / EIP712 intent helpers (ISpoke inherits IMulticall/IIntentConsumer; tokenization sig methods) | new | (V3 had some permit on aToken/Pool) | Batch reads and signed intents are first-class in V4 surface. |
+
+**Open questions (a)(b) resolved above.** The read surface for V4 wrappers (Tasks 47–50) should prioritize:
+- `Onchain.Aave.V4.Spoke` (or `V4.Position`) exposing `get_user_account_data/2` (taking spoke addr) + per-reserve user/reserve getters + liquidation config.
+- `Onchain.Aave.V4.Hub` for liquidity/credit-line reads (new; used for caps, available at spoke, deficit, etc.).
+- `Onchain.Aave.V4.Oracle` (Spoke-scoped, thin wrapper over IAaveOracle).
+- `Onchain.Aave.V4.TokenizationSpoke` (ERC-4626 reads; key shape per Task 45).
+- New types: `SpokeUserAccountData`, `SpokeReserveData`, etc. (no reuse of V3 `UserAccountData` or `AggregatedReserveData`).
+- No single "UiPoolDataProviderV4" wrapper until/unless an aggregator appears; use multicall for bulk.
+
+Consumers needing "full position across all V4 spokes" will enumerate relevant spokes (from address book or on-chain spoke lists) and aggregate client-side.
 
 ---
 
