@@ -1,0 +1,137 @@
+schema_version = 2
+project = "onchain_js"
+default_branch = "development"
+vision = "Run battle-tested npm packages on the BEAM via QuickBEAM — no Node.js required."
+
+[focus]
+phase = 1
+
+[phases.1]
+name = "Foundation"
+order = 1
+status = "in_progress"
+
+[phases.2]
+name = "Ethereum JS Tools"
+order = 2
+status = "pending"
+
+[phases.3]
+name = "Cross-Validation & Utilities"
+order = 3
+status = "pending"
+
+[bundles.foundation]
+phase = 1
+order = 1
+description = "QuickBEAM runtime lifecycle, npm setup, browser stubs"
+
+[bundles.eth_tools]
+phase = 2
+order = 2
+description = "Ethereum JS tools loaded via QuickBEAM (solc, Uniswap, DeFiSaver, 1inch)"
+
+[bundles.cross_validation]
+phase = 3
+order = 3
+description = "Cross-validation against canonical JS and utility libraries"
+
+[[task]]
+id = 1
+phase = 1
+bundle = "foundation"
+title = "QuickBEAM foundation"
+status = "in_progress"
+scores = { d = 3, b = 7, u = 8 }
+linear_id = "INE-51"
+body = """
+Add quickbeam + npm deps. Create `OnchainJs.Runtime` module with runtime lifecycle management: start with browser stubs, load bundles, supervised runtime in application tree. Include integration test that starts a runtime, evaluates JS, and stops cleanly.
+
+Runtime lifecycle, npm setup, browser stubs — [INE-51](https://linear.app/inetpeople/issue/INE-51).
+"""
+
+[[task]]
+id = 2
+phase = 2
+bundle = "eth_tools"
+title = "solc-js compilation (.sol → ABI + bytecode)"
+status = "pending"
+scores = { d = 4, b = 9, u = 8 }
+depends_on = [1]
+module = "OnchainJs.Solc"
+body = """
+Load solc-js via QuickBEAM, expose `OnchainJs.Solc.compile/2` that takes `.sol` source and returns `{:ok, %{abi: [...], bytecode: "0x..."}}`. Two consumers:
+
+- **onchain_evm codegen pipeline** — generate `.sol` → compile to bytecode → deploy via Signer.
+- **onchain Sleuth** (see onchain/ROADMAP.md Task 62) — compile a custom read-only `.sol` query to bytecode, hand off to `Onchain.Sleuth.query/3` which ships it in an `eth_call` for one-shot execution against live chain state.
+
+Both paths use the same output (`bytecode` field). Sleuth takes the creation bytecode directly; deployment flows prepend it with constructor args and send via Signer.
+
+Closes codegen pipeline; also feeds onchain Sleuth.
+"""
+
+[[task]]
+id = 3
+phase = 2
+bundle = "eth_tools"
+title = "Uniswap v3 SDK routing (optimal swap paths, price impact)"
+status = "pending"
+scores = { d = 5, b = 8, u = 7 }
+depends_on = [1]
+module = "OnchainJs.Uniswap"
+body = """
+Load `@uniswap/v3-sdk` + `@uniswap/smart-order-router` via QuickBEAM. Expose `OnchainJs.Uniswap.route/4` for optimal swap paths. JS SDK handles tick math and multi-hop routing out of the box.
+"""
+
+[[task]]
+id = 4
+phase = 2
+bundle = "eth_tools"
+title = "DeFiSaver recipe builder (@defisaver/sdk)"
+status = "pending"
+scores = { d = 5, b = 8, u = 7 }
+depends_on = [1]
+body = """
+Load `@defisaver/sdk` via QuickBEAM. Expose recipe construction: flash loan → action sequence → repay, returning encoded calldata.
+
+Flash loan recipes → encoded calldata.
+"""
+
+[[task]]
+id = 5
+phase = 2
+bundle = "eth_tools"
+title = "1inch Fusion SDK (DEX aggregation)"
+status = "pending"
+scores = { d = 5, b = 7, u = 6 }
+depends_on = [1]
+body = """
+Load `@1inch/fusion-sdk` via QuickBEAM. DEX aggregation across multiple protocols. Complement to Task 3.
+"""
+
+[[task]]
+id = 6
+phase = 3
+bundle = "cross_validation"
+title = "Aave math-utils cross-validation"
+status = "pending"
+scores = { d = 3, b = 5, u = 4 }
+depends_on = [1]
+body = """
+Load `@aave/math-utils` via QuickBEAM and run the same calculations through both JS and onchain_aave's math modules. Property-based tests comparing outputs across implementations.
+
+Validate onchain_aave math against canonical JS.
+"""
+
+[[task]]
+id = 7
+phase = 3
+bundle = "cross_validation"
+title = "Merkle proof construction (airdrops, whitelists, storage proofs)"
+status = "pending"
+scores = { d = 3, b = 6, u = 5 }
+depends_on = [1]
+module = "OnchainJs.Merkle"
+body = """
+Load `merkletreejs` via QuickBEAM. Expose `OnchainJs.Merkle.build_tree/1` and `prove/2` for airdrop claims and storage proofs.
+"""

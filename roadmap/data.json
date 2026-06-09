@@ -1,0 +1,188 @@
+{
+  "schema_version": 2,
+  "project": "onchain_js",
+  "default_branch": "development",
+  "vision": "Run battle-tested npm packages on the BEAM via QuickBEAM — no Node.js required.",
+  "focus": {
+    "phase": 1
+  },
+  "phases": {
+    "1": {
+      "name": "Foundation",
+      "order": 1,
+      "status": "in_progress"
+    },
+    "2": {
+      "name": "Ethereum JS Tools",
+      "order": 2,
+      "status": "pending"
+    },
+    "3": {
+      "name": "Cross-Validation & Utilities",
+      "order": 3,
+      "status": "pending"
+    }
+  },
+  "bundles": {
+    "cross_validation": {
+      "phase": 3,
+      "order": 3,
+      "description": "Cross-validation against canonical JS and utility libraries"
+    },
+    "eth_tools": {
+      "phase": 2,
+      "order": 2,
+      "description": "Ethereum JS tools loaded via QuickBEAM (solc, Uniswap, DeFiSaver, 1inch)"
+    },
+    "foundation": {
+      "phase": 1,
+      "order": 1,
+      "description": "QuickBEAM runtime lifecycle, npm setup, browser stubs"
+    }
+  },
+  "milestones": {},
+  "task": [
+    {
+      "id": 1,
+      "phase": 1,
+      "bundle": "foundation",
+      "status": "in_progress",
+      "title": "QuickBEAM foundation",
+      "scores": {
+        "d": 3,
+        "b": 7,
+        "u": 8
+      },
+      "eff": 2.5,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "linear_id": "INE-51",
+      "body": "Add quickbeam + npm deps. Create `OnchainJs.Runtime` module with runtime lifecycle management: start with browser stubs, load bundles, supervised runtime in application tree. Include integration test that starts a runtime, evaluates JS, and stops cleanly.\n\nRuntime lifecycle, npm setup, browser stubs — [INE-51](https://linear.app/inetpeople/issue/INE-51).\n",
+      "cross_repo": []
+    },
+    {
+      "id": 2,
+      "phase": 2,
+      "bundle": "eth_tools",
+      "status": "pending",
+      "title": "solc-js compilation (.sol → ABI + bytecode)",
+      "scores": {
+        "d": 4,
+        "b": 9,
+        "u": 8
+      },
+      "eff": 2.13,
+      "dep_layer": 1,
+      "markers": [],
+      "depends_on": [
+        1
+      ],
+      "module": "OnchainJs.Solc",
+      "body": "Load solc-js via QuickBEAM, expose `OnchainJs.Solc.compile/2` that takes `.sol` source and returns `{:ok, %{abi: [...], bytecode: \"0x...\"}}`. Two consumers:\n\n- **onchain_evm codegen pipeline** — generate `.sol` → compile to bytecode → deploy via Signer.\n- **onchain Sleuth** (see onchain/ROADMAP.md Task 62) — compile a custom read-only `.sol` query to bytecode, hand off to `Onchain.Sleuth.query/3` which ships it in an `eth_call` for one-shot execution against live chain state.\n\nBoth paths use the same output (`bytecode` field). Sleuth takes the creation bytecode directly; deployment flows prepend it with constructor args and send via Signer.\n\nCloses codegen pipeline; also feeds onchain Sleuth.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 3,
+      "phase": 2,
+      "bundle": "eth_tools",
+      "status": "pending",
+      "title": "Uniswap v3 SDK routing (optimal swap paths, price impact)",
+      "scores": {
+        "d": 5,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.5,
+      "dep_layer": 1,
+      "markers": [],
+      "depends_on": [
+        1
+      ],
+      "module": "OnchainJs.Uniswap",
+      "body": "Load `@uniswap/v3-sdk` + `@uniswap/smart-order-router` via QuickBEAM. Expose `OnchainJs.Uniswap.route/4` for optimal swap paths. JS SDK handles tick math and multi-hop routing out of the box.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 4,
+      "phase": 2,
+      "bundle": "eth_tools",
+      "status": "pending",
+      "title": "DeFiSaver recipe builder (@defisaver/sdk)",
+      "scores": {
+        "d": 5,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.5,
+      "dep_layer": 1,
+      "markers": [],
+      "depends_on": [
+        1
+      ],
+      "body": "Load `@defisaver/sdk` via QuickBEAM. Expose recipe construction: flash loan → action sequence → repay, returning encoded calldata.\n\nFlash loan recipes → encoded calldata.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 5,
+      "phase": 2,
+      "bundle": "eth_tools",
+      "status": "pending",
+      "title": "1inch Fusion SDK (DEX aggregation)",
+      "scores": {
+        "d": 5,
+        "b": 7,
+        "u": 6
+      },
+      "eff": 1.3,
+      "dep_layer": 1,
+      "markers": [],
+      "depends_on": [
+        1
+      ],
+      "body": "Load `@1inch/fusion-sdk` via QuickBEAM. DEX aggregation across multiple protocols. Complement to Task 3.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 6,
+      "phase": 3,
+      "bundle": "cross_validation",
+      "status": "pending",
+      "title": "Aave math-utils cross-validation",
+      "scores": {
+        "d": 3,
+        "b": 5,
+        "u": 4
+      },
+      "eff": 1.5,
+      "dep_layer": 1,
+      "markers": [],
+      "depends_on": [
+        1
+      ],
+      "body": "Load `@aave/math-utils` via QuickBEAM and run the same calculations through both JS and onchain_aave's math modules. Property-based tests comparing outputs across implementations.\n\nValidate onchain_aave math against canonical JS.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 7,
+      "phase": 3,
+      "bundle": "cross_validation",
+      "status": "pending",
+      "title": "Merkle proof construction (airdrops, whitelists, storage proofs)",
+      "scores": {
+        "d": 3,
+        "b": 6,
+        "u": 5
+      },
+      "eff": 1.83,
+      "dep_layer": 1,
+      "markers": [],
+      "depends_on": [
+        1
+      ],
+      "module": "OnchainJs.Merkle",
+      "body": "Load `merkletreejs` via QuickBEAM. Expose `OnchainJs.Merkle.build_tree/1` and `prove/2` for airdrop claims and storage proofs.\n",
+      "cross_repo": []
+    }
+  ]
+}

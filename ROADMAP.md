@@ -15,61 +15,48 @@
 > **Philosophy:** Pure functions first. Wrap JS libraries with clean Elixir APIs. Consumers shouldn't need to know JS is involved.
 
 ### 📋 Current Tasks
-| Task | Status | D | B | U | Eff | Notes |
-|------|--------|---|---|---|-----|-------|
-| 1 `[CSR]` | 🔄 in-review | 3 | 7 | 8 | 2.50 🎯 | QuickBEAM foundation (runtime lifecycle, npm setup, browser stubs) — [INE-51](https://linear.app/inetpeople/issue/INE-51) |
+
+<!-- FOCUS:BEGIN -->
+**Focus phase:** 1 — Foundation (0 of 1 done · 1 in progress)
+
+**Last shipped:** no recent shipments
+
+**Up next:** none — focus phase complete or all blocked
+<!-- FOCUS:END -->
 
 ---
 
 ## Phase 1: Foundation
 
-| # | Task | Status | D | B | U | Eff | Notes |
-|---|------|--------|---|---|---|-----|-------|
-| 1 `[CSR]` | QuickBEAM foundation | 🔄 in-review | 3 | 7 | 8 | 2.50 🎯 | Runtime lifecycle, npm setup, browser stubs — [INE-51](https://linear.app/inetpeople/issue/INE-51) |
-
-**Task descriptions:**
-
-**1 — QuickBEAM foundation.** Add quickbeam + npm deps. Create `OnchainJs.Runtime` module with runtime lifecycle management: start with browser stubs, load bundles, supervised runtime in application tree. Include integration test that starts a runtime, evaluates JS, and stops cleanly.
+<!-- TASKS:BEGIN phase=1 -->
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 1 | 🔄 | 🎁 **foundation** · QuickBEAM foundation [D:3/B:7/U:8 → Eff:2.5?] 🎯 |
+<!-- TASKS:END -->
 
 ---
 
 ## Phase 2: Ethereum JS Tools
 
-| # | Task | Status | D | B | U | Eff | Notes |
-|---|------|--------|---|---|---|-----|-------|
-| 2 | solc-js compilation (`.sol` → ABI + bytecode) | ⬜ | 4 | 9 | 8 | 2.13 🎯 | Closes codegen pipeline; also feeds onchain Sleuth |
-| 3 | Uniswap v3 SDK routing (optimal swap paths, price impact) | ⬜ | 5 | 8 | 7 | 1.50 📋 | JS SDK handles tick math + multi-hop |
-| 4 | DeFiSaver recipe builder (`@defisaver/sdk`) | ⬜ | 5 | 8 | 7 | 1.50 📋 | Flash loan recipes → encoded calldata |
-| 5 | 1inch Fusion SDK (DEX aggregation) | ⬜ | 5 | 7 | 6 | 1.30 📋 | Complement to Task 3 |
-
-**Task descriptions:**
-
-**2 — solc-js compilation.** Load solc-js via QuickBEAM, expose `OnchainJs.Solc.compile/2` that takes `.sol` source and returns `{:ok, %{abi: [...], bytecode: "0x..."}}`. Two consumers:
-- **onchain_evm codegen pipeline** — generate `.sol` → compile to bytecode → deploy via Signer.
-- **onchain Sleuth** (see [onchain/ROADMAP.md](../onchain/ROADMAP.md) Task 62) — compile a custom read-only `.sol` query to bytecode, hand off to `Onchain.Sleuth.query/3` which ships it in an `eth_call` for one-shot execution against live chain state.
-
-Both paths use the same output (`bytecode` field). Sleuth takes the creation bytecode directly; deployment flows prepend it with constructor args and send via Signer.
-
-**3 — Uniswap v3 SDK routing.** Load `@uniswap/v3-sdk` + `@uniswap/smart-order-router` via QuickBEAM. Expose `OnchainJs.Uniswap.route/4` for optimal swap paths. JS SDK handles tick math and multi-hop routing out of the box.
-
-**4 — DeFiSaver recipe builder.** Load `@defisaver/sdk` via QuickBEAM. Expose recipe construction: flash loan → action sequence → repay, returning encoded calldata.
-
-**5 — 1inch Fusion SDK.** Load `@1inch/fusion-sdk` via QuickBEAM. DEX aggregation across multiple protocols.
+<!-- TASKS:BEGIN phase=2 -->
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 2 | ⬜ | 🎁 **eth_tools** · *OnchainJs.Solc* · solc-js compilation (.sol → ABI + bytecode) [D:4/B:9/U:8 → Eff:2.12?] 🎯 |
+| Task 3 | ⬜ | 🎁 **eth_tools** · *OnchainJs.Uniswap* · Uniswap v3 SDK routing (optimal swap paths, price impact) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
+| Task 4 | ⬜ | 🎁 **eth_tools** · DeFiSaver recipe builder (@defisaver/sdk) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
+| Task 5 | ⬜ | 🎁 **eth_tools** · 1inch Fusion SDK (DEX aggregation) [D:5/B:7/U:6 → Eff:1.3?] 📋 |
+<!-- TASKS:END -->
 
 ---
 
 ## Phase 3: Cross-Validation & Utilities
 
-| # | Task | Status | D | B | U | Eff | Notes |
-|---|------|--------|---|---|---|-----|-------|
-| 6 | Aave math-utils cross-validation | ⬜ | 3 | 5 | 4 | 1.50 📋 | Validate onchain_aave math against canonical JS |
-| 7 | Merkle proof construction (airdrops, whitelists, storage proofs) | ⬜ | 3 | 6 | 5 | 1.83 🚀 | `merkletreejs` via QuickBEAM |
-
-**Task descriptions:**
-
-**6 — Aave math-utils cross-validation.** Load `@aave/math-utils` via QuickBEAM and run the same calculations through both JS and onchain_aave's math modules. Property-based tests comparing outputs across implementations.
-
-**7 — Merkle proof construction.** Load `merkletreejs` via QuickBEAM. Expose `OnchainJs.Merkle.build_tree/1` and `prove/2` for airdrop claims and storage proofs.
+<!-- TASKS:BEGIN phase=3 -->
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 6 | ⬜ | 🎁 **cross_validation** · Aave math-utils cross-validation [D:3/B:5/U:4 → Eff:1.5?] 🚀 |
+| Task 7 | ⬜ | 🎁 **cross_validation** · *OnchainJs.Merkle* · Merkle proof construction (airdrops, whitelists, storage proofs) [D:3/B:6/U:5 → Eff:1.83?] 🚀 |
+<!-- TASKS:END -->
 
 ---
 
