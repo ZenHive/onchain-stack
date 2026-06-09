@@ -1,6 +1,10 @@
 # The directory Mix will write compiled artifacts to.
 /_build/
 
+# Dialyzer PLT files (mix.exs pins plt_*_path here so PLTs survive
+# `mix clean` / _build wipes).
+/priv/plts/
+
 # If you run "mix test --cover", coverage assets end up here.
 /cover/
 

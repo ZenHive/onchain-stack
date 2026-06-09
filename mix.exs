@@ -1,7 +1,7 @@
 defmodule OnchainAave.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.1.1"
   @source_url "https://github.com/ZenHive/onchain_aave"
 
   def project do
@@ -38,21 +38,21 @@ defmodule OnchainAave.MixProject do
 
   defp deps do
     [
-      {:onchain, "~> 0.5.3"},
-      {:decimal, "~> 2.0"},
-      {:descripex, "~> 0.6"},
+      {:onchain, "~> 0.7.0"},
+      {:decimal, "~> 3.1"},
+      {:descripex, "~> 0.7"},
 
       # Dev/test tooling
       {:onchain_evm, path: "../onchain_evm", only: [:dev, :test]},
       {:stream_data, "~> 1.0", only: [:dev, :test]},
       {:tidewave, "~> 0.5", only: :dev},
       {:bandit, "~> 1.0", only: :dev},
-      {:ex_unit_json, "~> 0.4.3", only: [:dev, :test], runtime: false},
+      {:ex_unit_json, "~> 0.5.0", only: [:dev, :test], runtime: false},
       {:dialyzer_json, "~> 0.1", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.0", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7.18", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:doctor, "~> 0.22", only: [:dev, :test], runtime: false},
+      {:doctor, "~> 0.23", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.39", only: :dev, runtime: false}
     ]
@@ -90,9 +90,13 @@ defmodule OnchainAave.MixProject do
 
   defp dialyzer do
     [
+      # OOM mitigation: skip transitive deps (default is :app_tree).
+      # Tidewave/bandit's HTTP stack (plug, finch, mint, gun, cowlib, etc.)
+      # is not in lib/'s call graph and bloats PLT to ~800 modules.
+      plt_add_deps: :apps_direct,
       plt_add_apps: [:mix],
-      plt_local_path: "_build/dialyzer",
-      plt_core_path: "_build/dialyzer",
+      plt_local_path: "priv/plts",
+      plt_core_path: "priv/plts",
       ignore_warnings: ".dialyzer_ignore.exs"
     ]
   end

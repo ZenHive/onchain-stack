@@ -2,23 +2,33 @@
 
 Aave V3 protocol wrappers for Elixir. Depends on `onchain` core for RPC, ABI, signing, and address utilities.
 
-@~/.claude/includes/across-instances.md
+<!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
+     harness-driven — the OTP dispatch→review→land loop is the active workflow). onchain-workspace
+     is the harness workspace add-on (7-repo roster + dependency shape), eager family-wide.
+     ethereum-rpc stays eager (host-specific node access, no skill mirror). Everything else previously imported
+     here (across-instances, worktree, task-prioritization/writing, workflow-philosophy, web-command,
+     elixir-setup, ex-unit-json, dialyzer-json, code-style, development-commands/philosophy,
+     agent-economy) is skill-on-demand via the elixir / task-driver / dev-lifecycle plugins.
+     Re-add an @-import per-surface only if Opus visibly degrades on it. See ~/.claude/setup-guide.md. -->
 @~/.claude/includes/critical-rules.md
-
-@~/.claude/includes/delegation.md
+@~/.claude/includes/harness-workflow.md
 @~/.claude/includes/onchain-workspace.md
-@~/.claude/includes/task-prioritization.md
-@~/.claude/includes/task-writing.md
-@~/.claude/includes/workflow-philosophy.md
-@~/.claude/includes/web-command.md
-@~/.claude/includes/elixir-setup.md
-@~/.claude/includes/ex-unit-json.md
-@~/.claude/includes/dialyzer-json.md
-@~/.claude/includes/code-style.md
-@~/.claude/includes/development-commands.md
-@~/.claude/includes/development-philosophy.md
 @~/.claude/includes/ethereum-rpc.md
-@~/.claude/includes/agent-economy.md
+
+## Toolchain & check commands (read before judging a build)
+
+Cross-family harness reviewers read **AGENTS.md** (auto-generated from this file), not the user's Claude skills. The check stack, run per-edit by hooks and once before a PR/merge:
+
+- `mix format --check-formatted` · `mix compile --warnings-as-errors` · `mix credo --strict` · `mix doctor --raise` · `mix sobelow --skip` (honors `.sobelow-skips`; inline `# sobelow_skip` comments are NOT honored).
+- `mix test.json --cover --cover-threshold 80 --exclude integration` — coverage gate. **Critical modules (`Aave.Math` and any signing/money path) target 95%; standard logic 80%** (per `critical-rules.md` § coverage tiers).
+- `mix dialyzer.json --quiet` — zero real warnings = pass.
+
+**The `.json` mix tasks emit JSON BY DESIGN — that is expected output, never an error or a broken setup:**
+
+- **`mix test.json`** (`ex_unit_json` dep) — ExUnit results as JSON; identical run to `mix test`. Parse it for failures; the JSON envelope itself is never a failure signal. `--cover` can emit a large per-module blob — pipe to a file (`--output /tmp/cov.json`) and `jq` the summary, don't dump it to the transcript.
+- **`mix dialyzer.json`** (`dialyzer_json` dep) — dialyzer warnings as JSON. Read the array for *real* warnings; do NOT flag the JSON output as a problem. If the encoder cannot serialize a warning shape, plain `mix dialyzer` is the authoritative check.
+
+(Claude-family agents with the user's global skills can invoke `elixir:ex-unit-json` / `elixir:dialyzer-json` for the full flag/jq reference. For cross-family harness reviewers, the notes above are self-contained.)
 
 ## Architecture
 

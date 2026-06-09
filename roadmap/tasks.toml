@@ -1,0 +1,540 @@
+schema_version = 2
+project = "onchain_aave"
+default_branch = "development"
+vision = "Aave V3 protocol wrappers for Elixir — read positions, execute actions, monitor health. Built on the onchain core library (RPC, ABI, signing, address utilities). Part of the five-package onchain family."
+
+[focus]
+phase = 3
+
+# ----------------------------------------------------------------------------
+# Phases
+# ----------------------------------------------------------------------------
+
+[phases.1]
+name = "Aave Core (Read)"
+order = 1
+status = "done"
+
+[phases.2]
+name = "Aave Actions (Write)"
+order = 2
+status = "done"
+
+[phases.3]
+name = "Math Validation"
+order = 3
+status = "in_progress"
+
+[phases.4]
+name = "Cleanup Backlog"
+order = 4
+status = "done"
+
+[phases.5]
+name = "Aave V4 Support"
+order = 5
+status = "pending"
+
+[phases.6]
+name = "V3 Write Surface Gaps"
+order = 6
+status = "pending"
+
+[phases.7]
+name = "Read-Path Multicall Adoption"
+order = 7
+status = "pending"
+
+# ----------------------------------------------------------------------------
+# Bundles
+# ----------------------------------------------------------------------------
+
+[bundles.core_read]
+phase = 1
+order = 1
+description = "Aave V3 read surface: contract registry, math conversions, pool/oracle/ui-data reads, response type structs, multi-chain addresses."
+
+[bundles.actions_write]
+phase = 2
+order = 1
+description = "Aave V3 write surface: pool supply/borrow/repay/withdraw and the testnet faucet."
+
+[bundles.math_validation]
+phase = 3
+order = 1
+description = "Cross-validate Aave.Math against Solidity (revm via onchain_evm) and Aave frontend math (@aave/math-utils via onchain_js)."
+
+[bundles.cleanup]
+phase = 4
+order = 1
+description = "v0.1.0 staged-review polish: shared helpers, named address attributes, test-helper consolidation, centralized dialyzer suppressions."
+
+[bundles.v4_support]
+phase = 5
+order = 1
+description = "Aave V4 Hub-and-Spoke support: address registry, read-surface selection, Hub/Spoke/Oracle/TokenizationSpoke reads, PositionManager writes, integration tests."
+
+[bundles.v3_write_gaps]
+phase = 6
+order = 1
+description = "V3 write-surface gaps observed on-chain: credit-delegation debt-token wrapper, defi-skills action-surface mining."
+
+[bundles.multicall]
+phase = 7
+order = 1
+description = "Adopt Onchain.Multicall in Aave batch read paths where the protocol does not pre-batch."
+
+# ============================================================================
+# Phase 1 — Aave Core (Read)
+# ============================================================================
+
+[[task]]
+id = 6
+phase = 1
+bundle = "core_read"
+status = "done"
+title = "Contract address registry (mainnet + network param)"
+scores = { d = 2, b = 8, u = 7 }
+module = "Onchain.Aave.Contracts"
+implemented = "as specified — mainnet address registry with network parameter."
+
+[[task]]
+id = 7
+phase = 1
+bundle = "core_read"
+status = "done"
+title = "Aave math conversions (to_usd, to_ltv, to_ray)"
+scores = { d = 3, b = 9, u = 8 }
+module = "Onchain.Aave.Math"
+implemented = "as specified — to_usd, to_ltv, to_ray conversions over Decimal.t()."
+
+[[task]]
+id = 8
+phase = 1
+bundle = "core_read"
+status = "done"
+title = "Pool read calls (getUserAccountData) + integration tests"
+scores = { d = 5, b = 9, u = 8 }
+module = "Onchain.Aave.Pool"
+implemented = "as specified — getUserAccountData read path with integration tests."
+
+[[task]]
+id = "8b"
+phase = 1
+bundle = "core_read"
+status = "done"
+title = "Split unit and integration tests into separate files"
+scores = { d = 2, b = 4, u = 5 }
+module = "test/"
+implemented = "as specified — unit and integration tests split into separate files."
+
+[[task]]
+id = 9
+phase = 1
+bundle = "core_read"
+status = "done"
+title = "UserAccountData response struct"
+scores = { d = 5, b = 8, u = 7 }
+module = "Onchain.Aave.Types.UserAccountData"
+implemented = "as specified — UserAccountData response struct."
+
+[[task]]
+id = 10
+phase = 1
+bundle = "core_read"
+status = "done"
+title = "UiPoolDataProvider calls + remaining type structs"
+scores = { d = 5, b = 8, u = 7 }
+module = "Onchain.Aave.UiPoolDataProvider"
+implemented = "as specified — UiPoolDataProvider bulk reads plus remaining type structs (AggregatedReserveData, BaseCurrencyInfo, UserReserveData)."
+
+[[task]]
+id = 11
+phase = 1
+bundle = "core_read"
+status = "done"
+title = "Oracle + Chainlink price feeds"
+scores = { d = 5, b = 7, u = 6 }
+module = "Onchain.Aave.Oracle"
+implemented = "as specified — getAssetPrice plus Chainlink price feeds."
+
+[[task]]
+id = 21
+phase = 1
+bundle = "core_read"
+status = "done"
+title = "Multi-chain Aave addresses (Arbitrum, Optimism, Base, Polygon, Avalanche)"
+scores = { d = 2, b = 7, u = 7 }
+module = "Onchain.Aave.Contracts"
+implemented = "as specified — multi-chain address coverage across Arbitrum, Optimism, Base, Polygon, Avalanche."
+
+# ============================================================================
+# Phase 2 — Aave Actions (Write)
+# ============================================================================
+
+[[task]]
+id = 14
+phase = 2
+bundle = "actions_write"
+status = "done"
+title = "Pool write calls (supply, borrow, repay, withdraw) + unit tests"
+scores = { d = 6, b = 9, u = 8 }
+module = "Onchain.Aave.Pool"
+implemented = "as specified — supply/borrow/repay/withdraw write calls with unit tests."
+
+[[task]]
+id = "14b"
+phase = 2
+bundle = "actions_write"
+status = "done"
+title = "Pool write Sepolia integration tests"
+scores = { d = 4, b = 7, u = 6 }
+module = "Onchain.Aave.Pool"
+implemented = "as specified — Sepolia integration tests for pool writes."
+
+[[task]]
+id = 35
+phase = 2
+bundle = "actions_write"
+status = "done"
+title = "Aave testnet faucet module (mint test ERC-20 tokens)"
+scores = { d = 2, b = 4, u = 3 }
+module = "Onchain.Aave.Faucet"
+implemented = "as specified — testnet faucet module minting test ERC-20 tokens."
+
+# ============================================================================
+# Phase 3 — Math Validation
+# ============================================================================
+
+[[task]]
+id = 40
+phase = 3
+bundle = "math_validation"
+status = "done"
+title = "Port Aave V3 WadRayMath + MathUtils to Elixir"
+scores = { d = 5, b = 8, u = 9 }
+module = "Onchain.Aave.Math"
+created_at = "2026-04-20"
+body = """
+Port Aave V3's rayMul, rayDiv, wadMul, wadDiv, calculateLinearInterest, calculateCompoundedInterest from Solidity (aave-v3-core/contracts/protocol/libraries/math/) to Elixir. Preserve Aave's rounding semantics (half-up at the ray/wad midpoint — not trivial). Prerequisite for Task 41; the current Math module holds only trivial div_pow10 scale conversions with nothing worth oracle-validating.
+"""
+implemented = "Integer-native port of WadRayMath + MathUtils; source pinned to aave-v3-origin@1e3d70c. See CHANGELOG.md#task-40-port-aave-v3-wadraymath--mathutils-to-elixir."
+shipped_in = "f5f8599"
+
+[[task]]
+id = "40b"
+phase = 3
+bundle = "math_validation"
+status = "blocked"
+title = "Port missing WadRayMath ceil/floor variants on demand"
+scores = { d = 3, b = 4, u = 3 }
+module = "Onchain.Aave.Math"
+blocked_reason = "Gated until a caller from Pool/TokenMath call paths in this repo needs the floor/ceil variants."
+depends_on = [40]
+created_at = "2026-04-20"
+body = """
+rayMulFloor / rayMulCeil / rayDivFloor / rayDivCeil (from WadRayMath.sol) and mulDivCeil (from MathUtils.sol) exist in the pinned aave-v3-origin@1e3d70c source but aren't used by any Task 40 entrypoint, so Task 41's revm harness won't surface them as a gap. They ARE used by TokenMath.sol, ReserveLogic.sol, GenericLogic.sol, LiquidationLogic.sol. Gated until a caller from Pool/TokenMath call paths in this repo needs them; port minimally on demand with matching round-half-up semantics and revm cross-validation.
+"""
+
+[[task]]
+id = 41
+phase = 3
+bundle = "math_validation"
+status = "done"
+title = "Cross-validate Aave.Math via revm against on-chain Aave V3"
+scores = { d = 4, b = 7, u = 6 }
+module = "test/onchain/aave/math_revm_test.exs"
+depends_on = [40]
+created_at = "2026-04-20"
+body = """
+Repeat-with-revm cross-validation harness. Vendor a Solidity wrapper inlining Aave V3's 8 Layer-2 math function bodies verbatim from aave-v3-origin@1e3d70c; compile once with solc 0.8.10; inject runtime bytecode at a fake address via Onchain.EVM.simulate_call/3's state_overrides["code"]. For each function: deterministic vectors (zero, identity, midpoint rounding) plus StreamData random runs, assert bit-exact equality against Onchain.Aave.Math.
+"""
+implemented = "revm cross-validation harness with zero-tolerance equality across deterministic + StreamData property vectors for all 8 Layer-2 functions; SHA256-pinned compiled wrapper bytecode verified at setup_all. See CHANGELOG.md#task-41-revm-cross-validation-of-aavemath."
+shipped_in = "afad187"
+
+[[task]]
+id = 42
+phase = 3
+bundle = "math_validation"
+status = "pending"
+title = "V4 math cross-validation via revm (V4 live on mainnet 2026-03-30)"
+scores = { d = 4, b = 7, u = 7 }
+assignee = "codex"
+module = "Onchain.Aave.Math.V4"
+depends_on = [40]
+created_at = "2026-04-20"
+body = """
+V4 is live on Ethereum mainnet as of 2026-03-30. Repeat Task 41's harness against V4's math library: pin a mainnet block post-launch, call the V4 math contracts directly via Onchain.EVM.simulate_call/3, assert equality with a V4-specific Elixir port. Port V4-specific variants under Onchain.Aave.Math.V4 if V4's math diverged from V3. state_overrides["code"] bytecode injection is now a secondary fallback (for variants to test before mainnet exposure), not the primary path. V4 contract addresses come from V4_SCOPING.md — the address book does not flag a separate math-library constant, so first locate the WadRayMath-equivalent call site (likely the LIQUIDATION_LOGIC external library at 0x88dF535473C5adf1f57789734A05E555F7Deb8DB, or inlined in Hub/Spoke bytecode).
+"""
+
+[[task]]
+id = 43
+phase = 3
+bundle = "math_validation"
+status = "blocked"
+title = "Cross-validate aggregation helpers via @aave/math-utils (QuickBEAM)"
+scores = { d = 4, b = 6, u = 4 }
+module = "Onchain.Aave.Summary"
+blocked_reason = "Gated until onchain_aave grows off-chain aggregation helpers; no V4 JS lib as of 2026-04-20 (re-check before acting)."
+created_at = "2026-04-20"
+body = """
+When onchain_aave grows off-chain aggregation helpers (e.g. Onchain.Aave.Summary.format_user_summary/2, projected APY, weighted reserve averages — anything Aave's UI computes off-chain), validate them against @aave/math-utils via onchain_js (QuickBEAM). Load the npm bundle, call formatUserSummaryAndIncentives and friends with identical inputs, compare to Elixir output within a documented tolerance (BigNumber→Decimal conversion may introduce sub-wei noise). Gated because the helpers don't exist yet. V2/V3 only today; re-check V4 JS availability before acting.
+"""
+
+# ============================================================================
+# Phase 4 — Cleanup Backlog
+# ============================================================================
+
+[[task]]
+id = 36
+phase = 4
+bundle = "cleanup"
+status = "done"
+title = "Extract shared Pool write helper (send_pool_tx/4 across supply/withdraw/borrow/repay)"
+scores = { d = 3, b = 6, u = 5 }
+module = "Onchain.Aave.Pool"
+body = """
+supply, withdraw, borrow, repay in pool.ex share identical with-chain structure (validate asset → validate obo/to → lookup address → encode calldata → send). Extract a private send_pool_tx/4 taking the ABI sig + args. Consider whether Faucet.mint should share the same path. Keep backwards-compatible public APIs.
+"""
+implemented = "Extracted shared send_pool_tx/4 helper across supply/withdraw/borrow/repay. See CHANGELOG.md#task-36-extract-shared-pool-write-helper."
+shipped_in = "963c35c"
+
+[[task]]
+id = 37
+phase = 4
+bundle = "cleanup"
+status = "done"
+title = "Named module attributes for canonical Aave V3 pool/provider addresses"
+scores = { d = 1, b = 5, u = 4 }
+module = "Onchain.Aave.Contracts"
+implemented = "Named module attributes for canonical Aave V3 pool/provider addresses. See CHANGELOG.md#task-37-named-canonical-aave-v3-addresses."
+
+[[task]]
+id = 38
+phase = 4
+bundle = "cleanup"
+status = "done"
+title = "Consolidate Pool write integration test helpers + name testnet magic numbers"
+scores = { d = 2, b = 4, u = 3 }
+module = "test/onchain/aave/pool_write_integration_test.exs"
+body = """
+pool_write_integration_test.exs duplicates the approve+supply preamble across borrow and repay describe blocks. Extract supply_weth_collateral!/4. While there, add TODO:-tagged rationale for @gas_limit_* constants (testnet-calibrated) and @oracle_jitter_tolerance "0.05" (empirical 5% slack).
+"""
+implemented = "Consolidated integration test helpers and named testnet magic numbers. See CHANGELOG.md#task-38-consolidate-pool-write-integration-test-helpers."
+shipped_in = "963c35c"
+
+[[task]]
+id = 39
+phase = 4
+bundle = "cleanup"
+status = "done"
+title = "Move per-module @dialyzer suppressions into .dialyzer_ignore.exs"
+scores = { d = 2, b = 3, u = 4 }
+module = "lib/onchain/aave/{pool,oracle,ui_pool_data_provider,faucet}.ex"
+body = """
+pool.ex, oracle.ex, ui_pool_data_provider.ex each carry per-module @dialyzer suppressions for the Signet.Hex / ABI.decode_response no_return() cascade. Move them into .dialyzer_ignore.exs so the underlying upstream issue is tracked in one place. See also: sibling onchain — a FIXME(upstream) on the Signet.Hex spec would remove the need entirely.
+"""
+implemented = "Centralized dialyzer cascade suppressions into .dialyzer_ignore.exs. See CHANGELOG.md#task-39-centralize-dialyzer-cascade-suppressions."
+shipped_in = "963c35c"
+
+# ============================================================================
+# Phase 5 — Aave V4 Support
+# ============================================================================
+
+[[task]]
+id = 44
+phase = 5
+bundle = "v4_support"
+status = "done"
+title = "Research V4 Hub-and-Spoke contract surface and scope the V4 support phase"
+scores = { d = 3, b = 7, u = 8 }
+module = "V4_SCOPING.md"
+created_at = "2026-04-20"
+implemented = "Scoped V4 Hub-and-Spoke surface; produced V4_SCOPING.md and implementation Tasks 45–52. See CHANGELOG.md#task-44-v4-hub-and-spoke-scoping."
+
+[[task]]
+id = 45
+phase = 5
+bundle = "v4_support"
+status = "pending"
+title = "Extend Onchain.Aave.Contracts with V4 address keys"
+scores = { d = 4, b = 7, u = 8 }
+assignee = "cursor"
+module = "Onchain.Aave.Contracts"
+created_at = "2026-04-20"
+body = """
+Extend Onchain.Aave.Contracts to expose every V4 address enumerated in V4_SCOPING.md — infrastructure, Position Managers, Hubs, Spokes, Tokenization Spokes, per-Spoke oracles. Decide the key shape: flat atoms for the ~20 singleton contracts (e.g. :v4_core_hub), nested lookup for the 31 Tokenization Spokes (e.g. Contracts.v4_tokenization_spoke(:core, :weth, network: :ethereum)) to avoid flooding the atom registry. Preserve the existing V3 lookup API (don't break address/2 callers). Tests: look up representative addresses end-to-end. Prerequisite for every other V4 task.
+"""
+
+[[task]]
+id = 46
+phase = 5
+bundle = "v4_support"
+status = "pending"
+title = "Select V4 read surface by diffing IHub/ISpoke/IAaveOracle/ITokenizationSpoke against V3 IPool"
+scores = { d = 3, b = 6, u = 7 }
+markers = ["parallel"]
+assignee = "grok"
+module = "V4_SCOPING.md"
+depends_on = [45]
+created_at = "2026-04-20"
+body = """
+Read the V4 interface files from github.com/aave/aave-v4/src/{hub,spoke,config-engine}/interfaces/ (enumerated in V4_SCOPING.md § Sources) and diff against V3's IPool + IUiPoolDataProvider. Produce a mapping table: for each V4 function, whether it replaces a V3 function, is new, or has no V3 equivalent. Output feeds Tasks 47–50. Open questions to resolve: (a) does V4 have a UiPoolDataProvider analog, (b) which Hub/Spoke reads reproduce V3's getUserAccountData semantics. Research task, no Elixir code.
+"""
+
+[[task]]
+id = 47
+phase = 5
+bundle = "v4_support"
+status = "pending"
+title = "Implement Onchain.Aave.V4.Hub read wrapper"
+scores = { d = 4, b = 6, u = 5 }
+markers = ["parallel"]
+assignee = "cursor"
+module = "Onchain.Aave.V4.Hub"
+depends_on = [45, 46]
+created_at = "2026-04-20"
+body = """
+Wrap the Hub-level reads selected in Task 46 — likely: member Spokes, credit-line inventory and caps, Hub rate environment / utilization. Three Hubs, one module. Unit tests only at this stage.
+"""
+
+[[task]]
+id = 48
+phase = 5
+bundle = "v4_support"
+status = "pending"
+title = "Implement Onchain.Aave.V4.Spoke reads + V4 types"
+scores = { d = 5, b = 7, u = 7 }
+markers = ["parallel"]
+assignee = "codex"
+module = "Onchain.Aave.V4.Spoke"
+depends_on = [45, 46]
+created_at = "2026-04-20"
+body = """
+Wrap Spoke reads (collateral set, borrowable set, per-Spoke caps, per-user health/position data). Most complex V4 read module; ship the V4 type structs (V4.Types.SpokeUserData, V4.Types.SpokeReserveData — shaped per Task 46's findings). If the module + types together exceed a single session's scope, split on the axis V4.Types.* → separate task.
+"""
+
+[[task]]
+id = 49
+phase = 5
+bundle = "v4_support"
+status = "pending"
+title = "Implement Onchain.Aave.V4.Oracle wrapper (Spoke-scoped)"
+scores = { d = 3, b = 5, u = 5 }
+markers = ["parallel"]
+assignee = "grok"
+module = "Onchain.Aave.V4.Oracle"
+depends_on = [45, 46]
+created_at = "2026-04-20"
+body = """
+Onchain.Aave.V4.Oracle takes a Spoke address (not a network) because V4 oracles are Spoke-scoped. Mirror the V3 Oracle function shape where possible: get_asset_price/2, get_asset_prices/2, get_source_of_asset/2, get_base_currency*, get_fallback_oracle/1, plus direct Chainlink aggregator reads. Unit tests.
+"""
+
+[[task]]
+id = 50
+phase = 5
+bundle = "v4_support"
+status = "pending"
+title = "Implement Onchain.Aave.V4.TokenizationSpoke reads (ERC-4626 share accounting)"
+scores = { d = 3, b = 5, u = 5 }
+markers = ["parallel"]
+assignee = "cursor"
+module = "Onchain.Aave.V4.TokenizationSpoke"
+depends_on = [45, 46]
+created_at = "2026-04-20"
+body = """
+Tokenization Spokes are ERC-4626 vaults — wrap totalAssets, convertToAssets, convertToShares, previewDeposit, previewRedeem, and any V4-specific metadata exposed by ITokenizationSpoke. Also ship a lookup(hub, asset) helper given there are 31 of these. Unit tests.
+"""
+
+[[task]]
+id = 51
+phase = 5
+bundle = "v4_support"
+status = "pending"
+title = "Implement Onchain.Aave.V4.PositionManager ergonomic write wrappers (supply/borrow/repay analogs)"
+scores = { d = 5, b = 8, u = 7 }
+assignee = "cursor"
+model = "claude-opus-4-8-thinking-high"
+module = "Onchain.Aave.V4.PositionManager"
+depends_on = [45, 46, 47, 48]
+created_at = "2026-04-20"
+body = """
+Primary user-facing write surface. Wrap the Giver / Taker / Config / NativeTokenGateway / SignatureGateway entrypoints for the common supply/borrow/repay/withdraw flows. Likely needs to be split across two sessions if all five managers land at once — start with Giver + Taker (the primary supply/borrow flow) and gate the rest as a follow-on if scope grows. Depends on Tasks 47 + 48 (needs to know what Hub/Spoke state to reference). Design constraint: should compose cleanly when executed under DELEGATECALL from a Safe (no storage assumptions about msg.sender identity vs. Safe proxy).
+"""
+
+[[task]]
+id = 52
+phase = 5
+bundle = "v4_support"
+status = "blocked"
+title = "V4 integration tests (mainnet forked reads; gated on Sepolia V4 deployment for writes)"
+scores = { d = 4, b = 6, u = 5 }
+module = "test/onchain/aave/v4/"
+blocked_reason = "Write tests gated until Aave deploys V4 on a testnet — none exists as of 2026-04-20."
+depends_on = [47, 48, 49, 50]
+created_at = "2026-04-20"
+body = """
+Full read-path tests against a mainnet-forked RPC for Hubs, Spokes, Oracles, Tokenization Spokes. Writes stay gated until Aave deploys V4 on a testnet — none exists as of 2026-04-20. When a V4 testnet appears, add Sepolia-style write integration tests mirroring pool_write_integration_test.exs.
+"""
+
+# ============================================================================
+# Phase 6 — V3 Write Surface Gaps
+# ============================================================================
+
+[[task]]
+id = 53
+phase = 6
+bundle = "v3_write_gaps"
+status = "pending"
+title = "Onchain.Aave.DebtToken — wrap approveDelegation + borrowAllowance on variable/stable debt tokens"
+scores = { d = 3, b = 6, u = 6 }
+assignee = "grok"
+module = "Onchain.Aave.DebtToken"
+created_at = "2026-04-22"
+body = """
+Aave V3 credit delegation (approveDelegation(delegatee, amount) on the variable/stable debt token) lets a position owner grant another address the right to Pool.borrow(..., onBehalfOf=owner) against the owner's collateral. Observed on-chain 2026-04-22 — a real migration-off-automation flow the current write surface doesn't support.
+
+Onchain.Aave.Pool covers supply/borrow/repay/withdraw but the delegation mechanism lives on the debt-token contract, not Pool. Build a thin wrapper exposing approve_delegation/4 (write) and borrow_allowance/3 (read) against the variable and stable debt token addresses. Debt-token addresses come from Pool.getReserveData(asset).variableDebtTokenAddress / .stableDebtTokenAddress — consider a helper that resolves (asset, rate_mode) → debt_token_address. Integration test on Sepolia mirroring pool_write_integration_test shape.
+
+Context observed 2026-04-22 (same Safe, end-to-end USDC→USDS debt swap): three user-signed approveDelegation txs each to a different counterfactual CREATE2 adapter (Aave's UI re-derives the salt per session/amount, so allowances are not reusable). Implications: (a) approve_delegation/4 is the 80% feature; (b) zero-out revocation (approve_delegation(debt_token, delegatee, 0, …)) is mandatory hygiene — incomplete sessions leave dangling allowances to dead CREATE2 addresses; (c) a future helper could wrap "revoke all orphan delegations on a debt token for this account" by scanning BorrowAllowanceDelegated logs — nice-to-have, not core.
+"""
+
+[[task]]
+id = 54
+phase = 6
+bundle = "v3_write_gaps"
+status = "pending"
+title = "Mine defi-skills:intent-to-transaction action surface for onchain_aave coverage gaps"
+scores = { d = 3, b = 8, u = 7 }
+assignee = "human"
+module = "(cross-cutting research)"
+created_at = "2026-04-30"
+acceptance_criteria = [
+  "A 'Proposed additions from defi-skills mining' section lands in this roadmap listing each candidate task with D/B/U scores, the corresponding defi-skills action(s), and a coverage-status note (already-covered / partial / gap)",
+  "User merges accepted entries into V3 Write Surface Gaps",
+]
+out_of_scope = [
+  "Any Onchain.Aave.* code edits — read-only discovery + scoring only",
+]
+body = """
+Planted 2026-04-30 from a cartouche session surveying cross-repo applicability of the defi-skills skill. Self-contained discovery exercise — execute from a fresh onchain_aave Claude Code session so this repo's CLAUDE.md, hooks, and Aave V3 fixtures are loaded.
+
+Prompt for the executing session: Invoke /defi-skills:intent-to-transaction to load the skill, then run `defi-skills actions --json` to enumerate the supported action surface (~50 actions across Aave, Uniswap, Lido, Compound, Balancer, Pendle, EigenLayer, Curve, MakerDAO, Rocket Pool, Fibrous, WETH). Map relevant actions to onchain_aave's scope: direct parity with defi-skills' 7 aave_* actions — aave_supply, aave_withdraw, aave_borrow, aave_repay, aave_set_collateral, aave_repay_with_atokens, aave_claim_rewards. For each, check whether Onchain.Aave.* already covers it (read calldata-construction details from the action's JSON spec, compare against Onchain.Aave.Pool / sibling modules); flag any gap as a candidate roadmap entry. Also note V3 Pool functions exposed by defi-skills we don't model yet (interest-rate-mode toggling, eMode category selection, repay-with-permit). For each gap, propose a roadmap entry with D/B/U scoring. Read-only — discovery + scoring only, no code edits. The skill is already installed (pip install defi-skills); no new deps. Companion tasks were planted in hieroglyph, onchain, and onchain_evm ROADMAPs the same day.
+"""
+
+# ============================================================================
+# Phase 7 — Read-Path Multicall Adoption
+# ============================================================================
+
+[[task]]
+id = 55
+phase = 7
+bundle = "multicall"
+status = "pending"
+title = "Adopt Onchain.Multicall in Aave batch read paths"
+scores = { d = 3, b = 6, u = 6 }
+assignee = "cursor"
+module = "Onchain.Aave.*"
+body = """
+Onchain.Multicall is already shipped in the core onchain library. Audit Onchain.Aave.* read modules and adopt it where the protocol does not pre-batch (skip places like UiPoolDataProvider.get_reserves_data where Aave's own contracts already aggregate). Ship at least one batched read helper with unit + integration tests; or, if the audit shows no real wins, document the rationale in module docs and close.
+"""

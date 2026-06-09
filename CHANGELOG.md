@@ -6,6 +6,17 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Dependency updates
+
+Updated all dependencies to latest (`@version` → `0.1.1`). Every dep now reports up-to-date via `mix hex.outdated`:
+
+- **onchain** `0.5.3` → `0.7.0` (core in-stack dep) — cascades **cartouche** → `0.2.2`, and requires `decimal ~> 3.1.1` + `descripex ~> 0.7.0`, which unblocked both:
+  - **decimal** `~> 2.0` → `~> 3.1` (now `3.1.1`) — previously held back by the old onchain/doctor `~> 2.0` floor; the onchain 0.7 bump + doctor 0.23 (`decimal ~> 3.1`) cleared it.
+  - **descripex** `~> 0.6` → `~> 0.7` (now `0.7.0`).
+- Dev/test tooling: **doctor** `~> 0.22` → `~> 0.23` (`0.23.0`), **ex_unit_json** `~> 0.4.3` → `~> 0.5.0` (`0.5.0` — the last remaining `hex.outdated` block; 0.5.0 renames the summary key `failures` → `failed`), plus **credo** `1.7.19`, **bandit** `1.12.0`, **sobelow** `0.14.1`, **styler** `1.11.0`, **dialyzer_json** `0.2.1`, **ex_doc** `0.40.3`.
+
+Verified: `mix compile --warnings-as-errors` clean; `mix test.json --exclude integration` → 185 passed, 0 failed.
+
 ### Task 41: revm cross-validation of `Aave.Math`
 
 **Completed** | [D:4/B:7/U:6 → Eff:1.63] 🚀
