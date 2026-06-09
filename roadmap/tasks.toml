@@ -540,7 +540,7 @@ Prompt for the executing session: Invoke /defi-skills:intent-to-transaction to l
 id = 55
 phase = 7
 bundle = "multicall"
-status = "pending"
+status = "done"
 title = "Adopt Onchain.Multicall in Aave batch read paths"
 scores = { d = 3, b = 6, u = 6 }
 assignee = "cursor"
@@ -548,3 +548,8 @@ module = "Onchain.Aave.*"
 body = """
 Onchain.Multicall is already shipped in the core onchain library. Audit Onchain.Aave.* read modules and adopt it where the protocol does not pre-batch (skip places like UiPoolDataProvider.get_reserves_data where Aave's own contracts already aggregate). Ship at least one batched read helper with unit + integration tests; or, if the audit shows no real wins, document the rationale in module docs and close.
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1780997382319-bd2abdab, 5c60dbcce677ee9735004a8f3ab744b5e7d4ea5e)."
+delivered_by = "cursor"
+verified = true
+done_at = "2026-06-09"
+shipped_in = "5c60dbcce677ee9735004a8f3ab744b5e7d4ea5e"

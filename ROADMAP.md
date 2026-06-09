@@ -123,7 +123,7 @@ Consumer patterns observed on-chain that the current V3 write surface doesn't co
 <!-- TASKS:BEGIN phase=7 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 55 | ⬜ | 🎁 **multicall** · *Onchain.Aave.** · Adopt Onchain.Multicall in Aave batch read paths [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
+| Task 55 | ✅ | 🎁 **multicall** · *Onchain.Aave.** · Adopt Onchain.Multicall in Aave batch read paths [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
 <!-- TASKS:END -->
 
 ---
