@@ -1,0 +1,664 @@
+{
+  "schema_version": 2,
+  "project": "onchain_evm",
+  "default_branch": "development",
+  "vision": "EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Elixir via Rust NIFs.",
+  "focus": {
+    "phase": 2
+  },
+  "phases": {
+    "1": {
+      "name": "Foundation",
+      "order": 1,
+      "status": "done"
+    },
+    "2": {
+      "name": "Quality & Reliability Improvements",
+      "order": 2,
+      "status": "in_progress"
+    },
+    "3": {
+      "name": "Standalone & Release",
+      "order": 3,
+      "status": "in_progress"
+    }
+  },
+  "bundles": {
+    "bundle1_evm_input_validation": {
+      "phase": 2,
+      "order": 1,
+      "description": "Bundle 1: EVM Input Validation — string block tags, rpc_url validation, strict option validation."
+    },
+    "bundle2_rust_safety_hardening": {
+      "phase": 2,
+      "order": 2,
+      "description": "Bundle 2: Rust Safety Hardening — error handling, input size limits, NIF error taxonomy. Hex-release blocker."
+    },
+    "bundle3_elixir_code_quality": {
+      "phase": 2,
+      "order": 3,
+      "description": "Bundle 3: Elixir Code Quality — eliminate duplication, typed error unions, dead-code removal."
+    },
+    "bundle4_documentation_specs": {
+      "phase": 2,
+      "order": 4,
+      "description": "Bundle 4: Documentation & Specs — typespecs, generator option docs, Rust module docs, batch partial-failure semantics."
+    },
+    "bundle5_evm_input_validation_round2": {
+      "phase": 2,
+      "order": 5,
+      "description": "Bundle 5: EVM Input Validation Round 2 — discovered 2026-04-22 during onchain_aave Task 41 (first real consumer integration). All four fit the 'NIF catches what Elixir should' pattern — validation that happens after the NIF boundary with bare-string reasons, when it should happen at the Elixir layer with tagged error atoms."
+    },
+    "contract_codegen": {
+      "phase": 1,
+      "order": 1,
+      "description": "Contract Codegen — drop a .sol file, get a typed Elixir module. Rustler NIF using Alloy to parse Solidity at compile time, Elixir macros to generate typed wrappers."
+    },
+    "local_evm_simulation": {
+      "phase": 1,
+      "order": 2,
+      "description": "Local EVM Simulation — simulate contract execution locally without hitting the chain. Reuses the Rustler NIF infrastructure from codegen."
+    },
+    "standalone": {
+      "phase": 3,
+      "order": 1,
+      "description": "Standalone Tasks — Rust unit tests, runtime reuse, clippy CI, codegen extensions, hex-release prep."
+    }
+  },
+  "milestones": {},
+  "task": [
+    {
+      "id": 24,
+      "phase": 1,
+      "bundle": "contract_codegen",
+      "status": "done",
+      "title": "Rustler NIF: Solidity ABI parser via Alloy",
+      "scores": {
+        "d": 5,
+        "b": 9,
+        "u": 9
+      },
+      "eff": 1.8,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.Solidity (native)",
+      "implemented": "Shipped a Rustler NIF (native/onchain_solidity) that parses Solidity ABI via Alloy, exposing the Onchain.Solidity native module.",
+      "cross_repo": []
+    },
+    {
+      "id": 25,
+      "phase": 1,
+      "bundle": "contract_codegen",
+      "status": "done",
+      "title": "Contract codegen macro (`use Onchain.Contract.Generator, sol: \"...\"`)",
+      "scores": {
+        "d": 6,
+        "b": 10,
+        "u": 9
+      },
+      "eff": 1.58,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.Contract.Generator",
+      "implemented": "Shipped Onchain.Contract.Generator — an Elixir macro that turns a .sol file into a typed Elixir module at compile time. Includes struct name collision handling (IA.Data, IB.Data qualified names), recursive struct-array from_raw/1 conversion, and runtime-callable enum constants.",
+      "cross_repo": []
+    },
+    {
+      "id": "25b",
+      "phase": 1,
+      "bundle": "contract_codegen",
+      "status": "done",
+      "title": "Solidity import/remapping resolution for multi-file codegen",
+      "scores": {
+        "d": 5,
+        "b": 9,
+        "u": 8
+      },
+      "eff": 1.7,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.Contract.Generator",
+      "implemented": "Added Solidity import/remapping resolution to Onchain.Contract.Generator, enabling multi-file codegen.",
+      "cross_repo": []
+    },
+    {
+      "id": 26,
+      "phase": 1,
+      "bundle": "local_evm_simulation",
+      "status": "done",
+      "title": "Rustler NIF: revm local EVM execution",
+      "scores": {
+        "d": 6,
+        "b": 10,
+        "u": 9
+      },
+      "eff": 1.58,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.EVM (native)",
+      "implemented": "Shipped a Rustler NIF (native/onchain_evm) using revm for local EVM execution, exposing the Onchain.EVM native module.",
+      "cross_repo": []
+    },
+    {
+      "id": 27,
+      "phase": 1,
+      "bundle": "local_evm_simulation",
+      "status": "done",
+      "title": "Debug/trace API module (trace transaction, trace call, storage reads)",
+      "scores": {
+        "d": 4,
+        "b": 7,
+        "u": 6
+      },
+      "eff": 1.63,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.Trace",
+      "implemented": "Shipped Onchain.Trace with debug/trace APIs: trace_transaction, trace_call, and storage_at (storage reads).",
+      "cross_repo": []
+    },
+    {
+      "id": 34,
+      "phase": 2,
+      "bundle": "bundle1_evm_input_validation",
+      "status": "done",
+      "title": "Support string block tags (`\"latest\"`, `\"finalized\"`) in EVM — consistent with `Onchain.Trace`",
+      "scores": {
+        "d": 4,
+        "b": 7,
+        "u": 8
+      },
+      "eff": 1.88,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.EVM",
+      "implemented": "Onchain.EVM now accepts string block tags (\"latest\", \"finalized\"), consistent with Onchain.Trace.",
+      "cross_repo": []
+    },
+    {
+      "id": 35,
+      "phase": 2,
+      "bundle": "bundle1_evm_input_validation",
+      "status": "done",
+      "title": "Validate `rpc_url` input — reject empty/invalid strings before reaching NIF",
+      "scores": {
+        "d": 4,
+        "b": 8,
+        "u": 8
+      },
+      "eff": 2.0,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.EVM",
+      "implemented": "Onchain.EVM now validates rpc_url at the Elixir boundary, rejecting empty/invalid strings before they reach the NIF.",
+      "cross_repo": []
+    },
+    {
+      "id": 36,
+      "phase": 2,
+      "bundle": "bundle1_evm_input_validation",
+      "status": "done",
+      "title": "Fix silent value dropping — error on invalid `value`, `gas_limit`, `state_overrides` instead of silently ignoring",
+      "scores": {
+        "d": 5,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.5,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.EVM, Onchain.Trace",
+      "implemented": "Onchain.EVM and Onchain.Trace now error on invalid value, gas_limit, and state_overrides instead of silently dropping them (strict option validation).",
+      "cross_repo": []
+    },
+    {
+      "id": 30,
+      "phase": 2,
+      "bundle": "bundle2_rust_safety_hardening",
+      "status": "done",
+      "title": "Add RPC call timeouts — configure `reqwest::Client` with timeout to prevent indefinite blocking",
+      "scores": {
+        "d": 5,
+        "b": 9,
+        "u": 8
+      },
+      "eff": 1.7,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "native/onchain_evm",
+      "implemented": "Onchain.EVM configures reqwest::Client with a per-request timeout (default 30s, override via :timeout_ms); timeouts surface as {:error, {:timeout, msg}} instead of hanging the NIF. Completed 2026-04-19.",
+      "cross_repo": []
+    },
+    {
+      "id": 31,
+      "phase": 2,
+      "bundle": "bundle2_rust_safety_hardening",
+      "status": "pending",
+      "title": "Replace `.expect()` with proper error handling — 6× in EVM encoder, 1× in Solidity `map_put`",
+      "scores": {
+        "d": 5,
+        "b": 9,
+        "u": 7
+      },
+      "eff": 1.6,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Both native crates",
+      "body": "Replace `.expect()` panics with proper error handling — 6 occurrences in the EVM encoder and 1 in Solidity `map_put`. Hex-release blocker (see 'Path to hex.pm Release' — Bundle 2 must close before publish; public API contracts around reliability are hard to change post-release).",
+      "cross_repo": []
+    },
+    {
+      "id": 32,
+      "phase": 2,
+      "bundle": "bundle2_rust_safety_hardening",
+      "status": "pending",
+      "title": "Add input size limits — reject oversized Solidity source files",
+      "scores": {
+        "d": 4,
+        "b": 7,
+        "u": 6
+      },
+      "eff": 1.63,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "native/onchain_solidity",
+      "body": "Reject oversized Solidity source files before parsing. Hex-release blocker (see 'Path to hex.pm Release' — Bundle 2 must close before publish).",
+      "cross_repo": []
+    },
+    {
+      "id": 49,
+      "phase": 2,
+      "bundle": "bundle2_rust_safety_hardening",
+      "status": "pending",
+      "title": "Restore `{:fork_error, _}` and `{:timeout, _}` Elixir error classes from the Rust NIF",
+      "scores": {
+        "d": 5,
+        "b": 7,
+        "u": 6
+      },
+      "eff": 1.3,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "native/onchain_evm",
+      "body": "NIF error taxonomy classification. `:timeout` (added in Task 30) is currently classified by display-string match in `classify_transport_error` (`\"timed out\"` / `\"deadline\"` / `\"operation timed out\"`); these markers aren't guaranteed stable across alloy/revm version bumps because the underlying `reqwest::Error` is reformatted by intermediate layers. `:fork_error` still doesn't fire from transport-level connect failures — connect-refused, DNS-failure, and similar collapse to `{:evm_error, \"database error: error sending request for url ...\"}`, so callers can't distinguish transient infra failure (retry) from simulation bug (don't retry). Replace the string-match in `classify_transport_error` with `reqwest::Error::is_timeout()` / `is_connect()` once the underlying error type can be preserved through the alloy/revm layers (downcasting via `Error::source()` chains, or upstream PR to alloy). Discovered 2026-04-22 during onchain_aave Task 41; partially closed by Task 30.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 37,
+      "phase": 2,
+      "bundle": "bundle3_elixir_code_quality",
+      "status": "done",
+      "title": "Eliminate bang-function duplication — introduce `defbang` macro to replace 11 copies of the same `case` pattern",
+      "scores": {
+        "d": 4,
+        "b": 6,
+        "u": 7
+      },
+      "eff": 1.63,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "All Elixir modules",
+      "implemented": "Introduced Onchain.BangHelper.defbang/1-2 macro, replacing 11 bang-function definitions across EVM, Trace, and Solidity modules. Completed 2026-04-10.",
+      "cross_repo": []
+    },
+    {
+      "id": 38,
+      "phase": 2,
+      "bundle": "bundle3_elixir_code_quality",
+      "status": "done",
+      "title": "Add specific error union types — replace `{:error, term()}` with typed unions in `evm.ex` and `trace.ex` specs",
+      "scores": {
+        "d": 4,
+        "b": 7,
+        "u": 7
+      },
+      "eff": 1.75,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.EVM, Onchain.Trace",
+      "implemented": "Replaced {:error, term()} with named typed error unions in evm.ex and trace.ex specs. Completed 2026-04-10.",
+      "cross_repo": []
+    },
+    {
+      "id": 40,
+      "phase": 2,
+      "bundle": "bundle3_elixir_code_quality",
+      "status": "done",
+      "title": "Remove dead Application module — delete `lib/onchain_evm/application.ex` and commented `mod:` in `mix.exs`",
+      "scores": {
+        "d": 2,
+        "b": 3,
+        "u": 4
+      },
+      "eff": 1.75,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "mix.exs, lib/onchain_evm/",
+      "implemented": "Deleted the dead lib/onchain_evm/application.ex module and the commented mod: entry in mix.exs.",
+      "cross_repo": []
+    },
+    {
+      "id": 39,
+      "phase": 2,
+      "bundle": "bundle4_documentation_specs",
+      "status": "done",
+      "title": "Add `@spec` to public Generator functions — `resolve_abi/1`, `resolve_contract_input/2`, `to_snake_case/1`, `disambiguate/1`",
+      "scores": {
+        "d": 3,
+        "b": 5,
+        "u": 5
+      },
+      "eff": 1.67,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.Contract.Generator",
+      "implemented": "Added @spec to resolve_abi/1, resolve_contract_input/2, to_snake_case/1, and disambiguate/1 in Onchain.Contract.Generator. Completed 2026-04-10.",
+      "cross_repo": []
+    },
+    {
+      "id": 41,
+      "phase": 2,
+      "bundle": "bundle4_documentation_specs",
+      "status": "done",
+      "title": "Document Generator options — add `:abi_file`, `:remappings`, and `:root_contract` to moduledoc",
+      "scores": {
+        "d": 2,
+        "b": 4,
+        "u": 5
+      },
+      "eff": 2.25,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.Contract.Generator",
+      "implemented": "Documented the :abi_file, :remappings, and :root_contract generator options in the Onchain.Contract.Generator moduledoc.",
+      "cross_repo": []
+    },
+    {
+      "id": 42,
+      "phase": 2,
+      "bundle": "bundle4_documentation_specs",
+      "status": "pending",
+      "title": "Add module-level Rust documentation — doc comments on both native crate entry points",
+      "scores": {
+        "d": 3,
+        "b": 5,
+        "u": 5
+      },
+      "eff": 1.67,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Both native crates",
+      "body": "Add module-level Rust doc comments on both native crate entry points (native/onchain_evm and native/onchain_solidity). Shows up in crate docs. Should-do for hex.pm release (not a blocker).",
+      "cross_repo": []
+    },
+    {
+      "id": 50,
+      "phase": 2,
+      "bundle": "bundle4_documentation_specs",
+      "status": "pending",
+      "title": "Document `simulate_batch/2` partial-failure semantics in `@moduledoc`",
+      "scores": {
+        "d": 1,
+        "b": 3,
+        "u": 4
+      },
+      "eff": 3.5,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.EVM",
+      "body": "Batch partial-failure docs. Per-call reverts inside `simulate_batch` surface as `%{success: false, output: \"0x\"}` inside the outer `{:ok, results}`. That's the right design (batch resilience) but isn't called out in `@moduledoc`; a consumer seeing `{:ok, _}` may assume every call succeeded. Document explicitly that outer `{:ok, _}` only signals the fork itself succeeded — per-call outcomes must be checked against `:success`. Discovered 2026-04-22.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 45,
+      "phase": 2,
+      "bundle": "bundle5_evm_input_validation_round2",
+      "status": "pending",
+      "title": "`simulate_batch/2` input shape validation — reject non-list `calls` and non-2-tuple elements before `validate_calls/1`",
+      "scores": {
+        "d": 2,
+        "b": 6,
+        "u": 5
+      },
+      "eff": 2.75,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.EVM",
+      "body": "Batch input shape. `simulate_batch(%{}, opts)` currently returns `{:ok, []}` silently because `Enum.reduce_while/3` iterates any `Enumerable`; `simulate_batch([{addr, data, :extra}], opts)` raises `FunctionClauseError` from the anon fn inside `validate_calls/1`, escaping the `{:ok, _} | {:error, _}` contract. Add a pre-guard requiring `is_list(calls)` and pattern-match 2-tuples explicitly, returning `{:error, {:invalid_calls, _}}` in both cases. Discovered 2026-04-22 during onchain_aave Task 41 (first real consumer integration).\n",
+      "cross_repo": []
+    },
+    {
+      "id": 46,
+      "phase": 2,
+      "bundle": "bundle5_evm_input_validation_round2",
+      "status": "pending",
+      "title": "Validate `:value` option as 0x-prefixed even-length hex U256, not any binary",
+      "scores": {
+        "d": 2,
+        "b": 5,
+        "u": 4
+      },
+      "eff": 2.25,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.EVM",
+      "body": "Value hex validation. `maybe_put_value/2` currently only checks `is_binary/1`. `value: \"\"` and `value: \"not-a-hex\"` pass Elixir, fail in Rust as `{:evm_error, \"invalid U256 hex: digit ... is out of range\"}`. Validate 0x-prefixed, even-length, hex-only at the Elixir boundary → `{:error, {:invalid_value, _}}`. Discovered 2026-04-22 during onchain_aave Task 41.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 47,
+      "phase": 2,
+      "bundle": "bundle5_evm_input_validation_round2",
+      "status": "pending",
+      "title": "Validate `:state_overrides` nested keys/values are strings, per `@type state_overrides`",
+      "scores": {
+        "d": 2,
+        "b": 5,
+        "u": 4
+      },
+      "eff": 2.25,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.EVM",
+      "body": "state_overrides nested validation. `@type state_overrides` doc is explicit that all keys/values in nested maps must be strings. Currently atom keys (`%{addr => %{code: \"0x...\"}}`) and int values (`%{\"balance\" => 123}`) produce `{:evm_error, \"invalid state_overrides format\"}` from Rust. Validate recursively in `maybe_put_state_overrides/2`. Discovered 2026-04-22 during onchain_aave Task 41.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 48,
+      "phase": 2,
+      "bundle": "bundle5_evm_input_validation_round2",
+      "status": "pending",
+      "title": "Bound-check `:block` hex values against u64 max in `parse_hex_block/2`",
+      "scores": {
+        "d": 2,
+        "b": 4,
+        "u": 3
+      },
+      "eff": 1.75,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.EVM",
+      "body": "Block u64 bound. `parse_hex_block/2` calls `Integer.parse/2` with no upper bound; `block: \"0x\" <> String.duplicate(\"f\", 20)` lands as `{:evm_error, \"invalid param type: block_number\"}` from the NIF. Reject > u64 max at the Elixir layer → `{:error, {:invalid_block, _}}`. Discovered 2026-04-22 during onchain_aave Task 41.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 28,
+      "phase": 3,
+      "bundle": "standalone",
+      "status": "pending",
+      "title": "Rust unit tests for `onchain_evm` crate — `CallParams` parsing, `EvmError` encoding, hex helpers, fork DB setup",
+      "scores": {
+        "d": 6,
+        "b": 10,
+        "u": 9
+      },
+      "eff": 1.58,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "native/onchain_evm",
+      "body": "Rust unit tests for the onchain_evm crate: CallParams parsing, EvmError encoding, hex helpers, fork DB setup. Should-do for hex.pm release (confidence in the NIFs users are compiling against) — not a blocker.",
+      "cross_repo": []
+    },
+    {
+      "id": 29,
+      "phase": 3,
+      "bundle": "standalone",
+      "status": "pending",
+      "title": "Rust unit tests for `onchain_solidity` crate — ABI JSON parsing, type canonicalization, NatSpec extraction, import resolution",
+      "scores": {
+        "d": 6,
+        "b": 10,
+        "u": 9
+      },
+      "eff": 1.58,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "native/onchain_solidity",
+      "body": "Rust unit tests for the onchain_solidity crate: ABI JSON parsing, type canonicalization, NatSpec extraction, import resolution. Should-do for hex.pm release — not a blocker.",
+      "cross_repo": []
+    },
+    {
+      "id": 33,
+      "phase": 3,
+      "bundle": "standalone",
+      "status": "pending",
+      "title": "Reuse tokio runtime — lazy-init a single `current_thread` runtime instead of creating one per EVM call",
+      "scores": {
+        "d": 5,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.5,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "native/onchain_evm",
+      "body": "Lazy-init a single current_thread tokio runtime instead of creating one per EVM call.",
+      "cross_repo": []
+    },
+    {
+      "id": 43,
+      "phase": 3,
+      "bundle": "standalone",
+      "status": "pending",
+      "title": "Add `cargo clippy` to CI — `#![warn(clippy::all)]` on both crates",
+      "scores": {
+        "d": 3,
+        "b": 5,
+        "u": 4
+      },
+      "eff": 1.5,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Both native crates",
+      "body": "Add cargo clippy to CI with `#![warn(clippy::all)]` on both native crates. Should-do for hex.pm release — not a blocker.",
+      "cross_repo": []
+    },
+    {
+      "id": 44,
+      "phase": 3,
+      "bundle": "standalone",
+      "status": "pending",
+      "title": "Fix `format!(\"{:?}\", expr)` fallbacks — proper error types for unhandled Solidity expression types",
+      "scores": {
+        "d": 4,
+        "b": 6,
+        "u": 5
+      },
+      "eff": 1.38,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "native/onchain_solidity",
+      "body": "Replace `format!(\"{:?}\", expr)` fallbacks with proper error types for unhandled Solidity expression types.",
+      "cross_repo": []
+    },
+    {
+      "id": 51,
+      "phase": 3,
+      "bundle": "standalone",
+      "status": "pending",
+      "title": "Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage",
+      "scores": {
+        "d": 3,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 2.5,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "(cross-cutting research)",
+      "acceptance_criteria": [
+        "A 'Proposed additions from defi-skills mining' section lands in this ROADMAP listing each candidate task with D/B/U scores and which defi-skills action(s) motivated it.",
+        "The user merges accepted entries into Standalone Tasks or a new bundle."
+      ],
+      "body": "Planted 2026-04-30 from a cartouche session that surveyed cross-repo applicability of the `defi-skills` skill. Self-contained discovery exercise — execute it from a fresh `onchain_evm` Claude Code session so this repo's CLAUDE.md, hooks, and revm fixtures are loaded.\n\nPrompt for the executing session:\n\n> Invoke `/defi-skills:intent-to-transaction` to load the skill, then run `defi-skills actions --json` to enumerate the supported action surface (~50 actions across Aave, Uniswap, Lido, Compound, Balancer, Pendle, EigenLayer, Curve, MakerDAO, Rocket Pool, Fibrous, WETH).\n>\n> Map relevant actions to `onchain_evm`'s scope: simulation harness coverage — can `revm` + Alloy ABI parsing simulate the unsigned transactions defi-skills builds end-to-end (the approval transaction and the action transaction in sequence), surface revert reasons cleanly, and produce useful state-diff output? Propose a differential-test pattern: build with defi-skills → simulate with `Onchain.EVM.simulate_batch/2` → assert state changes (token balance deltas, approval allowance, log emissions). Identify any defi-skills action shape that the current `simulate_batch` API can't represent (e.g. unusual fork-DB requirements, value-bearing calls, multi-tx sequencing limits).\n>\n> For each gap or coverage opportunity, propose a ROADMAP entry with D/B/U scoring per `~/.claude/includes/task-prioritization.md`. Output: a \"Proposed additions from defi-skills mining\" section the user reviews before merging into the appropriate bundle or `Standalone Tasks`.\n>\n> Read-only exercise — discovery + scoring only, no `Onchain.EVM` / Rust code edits in this task itself. The skill is already installed (`pip install defi-skills`); no new deps. Companion tasks were planted in `hieroglyph`, `onchain`, and `onchain_aave` ROADMAPs the same day.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 52,
+      "phase": 3,
+      "bundle": "standalone",
+      "status": "pending",
+      "title": "Codegen-emit per-contract Multicall helper modules",
+      "scores": {
+        "d": 5,
+        "b": 7,
+        "u": 6
+      },
+      "eff": 1.3,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.Contract.Generator",
+      "body": "Extend `Onchain.Contract.Generator` so each generated contract emits typed Multicall helpers — callers using both codegen and `Onchain.Multicall` (in the core `onchain` library) shouldn't have to hand-pack call tuples and lose the type safety the generator otherwise provides. Include unit and integration tests.\n",
+      "cross_repo": []
+    },
+    {
+      "id": 53,
+      "phase": 3,
+      "bundle": "standalone",
+      "status": "pending",
+      "title": "Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases",
+      "scores": {
+        "d": 5,
+        "b": 8,
+        "u": 8
+      },
+      "eff": 1.6,
+      "dep_layer": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Both native crates",
+      "body": "Hex-release blocker (see \"Path to hex.pm Release\"). Without prebuilt artifacts, every consumer of `onchain_evm` needs a working Rust toolchain plus several minutes to compile `revm` + `alloy` + `solang-parser` from source.\n\nScope:\n- Wrap both `native/onchain_evm` (revm, alloy) and `native/onchain_solidity` (alloy-json-abi, solang-parser) with `RustlerPrecompiled.use/1` instead of plain `Rustler`.\n- GitHub Actions cross-compile matrix per release: Linux x86_64-gnu, x86_64-musl, aarch64-gnu; macOS x86_64, aarch64; Windows x86_64-msvc.\n- Attach `.so`/`.dylib`/`.dll` artifacts + `checksum-Elixir.RustlerPrecompiled-*.exs` to each GitHub Release.\n- Document `RUSTLER_PRECOMPILATION_*_BUILD=1` force-from-source fallback in README.\n- CI job to validate the checksum file is regenerated on every release.\n\nTrade-offs: 2× build matrix per release (two crates), more release ceremony (tag → wait for CI → publish), force-from-source fallback as support surface. Worth it once a real external consumer installs from hex.\n",
+      "cross_repo": []
+    }
+  ]
+}
