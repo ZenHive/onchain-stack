@@ -93,7 +93,7 @@ V4 went live on Ethereum mainnet on 2026-03-30 with a Hub-and-Spoke architecture
 | Task | Status | Notes |
 |------|--------|-------|
 | Task 44 | ✅ | 🎁 **v4_support** · *V4_SCOPING.md* · Research V4 Hub-and-Spoke contract surface and scope the V4 support phase [D:3/B:7/U:8 → Eff:2.5?] 🎯 |
-| Task 45 | ⬜ | 🎁 **v4_support** · *Onchain.Aave.Contracts* · Extend Onchain.Aave.Contracts with V4 address keys [D:4/B:7/U:8 → Eff:1.88?] 🚀 |
+| Task 45 | ✅ | 🎁 **v4_support** · *Onchain.Aave.Contracts* · Extend Onchain.Aave.Contracts with V4 address keys [D:4/B:7/U:8 → Eff:1.88?] 🚀 |
 | Task 46 `[P]` | ⬜ | 🎁 **v4_support** · *V4_SCOPING.md* · Select V4 read surface by diffing IHub/ISpoke/IAaveOracle/ITokenizationSpoke against V3 IPool [D:3/B:6/U:7 → Eff:2.17?] 🎯 |
 | Task 47 `[P]` | ⬜ | 🎁 **v4_support** · *Onchain.Aave.V4.Hub* · Implement Onchain.Aave.V4.Hub read wrapper [D:4/B:6/U:5 → Eff:1.38?] 📋 |
 | Task 48 `[P]` | ⬜ | 🎁 **v4_support** · *Onchain.Aave.V4.Spoke* · Implement Onchain.Aave.V4.Spoke reads + V4 types [D:5/B:7/U:7 → Eff:1.4?] 📋 |

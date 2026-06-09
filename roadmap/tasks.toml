@@ -356,15 +356,20 @@ implemented = "Scoped V4 Hub-and-Spoke surface; produced V4_SCOPING.md and imple
 id = 45
 phase = 5
 bundle = "v4_support"
-status = "pending"
+status = "done"
 title = "Extend Onchain.Aave.Contracts with V4 address keys"
 scores = { d = 4, b = 7, u = 8 }
 assignee = "cursor"
 module = "Onchain.Aave.Contracts"
-created_at = "2026-04-20"
 body = """
 Extend Onchain.Aave.Contracts to expose every V4 address enumerated in V4_SCOPING.md — infrastructure, Position Managers, Hubs, Spokes, Tokenization Spokes, per-Spoke oracles. Decide the key shape: flat atoms for the ~20 singleton contracts (e.g. :v4_core_hub), nested lookup for the 31 Tokenization Spokes (e.g. Contracts.v4_tokenization_spoke(:core, :weth, network: :ethereum)) to avoid flooding the atom registry. Preserve the existing V3 lookup API (don't break address/2 callers). Tests: look up representative addresses end-to-end. Prerequisite for every other V4 task.
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1780997382319-411254bf, 20de4982b4c7be35569633dd8b410060664ec0c1)."
+delivered_by = "cursor"
+verified = true
+created_at = "2026-04-20"
+done_at = "2026-06-09"
+shipped_in = "20de4982b4c7be35569633dd8b410060664ec0c1"
 
 [[task]]
 id = 46
