@@ -1,7 +1,7 @@
 defmodule OnchainAave.MixProject do
   use Mix.Project
 
-  @version "0.1.1"
+  @version "0.2.0"
   @source_url "https://github.com/ZenHive/onchain_aave"
 
   def project do
@@ -38,9 +38,9 @@ defmodule OnchainAave.MixProject do
 
   defp deps do
     [
-      {:onchain, "~> 0.7.0"},
+      {:onchain, "~> 0.8"},
       {:decimal, "~> 3.1"},
-      {:descripex, "~> 0.7"},
+      {:descripex, "~> 0.9"},
 
       # Dev/test tooling
       {:onchain_evm, path: "../onchain_evm", only: [:dev, :test]},

@@ -6,6 +6,14 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+---
+
+## v0.2.0 — onchain-0.8 / descripex-0.9 line, Multicall batch reads, V4 groundwork (2026-06-12)
+
+### Changed — v0.2.0 dependency line
+
+- Moved to the descripex-0.9 / onchain-0.8 line: `onchain ~> 0.7.0` → `~> 0.8`, `descripex ~> 0.7` → `~> 0.9`. Additive upstreams (descripex 0.9.1's `safe_convert` fix keeps manifest/`describe` from crashing on unconvertible spec types; onchain 0.8.0 relaxes its descripex/cartouche floors). No onchain_aave code changes; compile clean under `--warnings-as-errors`, 231 offline tests green against the new chain.
+
 ### Task 55: Adopt `Onchain.Multicall` in Aave batch read paths
 
 **Completed** | [D:3/B:6/U:6 → Eff:2.0] 🎯
