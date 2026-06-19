@@ -19,7 +19,21 @@ This document is self-contained on purpose: it must be readable by **any** agent
 
 ---
 
-## The family (8 managed repos — all Hex packages)
+## The family (10 managed repos — all Hex packages)
+
+Two tiers. The **shared upstreams** (descripex, zen_websocket) are first-party and
+sit at the top of the cascade, but they're consumed *beyond* this family too — a
+publish there has a wider blast radius than a family-internal one. Flag that when
+you release them. The **onchain family** proper is the connected dependency cascade.
+
+**Shared upstreams** (first-party, used beyond this family):
+
+| Repo | Path | Hex package | Local ver | Role | Native |
+|---|---|---|---|---|---|
+| descripex | `~/_DATA/code/descripex` | `descripex` | 0.11.0 | Discovery/`describe` protocol — gates the whole stack via version bounds | — |
+| zen_websocket | `~/_DATA/code/zen_websocket` | `zen_websocket` | 0.4.2 | WebSocket client substrate (feeds `onchain`) | — |
+
+**Onchain family** (the connected cascade):
 
 | Repo | Path | Hex package | Local ver | Role | Native |
 |---|---|---|---|---|---|
@@ -35,26 +49,24 @@ This document is self-contained on purpose: it must be readable by **any** agent
 > Local versions are a **dated snapshot (2026-06-19)** — they drift. Treat them as
 > a starting hint, never ground truth. Always re-read each repo's `mix.exs` and
 > run `mix hex.info <pkg>` before acting (Operating Rules).
-
-### External first-party upstreams (NOT managed here, but cascade levers)
-
-`descripex` (`~/_DATA/code/descripex`) and `zen_websocket` (`~/_DATA/code/zen_websocket`)
-are published by us and sit upstream of the whole family, but are out of this
-home's managed scope. They still appear in the cascade because their version
-bounds gate the family — see "Current cascade state" for the live descripex case.
+>
+> **Scope note:** the home stays scoped to *this* dependency cascade. Don't fold in
+> the rest of zenhive — the value here is one coherent dep graph with a defined
+> publish order; unrelated packages have no cascade story and would turn this doc
+> into a flat list. A generic all-packages publish dashboard, if ever wanted, is a
+> separate (config-driven) tool, not this cascade-narrative home.
 
 ---
 
 ## Dependency graph
 
 ```
-descripex ─┐                         (external first-party upstream)
+descripex ─┐                         (shared upstream)
            ↓
        hieroglyph ──→ cartouche ──→ onchain ──┬──→ onchain_aave
-                                              ├──→ onchain_evm
-                                              ├──→ onchain_js
-                                              └──→ onchain_tempo ──→ mpp
-                          zen_websocket ──→ onchain (external upstream)
+                                       ↑       ├──→ onchain_evm
+                       zen_websocket ──┘       ├──→ onchain_js
+                          (shared upstream)    └──→ onchain_tempo ──→ mpp
 ```
 
 Edges as of the snapshot (verify in each `mix.exs`):
@@ -65,6 +77,10 @@ Edges as of the snapshot (verify in each `mix.exs`):
 - onchain_aave / onchain_evm / onchain_js / onchain_tempo → `onchain ~> 0.8`, `descripex ~> 0.9`
 - mpp → `onchain ~> 0.8`, `onchain_tempo ~> 0.3`, `descripex ~> 0.9`
 - onchain_aave → `{:onchain_evm, path: "../onchain_evm", only: [:dev, :test]}` (sibling path dep — **another reason repos must not move**)
+
+`descripex` and `zen_websocket` are roots — no first-party upstream of their own —
+so a release there starts the whole cascade. Because they're consumed beyond this
+family, bump them deliberately and note the wider blast radius.
 
 ---
 
@@ -78,12 +94,14 @@ upstream version.
 Canonical order when the whole stack moves:
 
 ```
-descripex → hieroglyph → cartouche → onchain → {onchain_aave, onchain_evm, onchain_js, onchain_tempo} → mpp
+descripex ─┐
+zen_websocket ─┴→ hieroglyph → cartouche → onchain → {onchain_aave, onchain_evm, onchain_js, onchain_tempo} → mpp
 ```
 
-The four mid-tier siblings (aave/evm/js/tempo) are mutually independent — once
-`onchain` ships they can publish in any order. `mpp` is always last (it consumes
-the tier above).
+(`zen_websocket` feeds `onchain` directly, not hieroglyph — it just shares the
+"publish the upstream before the dependent" rule.) The four mid-tier siblings
+(aave/evm/js/tempo) are mutually independent — once `onchain` ships they can publish
+in any order. `mpp` is always last (it consumes the tier above).
 
 ---
 
@@ -113,6 +131,12 @@ Unblock sequence: **cartouche** (bump version, publish — carries `descripex ~>
 ---
 
 ## Publish workflow (per repo)
+
+**Tooling:** `./bin/publish-prep.sh status` shows every repo's local-vs-Hex
+version delta; `./bin/publish-prep.sh check <repo> [--integration]` runs the
+deterministic gauntlet (clean tree → version delta → deps.get → hex.audit →
+compile -Werror → tests → CHANGELOG → `hex.build` dry-run) and prints the exact
+publish command. The script **never publishes** — `mix hex.publish` (2FA) is yours.
 
 You prepare; the **human runs `mix hex.publish`** (2FA). For each repo being released:
 
