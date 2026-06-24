@@ -54,6 +54,25 @@ jobs:
           restore-keys: |
             mix-${{ runner.os }}-otp${{ steps.beam.outputs.otp-version }}-elixir${{ steps.beam.outputs.elixir-version }}-
 
+      # Cache the Cargo registry/git index and each crate's target/ so the revm +
+      # alloy + solang-parser dependency tree isn't recompiled from scratch every
+      # run. Keyed on the Cargo.lock files: a dependency bump invalidates the
+      # cache, an unchanged tree restores it. This is orthogonal to the `_build`
+      # decision above — `_build` stays uncached so Rustler always re-runs the
+      # build step and re-copies priv/native/*.so; a warm target/ just makes that
+      # cargo build incremental instead of cold.
+      - name: Cache Cargo registry & crate targets
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/onchain_evm/target
+            native/onchain_solidity/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('native/**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
       - run: mix deps.get
 
       - name: Compile (warnings as errors)
