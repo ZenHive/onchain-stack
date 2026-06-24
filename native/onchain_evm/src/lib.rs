@@ -86,24 +86,68 @@ fn encode_error<'a>(env: Env<'a>, err: EvmError) -> Term<'a> {
     }
 }
 
-// Maps a transport / RPC error display string to the right EvmError variant.
-// TODO(Task 49): Brittle — alloy/revm reformat the underlying reqwest::Error,
-// so we match the reformatted display for "operation timed out" / "deadline" /
-// "timed out". These markers are not guaranteed stable across alloy or revm
-// version bumps. Task 49 tracks moving to `reqwest::Error::is_timeout()` /
-// `is_connect()` once the underlying error type can be preserved through the
-// alloy/revm layers (and also restoring `:fork_error` from connect failures).
-fn classify_transport_error<E: std::fmt::Display>(err: E) -> EvmError {
-    let msg = format!("{}", err);
+// Maps a transport / RPC error from `evm.transact()` to the right EvmError
+// variant (Task 49). alloy/revm reformat the underlying `reqwest::Error` in their
+// Display impls, so a string match on the top-level message is brittle. Instead we
+// walk the `std::error::Error` source chain and recover the original
+// `reqwest::Error` — alloy preserves it as a downcastable `#[source]` boxed error
+// (`TransportErrorKind::Custom`), reached through revm's `EVMError::Database` and
+// alloy's `#[error(transparent)]` `RpcError::Transport`. `is_timeout()` /
+// `is_connect()` then classify precisely:
+//   - timeout (per-request or connect ceiling) -> `:timeout`
+//   - connect failure (refused / DNS / unreachable) -> `:fork_error` (retryable infra)
+// Display-string heuristics remain only as a fallback if no `reqwest::Error` is
+// found in the chain (e.g. a future alloy version that stops preserving it).
+fn classify_transport_error<E: std::error::Error + 'static>(err: E) -> EvmError {
+    let msg = error_chain_string(&err);
+
+    let mut source: Option<&(dyn std::error::Error + 'static)> = Some(&err);
+    while let Some(e) = source {
+        if let Some(re) = e.downcast_ref::<reqwest::Error>() {
+            // Order matters: a connect-phase timeout reports both, and we want
+            // `:timeout` for it. A pure connection refusal is `is_connect()` only.
+            if re.is_timeout() {
+                return EvmError::Timeout(msg);
+            }
+            if re.is_connect() {
+                return EvmError::ForkError(msg);
+            }
+        }
+        source = e.source();
+    }
+
     let lower = msg.to_lowercase();
     if lower.contains("operation timed out")
         || lower.contains("deadline")
         || lower.contains("timed out")
     {
         EvmError::Timeout(msg)
+    } else if lower.contains("error sending request")
+        || lower.contains("connect")
+        || lower.contains("dns error")
+    {
+        EvmError::ForkError(msg)
     } else {
         EvmError::ExecutionError(msg)
     }
+}
+
+// Renders an error plus its full source chain into one string. alloy/revm Display
+// impls drop the underlying detail (a timeout surfaces only as "database error:
+// error sending request for url ..."), so we append each distinct source link to
+// keep markers like "operation timed out" in the message returned to Elixir.
+fn error_chain_string<E: std::error::Error>(err: &E) -> String {
+    let mut out = err.to_string();
+    let mut source = err.source();
+    while let Some(s) = source {
+        let link = s.to_string();
+        if !out.contains(&link) {
+            out.push_str(": ");
+            out.push_str(&link);
+        }
+        source = s.source();
+    }
+    out
 }
 
 // --- Result types for Erlang encoding ---

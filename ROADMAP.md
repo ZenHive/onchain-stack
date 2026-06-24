@@ -11,9 +11,9 @@
 ---
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 2 — Quality & Reliability Improvements (9 of 18 done · 0 in progress)
+**Focus phase:** 2 — Quality & Reliability Improvements (10 of 18 done · 0 in progress)
 
-**Last shipped:** no recent shipments
+**Last shipped:** Task 49 — Restore `{:fork_error, _}` and `{:timeout, _}` Elixir error classes from the Rust NIF on 2026-06-12
 
 **Up next:** Task 50 — Document `simulate_batch/2` partial-failure semantics in `@moduledoc` [D:1/B:3/U:4 → Eff:3.5] 🎯
 <!-- FOCUS:END -->
@@ -67,7 +67,7 @@ Bundles identified via code review — grouped by shared code and common goals.
 | Task 30 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Add RPC call timeouts — configure `reqwest::Client` with timeout to prevent indefinite blocking [D:5/B:9/U:8 → Eff:1.7?] 🚀 |
 | Task 31 | ⬜ | 🎁 **bundle2_rust_safety_hardening** · *Both native crates* · Replace `.expect()` with proper error handling — 6× in EVM encoder, 1× in Solidity `map_put` [D:5/B:9/U:7 → Eff:1.6?] 🚀 |
 | Task 32 | ⬜ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_solidity* · Add input size limits — reject oversized Solidity source files [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
-| Task 49 | ⬜ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Restore `{:fork_error, _}` and `{:timeout, _}` Elixir error classes from the Rust NIF [D:5/B:7/U:6 → Eff:1.3?] 📋 |
+| Task 49 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Restore `{:fork_error, _}` and `{:timeout, _}` Elixir error classes from the Rust NIF [D:5/B:7/U:6 → Eff:1.3?] 📋 |
 | Task 37 | ✅ | 🎁 **bundle3_elixir_code_quality** · *All Elixir modules* · Eliminate bang-function duplication — introduce `defbang` macro to replace 11 copies of the same `case` pattern [D:4/B:6/U:7 → Eff:1.62?] 🚀 |
 | Task 38 | ✅ | 🎁 **bundle3_elixir_code_quality** · *Onchain.EVM, Onchain.Trace* · Add specific error union types — replace `{:error, term()}` with typed unions in `evm.ex` and `trace.ex` specs [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
 | Task 40 | ✅ | 🎁 **bundle3_elixir_code_quality** · *mix.exs, lib/onchain_evm/* · Remove dead Application module — delete `lib/onchain_evm/application.ex` and commented `mod:` in `mix.exs` [D:2/B:3/U:4 → Eff:1.75?] 🚀 |

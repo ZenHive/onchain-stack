@@ -280,7 +280,7 @@
       "id": 49,
       "phase": 2,
       "bundle": "bundle2_rust_safety_hardening",
-      "status": "pending",
+      "status": "done",
       "title": "Restore `{:fork_error, _}` and `{:timeout, _}` Elixir error classes from the Rust NIF",
       "scores": {
         "d": 5,
@@ -293,6 +293,10 @@
       "depends_on": [],
       "module": "native/onchain_evm",
       "body": "NIF error taxonomy classification. `:timeout` (added in Task 30) is currently classified by display-string match in `classify_transport_error` (`\"timed out\"` / `\"deadline\"` / `\"operation timed out\"`); these markers aren't guaranteed stable across alloy/revm version bumps because the underlying `reqwest::Error` is reformatted by intermediate layers. `:fork_error` still doesn't fire from transport-level connect failures — connect-refused, DNS-failure, and similar collapse to `{:evm_error, \"database error: error sending request for url ...\"}`, so callers can't distinguish transient infra failure (retry) from simulation bug (don't retry). Replace the string-match in `classify_transport_error` with `reqwest::Error::is_timeout()` / `is_connect()` once the underlying error type can be preserved through the alloy/revm layers (downcasting via `Error::source()` chains, or upstream PR to alloy). Discovered 2026-04-22 during onchain_aave Task 41; partially closed by Task 30.\n",
+      "done_at": "2026-06-12",
+      "implemented": "classify_transport_error walks the std::error::Error source chain to recover the underlying reqwest::Error, using is_timeout()/is_connect() to restore {:timeout,_} and {:fork_error,_} classification (native/onchain_evm/src/lib.rs). Verified by black-hole timeout + connect-refused integration tests.",
+      "delivered_by": "claude-opus-4-8",
+      "verified": true,
       "cross_repo": []
     },
     {

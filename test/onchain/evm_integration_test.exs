@@ -202,6 +202,30 @@ defmodule Onchain.EVM.IntegrationTest do
     end
   end
 
+  describe "simulate_call/3 connect failures" do
+    # Port 1 on loopback is reserved (tcpmux) and practically never listening, so
+    # the kernel returns an immediate RST — a connection *refusal*, distinct from
+    # the black-hole timeout above. This must classify as :fork_error (retryable
+    # infra), not :timeout or :evm_error (Task 49).
+    @refused_rpc "http://127.0.0.1:1"
+
+    test "returns {:error, {:fork_error, _}} when the connection is refused" do
+      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+
+      # Generous timeout so the refusal — not the timer — is what fires.
+      result =
+        EVM.simulate_call(@usdc_address, calldata, rpc_url: @refused_rpc, timeout_ms: 5_000)
+
+      case result do
+        {:error, {:fork_error, msg}} ->
+          assert is_binary(msg)
+
+        other ->
+          flunk("Expected {:error, {:fork_error, _}} from refused connection, got: #{inspect(other)}")
+      end
+    end
+  end
+
   describe "bang variants with integration" do
     test "simulate_call! returns hex directly" do
       {:ok, calldata} = ABI.encode_call("totalSupply()", [])
