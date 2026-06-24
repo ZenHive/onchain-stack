@@ -442,7 +442,7 @@ Trade-offs: 2× build matrix per release (two crates), more release ceremony (ta
 id = "54"
 phase = 2
 bundle = "bundle2_rust_safety_hardening"
-status = "pending"
+status = "in_progress"
 title = "Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump"
 scores = { d = 4, b = 7, u = 6 }
 acceptance_criteria = ["Onchain.EVM fork+execute paths covered to >=95% (mix test.json --cover, critical tier)", "Fork integration tests pin fixed block numbers; a known view call returns its known on-chain value", "Revert path asserts {:error, {:evm_revert, reason}}; error taxonomy (:fork_error/:timeout/:evm_error) asserted per Task 49", "State-override (balance/nonce/storage) effect on simulated result asserted", "No exact-gas equality assertions; gas asserted as present/plausible only", "Full check_command gate green; integration tests run (not silently skipped) against the archive node"]
@@ -461,6 +461,7 @@ Cover at minimum: a known view-function call against a well-known mainnet contra
 CRITICAL — lock SEMANTICS, not volatile internals. Assert return-value correctness, revert reasons, error tags, and state-override effects. Do NOT assert exact gas figures by equality: gas accounting can legitimately change across revm major versions (EIP updates), so an exact-gas golden would force a false failure during the migration. Assert gas is present and plausible (> 0 / within a wide tolerance) only.
 """
 created_at = "2026-06-24"
+started_at = "2026-06-24"
 scored_at = "2026-06-24"
 
 [[task]]
