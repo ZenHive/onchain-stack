@@ -12,25 +12,56 @@ defmodule Onchain.EVM.IntegrationTest do
   # WETH on mainnet
   @weth_address "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
 
+  # Uniswap V2 Router02 on mainnet
+  @uniswap_v2_router "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+
+  @fork_block 20_000_000
+  @expected_usdc_total_supply_at_fork 24_251_286_965_837_135
+
+  @override_contract "0x0000000000000000000000000000000000001000"
+  @override_caller "0x0000000000000000000000000000000000002000"
+
+  @balance_reader_runtime "0x4760005260206000f3"
+  @storage_reader_runtime "0x60005460005260206000f3"
+  @create_child_runtime "0x600060006000f060005260206000f3"
+
+  @word_42 "0x000000000000000000000000000000000000000000000000000000000000002a"
+  @word_123 "0x000000000000000000000000000000000000000000000000000000000000007b"
+  @created_with_nonce_1 "0x0000000000000000000000005bafcc0c93ecd8022925d7fd89da1c6250850e19"
+  @created_with_nonce_2 "0x00000000000000000000000056bf3bd655a1adc56e6d1936eadda051ef3cd330"
+
   defp rpc_opts do
-    [rpc_url: Onchain.RPCCase.rpc_url!()]
+    [rpc_url: Onchain.RPCCase.rpc_url!(), block: @fork_block]
+  end
+
+  defp assert_plausible_gas(gas_used) do
+    assert is_integer(gas_used)
+    assert gas_used > 0
+    assert gas_used < 10_000_000
+  end
+
+  defp zero_address_bin do
+    Onchain.Hex.decode!("0x0000000000000000000000000000000000000000")
+  end
+
+  defp usdc_address_bin do
+    Onchain.Hex.decode!(@usdc_address)
+  end
+
+  defp weth_address_bin do
+    Onchain.Hex.decode!(@weth_address)
   end
 
   describe "simulate_call/3" do
-    test "USDC totalSupply returns decodable uint256" do
+    test "USDC totalSupply at pinned block returns known uint256" do
       {:ok, calldata} = ABI.encode_call("totalSupply()", [])
 
       assert {:ok, hex_result} = EVM.simulate_call(@usdc_address, calldata, rpc_opts())
-      assert is_binary(hex_result)
-      assert String.starts_with?(hex_result, "0x")
-
-      # Decode and verify it's a positive number
       assert {:ok, [total_supply]} = ABI.decode_response("(uint256)", hex_result)
-      assert is_integer(total_supply)
-      assert total_supply > 0
+      assert total_supply == @expected_usdc_total_supply_at_fork
     end
 
-    test "WETH name returns decodable string" do
+    test "WETH name at pinned block returns known string" do
       {:ok, calldata} = ABI.encode_call("name()", [])
 
       assert {:ok, hex_result} = EVM.simulate_call(@weth_address, calldata, rpc_opts())
@@ -41,56 +72,89 @@ defmodule Onchain.EVM.IntegrationTest do
     test "fork at specific block returns consistent result" do
       {:ok, calldata} = ABI.encode_call("totalSupply()", [])
 
-      # Fork at block 20_000_000 (known historical block)
-      opts = Keyword.put(rpc_opts(), :block, 20_000_000)
-
-      assert {:ok, hex1} = EVM.simulate_call(@usdc_address, calldata, opts)
-      assert {:ok, hex2} = EVM.simulate_call(@usdc_address, calldata, opts)
+      assert {:ok, hex1} = EVM.simulate_call(@usdc_address, calldata, rpc_opts())
+      assert {:ok, hex2} = EVM.simulate_call(@usdc_address, calldata, rpc_opts())
 
       # Same block should give same result
       assert hex1 == hex2
     end
 
-    test "reverted call returns evm_revert error" do
-      # Call a non-existent function selector — likely reverts on USDC
-      bad_calldata = "0xdeadbeef"
+    test "reverted call returns evm_revert with decoded revert reason" do
+      {:ok, calldata} =
+        ABI.encode_call("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)", [
+          1,
+          1,
+          [usdc_address_bin(), weth_address_bin()],
+          zero_address_bin(),
+          1
+        ])
 
-      result = EVM.simulate_call(@usdc_address, bad_calldata, rpc_opts())
+      assert {:error, {:evm_revert, revert_data}} =
+               EVM.simulate_call(
+                 @uniswap_v2_router,
+                 calldata,
+                 rpc_opts() ++ [from: "0x0000000000000000000000000000000000000001"]
+               )
 
-      case result do
-        {:error, {:evm_revert, revert_data}} ->
-          assert is_binary(revert_data)
-          assert String.starts_with?(revert_data, "0x")
+      assert String.starts_with?(revert_data, "0x08c379a0")
 
-        {:ok, "0x"} ->
-          # Some contracts return empty data for unknown selectors
-          :ok
-
-        {:ok, _hex} ->
-          # Fallback function returned data
-          :ok
-
-        {:error, other} ->
-          flunk("Expected :evm_revert or success, got: #{inspect(other)}")
-      end
+      assert {:ok, %{error: "Error", args: ["TransferHelper: TRANSFER_FROM_FAILED"]}} =
+               ABI.decode_error(revert_data, ["Error(string)"])
     end
   end
 
   describe "simulate_call/3 with state overrides" do
-    test "override balance is reflected in balanceOf" do
-      target_address = "0x0000000000000000000000000000000000000001"
-
-      # Check ETH balance via a simple staticcall pattern:
-      # Override balance, then call WETH deposit which checks msg.value
-      # Simpler: just verify the override doesn't break execution
-      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
-
+    test "balance override changes simulated selfbalance" do
       overrides = %{
-        target_address => %{"balance" => "0xDE0B6B3A7640000"}
+        @override_contract => %{"code" => @balance_reader_runtime, "balance" => "0x2a"},
+        @override_caller => %{"balance" => "0x0", "nonce" => "0"}
       }
 
-      opts = Keyword.put(rpc_opts(), :state_overrides, overrides)
-      assert {:ok, _hex} = EVM.simulate_call(@usdc_address, calldata, opts)
+      opts = rpc_opts() ++ [from: @override_caller, state_overrides: overrides]
+
+      assert {:ok, @word_42} = EVM.simulate_call(@override_contract, "0x", opts)
+    end
+
+    test "storage override changes simulated sload result" do
+      overrides = %{
+        @override_contract => %{
+          "code" => @storage_reader_runtime,
+          "storage" => ~s({"0x0":"#{@word_123}"})
+        },
+        @override_caller => %{"balance" => "0x0", "nonce" => "0"}
+      }
+
+      opts = rpc_opts() ++ [from: @override_caller, state_overrides: overrides]
+
+      assert {:ok, @word_123} = EVM.simulate_call(@override_contract, "0x", opts)
+    end
+
+    test "nonce override changes simulated create address" do
+      nonce_one_overrides = %{
+        @override_contract => %{"code" => @create_child_runtime, "balance" => "0x0", "nonce" => "1"},
+        @override_caller => %{"balance" => "0x0", "nonce" => "0"}
+      }
+
+      nonce_two_overrides = %{
+        @override_contract => %{"code" => @create_child_runtime, "balance" => "0x0", "nonce" => "2"},
+        @override_caller => %{"balance" => "0x0", "nonce" => "0"}
+      }
+
+      opts = rpc_opts() ++ [from: @override_caller]
+
+      assert {:ok, @created_with_nonce_1} =
+               EVM.simulate_call(
+                 @override_contract,
+                 "0x",
+                 Keyword.put(opts, :state_overrides, nonce_one_overrides)
+               )
+
+      assert {:ok, @created_with_nonce_2} =
+               EVM.simulate_call(
+                 @override_contract,
+                 "0x",
+                 Keyword.put(opts, :state_overrides, nonce_two_overrides)
+               )
     end
   end
 
@@ -101,34 +165,34 @@ defmodule Onchain.EVM.IntegrationTest do
       assert {:ok, result} = EVM.simulate_transaction(@usdc_address, calldata, rpc_opts())
       assert is_map(result)
       assert result.success == true
-      assert is_integer(result.gas_used)
-      assert result.gas_used > 0
+      assert_plausible_gas(result.gas_used)
       assert is_binary(result.output)
       assert String.starts_with?(result.output, "0x")
       assert is_list(result.logs)
     end
 
     test "returns success: false for reverting call" do
-      bad_calldata = "0xdeadbeef"
+      {:ok, calldata} =
+        ABI.encode_call("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)", [
+          1,
+          1,
+          [usdc_address_bin(), weth_address_bin()],
+          zero_address_bin(),
+          1
+        ])
 
-      result = EVM.simulate_transaction(@usdc_address, bad_calldata, rpc_opts())
+      assert {:ok, %{success: false} = tx_result} =
+               EVM.simulate_transaction(
+                 @uniswap_v2_router,
+                 calldata,
+                 rpc_opts() ++ [from: "0x0000000000000000000000000000000000000001"]
+               )
 
-      case result do
-        {:ok, %{success: false} = tx_result} ->
-          assert is_integer(tx_result.gas_used)
-          assert is_binary(tx_result.output)
+      assert_plausible_gas(tx_result.gas_used)
+      assert String.starts_with?(tx_result.output, "0x08c379a0")
 
-        {:ok, %{success: true}} ->
-          # Some contracts have fallback functions
-          :ok
-
-        {:error, {:evm_error, reason}} ->
-          # Halt errors are also possible
-          assert is_binary(reason)
-
-        {:error, other} ->
-          flunk("Unexpected error: #{inspect(other)}")
-      end
+      assert {:ok, %{error: "Error", args: ["TransferHelper: TRANSFER_FROM_FAILED"]}} =
+               ABI.decode_error(tx_result.output, ["Error(string)"])
     end
   end
 
@@ -149,8 +213,7 @@ defmodule Onchain.EVM.IntegrationTest do
       # All should succeed
       Enum.each(results, fn result ->
         assert result.success == true
-        assert is_integer(result.gas_used)
-        assert result.gas_used > 0
+        assert_plausible_gas(result.gas_used)
         assert String.starts_with?(result.output, "0x")
       end)
 
@@ -163,6 +226,17 @@ defmodule Onchain.EVM.IntegrationTest do
       [_, decimals_result | _] = results
       assert {:ok, [decimals]} = ABI.decode_response("(uint8)", decimals_result.output)
       assert decimals == 6
+    end
+  end
+
+  describe "simulate_call/3 error taxonomy" do
+    test "returns {:error, {:evm_error, _}} for execution validation errors" do
+      {:ok, calldata} = ABI.encode_call("decimals()", [])
+
+      assert {:error, {:evm_error, msg}} =
+               EVM.simulate_call(@usdc_address, calldata, rpc_opts() ++ [gas_limit: 1])
+
+      assert is_binary(msg)
     end
   end
 

@@ -8,6 +8,11 @@ defmodule Onchain.EVMTest do
   @valid_rpc_url "https://eth-mainnet.example.com"
 
   describe "simulate_call/3 input validation" do
+    test "returns error when opts default to empty" do
+      assert {:error, {:invalid_rpc_url, :missing}} =
+               EVM.simulate_call(@valid_address, @valid_data)
+    end
+
     test "returns error when rpc_url is missing" do
       assert {:error, {:invalid_rpc_url, :missing}} =
                EVM.simulate_call(@valid_address, @valid_data, [])
@@ -77,6 +82,11 @@ defmodule Onchain.EVMTest do
     test "returns error for https:// with no host" do
       assert {:error, {:invalid_rpc_url, {:missing_host, "https://"}}} =
                EVM.simulate_call(@valid_address, @valid_data, rpc_url: "https://")
+    end
+
+    test "returns error for malformed URI characters" do
+      assert {:error, {:invalid_rpc_url, {:invalid_scheme, "https://exa<mple.com"}}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: "https://exa<mple.com")
     end
 
     test "accepts http:// URL" do
@@ -164,6 +174,16 @@ defmodule Onchain.EVMTest do
                  rpc_url: @valid_rpc_url,
                  value: 123
                )
+    end
+
+    test "accepts string value" do
+      result =
+        EVM.simulate_call(@valid_address, @valid_data,
+          rpc_url: @valid_rpc_url,
+          value: "0x1"
+        )
+
+      refute match?({:error, {:invalid_value, _}}, result)
     end
 
     test "returns error for negative gas_limit" do
@@ -276,6 +296,11 @@ defmodule Onchain.EVMTest do
   end
 
   describe "simulate_transaction/3 input validation" do
+    test "returns error when opts default to empty" do
+      assert {:error, {:invalid_rpc_url, :missing}} =
+               EVM.simulate_transaction(@valid_address, @valid_data)
+    end
+
     test "returns error when rpc_url is missing" do
       assert {:error, {:invalid_rpc_url, :missing}} =
                EVM.simulate_transaction(@valid_address, @valid_data, [])
@@ -296,6 +321,11 @@ defmodule Onchain.EVMTest do
   end
 
   describe "simulate_batch/2 input validation" do
+    test "returns error when opts default to empty" do
+      calls = [{@valid_address, @valid_data}]
+      assert {:error, {:invalid_rpc_url, :missing}} = EVM.simulate_batch(calls)
+    end
+
     test "returns error when rpc_url is missing" do
       calls = [{@valid_address, @valid_data}]
       assert {:error, {:invalid_rpc_url, :missing}} = EVM.simulate_batch(calls, [])
