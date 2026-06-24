@@ -437,3 +437,60 @@ Scope:
 
 Trade-offs: 2× build matrix per release (two crates), more release ceremony (tag → wait for CI → publish), force-from-source fallback as support surface. Worth it once a real external consumer installs from hex.
 """
+
+[[task]]
+id = "54"
+phase = 2
+bundle = "bundle2_rust_safety_hardening"
+status = "pending"
+title = "Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump"
+scores = { d = 4, b = 7, u = 6 }
+acceptance_criteria = ["Onchain.EVM fork+execute paths covered to >=95% (mix test.json --cover, critical tier)", "Fork integration tests pin fixed block numbers; a known view call returns its known on-chain value", "Revert path asserts {:error, {:evm_revert, reason}}; error taxonomy (:fork_error/:timeout/:evm_error) asserted per Task 49", "State-override (balance/nonce/storage) effect on simulated result asserted", "No exact-gas equality assertions; gas asserted as present/plausible only", "Full check_command gate green; integration tests run (not silently skipped) against the archive node"]
+out_of_scope = ["Any change to native/onchain_evm Rust code or Cargo deps (that is the next task)", "onchain_solidity crate / Onchain.Solidity tests", "Trace module coverage"]
+touches = ["test/onchain/evm_test.exs", "test/onchain/evm_integration_test.exs"]
+assignee = "codex"
+module = "Onchain.EVM"
+model = "gpt-5.5"
+body = """
+The next task (revm 19→41 + alloy 0.7→2.1 major bump) rewrites the security-sensitive native EVM execution crate. Its whole risk is *silent* behavior drift in the fork+simulate path. Before that rewrite, lock current behavior in deterministic golden tests so the migration has a regression net it must keep green.
+
+Expand `Onchain.EVM`'s test coverage — especially the fork+execute integration paths (currently only exercised under `--include integration`) — to the critical tier (>=95%, this is EVM execution / money-adjacent simulation). Pin fork tests to FIXED block numbers against the archive node so results are deterministic across runs.
+
+Cover at minimum: a known view-function call against a well-known mainnet contract at a pinned block returns its known on-chain value; a call that reverts surfaces `{:error, {:evm_revert, _}}` with the revert reason; state-override (balance / nonce / storage) changes the simulated result as expected; and the error taxonomy from Task 49 (`:fork_error` on connect-refused, `:timeout`, `:evm_error`) classifies correctly.
+
+CRITICAL — lock SEMANTICS, not volatile internals. Assert return-value correctness, revert reasons, error tags, and state-override effects. Do NOT assert exact gas figures by equality: gas accounting can legitimately change across revm major versions (EIP updates), so an exact-gas golden would force a false failure during the migration. Assert gas is present and plausible (> 0 / within a wide tolerance) only.
+"""
+created_at = "2026-06-24"
+scored_at = "2026-06-24"
+
+[[task]]
+id = "55"
+phase = 2
+bundle = "bundle2_rust_safety_hardening"
+status = "pending"
+title = "Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory"
+scores = { d = 9, b = 6, u = 7 }
+depends_on = [54]
+acceptance_criteria = ["native/onchain_evm/Cargo.lock shows lru >= 0.16.3; GHSA-rhfx-m35p-ff5j no longer applies", "revm at latest stable (~41.x), alloy crates at ~2.x; crate compiles in release", "Elixir NIF surface unchanged: same atoms, return shapes, error taxonomy; Onchain.EVM public API unchanged", "Task 54 golden tests pass (semantic behavior preserved; gas differences allowed)", "Task 49 transport-error classification (:timeout / :fork_error) still works on the new alloy", "Full check_command gate green incl. integration; no new Dependabot high/medium alerts introduced", "Native crate version bumped 0.1.0 -> 0.2.0"]
+out_of_scope = ["onchain_solidity crate (alloy-json-abi/solang-parser) — separate compile, not security-driven; leave pinned", "rustler_precompiled adoption (Task 53)", "Any Elixir-facing API change or new EVM features"]
+touches = ["native/onchain_evm/Cargo.toml", "native/onchain_evm/Cargo.lock", "native/onchain_evm/src/lib.rs"]
+assignee = "codex"
+module = "native/onchain_evm"
+model = "gpt-5.5"
+body = """
+Modernize the revm/alloy stack in `native/onchain_evm` to clear the last open Dependabot alert: lru < 0.16.3 (GHSA-rhfx-m35p-ff5j). lru is transitive via alloy-provider, and `lru ^0.16` (the fix line) first appears at alloy-provider 1.8.3 — which forces revm off 19 too (revm's `alloydb` feature re-exports alloy types, so revm and alloy must move together). Target the latest stable revm (~41.x) and alloy (~2.x).
+
+Keep the Elixir-facing NIF surface IDENTICAL — same atoms, same return shapes, same error taxonomy (`:evm_revert` / `:evm_error` / `:fork_error` / `:timeout`). Task 54's golden tests are the regression net; they must stay green (allowing for legitimate gas-accounting differences, which 54 deliberately does not pin by equality). No change to `Onchain.EVM`'s public API.
+
+Known breaking changes to migrate (verify against current docs/source — these are the API seams, not line-by-line instructions):
+- revm DB reorg: `revm::db::{AlloyDB, CacheDB}` moved out of the monolith into the `revm-database` crate (and `AlloyDB` may now require an explicit async-runtime wrapper). Find the new import paths.
+- revm EVM builder: `Evm::builder()...build()` was replaced by the `Context` builder pattern (`Context::mainnet()....build_mainnet()` + `.modify_tx_chained()` / transact API). Rebuild the execute path on it.
+- alloy provider transport generic collapsed: `RootProvider<Transport, Network>` → `RootProvider<Network>` in alloy 1.x; `ProviderBuilder::new().on_client(client)` was removed/renamed — use the current builder + `connect_*`.
+- `TxEnv` / `BlockEnv` moved from struct-field construction to a builder; verify field renames.
+- `ExecutionResult` / `HaltReason` enum shape shifts — re-match exhaustively.
+- Task 49's `classify_transport_error` downcasts the underlying `reqwest::Error` through the alloy/revm `Error::source()` chain. Re-verify that chain is still walkable on new alloy (the tasks.toml note at the Task-30/49 line flags this fragility); keep `is_timeout()`/`is_connect()` classification working, fall back to the display-string heuristic only if the source chain no longer preserves it.
+
+Bump the native crate version 0.1.0 → 0.2.0 to match the Elixir package. Use `cargo update -p lru` (or the alloy bump's natural resolution) to confirm the lockfile lands lru >= 0.16.3.
+"""
+created_at = "2026-06-24"
+scored_at = "2026-06-24"
