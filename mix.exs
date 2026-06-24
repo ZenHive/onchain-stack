@@ -47,7 +47,7 @@ defmodule OnchainAave.MixProject do
       {:stream_data, "~> 1.0", only: [:dev, :test]},
       {:tidewave, "~> 0.5", only: :dev},
       {:bandit, "~> 1.0", only: :dev},
-      {:ex_unit_json, "~> 0.5.0", only: [:dev, :test], runtime: false},
+      {:ex_unit_json, "~> 0.6.0", only: [:dev, :test], runtime: false},
       {:dialyzer_json, "~> 0.1", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.0", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7.18", only: [:dev, :test], runtime: false},
