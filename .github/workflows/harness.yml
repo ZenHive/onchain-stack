@@ -36,12 +36,19 @@ jobs:
           version-file: .tool-versions
           version-type: strict
 
-      - name: Cache deps & _build (covers dialyxir PLT default path)
+      # Cache deps + the dialyxir PLT only. `_build` is deliberately NOT cached:
+      # it holds the Rustler NIF artifacts (priv/native/*.so) and a per-crate
+      # compile manifest. A restored `_build` makes Rustler treat an unchanged
+      # crate as already-built and skip it — but `priv/native/` is not cached, so
+      # the skipped crate's .so never gets regenerated and module load crashes
+      # (e.g. Doctor's module_info/0 on Onchain.Solidity). Forcing a clean `_build`
+      # each run makes Rustler rebuild + copy every NIF. Cargo's own target/ was
+      # never cached, so this adds no native-compile cost.
+      - name: Cache deps & dialyxir PLT
         uses: actions/cache@v6
         with:
           path: |
             deps
-            _build
             priv/plts
           key: mix-${{ runner.os }}-otp${{ steps.beam.outputs.otp-version }}-elixir${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
