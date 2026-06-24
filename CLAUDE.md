@@ -2,21 +2,17 @@
 
 EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Elixir via Rust NIFs. Depends on `onchain` core for RPC, ABI, signing, and address utilities.
 
-@~/.claude/includes/across-instances.md
+<!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
+     harness-driven — the OTP dispatch→review→land loop is the active workflow). onchain-workspace
+     is the harness workspace add-on (7-repo roster + dependency shape), eager family-wide.
+     ethereum-rpc stays eager (host-specific node access, no skill mirror). Everything else previously imported
+     here (across-instances, worktree, task-prioritization/writing, workflow-philosophy, web-command,
+     elixir-setup, ex-unit-json, dialyzer-json, code-style, development-commands/philosophy,
+     agent-economy) is skill-on-demand via the elixir / task-driver / dev-lifecycle plugins.
+     Re-add an @-import per-surface only if Opus visibly degrades on it. See ~/.claude/setup-guide.md. -->
 @~/.claude/includes/critical-rules.md
-@~/.claude/includes/worktree-workflow.md
-
-@~/.claude/includes/task-prioritization.md
-@~/.claude/includes/task-writing.md
-@~/.claude/includes/web-command.md
-@~/.claude/includes/code-style.md
-@~/.claude/includes/development-philosophy.md
-@~/.claude/includes/workflow-philosophy.md
-@~/.claude/includes/agent-economy.md
-@~/.claude/includes/elixir-setup.md
-@~/.claude/includes/development-commands.md
-@~/.claude/includes/ex-unit-json.md
-@~/.claude/includes/dialyzer-json.md
+@~/.claude/includes/harness-workflow.md
+@~/.claude/includes/onchain-workspace.md
 @~/.claude/includes/ethereum-rpc.md
 
 ## Architecture

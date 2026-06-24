@@ -1,7 +1,7 @@
 defmodule OnchainEvm.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.2.0"
   @source_url "https://github.com/ZenHive/onchain_evm"
 
   def project do
@@ -38,8 +38,8 @@ defmodule OnchainEvm.MixProject do
 
   defp deps do
     [
-      {:onchain, "~> 0.5.3"},
-      {:descripex, "~> 0.6"},
+      {:onchain, "~> 0.8"},
+      {:descripex, "~> 0.9"},
       {:rustler, "~> 0.37", runtime: false},
 
       # Dev/test tooling
@@ -50,7 +50,7 @@ defmodule OnchainEvm.MixProject do
       {:styler, "~> 1.0", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:doctor, "~> 0.22", only: [:dev, :test], runtime: false},
+      {:doctor, "~> 0.23", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.39", only: :dev, runtime: false}
     ]
