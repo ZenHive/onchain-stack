@@ -473,7 +473,7 @@ shipped_in = "2cfb02c24be42c78caeaba9b7a7885e15ed1cd36"
 id = "55"
 phase = 2
 bundle = "bundle2_rust_safety_hardening"
-status = "in_progress"
+status = "done"
 title = "Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory"
 scores = { d = 9, b = 6, u = 7 }
 depends_on = [54]
@@ -498,6 +498,11 @@ Known breaking changes to migrate (verify against current docs/source — these 
 
 Bump the native crate version 0.1.0 → 0.2.0 to match the Elixir package. Use `cargo update -p lru` (or the alloy bump's natural resolution) to confirm the lockfile lands lru >= 0.16.3.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1782346051548-e6a684bb, de0f95575238a0d5b7fa87fb41048ef3d1fbc364)."
+delivered_by = "codex"
+verified = true
 created_at = "2026-06-24"
 started_at = "2026-06-25"
 scored_at = "2026-06-24"
+done_at = "2026-06-25"
+shipped_in = "de0f95575238a0d5b7fa87fb41048ef3d1fbc364"

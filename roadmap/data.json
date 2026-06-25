@@ -746,7 +746,7 @@
       "id": "55",
       "phase": 2,
       "bundle": "bundle2_rust_safety_hardening",
-      "status": "in_progress",
+      "status": "done",
       "title": "Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory",
       "scores": {
         "d": 9,
@@ -782,10 +782,15 @@
         "native/onchain_evm/Cargo.lock",
         "native/onchain_evm/src/lib.rs"
       ],
+      "shipped_in": "de0f95575238a0d5b7fa87fb41048ef3d1fbc364",
       "body": "Modernize the revm/alloy stack in `native/onchain_evm` to clear the last open Dependabot alert: lru < 0.16.3 (GHSA-rhfx-m35p-ff5j). lru is transitive via alloy-provider, and `lru ^0.16` (the fix line) first appears at alloy-provider 1.8.3 — which forces revm off 19 too (revm's `alloydb` feature re-exports alloy types, so revm and alloy must move together). Target the latest stable revm (~41.x) and alloy (~2.x).\n\nKeep the Elixir-facing NIF surface IDENTICAL — same atoms, same return shapes, same error taxonomy (`:evm_revert` / `:evm_error` / `:fork_error` / `:timeout`). Task 54's golden tests are the regression net; they must stay green (allowing for legitimate gas-accounting differences, which 54 deliberately does not pin by equality). No change to `Onchain.EVM`'s public API.\n\nKnown breaking changes to migrate (verify against current docs/source — these are the API seams, not line-by-line instructions):\n- revm DB reorg: `revm::db::{AlloyDB, CacheDB}` moved out of the monolith into the `revm-database` crate (and `AlloyDB` may now require an explicit async-runtime wrapper). Find the new import paths.\n- revm EVM builder: `Evm::builder()...build()` was replaced by the `Context` builder pattern (`Context::mainnet()....build_mainnet()` + `.modify_tx_chained()` / transact API). Rebuild the execute path on it.\n- alloy provider transport generic collapsed: `RootProvider<Transport, Network>` → `RootProvider<Network>` in alloy 1.x; `ProviderBuilder::new().on_client(client)` was removed/renamed — use the current builder + `connect_*`.\n- `TxEnv` / `BlockEnv` moved from struct-field construction to a builder; verify field renames.\n- `ExecutionResult` / `HaltReason` enum shape shifts — re-match exhaustively.\n- Task 49's `classify_transport_error` downcasts the underlying `reqwest::Error` through the alloy/revm `Error::source()` chain. Re-verify that chain is still walkable on new alloy (the tasks.toml note at the Task-30/49 line flags this fragility); keep `is_timeout()`/`is_connect()` classification working, fall back to the display-string heuristic only if the source chain no longer preserves it.\n\nBump the native crate version 0.1.0 → 0.2.0 to match the Elixir package. Use `cargo update -p lru` (or the alloy bump's natural resolution) to confirm the lockfile lands lru >= 0.16.3.\n",
       "created_at": "2026-06-24",
       "started_at": "2026-06-25",
+      "done_at": "2026-06-25",
       "scored_at": "2026-06-24",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1782346051548-e6a684bb, de0f95575238a0d5b7fa87fb41048ef3d1fbc364).",
+      "delivered_by": "codex",
+      "verified": true,
       "cross_repo": []
     }
   ]
