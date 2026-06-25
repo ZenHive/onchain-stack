@@ -4,11 +4,15 @@ use std::time::Duration;
 
 use alloy_eips::BlockId;
 use alloy_primitives::{Address, Bytes, U256};
+use alloy_provider::Provider;
 use revm::{
-    db::{AlloyDB, CacheDB},
-    primitives::{Bytecode, ExecutionResult, Output, TxKind},
-    Evm,
+    bytecode::Bytecode,
+    context::TxEnv,
+    context_interface::result::{ExecutionResult, Output},
+    primitives::TxKind,
+    Context, DatabaseRef, ExecuteCommitEvm, ExecuteEvm, MainBuilder, MainContext,
 };
+use revm_database::{AlloyDB, CacheDB, WrapDatabaseAsync};
 
 // Hard-coded TCP connect ceiling. Per-request total timeout (connect through
 // response body completion, per `reqwest::ClientBuilder::timeout`) is
@@ -273,9 +277,8 @@ fn bytes_to_hex(bytes: &[u8]) -> String {
 
 // --- Fork DB type alias ---
 
-type HttpTransport = alloy_transport_http::Http<reqwest::Client>;
-type HttpProvider = alloy_provider::RootProvider<HttpTransport, alloy_provider::network::Ethereum>;
-type ForkDB = CacheDB<AlloyDB<HttpTransport, alloy_provider::network::Ethereum, HttpProvider>>;
+type HttpProvider = alloy_provider::DynProvider<alloy_provider::network::Ethereum>;
+type ForkDB = CacheDB<WrapDatabaseAsync<AlloyDB<alloy_provider::network::Ethereum, HttpProvider>>>;
 
 // --- EVM execution core ---
 
@@ -293,7 +296,10 @@ fn resolve_block_id<'a>(params: &HashMap<String, Term<'a>>) -> Result<BlockId, E
             "safe" => Ok(BlockId::safe()),
             "pending" => Ok(BlockId::pending()),
             "earliest" => Ok(BlockId::earliest()),
-            other => Err(EvmError::ExecutionError(format!("unknown block tag: {}", other))),
+            other => Err(EvmError::ExecutionError(format!(
+                "unknown block tag: {}",
+                other
+            ))),
         },
         (None, None) => Ok(BlockId::latest()),
     }
@@ -323,10 +329,13 @@ fn build_fork_db(
     let http = alloy_transport_http::Http::with_client(reqwest_client, url);
     let is_local = http.guess_local();
     let rpc_client = alloy_rpc_client::RpcClient::new(http, is_local);
-    let provider = alloy_provider::ProviderBuilder::new().on_client(rpc_client);
+    let provider = alloy_provider::ProviderBuilder::new()
+        .connect_client(rpc_client)
+        .erased();
 
-    let alloy_db = AlloyDB::with_runtime(provider, block_id, rt);
-    let cache_db = CacheDB::new(alloy_db);
+    let alloy_db = AlloyDB::new(provider, block_id);
+    let wrapped_db = WrapDatabaseAsync::with_runtime(alloy_db, rt);
+    let cache_db = CacheDB::new(wrapped_db);
 
     Ok(cache_db)
 }
@@ -348,6 +357,7 @@ fn apply_state_overrides<'a>(
         let addr = decode_hex_to_address(addr_hex)?;
 
         let mut info = db
+            .cache
             .accounts
             .get(&addr)
             .map(|a| a.info.clone())
@@ -369,10 +379,8 @@ fn apply_state_overrides<'a>(
         db.insert_account_info(addr, info);
 
         if let Some(storage_json) = fields.get("storage") {
-            let storage: HashMap<String, String> =
-                serde_json::from_str(storage_json).map_err(|e| {
-                    EvmError::ExecutionError(format!("invalid storage JSON: {}", e))
-                })?;
+            let storage: HashMap<String, String> = serde_json::from_str(storage_json)
+                .map_err(|e| EvmError::ExecutionError(format!("invalid storage JSON: {}", e)))?;
             for (slot_hex, val_hex) in &storage {
                 let slot = decode_hex_to_u256(slot_hex)?;
                 let val = decode_hex_to_u256(val_hex)?;
@@ -418,14 +426,36 @@ fn extract_call_params<'a>(params: &HashMap<String, Term<'a>>) -> Result<CallPar
     })
 }
 
-fn configure_tx(tx: &mut revm::primitives::TxEnv, cp: &CallParams, data: Bytes) {
-    tx.caller = cp.from;
-    tx.transact_to = TxKind::Call(cp.to);
-    tx.data = data;
-    tx.value = cp.value;
+fn build_tx(cp: &CallParams, data: Bytes) -> Result<TxEnv, EvmError> {
+    build_tx_with_nonce(cp, data, None)
+}
+
+fn build_tx_with_nonce(
+    cp: &CallParams,
+    data: Bytes,
+    nonce: Option<u64>,
+) -> Result<TxEnv, EvmError> {
+    let mut tx = TxEnv::builder()
+        .caller(cp.from)
+        .kind(TxKind::Call(cp.to))
+        .data(data)
+        .value(cp.value);
+
     if let Some(gl) = cp.gas_limit {
-        tx.gas_limit = gl;
+        tx = tx.gas_limit(gl);
     }
+    if let Some(nonce) = nonce {
+        tx = tx.nonce(nonce);
+    }
+
+    tx.build()
+        .map_err(|e| EvmError::ExecutionError(format!("invalid tx: {}", e)))
+}
+
+fn current_nonce(db: &ForkDB, address: Address) -> Result<u64, EvmError> {
+    db.basic_ref(address)
+        .map_err(classify_transport_error)
+        .map(|account| account.map(|info| info.nonce).unwrap_or_default())
 }
 
 // --- ExecutionResult → TxResult ---
@@ -433,10 +463,7 @@ fn configure_tx(tx: &mut revm::primitives::TxEnv, cp: &CallParams, data: Bytes) 
 fn extract_tx_result(result: ExecutionResult) -> Result<TxResult, EvmError> {
     match result {
         ExecutionResult::Success {
-            gas_used,
-            logs,
-            output,
-            ..
+            gas, logs, output, ..
         } => {
             let out_bytes = match output {
                 Output::Call(b) => b,
@@ -446,20 +473,24 @@ fn extract_tx_result(result: ExecutionResult) -> Result<TxResult, EvmError> {
                 .iter()
                 .map(|l| LogEntry {
                     address: bytes_to_hex(l.address.as_ref()),
-                    topics: l.topics().iter().map(|t| bytes_to_hex(t.as_ref())).collect(),
+                    topics: l
+                        .topics()
+                        .iter()
+                        .map(|t| bytes_to_hex(t.as_ref()))
+                        .collect(),
                     data: bytes_to_hex(l.data.data.as_ref()),
                 })
                 .collect();
             Ok(TxResult {
                 success: true,
-                gas_used,
+                gas_used: gas.tx_gas_used(),
                 output: bytes_to_hex(&out_bytes),
                 logs: log_entries,
             })
         }
-        ExecutionResult::Revert { gas_used, output } => Ok(TxResult {
+        ExecutionResult::Revert { gas, output, .. } => Ok(TxResult {
             success: false,
-            gas_used,
+            gas_used: gas.tx_gas_used(),
             output: bytes_to_hex(&output),
             logs: vec![],
         }),
@@ -480,13 +511,10 @@ fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, Ev
     let mut db = build_fork_db(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
 
-    let data_bytes = Bytes::from(cp.data.clone());
-    let mut evm = Evm::builder()
-        .with_db(&mut db)
-        .modify_tx_env(|tx| configure_tx(tx, &cp, data_bytes))
-        .build();
+    let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
+    let mut evm = Context::mainnet().with_db(&mut db).build_mainnet();
 
-    let result = evm.transact().map_err(classify_transport_error)?;
+    let result = evm.transact(tx).map_err(classify_transport_error)?;
 
     match result.result {
         ExecutionResult::Success { output, .. } => {
@@ -505,9 +533,7 @@ fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, Ev
 
 // --- simulate_transaction ---
 
-fn do_simulate_transaction<'a>(
-    params: &HashMap<String, Term<'a>>,
-) -> Result<TxResult, EvmError> {
+fn do_simulate_transaction<'a>(params: &HashMap<String, Term<'a>>) -> Result<TxResult, EvmError> {
     let rpc_url = get_string_param(params, "rpc_url")?;
     let block_id = resolve_block_id(params)?;
     let timeout_ms = get_optional_u64_param(params, "timeout_ms")?.unwrap_or(DEFAULT_TIMEOUT_MS);
@@ -516,22 +542,17 @@ fn do_simulate_transaction<'a>(
     let mut db = build_fork_db(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
 
-    let data_bytes = Bytes::from(cp.data.clone());
-    let mut evm = Evm::builder()
-        .with_db(&mut db)
-        .modify_tx_env(|tx| configure_tx(tx, &cp, data_bytes))
-        .build();
+    let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
+    let mut evm = Context::mainnet().with_db(&mut db).build_mainnet();
 
-    let result = evm.transact().map_err(classify_transport_error)?;
+    let result = evm.transact(tx).map_err(classify_transport_error)?;
 
     extract_tx_result(result.result)
 }
 
 // --- simulate_batch ---
 
-fn do_simulate_batch<'a>(
-    params: &HashMap<String, Term<'a>>,
-) -> Result<Vec<TxResult>, EvmError> {
+fn do_simulate_batch<'a>(params: &HashMap<String, Term<'a>>) -> Result<Vec<TxResult>, EvmError> {
     let rpc_url = get_string_param(params, "rpc_url")?;
     let block_id = resolve_block_id(params)?;
     let timeout_ms = get_optional_u64_param(params, "timeout_ms")?.unwrap_or(DEFAULT_TIMEOUT_MS);
@@ -547,20 +568,24 @@ fn do_simulate_batch<'a>(
         .get("calls")
         .ok_or_else(|| EvmError::ExecutionError("missing param: calls".into()))?;
 
-    let calls: Vec<(String, String)> = calls_term
-        .decode()
-        .map_err(|_| {
-            EvmError::ExecutionError("calls must be list of {address, data} tuples".into())
-        })?;
+    let calls: Vec<(String, String)> = calls_term.decode().map_err(|_| {
+        EvmError::ExecutionError("calls must be list of {address, data} tuples".into())
+    })?;
 
     let mut db = build_fork_db(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
+    let base_nonce = current_nonce(&db, from)?;
 
     let mut results = Vec::with_capacity(calls.len());
 
-    for (to_hex, data_hex) in &calls {
+    for (index, (to_hex, data_hex)) in calls.iter().enumerate() {
         let to = decode_hex_to_address(to_hex)?;
         let data = decode_hex_to_bytes(data_hex)?;
+        let nonce_offset = u64::try_from(index)
+            .map_err(|e| EvmError::ExecutionError(format!("batch index overflow: {}", e)))?;
+        let nonce = base_nonce
+            .checked_add(nonce_offset)
+            .ok_or_else(|| EvmError::ExecutionError("batch nonce overflow".into()))?;
 
         let cp = CallParams {
             to,
@@ -570,17 +595,63 @@ fn do_simulate_batch<'a>(
             gas_limit,
         };
 
-        let data_bytes = Bytes::from(data);
-        let mut evm = Evm::builder()
-            .with_db(&mut db)
-            .modify_tx_env(|tx| configure_tx(tx, &cp, data_bytes))
-            .build();
+        let tx = build_tx_with_nonce(&cp, Bytes::from(data), Some(nonce))?;
+        let mut evm = Context::mainnet().with_db(&mut db).build_mainnet();
 
-        let result = evm.transact_commit().map_err(classify_transport_error)?;
+        let result = evm.transact_commit(tx).map_err(classify_transport_error)?;
 
         // transact_commit returns ExecutionResult directly (not ResultAndState)
         results.push(extract_tx_result(result)?);
     }
 
     Ok(results)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TEST_FROM_BYTE: u8 = 0x11;
+    const TEST_TO_BYTE: u8 = 0x22;
+    const TEST_GAS_LIMIT: u64 = 42_000;
+    const TEST_NONCE: u64 = 3;
+    const TEST_VALUE: u64 = 7;
+
+    #[test]
+    fn build_tx_preserves_call_params() {
+        let from = Address::repeat_byte(TEST_FROM_BYTE);
+        let to = Address::repeat_byte(TEST_TO_BYTE);
+        let data = Bytes::from(vec![0xde, 0xad, 0xbe, 0xef]);
+        let params = CallParams {
+            to,
+            data: data.to_vec(),
+            from,
+            value: U256::from(TEST_VALUE),
+            gas_limit: Some(TEST_GAS_LIMIT),
+        };
+
+        let tx = build_tx(&params, data.clone()).expect("valid tx");
+
+        assert_eq!(tx.caller, from);
+        assert_eq!(tx.kind, TxKind::Call(to));
+        assert_eq!(tx.data, data);
+        assert_eq!(tx.value, U256::from(TEST_VALUE));
+        assert_eq!(tx.gas_limit, TEST_GAS_LIMIT);
+        assert_eq!(tx.nonce, 0);
+    }
+
+    #[test]
+    fn build_tx_preserves_explicit_nonce() {
+        let params = CallParams {
+            to: Address::repeat_byte(TEST_TO_BYTE),
+            data: Vec::new(),
+            from: Address::repeat_byte(TEST_FROM_BYTE),
+            value: U256::ZERO,
+            gas_limit: None,
+        };
+
+        let tx = build_tx_with_nonce(&params, Bytes::new(), Some(TEST_NONCE)).expect("valid tx");
+
+        assert_eq!(tx.nonce, TEST_NONCE);
+    }
 }
