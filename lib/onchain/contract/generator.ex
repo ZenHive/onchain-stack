@@ -311,13 +311,24 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  # Compile-time codegen only. Every identifier this generator emits — function
+  # names, param/local variable names, struct field keys — must be an atom, and the
+  # atom does not exist until the macro creates it, so `String.to_existing_atom/1`
+  # cannot be used. Input is a developer-supplied .sol/ABI at compile time (never
+  # runtime user input) and atom growth is bounded by the contract, so Sobelow's
+  # DOS.StringToAtom finding is a confirmed false positive, centralized to this one
+  # documented, skip-anchored call site.
+  @spec to_identifier_atom(String.t()) :: atom()
+  defp to_identifier_atom(name), do: String.to_atom(name)
+
+  @doc false
   @spec generate_dialyzer([map()]) :: [Macro.t()]
   defp generate_dialyzer(functions) do
     # Generate @dialyzer annotations for all functions (same cascade as erc20.ex)
     all_fns =
       Enum.flat_map(functions, fn f ->
-        name = String.to_atom(f.elixir_name)
-        bang = String.to_atom(f.elixir_name <> "!")
+        name = to_identifier_atom(f.elixir_name)
+        bang = to_identifier_atom(f.elixir_name <> "!")
         # arity: contract + inputs + opts
         arity = length(f.inputs) + 2
         # bang arity without default opts (for reads, -1 since opts has default)
@@ -355,8 +366,8 @@ defmodule Onchain.Contract.Generator do
   @doc false
   @spec generate_function(map(), boolean()) :: [Macro.t()]
   defp generate_function(func, is_sol) do
-    name = String.to_atom(func.elixir_name)
-    bang_name = String.to_atom(func.elixir_name <> "!")
+    name = to_identifier_atom(func.elixir_name)
+    bang_name = to_identifier_atom(func.elixir_name <> "!")
     is_read = func.state_mutability in ["view", "pure"]
     doc = build_doc(func, is_sol)
 
@@ -409,7 +420,7 @@ defmodule Onchain.Contract.Generator do
     |> Enum.filter(fn {input, _idx} -> input.ty == "address" end)
     |> Enum.map(fn {input, idx} ->
       var_name = param_var_name(input, idx)
-      validated_name = String.to_atom("#{var_name}_bin")
+      validated_name = to_identifier_atom("#{var_name}_bin")
       {var_name, validated_name}
     end)
   end
@@ -419,9 +430,9 @@ defmodule Onchain.Contract.Generator do
   @spec param_var_name(map(), non_neg_integer()) :: atom()
   defp param_var_name(input, idx) do
     if input.name == "" do
-      String.to_atom("param_#{idx}")
+      to_identifier_atom("param_#{idx}")
     else
-      input.name |> to_snake_case() |> String.to_atom()
+      input.name |> to_snake_case() |> to_identifier_atom()
     end
   end
 
@@ -619,11 +630,11 @@ defmodule Onchain.Contract.Generator do
 
     Enum.map(structs, fn struct_info ->
       mod_name = Module.concat(parent_module, struct_info.name)
-      field_atoms = Enum.map(struct_info.fields, fn f -> String.to_atom(to_snake_case(f.name)) end)
+      field_atoms = Enum.map(struct_info.fields, fn f -> to_identifier_atom(to_snake_case(f.name)) end)
 
       field_types =
         Enum.map(struct_info.fields, fn f ->
-          {String.to_atom(to_snake_case(f.name)), solidity_to_struct_type(f.ty)}
+          {to_identifier_atom(to_snake_case(f.name)), solidity_to_struct_type(f.ty)}
         end)
 
       from_raw_body = build_from_raw(struct_info.fields, parent_module, struct_names)
@@ -655,7 +666,7 @@ defmodule Onchain.Contract.Generator do
       fields
       |> Enum.with_index()
       |> Enum.map(fn {field, idx} ->
-        key = String.to_atom(to_snake_case(field.name))
+        key = to_identifier_atom(to_snake_case(field.name))
         value = build_struct_field_value(field.ty, idx, parent_module, struct_names)
 
         {key, value}
@@ -742,7 +753,7 @@ defmodule Onchain.Contract.Generator do
       |> Enum.with_index()
       |> Enum.map(fn {variant, idx} ->
         fn_name =
-          String.to_atom(to_snake_case(short_name) <> "_" <> to_snake_case(variant))
+          to_identifier_atom(to_snake_case(short_name) <> "_" <> to_snake_case(variant))
 
         quote do
           @doc "Enum constant `#{unquote(short_name)}.#{unquote(variant)}` (index #{unquote(idx)})."

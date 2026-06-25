@@ -60,7 +60,10 @@ jobs:
       # non-zero exit still lets us upload the report.
       - name: Run Sobelow (SARIF)
         continue-on-error: true
-        run: mix sobelow --format sarif > sobelow.sarif
+        # --skip honors .sobelow-skips so confirmed false positives (compile-time
+        # codegen atoms, operator-supplied .sol paths) don't surface in the Security
+        # tab; new/unskipped findings still upload. Matches the local precommit.full.
+        run: mix sobelow --skip --format sarif > sobelow.sarif
 
       - name: Upload SARIF to code scanning
         uses: github/codeql-action/upload-sarif@v4

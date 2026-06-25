@@ -17,6 +17,7 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 - **Native dependencies** — bumped `rustler` `0.37` → `0.38` (both crates, with the matching `mix.exs` constraint) and `alloy-json-abi` `0.8` → `1.6` in `native/onchain_solidity`; `ex_doc` `~> 0.39` → `~> 0.40` (older pin held `makeup_elixir < 1.0`, conflicting with `reach`).
 - **`Onchain.BangHelper`** — `defbang` now resolves the base name with `String.to_existing_atom/1` (the wrapped function's atom always exists by macro-expansion time), avoiding atom-table growth and turning a typo'd base name into a compile error.
 - **`Onchain.Contract.Generator`** — extracted the shared bang-wrapper body (`build_bang_body/2`) used by generated read/write functions, removing the duplicated `case` template.
+- **Sobelow false-positive suppression** — the generator's compile-time codegen creates the identifier atoms it emits (function names, struct field keys, param vars), so its 11 `String.to_atom` sites are now routed through a single documented `to_identifier_atom/1` helper, collapsing the `DOS.StringToAtom` finding to one skip-anchored line. The `code-scanning.yml` Sobelow step now runs `--skip` so the SARIF upload honors `.sobelow-skips` (matching `precommit.full`), and `.sobelow-skips` was regenerated against current line numbers — clearing the stale Code Scanning alerts while still surfacing any new finding.
 
 ## [0.2.0] — 2026-06-12
 
