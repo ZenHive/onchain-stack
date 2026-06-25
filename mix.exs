@@ -135,7 +135,7 @@ defmodule OnchainEvm.MixProject do
   defp dialyzer do
     [
       # OOM mitigation: skip transitive deps (default is :app_tree).
-      # Tidewave/bandit's HTTP stack (plug, finch, mint, gun, cowlib, etc.)
+      # The HTTP stack (req → finch → mint; tidewave/bandit → plug, gun, cowlib)
       # is not in lib/ call graph and bloats PLT to ~800 modules.
       plt_add_deps: :apps_direct,
       # :ex_unit so test/support/*.ex (ExUnit.Assertions.flunk/1) resolves in the PLT.
