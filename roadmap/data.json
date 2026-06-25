@@ -699,7 +699,7 @@
       "id": "54",
       "phase": 2,
       "bundle": "bundle2_rust_safety_hardening",
-      "status": "in_progress",
+      "status": "done",
       "title": "Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump",
       "scores": {
         "d": 4,
@@ -731,10 +731,15 @@
         "test/onchain/evm_test.exs",
         "test/onchain/evm_integration_test.exs"
       ],
+      "shipped_in": "2cfb02c24be42c78caeaba9b7a7885e15ed1cd36",
       "body": "The next task (revm 19→41 + alloy 0.7→2.1 major bump) rewrites the security-sensitive native EVM execution crate. Its whole risk is *silent* behavior drift in the fork+simulate path. Before that rewrite, lock current behavior in deterministic golden tests so the migration has a regression net it must keep green.\n\nExpand `Onchain.EVM`'s test coverage — especially the fork+execute integration paths (currently only exercised under `--include integration`) — to the critical tier (>=95%, this is EVM execution / money-adjacent simulation). Pin fork tests to FIXED block numbers against the archive node so results are deterministic across runs.\n\nCover at minimum: a known view-function call against a well-known mainnet contract at a pinned block returns its known on-chain value; a call that reverts surfaces `{:error, {:evm_revert, _}}` with the revert reason; state-override (balance / nonce / storage) changes the simulated result as expected; and the error taxonomy from Task 49 (`:fork_error` on connect-refused, `:timeout`, `:evm_error`) classifies correctly.\n\nCRITICAL — lock SEMANTICS, not volatile internals. Assert return-value correctness, revert reasons, error tags, and state-override effects. Do NOT assert exact gas figures by equality: gas accounting can legitimately change across revm major versions (EIP updates), so an exact-gas golden would force a false failure during the migration. Assert gas is present and plausible (> 0 / within a wide tolerance) only.\n",
       "created_at": "2026-06-24",
       "started_at": "2026-06-24",
+      "done_at": "2026-06-25",
       "scored_at": "2026-06-24",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1782344871655-0f095dbf, 2cfb02c24be42c78caeaba9b7a7885e15ed1cd36).",
+      "delivered_by": "codex",
+      "verified": true,
       "cross_repo": []
     },
     {
