@@ -665,7 +665,11 @@ Self-contained so it survives into `AGENTS.md` on regen — cross-family reviewe
 lib/onchain/
   bang_helper.ex              # defbang macro: generates bang (!) wrappers for ok/error functions
   evm.ex                      # Rustler NIF: revm local EVM execution
+  evm/
+    params.ex                 # cover-able sibling: pure-Elixir input validation + NIF-param assembly
   solidity.ex                 # Rustler NIF: Alloy-powered Solidity ABI parser
+  solidity/
+    resolver.ex               # cover-able sibling: import/remapping resolution
   trace.ex                    # debug/trace APIs (trace_transaction, trace_call, storage_at)
   contract/
     generator.ex              # macro: .sol → typed Elixir module at compile time

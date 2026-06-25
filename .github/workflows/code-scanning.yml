@@ -61,8 +61,8 @@ jobs:
       - name: Run Sobelow (SARIF)
         continue-on-error: true
         # --skip honors .sobelow-skips so confirmed false positives (compile-time
-        # codegen atoms, operator-supplied .sol paths) don't surface in the Security
-        # tab; new/unskipped findings still upload. Matches the local precommit.full.
+        # codegen atoms, operator-supplied .sol/ABI-JSON file paths) don't surface in
+        # the Security tab; new/unskipped findings still upload. Matches precommit.full.
         run: mix sobelow --skip --format sarif > sobelow.sarif
 
       - name: Upload SARIF to code scanning
