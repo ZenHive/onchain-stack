@@ -1,7 +1,7 @@
 defmodule OnchainEvm.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.3.0"
   @source_url "https://github.com/ZenHive/onchain_evm"
 
   def project do
@@ -76,7 +76,25 @@ defmodule OnchainEvm.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => @source_url}
+      links: %{"GitHub" => @source_url},
+      # Rust NIFs compile from source on the consumer — the `native/` crate
+      # sources MUST ship (src + Cargo.toml + Cargo.lock per crate). All of
+      # `priv/` is test fixtures + build artifacts (.so / PLTs / vendored
+      # Solidity) — nothing in `lib/` reads it at runtime, so it is excluded.
+      files: ~w(
+          lib
+          native/onchain_evm/src
+          native/onchain_evm/Cargo.toml
+          native/onchain_evm/Cargo.lock
+          native/onchain_solidity/src
+          native/onchain_solidity/Cargo.toml
+          native/onchain_solidity/Cargo.lock
+          .formatter.exs
+          mix.exs
+          README.md
+          LICENSE
+          CHANGELOG.md
+        )
     ]
   end
 

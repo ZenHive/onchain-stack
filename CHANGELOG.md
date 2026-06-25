@@ -6,6 +6,8 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-06-25
+
 ### Added
 
 - **Vibe analyzer stack** — adopted the onchain-family analyzer toolchain: `ex_dna`, `ex_ast`, `ex_slop`, and `reach` (dev/test only). New `.credo.exs` (ExSlop plugin, `Readability.Specs` scoped to the library + test support) and `.reach.exs` (arch/smell policy; the compile-time contract generator is scoped out of the smell detector since its `String.to_atom` calls create the identifiers they emit). Added `precommit` (fast local loop), `precommit.full`/`ci` (the harness reviewer's `check_command`), and `integration` mix aliases.

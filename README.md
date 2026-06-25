@@ -9,8 +9,8 @@ Requires a Rust toolchain for NIF compilation.
 ```elixir
 def deps do
   [
-    {:onchain, "~> 0.8"},
-    {:onchain_evm, "~> 0.2"}
+    {:onchain, "~> 0.10"},
+    {:onchain_evm, "~> 0.3"}
   ]
 end
 ```
