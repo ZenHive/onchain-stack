@@ -413,13 +413,19 @@ defmodule Onchain.Solidity do
   )
 
   @doc false
+  @spec __parse_sol_root__(String.t(), String.t()) ::
+          {:ok, parsed_sol()} | {:error, {:parse_error, String.t()}}
   def __parse_sol_root__(_source, _root_contract), do: :erlang.nif_error(:nif_not_loaded)
 
   @doc false
+  @spec __extract_sol_imports__(String.t()) ::
+          {:ok, [String.t()]} | {:error, {:parse_error, String.t()}}
   def __extract_sol_imports__(_source), do: :erlang.nif_error(:nif_not_loaded)
 
   @doc false
   # Parses a resolved source graph, preserving single-file compatibility for mismatched filenames.
+  @spec parse_resolved_sol_file(resolved_sol_file(), parse_sol_file_opts()) ::
+          {:ok, parsed_sol()} | {:error, {:parse_error, String.t()}}
   defp parse_resolved_sol_file(resolution, opts) do
     case __parse_sol_root__(resolution.source, resolution.root_contract) do
       {:error, {:parse_error, reason}} = error ->
@@ -437,12 +443,14 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Falls back to full-source parsing only for legacy single-file callers without an explicit root override.
+  @spec allow_single_file_fallback?(resolved_sol_file(), parse_sol_file_opts()) :: boolean()
   defp allow_single_file_fallback?(resolution, opts) do
     length(resolution.files) == 1 and not Keyword.has_key?(opts, :root_contract)
   end
 
   @doc false
   # Expands a root Solidity file to an absolute path and verifies it exists.
+  @spec expand_sol_path(String.t()) :: {:ok, String.t()} | {:error, {:file_error, String.t()}}
   defp expand_sol_path(path) do
     expanded = Path.expand(path)
 
@@ -455,6 +463,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Picks the root contract name from opts or the root file basename.
+  @spec resolve_root_contract_name(String.t(), parse_sol_file_opts()) ::
+          {:ok, String.t()} | {:error, {:file_error, String.t()}}
   defp resolve_root_contract_name(path, opts) do
     root_contract =
       opts
@@ -473,6 +483,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Merges auto-discovered remappings.txt entries with explicit overrides.
+  @spec resolve_remappings(String.t(), parse_sol_file_opts()) ::
+          {:ok, [{String.t(), String.t()}]} | {:error, {:file_error, String.t()}}
   defp resolve_remappings(path, opts) do
     remappings_file = find_remappings_file(Path.dirname(path))
     base_dir = remappings_base_dir(remappings_file, path)
@@ -486,6 +498,7 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Finds the nearest remappings.txt by walking ancestor directories upward.
+  @spec find_remappings_file(String.t()) :: String.t() | nil
   defp find_remappings_file(directory) do
     candidate = Path.join(directory, @remappings_filename)
 
@@ -504,11 +517,14 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Resolves the base directory used for remapping target expansion.
+  @spec remappings_base_dir(String.t() | nil, String.t()) :: String.t()
   defp remappings_base_dir(nil, path), do: Path.dirname(path)
   defp remappings_base_dir(remappings_file, _path), do: Path.dirname(remappings_file)
 
   @doc false
   # Parses remappings.txt when present; absent files contribute no remappings.
+  @spec read_remappings_file(String.t() | nil) ::
+          {:ok, [{String.t(), String.t()}]} | {:error, {:file_error, String.t()}}
   defp read_remappings_file(nil), do: {:ok, []}
 
   @doc false
@@ -521,6 +537,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Parses Foundry-style remapping lines into normalized prefix/target tuples.
+  @spec parse_remapping_strings([String.t()], String.t(), String.t() | :explicit) ::
+          {:ok, [{String.t(), String.t()}]} | {:error, {:file_error, String.t()}}
   defp parse_remapping_strings(lines, base_dir, source_label) when is_list(lines) do
     lines
     |> Enum.with_index(1)
@@ -539,6 +557,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Normalizes a single remapping line, skipping blanks and comments.
+  @spec parse_remapping_line(String.t(), pos_integer(), String.t(), String.t() | :explicit) ::
+          {:ok, {String.t(), String.t()} | nil} | {:error, {:file_error, String.t()}}
   defp parse_remapping_line("", _line_number, _base_dir, _source_label) do
     {:ok, nil}
   end
@@ -561,6 +581,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Parses and validates a remapping key=value pair, normalizing segments and expanding the target path.
+  @spec parse_remapping_value(String.t(), pos_integer(), String.t(), String.t() | :explicit) ::
+          {:ok, {String.t(), String.t()}} | {:error, {:file_error, String.t()}}
   defp parse_remapping_value(trimmed, line_number, base_dir, source_label) do
     case String.split(trimmed, "=", parts: 2) do
       [prefix, target] ->
@@ -580,6 +602,7 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Ensures remapping prefixes and targets use consistent trailing slash semantics.
+  @spec normalize_remapping_segment(String.t()) :: String.t()
   defp normalize_remapping_segment(segment) do
     segment
     |> String.trim()
@@ -591,6 +614,7 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Formats invalid remapping errors consistently across explicit and file-sourced entries.
+  @spec invalid_remapping_message(:explicit | String.t(), pos_integer(), String.t()) :: String.t()
   defp invalid_remapping_message(:explicit, line_number, line) do
     "explicit remapping ##{line_number} is invalid: #{line}"
   end
@@ -602,6 +626,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Resolves a root file and all reachable imports using DFS post-order.
+  @spec resolve_file_graph(String.t(), [{String.t(), String.t()}], MapSet.t(String.t())) ::
+          {:ok, [String.t()]} | {:error, {:parse_error, String.t()} | {:file_error, String.t()}}
   defp resolve_file_graph(path, remappings, seen) do
     if MapSet.member?(seen, path) do
       {:ok, []}
@@ -620,6 +646,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Resolves each import in order while preserving DFS dependency order.
+  @spec resolve_imports([String.t()], String.t(), [{String.t(), String.t()}], MapSet.t(String.t())) ::
+          {:ok, [String.t()]} | {:error, {:parse_error, String.t()} | {:file_error, String.t()}}
   defp resolve_imports(imports, importer_path, remappings, seen) do
     imports
     |> Enum.reduce_while({:ok, {seen, []}}, fn import_path, {:ok, {current_seen, files}} ->
@@ -633,6 +661,14 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Resolves one import within the reduce_while accumulator, returning {:cont, ...} or {:halt, ...}.
+  @spec resolve_single_import(
+          String.t(),
+          String.t(),
+          [{String.t(), String.t()}],
+          {MapSet.t(String.t()), [String.t()]}
+        ) ::
+          {:cont, {:ok, {MapSet.t(String.t()), [String.t()]}}}
+          | {:halt, {:error, {:file_error, String.t()} | {:parse_error, String.t()}}}
   defp resolve_single_import(import_path, importer_path, remappings, {current_seen, files}) do
     case resolve_import_path(import_path, importer_path, remappings) do
       {:ok, resolved_path} ->
@@ -645,6 +681,13 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Skips already-seen paths; otherwise recurses into the file graph and merges results.
+  @spec resolve_if_unseen(
+          String.t(),
+          [{String.t(), String.t()}],
+          {MapSet.t(String.t()), [String.t()]}
+        ) ::
+          {:cont, {:ok, {MapSet.t(String.t()), [String.t()]}}}
+          | {:halt, {:error, {:file_error, String.t()} | {:parse_error, String.t()}}}
   defp resolve_if_unseen(resolved_path, remappings, {current_seen, files}) do
     if MapSet.member?(current_seen, resolved_path) do
       {:cont, {:ok, {current_seen, files}}}
@@ -661,6 +704,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Resolves a single import path relative to the importer or through remappings.
+  @spec resolve_import_path(String.t(), String.t(), [{String.t(), String.t()}]) ::
+          {:ok, String.t()} | {:error, {:file_error, String.t()}}
   defp resolve_import_path(import_path, importer_path, remappings) do
     cond do
       Path.type(import_path) == :absolute ->
@@ -678,6 +723,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Resolves remapped imports using longest-prefix match, with earlier entries winning ties.
+  @spec resolve_remapped_import(String.t(), String.t(), [{String.t(), String.t()}]) ::
+          {:ok, String.t()} | {:error, {:file_error, String.t()}}
   defp resolve_remapped_import(import_path, importer_path, remappings) do
     case matching_remapping(import_path, remappings) do
       nil ->
@@ -695,6 +742,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Picks the best remapping by longest prefix, preserving caller order for ties.
+  @spec matching_remapping(String.t(), [{String.t(), String.t()}]) ::
+          {String.t(), String.t()} | nil
   defp matching_remapping(import_path, remappings) do
     remappings
     |> Enum.with_index()
@@ -711,6 +760,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Verifies an import resolves to a real file before it enters the graph.
+  @spec validate_resolved_import(String.t(), String.t(), String.t()) ::
+          {:ok, String.t()} | {:error, {:file_error, String.t()}}
   defp validate_resolved_import(resolved_path, importer_path, original_import) do
     case File.stat(resolved_path) do
       {:ok, %File.Stat{type: :regular}} ->
@@ -728,6 +779,8 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Re-reads the resolved files and concatenates them into a single parseable source string.
+  @spec build_merged_source([String.t()]) ::
+          {:ok, String.t()} | {:error, {:file_error, String.t()}}
   defp build_merged_source(files) do
     files
     |> Enum.reduce_while({:ok, []}, fn path, {:ok, sections} ->
@@ -744,6 +797,7 @@ defmodule Onchain.Solidity do
 
   @doc false
   # Adds a lightweight file marker so merged-source parse errors still point back to source files.
+  @spec source_section(String.t(), String.t()) :: String.t()
   defp source_section(path, source) do
     IO.iodata_to_binary([@source_file_marker_prefix, path, "\n", source])
   end

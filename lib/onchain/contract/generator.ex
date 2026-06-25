@@ -149,6 +149,8 @@ defmodule Onchain.Contract.Generator do
 
   @doc false
   # Resolves a root Solidity file relative to the caller module and parses the selected contract.
+  @spec resolve_sol_file_input(String.t(), keyword(), Macro.Env.t() | nil) ::
+          %{abi: Onchain.Solidity.parsed_sol(), is_sol: true, external_files: [String.t()]}
   defp resolve_sol_file_input(file, opts, env) do
     sol_path = expand_sol_file_path(file, env)
     sol_opts = Keyword.take(opts, [:remappings, :root_contract])
@@ -166,6 +168,7 @@ defmodule Onchain.Contract.Generator do
 
   @doc false
   # Expands sol_file paths relative to the caller file when available.
+  @spec expand_sol_file_path(String.t(), Macro.Env.t() | nil) :: String.t()
   defp expand_sol_file_path(file, nil), do: Path.expand(file)
 
   @doc false
@@ -195,6 +198,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec disambiguate_collisions([map()]) :: [map()]
   defp disambiguate_collisions(functions) do
     # Group by {snake_name, input_count + 2} (contract + opts params)
     groups =
@@ -218,6 +222,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec disambiguation_suffix(map(), [map()]) :: String.t()
   defp disambiguation_suffix(func, collisions) do
     # For same-arity overloads, suffix with the type of the input that differs
     # Find inputs that are unique to this overload
@@ -237,6 +242,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec solidity_type_to_suffix(String.t()) :: String.t()
   defp solidity_type_to_suffix("address"), do: "address"
   defp solidity_type_to_suffix("bool"), do: "bool"
   defp solidity_type_to_suffix("string"), do: "string"
@@ -246,6 +252,7 @@ defmodule Onchain.Contract.Generator do
 
   @doc false
   # Returns the type suffix if this type at position i is unique across all other overloads
+  @spec unique_type_suffix({String.t(), non_neg_integer()}, [[String.t()]]) :: String.t() | nil
   defp unique_type_suffix({my_type, i}, other_input_sets) do
     if Enum.all?(other_input_sets, fn other -> Enum.at(other, i) != my_type end) do
       solidity_type_to_suffix(my_type)
@@ -255,6 +262,7 @@ defmodule Onchain.Contract.Generator do
   # --- Mutability Split ---
 
   @doc false
+  @spec split_by_mutability([map()]) :: {[map()], [map()]}
   defp split_by_mutability(functions) do
     Enum.split_with(functions, fn f ->
       f.state_mutability in ["view", "pure"]
@@ -264,6 +272,7 @@ defmodule Onchain.Contract.Generator do
   # --- Code Generation ---
 
   @doc false
+  @spec generate_moduledoc([map()], [map()], [map()]) :: String.t()
   defp generate_moduledoc(functions, read_fns, write_fns) do
     read_names = MapSet.new(read_fns, & &1.name)
     write_names = MapSet.new(write_fns, & &1.name)
@@ -292,6 +301,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec generate_abi_fn(Onchain.Solidity.parsed_abi()) :: Macro.t()
   defp generate_abi_fn(abi) do
     quote do
       @doc "Returns the full parsed ABI map for this contract."
@@ -301,6 +311,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec generate_dialyzer([map()]) :: [Macro.t()]
   defp generate_dialyzer(functions) do
     # Generate @dialyzer annotations for all functions (same cascade as erc20.ex)
     all_fns =
@@ -342,6 +353,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec generate_function(map(), boolean()) :: [Macro.t()]
   defp generate_function(func, is_sol) do
     name = String.to_atom(func.elixir_name)
     bang_name = String.to_atom(func.elixir_name <> "!")
@@ -359,6 +371,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec build_doc(map(), boolean()) :: String.t()
   defp build_doc(func, is_sol) do
     base =
       if is_sol && func[:natspec] && func.natspec[:notice] do
@@ -381,6 +394,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec build_input_vars([map()]) :: [{atom(), String.t()}]
   defp build_input_vars(inputs) do
     inputs
     |> Enum.with_index()
@@ -388,6 +402,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec build_address_validations([map()]) :: [{atom(), atom()}]
   defp build_address_validations(inputs) do
     inputs
     |> Enum.with_index()
@@ -401,6 +416,7 @@ defmodule Onchain.Contract.Generator do
 
   @doc false
   # Derives an Elixir variable name from a Solidity input param, falling back to positional naming
+  @spec param_var_name(map(), non_neg_integer()) :: atom()
   defp param_var_name(input, idx) do
     if input.name == "" do
       String.to_atom("param_#{idx}")
@@ -410,6 +426,8 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec generate_read_function(atom(), atom(), map(), [{atom(), String.t()}], [{atom(), atom()}], String.t()) ::
+          [Macro.t()]
   defp generate_read_function(name, bang_name, func, input_vars, address_validations, doc) do
     var_asts = Enum.map(input_vars, fn {vname, _ty} -> Macro.var(vname, nil) end)
     signature = func.signature
@@ -442,16 +460,14 @@ defmodule Onchain.Contract.Generator do
         @spec unquote(bang_name)(String.t() | binary(), unquote_splicing(input_spec_types(input_vars)), keyword()) ::
                 list()
         def unquote(bang_name)(contract, unquote_splicing(var_asts), opts \\ []) do
-          case unquote(name)(contract, unquote_splicing(var_asts), opts) do
-            {:ok, values} -> values
-            {:error, reason} -> raise "#{unquote(Atom.to_string(name))} failed: #{inspect(reason)}"
-          end
+          unquote(build_bang_body(name, var_asts))
         end
       end
     ]
   end
 
   @doc false
+  @spec build_with_chain([{atom(), atom()}], String.t(), String.t(), [Macro.t()]) :: Macro.t()
   defp build_with_chain([], signature, return_type, call_params) do
     quote do
       Onchain.Contract.call(
@@ -488,7 +504,22 @@ defmodule Onchain.Contract.Generator do
     {:with, [], validation_clauses ++ [[do: body]]}
   end
 
+  # Builds the bang-wrapper body shared by generated read/write functions:
+  # delegate to the non-bang function, return the value on :ok, raise on :error.
   @doc false
+  @spec build_bang_body(atom(), [Macro.t()]) :: Macro.t()
+  defp build_bang_body(name, var_asts) do
+    quote do
+      case unquote(name)(contract, unquote_splicing(var_asts), opts) do
+        {:ok, result} -> result
+        {:error, reason} -> raise "#{unquote(Atom.to_string(name))} failed: #{inspect(reason)}"
+      end
+    end
+  end
+
+  @doc false
+  @spec generate_write_function(atom(), atom(), map(), [{atom(), String.t()}], [{atom(), atom()}], String.t()) ::
+          [Macro.t()]
   defp generate_write_function(name, bang_name, func, input_vars, address_validations, doc) do
     var_asts = Enum.map(input_vars, fn {vname, _ty} -> Macro.var(vname, nil) end)
     signature = func.signature
@@ -519,16 +550,14 @@ defmodule Onchain.Contract.Generator do
         @spec unquote(bang_name)(String.t() | binary(), unquote_splicing(input_spec_types(input_vars)), keyword()) ::
                 String.t()
         def unquote(bang_name)(contract, unquote_splicing(var_asts), opts) do
-          case unquote(name)(contract, unquote_splicing(var_asts), opts) do
-            {:ok, tx_hash} -> tx_hash
-            {:error, reason} -> raise "#{unquote(Atom.to_string(name))} failed: #{inspect(reason)}"
-          end
+          unquote(build_bang_body(name, var_asts))
         end
       end
     ]
   end
 
   @doc false
+  @spec build_write_with_chain([{atom(), atom()}], String.t(), [Macro.t()]) :: Macro.t()
   defp build_write_with_chain(validations, signature, call_params) do
     validation_clauses =
       Enum.map(validations, fn {var_name, validated_name} ->
@@ -563,11 +592,13 @@ defmodule Onchain.Contract.Generator do
   # --- Type Mapping ---
 
   @doc false
+  @spec input_spec_types([{atom(), String.t()}]) :: [Macro.t()]
   defp input_spec_types(input_vars) do
     Enum.map(input_vars, fn {_name, ty} -> solidity_to_elixir_spec(ty) end)
   end
 
   @doc false
+  @spec solidity_to_elixir_spec(String.t()) :: Macro.t()
   defp solidity_to_elixir_spec("address"), do: quote(do: String.t() | binary())
   defp solidity_to_elixir_spec("bool"), do: quote(do: boolean())
   defp solidity_to_elixir_spec("string"), do: quote(do: String.t())
@@ -581,6 +612,7 @@ defmodule Onchain.Contract.Generator do
   # --- Struct Generation (.sol only) ---
 
   @doc false
+  @spec generate_struct_modules(Onchain.Solidity.parsed_abi(), module()) :: [Macro.t()]
   defp generate_struct_modules(abi, parent_module) do
     structs = Map.get(abi, :structs, [])
     struct_names = MapSet.new(structs, & &1.name)
@@ -617,6 +649,7 @@ defmodule Onchain.Contract.Generator do
 
   @doc false
   # Builds a struct literal from decoded ABI tuple values.
+  @spec build_from_raw([map()], module(), MapSet.t(String.t())) :: Macro.t()
   defp build_from_raw(fields, parent_module, struct_names) do
     assignments =
       fields
@@ -636,6 +669,7 @@ defmodule Onchain.Contract.Generator do
   @doc false
   # Recursively converts nested struct fields while preserving address normalization.
   # Handles plain types, arrays of structs, and arrays of addresses.
+  @spec build_struct_field_value(String.t(), non_neg_integer(), module(), MapSet.t(String.t())) :: Macro.t()
   defp build_struct_field_value(type, idx, parent_module, struct_names) do
     {base_type, is_array} = strip_array_suffix(type)
 
@@ -672,6 +706,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   # Strips array suffixes: "Item[]" → {"Item", true}, "Item[2]" → {"Item", true}, "Item" → {"Item", false}
+  @spec strip_array_suffix(String.t()) :: {String.t(), boolean()}
   defp strip_array_suffix(type) do
     case Regex.run(~r/^(.+?)(\[.*\])$/, type) do
       [_, base, _suffix] -> {base, true}
@@ -680,6 +715,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec solidity_to_struct_type(String.t()) :: Macro.t()
   defp solidity_to_struct_type("address"), do: quote(do: String.t())
   defp solidity_to_struct_type("bool"), do: quote(do: boolean())
   defp solidity_to_struct_type("string"), do: quote(do: String.t())
@@ -690,6 +726,7 @@ defmodule Onchain.Contract.Generator do
   # --- Enum Generation (.sol only) ---
 
   @doc false
+  @spec generate_enum_fns(Onchain.Solidity.parsed_abi()) :: [Macro.t()]
   defp generate_enum_fns(abi) do
     enums = Map.get(abi, :enums, [])
 

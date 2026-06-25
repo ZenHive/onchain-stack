@@ -649,6 +649,214 @@ defmodule Onchain.SolidityTest do
     end
   end
 
+  describe "resolve_sol_file/2 graph resolution (unit, temp fixtures)" do
+    @describetag :tmp_dir
+
+    test "resolves relative imports and merges sources", %{tmp_dir: dir} do
+      File.write!(Path.join(dir, "Dep.sol"), """
+      pragma solidity ^0.8.0;
+      interface IDep { function bar() external view returns (uint256); }
+      """)
+
+      root = Path.join(dir, "Root.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      import "./Dep.sol";
+      interface IRoot { function foo() external view returns (uint256); }
+      """)
+
+      assert {:ok, resolution} = Solidity.resolve_sol_file(root)
+      assert resolution.root_contract == "Root"
+      assert length(resolution.files) == 2
+      assert Enum.any?(resolution.files, &String.ends_with?(&1, "Dep.sol"))
+      assert String.contains?(resolution.source, "interface IRoot")
+      assert String.contains?(resolution.source, "interface IDep")
+    end
+
+    test "resolves an absolute import path", %{tmp_dir: dir} do
+      dep = Path.join(dir, "Dep.sol")
+
+      File.write!(dep, """
+      pragma solidity ^0.8.0;
+      interface IDep { function bar() external view returns (uint256); }
+      """)
+
+      root = Path.join(dir, "Root.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      import "#{dep}";
+      interface IRoot { function foo() external view returns (uint256); }
+      """)
+
+      assert {:ok, resolution} = Solidity.resolve_sol_file(root)
+      assert Enum.any?(resolution.files, &String.ends_with?(&1, "Dep.sol"))
+    end
+
+    test "resolves imports through an explicit remapping", %{tmp_dir: dir} do
+      lib = Path.join(dir, "lib")
+      File.mkdir_p!(lib)
+
+      File.write!(Path.join(lib, "Token.sol"), """
+      pragma solidity ^0.8.0;
+      interface IToken { function totalSupply() external view returns (uint256); }
+      """)
+
+      root = Path.join(dir, "Root.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      import "@oz/Token.sol";
+      interface IRoot { function foo() external view returns (uint256); }
+      """)
+
+      assert {:ok, resolution} = Solidity.resolve_sol_file(root, remappings: ["@oz/=lib/"])
+      assert Enum.any?(resolution.files, &String.ends_with?(&1, "lib/Token.sol"))
+    end
+
+    test "reads remappings.txt (comments/blank lines) for import resolution", %{tmp_dir: dir} do
+      vendor = Path.join(dir, "vendor")
+      File.mkdir_p!(vendor)
+
+      File.write!(Path.join(vendor, "Token.sol"), """
+      pragma solidity ^0.8.0;
+      interface IToken { function totalSupply() external view returns (uint256); }
+      """)
+
+      File.write!(Path.join(dir, "remappings.txt"), "# a comment\n   \n@oz/=vendor/\n")
+
+      root = Path.join(dir, "Root.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      import "@oz/Token.sol";
+      interface IRoot { function foo() external view returns (uint256); }
+      """)
+
+      assert {:ok, resolution} = Solidity.resolve_sol_file(root)
+      assert Enum.any?(resolution.files, &String.ends_with?(&1, "vendor/Token.sol"))
+    end
+
+    test "honors a :root_contract override", %{tmp_dir: dir} do
+      root = Path.join(dir, "Root.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      interface IRoot { function foo() external view returns (uint256); }
+      """)
+
+      assert {:ok, resolution} = Solidity.resolve_sol_file(root, root_contract: "Custom")
+      assert resolution.root_contract == "Custom"
+    end
+
+    test "rejects a blank :root_contract override", %{tmp_dir: dir} do
+      root = Path.join(dir, "Root.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      interface IRoot { function foo() external view returns (uint256); }
+      """)
+
+      assert {:error, {:file_error, reason}} =
+               Solidity.resolve_sol_file(root, root_contract: "   ")
+
+      assert reason =~ "root contract could not be inferred"
+    end
+
+    test "rejects a non-regular root path" do
+      assert {:error, {:file_error, reason}} = Solidity.resolve_sol_file(System.tmp_dir!())
+      assert reason =~ "not a regular file"
+    end
+
+    test "reports an unresolved import with no matching remapping", %{tmp_dir: dir} do
+      root = Path.join(dir, "Root.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      import "@missing/Token.sol";
+      interface IRoot { function foo() external view returns (uint256); }
+      """)
+
+      assert {:error, {:file_error, reason}} = Solidity.resolve_sol_file(root)
+      assert reason =~ "could not resolve import"
+    end
+
+    test "reports an import that resolves to a non-regular file", %{tmp_dir: dir} do
+      # A directory named like a .sol file → resolves but is not a regular file.
+      File.mkdir_p!(Path.join(dir, "Dep.sol"))
+      root = Path.join(dir, "Root.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      import "./Dep.sol";
+      interface IRoot { function foo() external view returns (uint256); }
+      """)
+
+      assert {:error, {:file_error, reason}} = Solidity.resolve_sol_file(root)
+      assert reason =~ "did not resolve to a regular file"
+    end
+
+    test "rejects an explicit remapping with no '=' delimiter", %{tmp_dir: dir} do
+      root = Path.join(dir, "Root.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      interface IRoot { function foo() external view returns (uint256); }
+      """)
+
+      assert {:error, {:file_error, reason}} =
+               Solidity.resolve_sol_file(root, remappings: ["no-equals-sign"])
+
+      assert reason =~ "explicit remapping #1 is invalid"
+    end
+
+    test "rejects an explicit remapping with an empty prefix", %{tmp_dir: dir} do
+      root = Path.join(dir, "Root.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      interface IRoot { function foo() external view returns (uint256); }
+      """)
+
+      assert {:error, {:file_error, reason}} =
+               Solidity.resolve_sol_file(root, remappings: ["=lib/"])
+
+      assert reason =~ "invalid"
+    end
+
+    test "reports an invalid line in remappings.txt", %{tmp_dir: dir} do
+      File.write!(Path.join(dir, "remappings.txt"), "this-line-has-no-equals\n")
+      root = Path.join(dir, "Root.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      interface IRoot { function foo() external view returns (uint256); }
+      """)
+
+      assert {:error, {:file_error, reason}} = Solidity.resolve_sol_file(root)
+      assert reason =~ "invalid remapping on line"
+    end
+  end
+
+  describe "parse_sol_file/2 single-file fallback (unit, temp fixtures)" do
+    @describetag :tmp_dir
+
+    test "falls back to whole-source parse when the root-contract name mismatches the filename",
+         %{tmp_dir: dir} do
+      # File basename "Mismatch" but the only contract is "IActual"; single file, no imports.
+      root = Path.join(dir, "Mismatch.sol")
+
+      File.write!(root, """
+      pragma solidity ^0.8.0;
+      interface IActual { function foo() external view returns (uint256); }
+      """)
+
+      assert {:ok, result} = Solidity.parse_sol_file(root)
+      assert Enum.any?(result.functions, &(&1.name == "foo"))
+    end
+  end
+
   # --- Helpers ---
 
   @doc false

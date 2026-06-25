@@ -6,6 +6,18 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Added
+
+- **Vibe analyzer stack** — adopted the onchain-family analyzer toolchain: `ex_dna`, `ex_ast`, `ex_slop`, and `reach` (dev/test only). New `.credo.exs` (ExSlop plugin, `Readability.Specs` scoped to the library + test support) and `.reach.exs` (arch/smell policy; the compile-time contract generator is scoped out of the smell detector since its `String.to_atom` calls create the identifiers they emit). Added `precommit` (fast local loop), `precommit.full`/`ci` (the harness reviewer's `check_command`), and `integration` mix aliases.
+- **`@spec` coverage** — added typespecs to all private helpers in `Onchain.Contract.Generator` and `Onchain.Solidity`, the NIF stubs in `Onchain.EVM`, and the `Onchain.BangHelper` macro helpers, satisfying the newly-enabled `Credo.Check.Readability.Specs`.
+- **Solidity resolution unit tests** — temp-fixture tests for `resolve_sol_file/2` (relative/absolute/remapped imports, `remappings.txt`, `:root_contract` override, and the error paths) plus a `parse_sol_file/2` single-file fallback test.
+
+### Changed
+
+- **Native dependencies** — bumped `rustler` `0.37` → `0.38` (both crates, with the matching `mix.exs` constraint) and `alloy-json-abi` `0.8` → `1.6` in `native/onchain_solidity`; `ex_doc` `~> 0.39` → `~> 0.40` (older pin held `makeup_elixir < 1.0`, conflicting with `reach`).
+- **`Onchain.BangHelper`** — `defbang` now resolves the base name with `String.to_existing_atom/1` (the wrapped function's atom always exists by macro-expansion time), avoiding atom-table growth and turning a typo'd base name into a compile error.
+- **`Onchain.Contract.Generator`** — extracted the shared bang-wrapper body (`build_bang_body/2`) used by generated read/write functions, removing the duplicated `case` template.
+
 ## [0.2.0] — 2026-06-12
 
 Hardening release on top of the v0.1.0 split: stricter input validation, named

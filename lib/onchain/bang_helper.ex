@@ -35,11 +35,14 @@ defmodule Onchain.BangHelper do
   defmacro defbang(call, opts \\ []) do
     {bang_name, args_with_defaults} = Macro.decompose_call(call)
 
+    # The wrapped function is always defined in the same module, so its name
+    # already exists as an atom by macro-expansion time. to_existing_atom both
+    # avoids atom-table growth and turns a typo'd base name into a compile error.
     base_name =
       bang_name
       |> Atom.to_string()
       |> String.trim_trailing("!")
-      |> String.to_atom()
+      |> String.to_existing_atom()
 
     call_args = strip_defaults(args_with_defaults)
 
@@ -59,6 +62,7 @@ defmodule Onchain.BangHelper do
 
   # Strips default values from args for the inner function call.
   # {:\\, _, [arg, _default]} -> arg
+  @spec strip_defaults([Macro.t()]) :: [Macro.t()]
   defp strip_defaults(args) do
     Enum.map(args, fn
       {:\\, _, [arg, _default]} -> arg
@@ -67,6 +71,7 @@ defmodule Onchain.BangHelper do
   end
 
   # Pattern A: no options — simple "func_name failed: reason" message
+  @spec build_error_clauses(atom(), keyword()) :: [Macro.t()]
   defp build_error_clauses(bang_name, []) do
     label = bang_name |> Atom.to_string() |> String.trim_trailing("!")
 

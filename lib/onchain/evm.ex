@@ -279,12 +279,15 @@ defmodule Onchain.EVM do
   # --- NIF stubs (public for Rustler, prefixed to avoid clash with API functions) ---
 
   @doc false
+  @spec nif_simulate_call(map()) :: {:ok, String.t()} | {:error, evm_error()}
   def nif_simulate_call(_params), do: :erlang.nif_error(:nif_not_loaded)
 
   @doc false
+  @spec nif_simulate_transaction(map()) :: {:ok, tx_result()} | {:error, evm_error()}
   def nif_simulate_transaction(_params), do: :erlang.nif_error(:nif_not_loaded)
 
   @doc false
+  @spec nif_simulate_batch(map()) :: {:ok, [tx_result()]} | {:error, evm_error()}
   def nif_simulate_batch(_params), do: :erlang.nif_error(:nif_not_loaded)
 
   # --- Input validation & param building ---
@@ -380,7 +383,10 @@ defmodule Onchain.EVM do
       {:ok, %URI{scheme: scheme}} when scheme not in ["http", "https"] ->
         {:error, {:invalid_rpc_url, {:invalid_scheme, trimmed}}}
 
-      {:ok, %URI{host: host}} when is_nil(host) or host == "" ->
+      {:ok, %URI{host: nil}} ->
+        {:error, {:invalid_rpc_url, {:missing_host, trimmed}}}
+
+      {:ok, %URI{host: ""}} ->
         {:error, {:invalid_rpc_url, {:missing_host, trimmed}}}
 
       {:ok, %URI{}} ->

@@ -25,7 +25,11 @@ defmodule OnchainEvm.MixProject do
     [
       preferred_envs: [
         "test.json": :test,
-        "dialyzer.json": :dev
+        "dialyzer.json": :dev,
+        integration: :test,
+        ci: :test,
+        precommit: :test,
+        "precommit.full": :test
       ]
     ]
   end
@@ -40,7 +44,7 @@ defmodule OnchainEvm.MixProject do
     [
       {:onchain, "~> 0.8"},
       {:descripex, "~> 0.9"},
-      {:rustler, "~> 0.37", runtime: false},
+      {:rustler, "~> 0.38", runtime: false},
 
       # Dev/test tooling
       {:tidewave, "~> 0.5", only: :dev},
@@ -52,7 +56,15 @@ defmodule OnchainEvm.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:doctor, "~> 0.23", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.39", only: :dev, runtime: false}
+      # ex_doc >= 0.40 pulls makeup_elixir ~> 1.0, which :reach also requires;
+      # the older ~> 0.39 pin holds makeup_elixir < 1.0 and conflicts with reach.
+      {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+
+      # Vibe analyzer stack (matches the onchain family — cartouche/onchain)
+      {:ex_dna, "~> 1.5", only: [:dev, :test], runtime: false},
+      {:ex_ast, "~> 0.12", only: [:dev, :test], runtime: false},
+      {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
+      {:reach, "~> 2.7", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -79,7 +91,30 @@ defmodule OnchainEvm.MixProject do
     [
       tidewave: [
         "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4009) end)'"
-      ]
+      ],
+      integration: ["test.json --only integration"],
+      # Fast local pre-commit loop — skips the cold-PLT dialyzer and full coverage
+      # pass so it stays quick on incremental edits.
+      precommit: [
+        "compile --warnings-as-errors",
+        "format --check-formatted",
+        "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
+        "ex_dna --max-clones 0",
+        "test.json --exclude integration"
+      ],
+      # Comprehensive gate — the harness reviewer's `check_command` and `mix ci` target.
+      "precommit.full": [
+        "compile --warnings-as-errors",
+        "format --check-formatted",
+        "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
+        "doctor --raise",
+        "ex_dna --max-clones 0",
+        "reach.check --arch --smells",
+        "sobelow --skip",
+        "test.json --cover --cover-threshold 85 --summary-only --exclude integration",
+        "dialyzer"
+      ],
+      ci: ["precommit.full"]
     ]
   end
 

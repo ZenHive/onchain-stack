@@ -8,7 +8,7 @@ name = "onchain_evm"
 crate-type = ["cdylib"]
 
 [dependencies]
-rustler = "0.37"
+rustler = "0.38"
 revm = { version = "41", features = ["std"] }
 revm-database = { version = "41", features = ["alloydb"] }
 alloy-eips = "2.1"
