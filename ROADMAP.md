@@ -11,7 +11,7 @@
 ---
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 2 — Quality & Reliability Improvements (11 of 20 done · 0 in progress)
+**Focus phase:** 2 — Quality & Reliability Improvements (11 of 20 done · 1 in progress)
 
 **Last shipped:** Task 54 — Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump on 2026-06-25
 
@@ -80,7 +80,7 @@ Bundles identified via code review — grouped by shared code and common goals.
 | Task 47 | ⬜ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate `:state_overrides` nested keys/values are strings, per `@type state_overrides` [D:2/B:5/U:4 → Eff:2.25?] 🎯 |
 | Task 48 | ⬜ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Bound-check `:block` hex values against u64 max in `parse_hex_block/2` [D:2/B:4/U:3 → Eff:1.75?] 🚀 |
 | Task 54 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *Onchain.EVM* · Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump [D:4/B:7/U:6 → Eff:1.62] 🚀 |
-| Task 55 | ⬜ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory [D:9/B:6/U:7 → Eff:0.72] ⚠️ |
+| Task 55 | 🔄 | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory [D:9/B:6/U:7 → Eff:0.72] ⚠️ |
 <!-- TASKS:END -->
 
 ---
