@@ -386,8 +386,9 @@ defmodule Onchain.EVM do
       {:ok, %URI{}} ->
         {:ok, trimmed}
 
-      # TODO: URI.new/1 returns {:error, part} only for `<`/`>` characters.
-      # We fold that into :invalid_scheme; consider a dedicated :malformed_uri tag.
+      # URI.new/1 returns {:error, part} only for `<`/`>` characters. We
+      # intentionally fold that into :invalid_scheme (pinned by the "malformed
+      # URI characters" test) rather than exposing a separate :malformed_uri tag.
       {:error, _part} ->
         {:error, {:invalid_rpc_url, {:invalid_scheme, trimmed}}}
     end
