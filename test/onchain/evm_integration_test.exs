@@ -194,6 +194,26 @@ defmodule Onchain.EVM.IntegrationTest do
       assert {:ok, %{error: "Error", args: ["TransferHelper: TRANSFER_FROM_FAILED"]}} =
                ABI.decode_error(tx_result.output, ["Error(string)"])
     end
+
+    test "simulates from a high-nonce EOA without NonceTooLow (regression)" do
+      # revm 41 made TxEnv.nonce a required u64 with default nonce-checking (revm
+      # 19 used Option<u64>, None = skip). Without disable_nonce_check, the single-tx
+      # simulate paths regressed to NonceTooLow for any sender with tx history —
+      # eth_call semantics never validate nonce. Vitalik's address is a real EOA
+      # with many txs, so its nonce is well above 0 at the pinned fork block.
+      high_nonce_eoa = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+
+      assert {:ok, result} =
+               EVM.simulate_transaction(
+                 @usdc_address,
+                 calldata,
+                 rpc_opts() ++ [from: high_nonce_eoa]
+               )
+
+      assert result.success == true
+      assert_plausible_gas(result.gas_used)
+    end
   end
 
   describe "simulate_batch/2" do

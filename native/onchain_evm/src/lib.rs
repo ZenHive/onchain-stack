@@ -512,7 +512,17 @@ fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, Ev
     apply_state_overrides(&mut db, params)?;
 
     let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
-    let mut evm = Context::mainnet().with_db(&mut db).build_mainnet();
+    // KNOWN LIMITATION (applies to every Context::mainnet() site below too):
+    // revm 41 defaults to the latest hardfork spec (OSAKA), so a fork pinned to a
+    // historical block executes under newer EVM rules than were active then. We do
+    // not derive SpecId from the forked block because these NIFs fork an arbitrary
+    // RPC URL (any L1/L2), and a mainnet block→hardfork table would assign the
+    // wrong spec to non-mainnet chains — worse than the latest-spec default. A
+    // correct fix needs a chain-aware fork schedule keyed on chain id; deferred.
+    let mut evm = Context::mainnet()
+        .with_db(&mut db)
+        .modify_cfg_chained(|cfg| cfg.disable_nonce_check = true)
+        .build_mainnet();
 
     let result = evm.transact(tx).map_err(classify_transport_error)?;
 
@@ -543,7 +553,10 @@ fn do_simulate_transaction<'a>(params: &HashMap<String, Term<'a>>) -> Result<TxR
     apply_state_overrides(&mut db, params)?;
 
     let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
-    let mut evm = Context::mainnet().with_db(&mut db).build_mainnet();
+    let mut evm = Context::mainnet()
+        .with_db(&mut db)
+        .modify_cfg_chained(|cfg| cfg.disable_nonce_check = true)
+        .build_mainnet();
 
     let result = evm.transact(tx).map_err(classify_transport_error)?;
 
@@ -571,6 +584,13 @@ fn do_simulate_batch<'a>(params: &HashMap<String, Term<'a>>) -> Result<Vec<TxRes
     let calls: Vec<(String, String)> = calls_term.decode().map_err(|_| {
         EvmError::ExecutionError("calls must be list of {address, data} tuples".into())
     })?;
+
+    // An empty batch is a no-op — return before opening the fork DB so we issue
+    // no RPC. The `current_nonce` read below otherwise hits the node (and can
+    // error/time out) just to compute an unused base nonce for zero calls.
+    if calls.is_empty() {
+        return Ok(Vec::new());
+    }
 
     let mut db = build_fork_db(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
