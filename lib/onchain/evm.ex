@@ -52,7 +52,8 @@ defmodule Onchain.EVM do
   use Rustler, otp_app: :onchain_evm, crate: "onchain_evm"
 
   import Onchain.BangHelper, only: [defbang: 1]
-  import Onchain.RPC.Helpers, only: [ensure_hex_address: 1, ensure_hex_data: 1, normalize_block: 1]
+
+  alias Onchain.EVM.Params
 
   # --- Types ---
 
@@ -166,7 +167,7 @@ defmodule Onchain.EVM do
   @spec simulate_call(String.t() | binary(), String.t(), sim_opts()) ::
           {:ok, String.t()} | {:error, evm_error()}
   def simulate_call(address, data, opts \\ []) do
-    with {:ok, params} <- build_call_params(address, data, opts) do
+    with {:ok, params} <- Params.build_call_params(address, data, opts) do
       nif_simulate_call(params)
     end
   end
@@ -214,7 +215,7 @@ defmodule Onchain.EVM do
   @spec simulate_transaction(String.t() | binary(), String.t(), sim_opts()) ::
           {:ok, tx_result()} | {:error, evm_error()}
   def simulate_transaction(address, data, opts \\ []) do
-    with {:ok, params} <- build_call_params(address, data, opts) do
+    with {:ok, params} <- Params.build_call_params(address, data, opts) do
       nif_simulate_transaction(params)
     end
   end
@@ -258,7 +259,7 @@ defmodule Onchain.EVM do
   @spec simulate_batch([{String.t() | binary(), String.t()}], sim_opts()) ::
           {:ok, [tx_result()]} | {:error, evm_error()}
   def simulate_batch(calls, opts \\ []) do
-    with {:ok, params} <- build_batch_params(calls, opts) do
+    with {:ok, params} <- Params.build_batch_params(calls, opts) do
       nif_simulate_batch(params)
     end
   end
@@ -289,221 +290,4 @@ defmodule Onchain.EVM do
   @doc false
   @spec nif_simulate_batch(map()) :: {:ok, [tx_result()]} | {:error, evm_error()}
   def nif_simulate_batch(_params), do: :erlang.nif_error(:nif_not_loaded)
-
-  # --- Input validation & param building ---
-
-  @doc false
-  # Validates address and data, then builds the params map for NIF calls.
-  @spec build_call_params(String.t() | binary(), String.t(), sim_opts()) ::
-          {:ok, map()} | {:error, validation_error()}
-  defp build_call_params(address, data, opts) do
-    with {:ok, hex_addr} <- ensure_hex_address(address),
-         {:ok, hex_data} <- ensure_hex_data(data),
-         {:ok, rpc_url} <- require_rpc_url(opts),
-         {:ok, base} <- maybe_put_block(%{"rpc_url" => rpc_url, "to" => hex_addr, "data" => hex_data}, opts),
-         {:ok, params} <- maybe_put_from(base, opts),
-         {:ok, params} <- maybe_put_value(params, opts),
-         {:ok, params} <- maybe_put_gas_limit(params, opts),
-         {:ok, params} <- maybe_put_timeout_ms(params, opts) do
-      maybe_put_state_overrides(params, opts)
-    end
-  end
-
-  @doc false
-  # Validates batch calls and builds the params map for NIF batch simulation.
-  @spec build_batch_params([{String.t() | binary(), String.t()}], sim_opts()) ::
-          {:ok, map()} | {:error, validation_error()}
-  defp build_batch_params(calls, opts) do
-    with {:ok, rpc_url} <- require_rpc_url(opts),
-         {:ok, validated_calls} <- validate_calls(calls),
-         {:ok, base} <- maybe_put_block(%{"rpc_url" => rpc_url, "calls" => validated_calls}, opts),
-         {:ok, params} <- maybe_put_from(base, opts),
-         {:ok, params} <- maybe_put_gas_limit(params, opts),
-         {:ok, params} <- maybe_put_timeout_ms(params, opts) do
-      maybe_put_state_overrides(params, opts)
-    end
-  end
-
-  @doc false
-  # Validates each {address, data} tuple in a batch call list.
-  @spec validate_calls([{String.t() | binary(), String.t()}]) ::
-          {:ok, [{String.t(), String.t()}]} | {:error, {:invalid_address, term()} | {:invalid_data, term()}}
-  defp validate_calls(calls) do
-    calls
-    |> Enum.reduce_while({:ok, []}, fn {addr, data}, {:ok, acc} ->
-      with {:ok, hex_addr} <- ensure_hex_address(addr),
-           {:ok, hex_data} <- ensure_hex_data(data) do
-        {:cont, {:ok, [{hex_addr, hex_data} | acc]}}
-      else
-        error -> {:halt, error}
-      end
-    end)
-    |> case do
-      {:ok, validated} -> {:ok, Enum.reverse(validated)}
-      error -> error
-    end
-  end
-
-  @doc false
-  # Extracts, requires, and validates the :rpc_url option.
-  # Rejects missing, empty, whitespace-only, and non-HTTP(S) URLs.
-  @spec require_rpc_url(sim_opts()) :: {:ok, String.t()} | {:error, {:invalid_rpc_url, rpc_url_reason()}}
-  defp require_rpc_url(opts) do
-    case Keyword.get(opts, :rpc_url) do
-      nil ->
-        {:error, {:invalid_rpc_url, :missing}}
-
-      url when is_binary(url) ->
-        validate_rpc_url(url)
-
-      other ->
-        {:error, {:invalid_rpc_url, {:not_a_string, other}}}
-    end
-  end
-
-  @doc false
-  @spec validate_rpc_url(String.t()) ::
-          {:ok, String.t()}
-          | {:error, {:invalid_rpc_url, :empty | {:invalid_scheme, String.t()} | {:missing_host, String.t()}}}
-  defp validate_rpc_url(url) do
-    trimmed = String.trim(url)
-
-    if trimmed == "" do
-      {:error, {:invalid_rpc_url, :empty}}
-    else
-      validate_parsed_rpc_url(trimmed)
-    end
-  end
-
-  @spec validate_parsed_rpc_url(String.t()) ::
-          {:ok, String.t()}
-          | {:error, {:invalid_rpc_url, {:invalid_scheme, String.t()} | {:missing_host, String.t()}}}
-  defp validate_parsed_rpc_url(trimmed) do
-    case URI.new(trimmed) do
-      {:ok, %URI{scheme: scheme}} when scheme not in ["http", "https"] ->
-        {:error, {:invalid_rpc_url, {:invalid_scheme, trimmed}}}
-
-      {:ok, %URI{host: nil}} ->
-        {:error, {:invalid_rpc_url, {:missing_host, trimmed}}}
-
-      {:ok, %URI{host: ""}} ->
-        {:error, {:invalid_rpc_url, {:missing_host, trimmed}}}
-
-      {:ok, %URI{}} ->
-        {:ok, trimmed}
-
-      # URI.new/1 returns {:error, part} only for `<`/`>` characters. We
-      # intentionally fold that into :invalid_scheme (pinned by the "malformed
-      # URI characters" test) rather than exposing a separate :malformed_uri tag.
-      {:error, _part} ->
-        {:error, {:invalid_rpc_url, {:invalid_scheme, trimmed}}}
-    end
-  end
-
-  @block_tags ~w(latest finalized pending earliest safe)
-
-  @doc false
-  # Validates block input and adds either "block_number" (u64) or "block_tag" (string) to params.
-  # The NIF handles both via resolve_block_id — tag strings are resolved natively by Alloy.
-  @spec maybe_put_block(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_block, term()}}
-  defp maybe_put_block(params, opts) do
-    case Keyword.get(opts, :block) do
-      nil ->
-        {:ok, params}
-
-      tag when tag in @block_tags ->
-        {:ok, Map.put(params, "block_tag", tag)}
-
-      n when is_integer(n) and n >= 0 ->
-        {:ok, Map.put(params, "block_number", n)}
-
-      "0x" <> _ = hex ->
-        parse_hex_block(params, hex)
-
-      other ->
-        {:error, {:invalid_block, other}}
-    end
-  end
-
-  @doc false
-  # Validates hex format and parses to integer for the NIF's u64 block_number param.
-  @spec parse_hex_block(map(), String.t()) :: {:ok, map()} | {:error, {:invalid_block, term()}}
-  defp parse_hex_block(params, "0x" <> rest = hex) do
-    case normalize_block(hex) do
-      {:ok, _} ->
-        case Integer.parse(rest, 16) do
-          {n, ""} -> {:ok, Map.put(params, "block_number", n)}
-          _ -> {:error, {:invalid_block, hex}}
-        end
-
-      {:error, _} = err ->
-        err
-    end
-  end
-
-  @doc false
-  # Validates and adds the :from address to params. Returns error for invalid addresses.
-  @spec maybe_put_from(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_address, term()}}
-  defp maybe_put_from(params, opts) do
-    case Keyword.get(opts, :from) do
-      nil ->
-        {:ok, params}
-
-      from ->
-        case ensure_hex_address(from) do
-          {:ok, hex} -> {:ok, Map.put(params, "from", hex)}
-          {:error, _} -> {:error, {:invalid_address, from}}
-        end
-    end
-  end
-
-  @doc false
-  # Validates and adds :value (must be a hex string) to params.
-  @spec maybe_put_value(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_value, term()}}
-  defp maybe_put_value(params, opts) do
-    case Keyword.get(opts, :value) do
-      nil -> {:ok, params}
-      val when is_binary(val) -> {:ok, Map.put(params, "value", val)}
-      other -> {:error, {:invalid_value, other}}
-    end
-  end
-
-  @doc false
-  # Validates and adds :gas_limit (must be a positive integer) to params.
-  @spec maybe_put_gas_limit(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_gas_limit, term()}}
-  defp maybe_put_gas_limit(params, opts) do
-    case Keyword.get(opts, :gas_limit) do
-      nil -> {:ok, params}
-      gl when is_integer(gl) and gl > 0 -> {:ok, Map.put(params, "gas_limit", gl)}
-      other -> {:error, {:invalid_gas_limit, other}}
-    end
-  end
-
-  @doc false
-  # Validates and adds :state_overrides (must be a map) to params.
-  @spec maybe_put_state_overrides(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_state_overrides, term()}}
-  defp maybe_put_state_overrides(params, opts) do
-    case Keyword.get(opts, :state_overrides) do
-      nil -> {:ok, params}
-      overrides when is_map(overrides) -> {:ok, Map.put(params, "state_overrides", overrides)}
-      other -> {:error, {:invalid_state_overrides, other}}
-    end
-  end
-
-  # u64::MAX — the NIF decodes timeout_ms as u64. Anything above this overflows
-  # the decoder and surfaces as a bare {:evm_error, "invalid param type: timeout_ms"}
-  # instead of the documented {:invalid_timeout_ms, _} contract.
-  @timeout_ms_max 0xFFFF_FFFF_FFFF_FFFF
-
-  @doc false
-  # Validates and adds :timeout_ms (must be a positive integer ≤ u64::MAX) to params.
-  # Caps each individual RPC request, not aggregate simulation time. NIF default is 30s.
-  @spec maybe_put_timeout_ms(map(), sim_opts()) :: {:ok, map()} | {:error, {:invalid_timeout_ms, term()}}
-  defp maybe_put_timeout_ms(params, opts) do
-    case Keyword.get(opts, :timeout_ms) do
-      nil -> {:ok, params}
-      ms when is_integer(ms) and ms > 0 and ms <= @timeout_ms_max -> {:ok, Map.put(params, "timeout_ms", ms)}
-      other -> {:error, {:invalid_timeout_ms, other}}
-    end
-  end
 end

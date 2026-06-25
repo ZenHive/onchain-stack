@@ -1,0 +1,15 @@
+{
+  "extraKnownMarketplaces": {
+    "nethermind-defi-skills": {
+      "source": {
+        "source": "github",
+        "repo": "NethermindEth/defi-skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "elixir@zenhive": true,
+    "elixir-workflows@zenhive": true,
+    "defi-skills@nethermind-defi-skills": true
+  }
+}

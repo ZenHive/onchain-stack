@@ -14,6 +14,7 @@ defmodule OnchainEvm.MixProject do
       aliases: aliases(),
       deps: deps(),
       dialyzer: dialyzer(),
+      test_coverage: test_coverage(),
       description: description(),
       package: package(),
       docs: docs(),
@@ -120,6 +121,16 @@ defmodule OnchainEvm.MixProject do
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
+
+  # `cover` recompiles each instrumented module's .beam, which re-triggers a
+  # Rustler NIF's `on_load` as an unsupported "upgrade" — so the two NIF-backed
+  # modules cannot be cover-instrumented (it fails non-deterministically based
+  # on load order). Their pure-Elixir logic lives in cover-able sibling modules
+  # (`Onchain.EVM.Params`, `Onchain.Solidity.Resolver`); only the thin NIF stub
+  # shells are excluded. The modules stay fully exercised by the test suite.
+  defp test_coverage do
+    [ignore_modules: [Onchain.EVM, Onchain.Solidity]]
+  end
 
   defp dialyzer do
     [
