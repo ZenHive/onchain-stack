@@ -56,7 +56,8 @@ defmodule OnchainTempo.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:doctor, "~> 0.23", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.39", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.39", only: :dev, runtime: false},
+      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false}
     ]
   end
 
