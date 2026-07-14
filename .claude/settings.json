@@ -10,6 +10,7 @@
   "enabledPlugins": {
     "elixir@zenhive": true,
     "elixir-workflows@zenhive": true,
+    "dep-audit@zenhive": true,
     "defi-skills@nethermind-defi-skills": true
   }
 }
