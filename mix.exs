@@ -43,7 +43,11 @@ defmodule OnchainEvm.MixProject do
 
   defp deps do
     [
-      {:onchain, "~> 0.10"},
+      # Floor raised 0.10 -> 0.11: onchain 0.11.0 carries `cartouche ~> 0.6`.
+      # `~> 0.10` permitted 0.11.0 but did not require it, so a consumer with an
+      # existing lock on onchain 0.10.0 would keep resolving cartouche 0.5.x and
+      # stay capped below req 0.7.
+      {:onchain, "~> 0.11"},
       {:descripex, "~> 0.11"},
       {:rustler, "~> 0.38", runtime: false},
 

@@ -8,6 +8,18 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [0.3.0] — 2026-06-25
 
+### Changed — `{:onchain, "~> 0.10"}` → `{:onchain, "~> 0.11"}`
+
+onchain 0.11.0 is the release that carries `cartouche ~> 0.6`, which is what
+lifts cartouche's transitive `req < 0.7` cap. The old two-segment `~> 0.10`
+bound already *permitted* 0.11.0 but did not *require* it — a consumer holding a
+lock on onchain 0.10.0 would have gone on resolving cartouche 0.5.x, and
+therefore req 0.6.x, through any number of `mix deps.get` runs, because a
+lockfile entry that still satisfies its bound is never re-resolved. Raising the
+floor invalidates that entry so the upgrade happens on its own.
+
+Resolves here to onchain 0.11.0, cartouche 0.6.0, descripex 0.11.0, req 0.7.1.
+
 ### Added
 
 - **Vibe analyzer stack** — adopted the onchain-family analyzer toolchain: `ex_dna`, `ex_ast`, `ex_slop`, and `reach` (dev/test only). New `.credo.exs` (ExSlop plugin, `Readability.Specs` scoped to the library + test support) and `.reach.exs` (arch/smell policy; the compile-time contract generator is scoped out of the smell detector since its `String.to_atom` calls create the identifiers they emit). Added `precommit` (fast local loop), `precommit.full`/`ci` (the harness reviewer's `check_command`), and `integration` mix aliases.
