@@ -4,8 +4,6 @@ defmodule Onchain.SignerCase do
   # Reusable test helpers for transaction signing tests (tasks 12, 13, 14).
   # Provides credential loading from env vars and receipt polling.
 
-  alias Signet.Signer.Curvy
-
   @poll_interval_ms 3_000
   @max_poll_attempts 20
 
@@ -24,9 +22,7 @@ defmodule Onchain.SignerCase do
 
   @doc false
   def signer_address! do
-    key_binary = Onchain.Hex.decode!(signer_key!())
-    {:ok, addr_binary} = Curvy.get_address(key_binary)
-    Onchain.Address.checksum!(addr_binary)
+    Onchain.Signer.address_from_key!(signer_key!())
   end
 
   @doc false
