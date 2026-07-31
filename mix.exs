@@ -1,7 +1,7 @@
 defmodule OnchainAave.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.2.1"
   @source_url "https://github.com/ZenHive/onchain_aave"
 
   def project do
@@ -38,9 +38,14 @@ defmodule OnchainAave.MixProject do
 
   defp deps do
     [
-      {:onchain, "~> 0.8"},
+      # Floor raised 0.8 -> 0.11: onchain 0.11.0 carries `cartouche ~> 0.6`.
+      # `~> 0.8` permitted it but did not require it, so a consumer locked on an
+      # older onchain kept resolving cartouche 0.5.x and stayed capped below
+      # req 0.7.
+      {:onchain, "~> 0.11"},
       {:decimal, "~> 3.1"},
-      {:descripex, "~> 0.9"},
+      # Floor raised 0.9 -> 0.11 to match what cartouche 0.6 already forces.
+      {:descripex, "~> 0.11"},
 
       # Dev/test tooling
       {:onchain_evm, path: "../onchain_evm", only: [:dev, :test]},

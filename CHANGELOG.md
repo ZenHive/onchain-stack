@@ -8,6 +8,39 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## v0.2.1 — dependency floors + revive the Sepolia write tests (2026-07-31)
+
+No library code changes.
+
+### Changed — dependency floors raised to what actually resolves
+
+- `{:onchain, "~> 0.8"}` → `{:onchain, "~> 0.11"}`. onchain 0.11.0 is the
+  release carrying `cartouche ~> 0.6`, which lifts cartouche's transitive
+  `req < 0.7` cap. The old bound *permitted* 0.11.0 without *requiring* it, so a
+  consumer holding a lock on an older onchain would keep resolving cartouche
+  0.5.x — and therefore req 0.6.x — indefinitely, since a lock entry that still
+  satisfies its bound is never re-resolved.
+- `{:descripex, "~> 0.9"}` → `{:descripex, "~> 0.11"}`, matching what cartouche
+  0.6 already forces.
+
+Resolves to onchain 0.11.0, cartouche 0.6.0, descripex 0.11.0, req 0.7.1.
+
+### Fixed — Sepolia write tests were dead at `setup`
+
+`Onchain.SignerCase.signer_address!/0` aliased `Signet.Signer.Curvy`, a leftover
+from before the cartouche migration. `signet` appears in neither `mix.exs` nor
+`mix.lock`, so the alias had never been resolvable — every integration test that
+derives the signer address from its private key died in `setup` with
+`UndefinedFunctionError`, taking out `faucet_integration_test`,
+`pool_write_integration_test` (2 tests), and `debt_token_write_integration_test`.
+
+Replaced with `Onchain.Signer.address_from_key!/1` from the direct `onchain`
+dependency, which folds hex decoding, key derivation, and EIP-55 checksumming
+into one call — the helper drops from three lines to one. All four tests now run
+against real Sepolia and pass.
+
+---
+
 ## v0.2.0 — onchain-0.8 / descripex-0.9 line, Multicall batch reads, V4 groundwork (2026-06-12)
 
 ### Changed — v0.2.0 dependency line
