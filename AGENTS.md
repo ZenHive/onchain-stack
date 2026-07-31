@@ -38,15 +38,15 @@ you release them. The **onchain family** proper is the connected dependency casc
 | Repo | Path | Hex package | Local ver | Role | Native |
 |---|---|---|---|---|---|
 | hieroglyph | `~/_DATA/code/hieroglyph` | `hieroglyph` | 1.5.0 | ABI encode/decode (`ABI.*`) | yecc/leex |
-| cartouche | `~/_DATA/code/cartouche` | `cartouche` | 0.3.0 | Substrate: signing, tx encoding, raw RPC, crypto | — |
-| onchain | `~/_DATA/code/onchain` | `onchain` | 0.8.0 | Core primitives: RPC, ABI, ERC, signing | — |
+| cartouche | `~/_DATA/code/cartouche` | `cartouche` | 0.5.0 | Substrate: signing, tx encoding, raw RPC, crypto | — |
+| onchain | `~/_DATA/code/onchain` | `onchain` | 0.10.0 | Core primitives: RPC, ABI, ERC, signing | — |
 | onchain_aave | `~/_DATA/code/onchain_aave` | `onchain_aave` | 0.2.0 | Aave V3 wrappers | — |
-| onchain_evm | `~/_DATA/code/onchain_evm` | `onchain_evm` | 0.2.0 | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
-| onchain_js | `~/_DATA/code/onchain_js` | `onchain_js` | 0.2.0 | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
-| onchain_tempo | `~/_DATA/code/onchain_tempo` | `onchain_tempo` | 0.3.0 | Tempo chain primitives (0x76 tx, TIP-20) | — |
-| mpp | `~/_DATA/code/mpp` | `mpp` | 0.5.1 | Top-level consumer/app | Phoenix |
+| onchain_evm | `~/_DATA/code/onchain_evm` | `onchain_evm` | 0.3.0 | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
+| onchain_js | `~/_DATA/code/onchain_js` | `onchain_js` | 0.2.0 (uncommitted) | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
+| onchain_tempo | `~/_DATA/code/onchain_tempo` | `onchain_tempo` | 0.7.0 | Tempo chain primitives (0x76 tx, TIP-20) | — |
+| mpp | `~/_DATA/code/mpp` | `mpp` | 0.10.0 | Top-level consumer/app | Phoenix |
 
-> Local versions are a **dated snapshot (2026-06-19)** — they drift. Treat them as
+> Local versions are a **dated snapshot (2026-07-31)** — they drift. Treat them as
 > a starting hint, never ground truth. Always re-read each repo's `mix.exs` and
 > run `mix hex.info <pkg>` before acting (Operating Rules).
 >
@@ -72,10 +72,14 @@ descripex ─┐                         (shared upstream)
 Edges as of the snapshot (verify in each `mix.exs`):
 
 - hieroglyph → `descripex ~> 0.6`
-- cartouche → `hieroglyph ~> 1.5`, `descripex ~> 0.11` *(local; Hex still 0.9.1 — see below)*
-- onchain → `cartouche ~> 0.3`, `descripex ~> 0.9`, `zen_websocket ~> 0.4.2`
-- onchain_aave / onchain_evm / onchain_js / onchain_tempo → `onchain ~> 0.8`, `descripex ~> 0.9`
-- mpp → `onchain ~> 0.8`, `onchain_tempo ~> 0.3`, `descripex ~> 0.9`
+- cartouche → `hieroglyph ~> 1.5`, `descripex ~> 0.11`
+- onchain → `cartouche ~> 0.5`, `descripex ~> 0.9`, `zen_websocket ~> 0.4.2`
+- onchain_evm → `onchain ~> 0.10`, `descripex ~> 0.11`
+- onchain_tempo → `onchain ~> 0.10`, `descripex ~> 0.9`
+- onchain_aave / onchain_js → `onchain ~> 0.8`, `descripex ~> 0.9` (the `~> 0.8` bound
+  still admits 0.10, so both resolve to onchain 0.10.0 — the declared floor is just
+  stale, not blocking)
+- mpp → `onchain ~> 0.10`, `onchain_tempo ~> 0.7`, `descripex ~> 0.9`
 - onchain_aave → `{:onchain_evm, path: "../onchain_evm", only: [:dev, :test]}` (sibling path dep — **another reason repos must not move**)
 
 `descripex` and `zen_websocket` are roots — no first-party upstream of their own —
@@ -105,28 +109,38 @@ in any order. `mpp` is always last (it consumes the tier above).
 
 ---
 
-## Current cascade state (2026-06-19)
+## Current cascade state (2026-07-31)
 
-Two live items:
+**The descripex 0.11 cascade is complete.** cartouche 0.5.0 shipped carrying
+`descripex ~> 0.11`, onchain 0.10.0 followed, and every repo in the family now
+resolves `descripex 0.11.0`. The old cartouche bound that hard-capped descripex
+below 0.10 is gone. Nothing in the family is blocked on a bound today.
 
-**1. onchain_evm 0.2.0 is publish-ready but unpublished.** Hex still has `0.1.0`
-(2026-03-27). Local `0.2.0` is green (offline + integration), CHANGELOG/README/
-SKILL.md updated, Task 49 fixed. Independent of the descripex cascade — can ship
-now on `descripex ~> 0.9`.
+Two repos are behind Hex:
 
-**2. The descripex 0.11 unblock (worked example of the cascade).**
-- `descripex 0.11.0` is on Hex.
-- **cartouche local** `mix.exs` already declares `descripex ~> 0.11`, but **Hex
-  cartouche 0.3.0 still declares `descripex ~> 0.9.1`** (= `>= 0.9.1, < 0.10.0`),
-  which hard-caps descripex below 0.10 for everything that pulls cartouche.
-- So the local cartouche is **ahead of Hex, unpublished** — that is the *only*
-  real blocker. onchain and all downstream already declare `descripex ~> 0.9`
-  (which permits 0.11), so they need no bound change, only a `deps.update` +
-  republish once cartouche ships.
+**1. onchain_evm — local 0.3.0, Hex 0.1.0.** Two unpublished releases. Compiles
+`--warnings-as-errors` clean and its offline suite is green (218 tests). Nothing
+upstream blocks it; it declares `onchain ~> 0.10` / `descripex ~> 0.11`, both
+published. Publish-ready pending the human's `mix hex.publish`.
 
-Unblock sequence: **cartouche** (bump version, publish — carries `descripex ~> 0.11`)
-→ **onchain** (`mix deps.update descripex cartouche`, bump, publish) → downstream
-`deps.update` + republish as needed.
+**2. onchain_js — never published.** Hex has no release at all. A complete 0.2.0
+preparation (version bump, dep bumps, CHANGELOG entry) sits **uncommitted** in the
+working tree from an earlier session. Its CHANGELOG text still describes descripex
+0.11 as "held back by transitive `cartouche ~> 0.9.1`" — that hold no longer
+applies and the entry needs a rewrite before it is committed.
+
+**Dependency refresh (2026-07-31).** `mix deps.update --all` ran across all ten
+repos; every repo compiles `--warnings-as-errors` clean with a green suite. Two
+version caps survive the update and need an upstream move, not a `deps.update`:
+
+- **`ex_ast` 0.13.1 is unreachable** wherever `reach` is a dependency — `reach 2.8.2`
+  still requires `ex_ast ~> 0.12.0`. Only descripex and hieroglyph (no `reach`) sit
+  on 0.13.1.
+- **`req` 0.7.x is unreachable** across onchain / onchain_tempo / mpp — Hex
+  `cartouche 0.5.0` declares `req ~> 0.6.2`. Lifting it needs a cartouche release.
+
+`mix.lock` is gitignored in onchain, onchain_aave, onchain_evm and onchain_tempo
+(library convention) — those repos carry no lockfile to commit after an update.
 
 ---
 
