@@ -2,28 +2,19 @@
 
 JavaScript bridge for the onchain portfolio — run npm packages on the BEAM via QuickBEAM. No Node.js required.
 
-@~/.claude/includes/across-instances.md
+<!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
+     harness-driven — the OTP dispatch→review→land loop is the active workflow). onchain-workspace
+     is the harness workspace add-on (7-repo roster + dependency shape), eager family-wide.
+     Everything else previously imported here is skill-on-demand: the JS/Volt stack (elixir-volt, quickbeam, oxc,
+     npm-ci-verify, npm-dep-analysis, npm-security-audit, reach) maps to elixir:* skills; the
+     methodology/tooling set (across-instances, worktree, task-prioritization/writing,
+     workflow-philosophy, web-command, elixir-setup, ex-unit-json, dialyzer-json, code-style,
+     development-commands/philosophy, agent-economy) to elixir / task-driver / dev-lifecycle plugins.
+     These are niche custom Hex packages — re-add a specific @-import (e.g. quickbeam/oxc) only if
+     Opus visibly guesses its API wrong. See ~/.claude/setup-guide.md § "Elixir + JS/TS on the BEAM". -->
 @~/.claude/includes/critical-rules.md
-@~/.claude/includes/worktree-workflow.md
-
-@~/.claude/includes/task-prioritization.md
-@~/.claude/includes/task-writing.md
-@~/.claude/includes/web-command.md
-@~/.claude/includes/code-style.md
-@~/.claude/includes/development-philosophy.md
-@~/.claude/includes/workflow-philosophy.md
-@~/.claude/includes/agent-economy.md
-@~/.claude/includes/elixir-setup.md
-@~/.claude/includes/development-commands.md
-@~/.claude/includes/ex-unit-json.md
-@~/.claude/includes/dialyzer-json.md
-@~/.claude/includes/elixir-volt.md
-@~/.claude/includes/quickbeam.md
-@~/.claude/includes/oxc.md
-@~/.claude/includes/npm-ci-verify.md
-@~/.claude/includes/npm-dep-analysis.md
-@~/.claude/includes/npm-security-audit.md
-@~/.claude/includes/reach.md
+@~/.claude/includes/harness-workflow.md
+@~/.claude/includes/onchain-workspace.md
 
 ## Portfolio Context
 

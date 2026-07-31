@@ -1,7 +1,7 @@
 defmodule OnchainJs.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.2.0"
   @source_url "https://github.com/ZenHive/onchain_js"
 
   def project do
@@ -39,25 +39,29 @@ defmodule OnchainJs.MixProject do
 
   defp deps do
     [
-      {:onchain, "~> 0.5.3"},
+      # onchain 0.11.0 is the release carrying `cartouche ~> 0.6`, which lifts
+      # cartouche's transitive `req < 0.7` cap. A lower bound would merely
+      # permit it, not require it, and a consumer's existing lock would keep
+      # resolving cartouche 0.5.x.
+      {:onchain, "~> 0.11"},
       {:quickbeam, "~> 0.10.4"},
-      {:npm, "~> 0.6.0"},
-      {:descripex, "~> 0.6"},
+      {:npm, "~> 0.7"},
+      {:descripex, "~> 0.11"},
 
       # Dev/test tooling
-      {:tidewave, "~> 0.5.0", only: :dev},
+      {:tidewave, "~> 0.6", only: :dev},
       {:bandit, "~> 1.0", only: :dev},
       {:ex_unit_json, "~> 0.4", only: [:dev, :test], runtime: false},
       {:dialyzer_json, "~> 0.2", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.0", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:doctor, "~> 0.22", only: [:dev, :test], runtime: false},
+      {:doctor, "~> 0.23", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
-      {:ex_dna, "~> 1.3", only: [:dev, :test], runtime: false},
-      {:ex_ast, "~> 0.5", only: [:dev, :test], runtime: false},
-      {:reach, "~> 2.2", only: [:dev, :test], runtime: false}
+      {:ex_dna, "~> 1.5", only: [:dev, :test], runtime: false},
+      {:ex_ast, "~> 0.12", only: [:dev, :test], runtime: false},
+      {:reach, "~> 2.8", only: [:dev, :test], runtime: false}
     ]
   end
 
