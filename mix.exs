@@ -39,6 +39,10 @@ defmodule OnchainTempo.MixProject do
   defp deps do
     [
       {:onchain, "~> 0.10"},
+      # Direct dep: lib/onchain/tempo/transaction{,/builder}.ex call Cartouche
+      # (Signer, Transaction, RPC) themselves rather than only through onchain.
+      # 0.6 is the floor that lifts cartouche's transitive `req < 0.7` cap.
+      {:cartouche, "~> 0.6"},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
       {:descripex, "~> 0.9"},
