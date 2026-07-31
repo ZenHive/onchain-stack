@@ -23,10 +23,9 @@ defmodule Onchain.Tempo.TransactionTest do
 
       assert {:ok, %Transaction{} = tx} = Transaction.deserialize(hex)
       assert tx.chain_id == @moderato_chain_id
-      assert length(tx.calls) == 1
       assert tx.raw == hex
 
-      [parsed_call] = tx.calls
+      assert [parsed_call] = tx.calls
       assert byte_size(parsed_call.to) == 20
       assert parsed_call.input == calldata
     end
@@ -38,9 +37,7 @@ defmodule Onchain.Tempo.TransactionTest do
       hex = build_tempo_tx(calls: [call])
 
       assert {:ok, %Transaction{} = tx} = Transaction.deserialize(hex)
-      assert length(tx.calls) == 1
-
-      [parsed_call] = tx.calls
+      assert [parsed_call] = tx.calls
       assert byte_size(parsed_call.input) == 100
     end
 
@@ -57,7 +54,7 @@ defmodule Onchain.Tempo.TransactionTest do
       hex = build_tempo_tx(calls: [call1, call2])
 
       assert {:ok, %Transaction{calls: calls}} = Transaction.deserialize(hex)
-      assert length(calls) == 2
+      assert [_first, _second] = calls
     end
 
     test "rejects non-0x76 prefix" do

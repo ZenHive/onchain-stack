@@ -311,14 +311,14 @@ defmodule Onchain.Tempo.Transaction.Builder do
   # never under-estimates a batch); callers with state-dependent batches that an
   # isolated estimate would revert must pass an explicit `:gas_limit`.
   defp estimate_gas(calls, sender_address, rpc_url) do
-    from_hex = "0x" <> Base.encode16(sender_address, case: :lower)
+    from_hex = hex(sender_address)
 
     calls
     |> Enum.reduce_while({:ok, 0}, fn [to, value, input], {:ok, acc} ->
       params = %{
         from: from_hex,
-        to: "0x" <> Base.encode16(to, case: :lower),
-        data: "0x" <> Base.encode16(input, case: :lower),
+        to: hex(to),
+        data: hex(input),
         value: :binary.decode_unsigned(value)
       }
 
@@ -332,6 +332,11 @@ defmodule Onchain.Tempo.Transaction.Builder do
       {:error, _} = error -> error
     end
   end
+
+  # Raw bytes -> the `0x`-prefixed lowercase hex string the JSON-RPC wire format
+  # expects. Extracted so the prefix concatenation happens here rather than
+  # three times inside the estimate loop.
+  defp hex(binary), do: "0x" <> Base.encode16(binary, case: :lower)
 
   # Applies the gas safety headroom via integer ceil math (integer math avoids
   # float-precision loss on a large node estimate): ceil(gas * numerator / denominator).

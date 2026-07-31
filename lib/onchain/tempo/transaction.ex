@@ -289,8 +289,9 @@ defmodule Onchain.Tempo.Transaction do
   @dialyzer {:nowarn_function, sender: 1}
   @spec sender(t()) :: {:ok, binary()} | {:error, String.t()}
   def sender(%__MODULE__{fields: fields}) when is_list(fields) and length(fields) >= @min_field_count_without_key_auth do
-    sender_sig_raw = List.last(fields)
-    base_fields = Enum.take(fields, length(fields) - 1)
+    # One traversal splits off the trailing sender signature; the guard already
+    # proved the list is non-empty, so the `[sig]` tail always matches.
+    {base_fields, [sender_sig_raw]} = Enum.split(fields, -1)
     signing_payload = <<@tempo_tx_type>> <> rlp_encode(reset_fee_payer_placeholders(base_fields))
     recover_sender(signing_payload, sender_sig_raw)
   end
@@ -405,7 +406,15 @@ defmodule Onchain.Tempo.Transaction do
     sig = %CurvySig{crv: :secp256k1, r: r, s: s, recid: recid}
     {:ok, Recover.recover_eth(signing_payload, sig)}
   rescue
-    e -> {:error, "Failed to recover sender: #{Exception.message(e)}"}
+    # Narrowed to the failure modes a malformed *signature* actually produces:
+    # RuntimeError ("Recovery ID not in range 0..3"), FunctionClauseError
+    # (r/s off the curve, from Curvy.Key.from_point/2), plus the ArgumentError /
+    # ErlangError the crypto NIFs raise on bad operands. Anything else is a bug
+    # in our own code and must crash rather than be relabelled a recovery
+    # failure — a bare rescue here previously turned an UndefinedFunctionError
+    # into "Failed to recover sender: ...".
+    e in [RuntimeError, FunctionClauseError, ArgumentError, ErlangError, MatchError] ->
+      {:error, "Failed to recover sender: #{Exception.message(e)}"}
   end
 
   defp recover_sender(_signing_payload, _sig_bytes) do
@@ -482,7 +491,13 @@ defmodule Onchain.Tempo.Transaction do
   defp rlp_decode(binary) do
     {:ok, ExRLP.decode(binary)}
   rescue
-    _ -> {:error, "Failed to RLP-decode transaction"}
+    # ExRLP raises DecodeError for most malformed input and MatchError for
+    # truncated multi-byte length prefixes; ArgumentError / FunctionClauseError
+    # cover the remaining binary-primitive failures. Narrowed deliberately so a
+    # bug in our own decode path surfaces instead of being reported as
+    # untrusted-input corruption.
+    _ in [ExRLP.DecodeError, MatchError, ArgumentError, FunctionClauseError] ->
+      {:error, "Failed to RLP-decode transaction"}
   end
 
   defp rlp_encode(data), do: ExRLP.encode(data)

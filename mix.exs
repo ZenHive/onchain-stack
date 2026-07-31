@@ -69,7 +69,15 @@ defmodule OnchainTempo.MixProject do
       {:doctor, "~> 0.23", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.39", only: :dev, runtime: false},
-      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false}
+      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
+
+      # Analyzer stack (vibe_kit baseline) — credo + ex_slop plugin, ex_dna
+      # clone detection, reach PDG arch/smell gates. `mix reach.check` is only
+      # available where reach is declared, which is why this block exists.
+      {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
+      {:ex_dna, "~> 1.5", only: [:dev, :test], runtime: false},
+      {:ex_ast, "~> 0.12", only: [:dev, :test], runtime: false},
+      {:reach, "~> 2.8", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -97,7 +105,41 @@ defmodule OnchainTempo.MixProject do
     [
       tidewave: [
         "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4010) end)'"
-      ]
+      ],
+      integration: ["test.json --only integration"],
+      # Fast local pre-commit loop — skips the cold-PLT dialyzer and the coverage
+      # pass so it stays quick on incremental edits.
+      precommit: [
+        "compile --warnings-as-errors",
+        "format --check-formatted",
+        "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
+        "ex_dna --max-clones 0",
+        # `preferred_envs` (cli/0) is ignored for alias steps — set MIX_ENV via
+        # `env` (Elixir 1.20's `mix cmd` no longer parses a leading VAR=val prefix).
+        "cmd env MIX_ENV=test mix test.json --exclude integration"
+      ],
+      # Comprehensive gate — the harness reviewer's `check_command` and `mix ci`
+      # target. Coverage floor is 90 against a 95.4% baseline.
+      "precommit.full": [
+        "compile --warnings-as-errors",
+        "format --check-formatted",
+        "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
+        "doctor --raise",
+        "ex_dna --max-clones 0",
+        "reach.check --arch --smells",
+        "sobelow --skip",
+        "cmd env MIX_ENV=test mix test.json --cover --cover-threshold 90 --summary-only --exclude integration",
+        "dialyzer",
+        # AGENTS.md is what the cross-family (codex/cursor/grok) reviewers read;
+        # a stale render makes them gate against rules that already changed.
+        "agents.check"
+      ],
+      # Fails when AGENTS.md has drifted from CLAUDE.md. Compares rendered output,
+      # not mtimes, so drift in a transitive @-import is caught too.
+      "agents.check": [
+        "cmd ~/_DATA/code/claude-marketplace/scripts/sync-agents-md.sh --check"
+      ],
+      ci: ["precommit.full"]
     ]
   end
 

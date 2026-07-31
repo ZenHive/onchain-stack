@@ -1,5 +1,55 @@
 # Changelog
 
+## Unreleased
+
+Analyzer-stack rollout. onchain_tempo was the only repo in the family declaring
+neither `reach` nor `ex_dna`, so `mix reach.check` did not exist here and there
+was no quality gate beyond the commit hook — `mix ci` was undefined.
+
+### Added — the vibe_kit analyzer baseline
+
+`ex_slop`, `ex_dna`, `ex_ast`, and `reach` as dev/test deps, plus `.credo.exs`
+and a permissive `.reach.exs`. New aliases: `precommit` (fast loop),
+`precommit.full`, and `ci`.
+
+`Credo.Check.Readability.Specs` is scoped to `lib/onchain/` + `test/support/`
+but, unlike onchain_evm, runs **without** `include_defp` — this codebase's
+private helpers carry no specs, and requiring them would have meant 60+
+signature additions unrelated to the rollout.
+
+An explicit `checks.enabled` list is authoritative for Credo and silently
+discards a plugin's default checks, so ExSlop's are appended via
+`ExSlop.recommended_checks()`. Registering the plugin alone leaves it inert —
+worth knowing, because onchain_evm registers ExSlop the same way and is
+therefore running none of its checks either.
+
+### Added — `mix agents.check` in the CI gate
+
+`AGENTS.md` is what the cross-family (codex/cursor/grok) reviewers read, and
+nothing verified it still matched `CLAUDE.md`. The gate diffs rendered output
+rather than mtimes, so drift inside a transitive `@`-import is caught too. It
+found a stale `AGENTS.md` here on its first run.
+
+### Fixed — narrowed two blanket rescues
+
+`recover_sender/2` and `rlp_decode/1` each rescued every exception class, which
+meant a bug in our own code was reported as a signature-recovery or
+wire-corruption failure. Both are now narrowed to the classes malformed input
+actually produces, verified by probing the libraries directly: `RuntimeError`
+("Recovery ID not in range 0..3") and `FunctionClauseError` (r/s off the curve,
+from `Curvy.Key.from_point/2`) for recovery; `ExRLP.DecodeError` and
+`MatchError` (truncated multi-byte length prefix) for decoding. Anything outside
+those sets now crashes instead of being relabelled.
+
+### Changed — three smell fixes
+
+`sender/1` split the field list with `List.last/1` plus
+`Enum.take(fields, length(fields) - 1)`, traversing three times; it now uses a
+single `Enum.split(fields, -1)`. `estimate_gas/3` built the `"0x" <> …` prefix
+three times inside its reduce — extracted to a `hex/1` helper. Four test
+assertions compared `length/1` against a literal where the following line
+already destructured the list; folded into the pattern match.
+
 ## v0.8.0
 
 Dependency-declaration release — no code changes. Two of these corrections are

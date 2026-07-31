@@ -48,9 +48,8 @@ defmodule Onchain.Tempo.RPCTest do
 
       receipt = RPC.parse_receipt(raw)
       assert receipt.status == 1
-      assert length(receipt.logs) == 1
 
-      [log] = receipt.logs
+      assert [log] = receipt.logs
       assert log.address == "0x20c0000000000000000000000000000000000000"
       assert log.topics == ["0xabc123"]
       assert log.block_number == 10
