@@ -1,7 +1,7 @@
 defmodule OnchainTempo.MixProject do
   use Mix.Project
 
-  @version "0.7.0"
+  @version "0.8.0"
   @source_url "https://github.com/ZenHive/onchain_tempo"
 
   def project do
@@ -38,14 +38,22 @@ defmodule OnchainTempo.MixProject do
 
   defp deps do
     [
-      {:onchain, "~> 0.10"},
+      # Floor raised 0.10 -> 0.11: onchain 0.11.0 is the release that carries
+      # `cartouche ~> 0.6`. A consumer locked on onchain 0.10.0 would otherwise
+      # keep resolving cartouche 0.5.x and stay capped below req 0.7 — the
+      # bound must *require* the fix, not merely permit it.
+      {:onchain, "~> 0.11"},
       # Direct dep: lib/onchain/tempo/transaction{,/builder}.ex call Cartouche
       # (Signer, Transaction, RPC) themselves rather than only through onchain.
       # 0.6 is the floor that lifts cartouche's transitive `req < 0.7` cap.
       {:cartouche, "~> 0.6"},
-      {:req, "~> 0.5"},
+      # Widened from `~> 0.5`: two-segment, so it always admitted 0.7.x, but the
+      # stale floor understated what actually resolves here.
+      {:req, "~> 0.6 or ~> 0.7"},
       {:jason, "~> 1.4"},
-      {:descripex, "~> 0.9"},
+      # Floor raised 0.9 -> 0.11 to match cartouche 0.6's `descripex ~> 0.11`;
+      # nothing below 0.11 was resolvable regardless of what this claimed.
+      {:descripex, "~> 0.11"},
 
       # Req.Test needs plug for test stubs; tidewave needs it in dev
       {:plug, "~> 1.16", only: [:dev, :test]},

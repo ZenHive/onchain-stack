@@ -1,5 +1,47 @@
 # Changelog
 
+## v0.8.0
+
+Dependency-declaration release — no code changes. Two of these corrections are
+required for downstream consumers to reach `req 0.7`; the rest bring stale
+floors in line with what actually resolves.
+
+### Added — `{:cartouche, "~> 0.6"}` declared directly
+
+`lib/onchain/tempo/transaction.ex` and `lib/onchain/tempo/transaction/builder.ex`
+call `Cartouche.Signer`, `Cartouche.Transaction`, and `Cartouche.RPC` directly,
+but cartouche was never declared here — it resolved transitively through
+`onchain`. That worked, and it kept working, which is exactly why it went
+unnoticed: an undeclared direct dependency is invisible as long as some other
+dependency happens to pull a compatible version. Declaring it makes the real
+requirement explicit and pins the `~> 0.6` floor that lifts cartouche's
+transitive `req < 0.7` cap.
+
+### Changed — `{:onchain, "~> 0.10"}` → `{:onchain, "~> 0.11"}`
+
+onchain 0.11.0 is the release that carries `cartouche ~> 0.6`. The old
+two-segment `~> 0.10` bound (`>= 0.10.0 and < 1.0.0`) *permitted* 0.11.0 but did
+not *require* it, so a consumer with an existing lock on onchain 0.10.0 would
+have gone on resolving cartouche 0.5.x — and therefore req 0.6.x — through any
+number of `mix deps.get` runs, since the lockfile wins over a satisfied bound.
+Raising the floor invalidates that lock entry and makes the upgrade happen
+without anyone needing to know to run `mix deps.update`.
+
+### Changed — stale floors corrected
+
+- `{:req, "~> 0.5"}` → `{:req, "~> 0.6 or ~> 0.7"}`. The old bound was
+  two-segment and always admitted 0.7.x, so this changes nothing about
+  resolution; it stops the declaration from understating what runs here.
+- `{:descripex, "~> 0.9"}` → `{:descripex, "~> 0.11"}`, matching cartouche 0.6's
+  own `descripex ~> 0.11`. Nothing below 0.11 was resolvable regardless.
+
+### Verified
+
+Resolved against onchain 0.11.0 (via a temporary local path dep, since 0.11.0
+was not yet on Hex at preparation time): cartouche 0.6.0, descripex 0.11.0,
+req 0.7.1. Compiles `--warnings-as-errors` clean; 142 offline tests and 6
+integration tests pass, 0 failures.
+
 ## v0.7.0
 
 ### Pre-broadcast transaction simulation (closes a fee-payer gas-draining DoS)
