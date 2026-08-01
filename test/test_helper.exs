@@ -1,1 +1,1 @@
-ExUnit.start(exclude: [:integration, :sepolia_send])
+ExUnit.start(exclude: [:integration])
