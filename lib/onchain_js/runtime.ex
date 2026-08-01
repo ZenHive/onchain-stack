@@ -40,7 +40,7 @@ defmodule OnchainJs.Runtime do
   """
 
   @type runtime :: GenServer.server()
-  @type js_result :: {:ok, term()} | {:error, QuickBEAM.JS.Error.t()}
+  @type js_result :: {:ok, term()} | {:error, QuickBEAM.JSError.t()}
 
   @doc false
   @spec child_spec(keyword()) :: Supervisor.child_spec()

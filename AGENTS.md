@@ -644,6 +644,17 @@ These firm up as the harness conventions for the stack settle. Fill in from the 
 - Each repo's `CLAUDE.md` — module layout, architecture, testing specifics
 
 
+## Toolchain & check commands (read before judging a build)
+
+Cross-family harness reviewers read **AGENTS.md** (auto-generated from this file), not the user's Claude skills. **`mix ci`** (= `mix precommit.full`) is the canonical gate — run it before judging a build green or red. It chains: `compile --warnings-as-errors`, `format --check-formatted`, `credo --strict`, `doctor --raise`, `ex_dna --max-clones 0`, `reach.check --arch --smells`, `sobelow --skip`, `deps.audit.gated`, `test.json --cover --cover-threshold 25 --exclude integration`, `dialyzer`, `agents.check`. `mix precommit` is the fast local loop (no dialyzer, no coverage).
+
+- `mix reach.check --arch --smells` gates from `.reach.exs` (`smells: [strict: true]`). Smell findings must be **fixed, never added to an ignore list**.
+- `deps.audit.gated` proves the local advisory mirror is fresh (`bin/advisory-freshness.sh` in the onchain-stack coordination home) before running `deps.audit --ignore-file .mix_audit_ignore` — `mix_audit` silently discards its own sync failure, so a stale mirror would otherwise report false-green.
+- `agents.check` fails when `AGENTS.md` has drifted from this file (`sync-agents-md.sh --check`).
+- **`mix test.json` (`ex_unit_json`) and `mix dialyzer.json` (`dialyzer_json`) emit JSON by design** — parse for real failures, never flag the JSON envelope itself as a build error. When `dialyzer.json`'s encoder can't serialize a warning shape, plain `mix dialyzer` is the authoritative check.
+- Coverage floor is 25% against a 27.78% measured baseline (2026-08-01) — this repo's `lib/` surface is a thin 4-module QuickBEAM bridge; most behavior is only exercised by the (excluded-by-default) `:integration` tests, which need a live QuickBEAM runtime.
+- Cold compiles are slow: this repo builds Zig NIFs (QuickBEAM). Budget generous time for a fresh `mix deps.get && mix compile` or a cold-PLT `mix dialyzer` and do not kill it early.
+
 ## Portfolio Context
 
 This repo is part of a four-library portfolio. Each native runtime gets its own package.
