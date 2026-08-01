@@ -144,7 +144,8 @@ defmodule Onchain.Aave.Types.AggregatedReserveDataTest do
       assert result.deficit == 8_105_466_388_536_457_758
     end
 
-    test "raises FunctionClauseError for non-binary address" do
+    test "raises FunctionClauseError for asset that is not 20 raw bytes" do
+      # A 0x-prefixed hex string is a binary, but 42 bytes — the guard wants the decoded 20
       raw = put_elem(weth_raw(), 0, "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
 
       assert_raise FunctionClauseError, fn ->
@@ -156,7 +157,7 @@ defmodule Onchain.Aave.Types.AggregatedReserveDataTest do
       raw = put_elem(weth_raw(), 1, 42)
 
       assert_raise FunctionClauseError, fn ->
-        AggregatedReserveData.from_raw(raw)
+        dynamic_from_raw(AggregatedReserveData, raw)
       end
     end
 
