@@ -95,7 +95,6 @@ defmodule Onchain.Aave.Faucet do
 
   # --- Private helpers ---
 
-  @doc false
   # Splits opts into network lookup opts and signer opts, applying default gas limit.
   defp split_opts(opts) do
     {network, rest} = Keyword.pop(opts, :network, :ethereum)

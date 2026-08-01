@@ -8,6 +8,99 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## v0.3.0 — onchain 0.12 line, clone dedup, real gates, bounds narrowed (2026-08-01)
+
+No public API change: every function keeps its name, arity and return shape.
+
+**Minor, not patch.** This was drafted as 0.2.2 while every dependency edit was
+dev/test-scoped. It now narrows a *runtime* requirement (`descripex`), and
+narrowing a runtime bound can fail resolution for a consumer pinned below the
+new floor. That failure is loud rather than silent, but it is still a
+compatibility break and semver should say so.
+
+### Changed — `{:onchain, "~> 0.11"}` → `{:onchain, "~> 0.12"}`
+
+onchain 0.12.0 is the release that raises `zen_websocket` to `~> 0.6.0`, which
+*requires* the gun version carrying the GHSA-w4f7-4cxr-rv3c fix rather than
+merely permitting it. `~> 0.11` admits 0.12.0 but does not require it, so this
+package's lock would have kept resolving onchain 0.11.0 → zen_websocket 0.4.2,
+whose looser gun bound only happens to have landed on a fixed 2.5.0 — a lock
+entry that still satisfies its bound is never re-resolved.
+
+The lock now carries onchain 0.12.0 and zen_websocket 0.6.0. onchain 0.12.0 also
+narrows `descripex` to `~> 0.12.0`, matching what this package now declares
+directly (below). No code change was needed: onchain 0.12.0 makes no public API
+change, and the suite is green against it.
+
+### Changed — hieroglyph 1.6.0 in the lock, `elixir: "~> 1.17"` → `"~> 1.18"`
+
+`mix.exs` gains no `hieroglyph` line — it arrives transitively through
+onchain/cartouche, whose published bounds already admit it — but the lock now
+carries 1.6.0, which restores `ABI.Event.decode_event/4`'s documented total
+contract (unnamed event inputs no longer raise; an array length prefix that
+cannot fit the remaining payload is rejected before the element list is
+allocated) and makes `decode_structs: true` work on the event path.
+
+The Elixir floor moves with it: hieroglyph 1.6.0's encode path uses
+`Enum.sum_by/2` (1.18+), so declaring `~> 1.17` here would let this package
+resolve on 1.17 and then fail compiling a dependency. Same reasoning as the
+`descripex` narrowing below — a loud resolution failure, but still a
+compatibility break.
+
+### Changed — `{:descripex, "~> 0.11"}` → `{:descripex, "~> 0.12.0"}`
+
+descripex 0.12.0 changed `short_name` in `describe/1` output from an atom to a
+string — a consumer-visible contract change shipped at a *minor* bump, which the
+old two-segment `~> 0.11` (`>= 0.11.0 and < 1.0.0`) would have absorbed on any
+fresh resolution without a version bump here. The requirement is now
+three-segment (`< 0.13.0`): a 0.x package that breaks on minor earns the tighter
+form, and the cap gets raised deliberately after reading its release notes.
+
+onchain_aave does not read `short_name` — nothing in `lib/` or `test/`
+references it, and the suite (232 tests) is green against descripex 0.12.0 with
+no code change. The break is in the *bound*, not the behaviour.
+
+### Changed — two real duplicated blocks removed
+
+`ex_dna` was not a dependency here at all, so clone detection had never run.
+Adding it with `--max-clones 0` surfaced two genuine clones (no false
+positives):
+
+- `validate_addresses/1` — byte-identical `defp` in `oracle.ex` and `pool.ex`.
+  Moved into the existing internal helper module `Onchain.Aave.Opts`
+  (`@moduledoc false`), which already held `split_network/1`.
+- `calculate_linear_interest/3` — identical in `Onchain.Aave.Math` and
+  `Onchain.Aave.Math.V4`, same guard and same `@ray` / `@seconds_per_year`
+  values. Aave's linear-interest formula is unchanged between V3 and V4, so
+  `Math.V4` now delegates to `Math`. Both public functions keep their exact
+  name, arity and return shape; the dead `@seconds_per_year` attribute in
+  `v4.ex` is gone.
+
+Coverage was measured before touching code. `math.ex` and `math/v4.ex` were
+already fully covered. `oracle.ex`'s `validate_addresses` success branch was
+not — only the failure path was tested — so that test was written and confirmed
+passing against the *unchanged* code before the extraction.
+
+### Changed — the quality gates now actually gate
+
+- **`reach` added** with `.reach.exs` carrying `smells: [strict: true]`. The
+  strict flag is the point: `reach.check --smells` raises only when
+  `opts[:strict] || config.smells.strict`, so without it the check reports
+  findings and still exits 0.
+- **`mix_audit` added and wired.** `deps.audit.gated` proves the advisory
+  database is current *before* auditing — `mix_audit` discards its own sync exit
+  status (mirego/mix_audit#61), so a database that can no longer sync still
+  prints "No vulnerabilities found" and exits 0.
+- **`ex_dna --max-clones 0`** added as a gate step (see above).
+- **`agents.check`** fails when `AGENTS.md` has drifted from `CLAUDE.md`.
+- **CI invokes `mix ci`** instead of a hand-maintained check list. The check
+  stack documented in `AGENTS.md` is now backed by an alias that runs it.
+- **MCP config mirrored to all four agent families** (`.cursor/`, `.codex/`,
+  `.grok/`) — a server declared only in `.mcp.json` is invisible to cross-family
+  agents.
+
+---
+
 ## v0.2.1 — dependency floors + revive the Sepolia write tests (2026-07-31)
 
 No library code changes.

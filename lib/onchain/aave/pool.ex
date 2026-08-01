@@ -157,7 +157,7 @@ defmodule Onchain.Aave.Pool do
   def get_user_account_data_many(user_addresses, opts) when is_list(user_addresses) do
     {network_opts, rpc_opts} = Opts.split_network(opts)
 
-    with {:ok, user_bins} <- validate_addresses(user_addresses),
+    with {:ok, user_bins} <- Opts.validate_addresses(user_addresses),
          {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
          calls = build_account_data_calls(pool_addr, user_bins),
          {:ok, results} <- Multicall.call_many(calls, rpc_opts) do
@@ -438,22 +438,6 @@ defmodule Onchain.Aave.Pool do
   end
 
   # --- Private helpers ---
-
-  # Validates a list of addresses, preserving order. Halts on the first invalid one.
-  @spec validate_addresses([String.t() | binary()]) :: {:ok, [binary()]} | {:error, term()}
-  defp validate_addresses(addresses) do
-    addresses
-    |> Enum.reduce_while({:ok, []}, fn addr, {:ok, acc} ->
-      case Address.validate(addr) do
-        {:ok, bin} -> {:cont, {:ok, [bin | acc]}}
-        error -> {:halt, error}
-      end
-    end)
-    |> case do
-      {:ok, bins} -> {:ok, Enum.reverse(bins)}
-      error -> error
-    end
-  end
 
   # Builds one getUserAccountData Multicall call spec per user against the Pool address.
   @spec build_account_data_calls(String.t(), [binary()]) ::

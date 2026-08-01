@@ -113,7 +113,7 @@ defmodule Onchain.Aave.Oracle do
   def get_asset_prices(assets, opts \\ []) when is_list(assets) do
     {network_opts, rpc_opts} = Opts.split_network(opts)
 
-    with {:ok, asset_bins} <- validate_addresses(assets),
+    with {:ok, asset_bins} <- Opts.validate_addresses(assets),
          {:ok, oracle_addr} <- Contracts.address(:oracle, network_opts),
          {:ok, [prices]} <-
            Contract.call(
@@ -359,25 +359,6 @@ defmodule Onchain.Aave.Oracle do
     case get_latest_round_data(aggregator, opts) do
       {:ok, data} -> data
       {:error, reason} -> raise "get_latest_round_data failed: #{inspect(reason)}"
-    end
-  end
-
-  # --- Private helpers ---
-
-  @doc false
-  # Validates a list of addresses, returning binaries or the first error.
-  @spec validate_addresses([term()]) :: {:ok, [binary()]} | {:error, term()}
-  defp validate_addresses(addresses) do
-    addresses
-    |> Enum.reduce_while({:ok, []}, fn addr, {:ok, acc} ->
-      case Address.validate(addr) do
-        {:ok, bin} -> {:cont, {:ok, [bin | acc]}}
-        error -> {:halt, error}
-      end
-    end)
-    |> case do
-      {:ok, bins} -> {:ok, Enum.reverse(bins)}
-      error -> error
     end
   end
 end

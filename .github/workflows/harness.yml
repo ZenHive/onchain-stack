@@ -1,7 +1,9 @@
 # Deterministic Elixir harness gate for PRs.
-# Closes the Codex-env-blocked-hex.pm gap: every PR push gets format / compile /
-# credo / doctor / sobelow / test+cover / dialyzer evidence as PR checks, instead
-# of needing a local reviewer to fetch the branch and run the suite.
+# Mirrors the local `mix ci` (= `mix precommit.full`) alias so every PR push
+# gets format / compile / credo / doctor / reach (arch+smell) / sobelow /
+# deps.audit / test+cover / dialyzer / AGENTS.md-freshness evidence as PR
+# checks, instead of needing a local reviewer to fetch the branch and run the
+# suite. CI and local dev share one gate definition (mix.exs `aliases/0`).
 #
 # Elixir/OTP are pinned inline (this repo has no `.tool-versions`). Adopting a
 # `.tool-versions` and switching to `version-file` would make CI and local dev
@@ -50,29 +52,8 @@ jobs:
 
       - run: mix deps.get
 
-      - name: Compile (warnings as errors)
-        run: mix compile --warnings-as-errors
-
-      - name: Format check
-        run: mix format --check-formatted
-
-      # TODO/FIXME tags are tracked-debt visibility, not regressions — exclude
-      # so harness only fails on real Credo issues (see development-philosophy.md
-      # § "TODO Comment Requirements").
-      - name: Credo (strict, excluding TODO/FIXME design tags)
-        run: mix credo --strict --ignore TagTODO,TagFIXME
-
-      - name: Doctor (--raise overrides .doctor.exs raise=false to gate CI)
-        run: mix doctor --raise
-
-      - name: Sobelow (honors .sobelow-conf, exit=Low)
-        run: mix sobelow
-
-      # Coverage floor: 70% — conservative family floor (matches onchain_tempo).
-      # Raise per-repo as coverage climbs. `mix test.json`'s test_helper excludes
-      # `:integration` by default, so no `--exclude integration` needed here.
-      - name: Tests + coverage gate (>=70%)
-        run: mix test.json --cover --cover-threshold 70 --summary-only
-
-      - name: Dialyzer
-        run: mix dialyzer
+      # mix.exs `aliases/0` `ci: ["precommit.full"]` — see mix.exs for the
+      # step list (compile, format, credo, doctor, reach.check, sobelow,
+      # deps.audit.gated, test+cover, dialyzer, agents.check).
+      - name: mix ci
+        run: mix ci

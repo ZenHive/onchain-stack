@@ -24,6 +24,14 @@ defmodule Onchain.Aave.OracleTest do
       assert {:error, {:invalid_address, "bad"}} =
                Oracle.get_asset_prices([@valid_address, "bad"])
     end
+
+    test "validates all addresses before failing on an unsupported network" do
+      # All addresses are valid, so validation succeeds and the call proceeds
+      # to the next step (contract address lookup), which fails on the
+      # unsupported network — proves the validate_addresses success path.
+      assert {:error, {:unsupported_network, :solana}} =
+               Oracle.get_asset_prices([@valid_address], network: :solana)
+    end
   end
 
   describe "get_asset_prices!/2" do

@@ -11,10 +11,11 @@ defmodule Onchain.Aave.Math.V4 do
   `src/spoke/libraries/LiquidationLogic.sol`.
   """
 
+  alias Onchain.Aave.Math
+
   @wad 1_000_000_000_000_000_000
   @ray 1_000_000_000_000_000_000_000_000_000
   @percentage_factor 10_000
-  @seconds_per_year 31_536_000
   @health_factor_liquidation_threshold 1_000_000_000_000_000_000
 
   defguardp is_liquidation_input(
@@ -120,13 +121,19 @@ defmodule Onchain.Aave.Math.V4 do
     div_up(a, @ray) * @ray
   end
 
-  @doc "Calculate V4 linear interest between two timestamps at a ray-scaled rate."
+  @doc """
+  Calculate V4 linear interest between two timestamps at a ray-scaled rate.
+
+  The linear-interest formula is unchanged between Aave V3 and V4
+  (`MathUtils.calculateLinearInterest`) — delegates to
+  `Onchain.Aave.Math.calculate_linear_interest/3` rather than duplicating it.
+  """
   @spec calculate_linear_interest(non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
           non_neg_integer()
   def calculate_linear_interest(rate, last_update_timestamp, current_timestamp)
       when is_integer(rate) and rate >= 0 and is_integer(last_update_timestamp) and last_update_timestamp >= 0 and
              is_integer(current_timestamp) and current_timestamp >= last_update_timestamp do
-    @ray + div(rate * (current_timestamp - last_update_timestamp), @seconds_per_year)
+    Math.calculate_linear_interest(rate, last_update_timestamp, current_timestamp)
   end
 
   @doc "Return the smaller of two non-negative integers."
