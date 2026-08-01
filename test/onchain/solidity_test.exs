@@ -27,7 +27,7 @@ defmodule Onchain.SolidityTest do
       latest = find_function(abi, "latestRoundData")
       assert latest.signature == "latestRoundData()"
       assert latest.return_type == "(uint80,int256,uint256,uint256,uint80)"
-      assert length(latest.outputs) == 5
+      assert match?([_, _, _, _, _], latest.outputs)
       assert Enum.at(latest.outputs, 0).ty == "uint80"
       assert Enum.at(latest.outputs, 1).ty == "int256"
     end
@@ -41,7 +41,7 @@ defmodule Onchain.SolidityTest do
       assert func.return_type == "(uint256,uint256,uint256,uint256,uint256,uint256)"
       assert func.state_mutability == "view"
       assert [%{name: "user", ty: "address"}] = func.inputs
-      assert length(func.outputs) == 6
+      assert match?([_, _, _, _, _, _], func.outputs)
     end
 
     test "parses nested tuple/struct returns" do
@@ -59,7 +59,7 @@ defmodule Onchain.SolidityTest do
       # The output should have components for the struct fields
       assert [output] = func.outputs
       assert output.ty == "tuple"
-      assert length(output.components) == 15
+      assert match?([_, _, _, _, _, _, _, _, _, _, _, _, _, _, _], output.components)
 
       # First component is itself a nested tuple (ReserveConfigurationMap)
       config = Enum.at(output.components, 0)
@@ -141,7 +141,7 @@ defmodule Onchain.SolidityTest do
       assert err.name == "InsufficientBalance"
       assert err.signature == "InsufficientBalance(uint256,uint256)"
       assert is_binary(err.selector)
-      assert length(err.inputs) == 2
+      assert match?([_, _], err.inputs)
     end
 
     test "parses constructor" do
@@ -161,7 +161,7 @@ defmodule Onchain.SolidityTest do
 
       assert {:ok, abi} = Solidity.parse_abi_json(json)
       transfers = Enum.filter(abi.functions, &(&1.name == "transfer"))
-      assert length(transfers) == 2
+      assert match?([_, _], transfers)
 
       sigs = transfers |> Enum.map(& &1.signature) |> Enum.sort()
       assert "transfer(address,address,uint256)" in sigs
@@ -186,7 +186,7 @@ defmodule Onchain.SolidityTest do
     test "reads and parses file" do
       path = Path.join(@priv_abis, "chainlink_aggregator.json")
       assert {:ok, abi} = Solidity.parse_abi_file(path)
-      assert length(abi.functions) == 4
+      assert match?([_, _, _, _], abi.functions)
     end
 
     test "returns file_error for missing file" do
@@ -199,7 +199,7 @@ defmodule Onchain.SolidityTest do
     test "returns map on success" do
       path = Path.join(@priv_abis, "chainlink_aggregator.json")
       assert %{functions: funcs} = Solidity.parse_abi_file!(path)
-      assert length(funcs) == 4
+      assert match?([_, _, _, _], funcs)
     end
 
     test "raises on missing file" do
@@ -245,11 +245,11 @@ defmodule Onchain.SolidityTest do
       sol = File.read!(Path.join(@priv_contracts, "test_interface.sol"))
       assert {:ok, result} = Solidity.parse_sol(sol)
 
-      assert length(result.structs) == 2
+      assert match?([_, _], result.structs)
 
       user_data = Enum.find(result.structs, &(&1.name == "ITestContract.UserData"))
       assert user_data
-      assert length(user_data.fields) == 3
+      assert match?([_, _, _], user_data.fields)
 
       field_names = Enum.map(user_data.fields, & &1.name)
       assert "balance" in field_names
@@ -324,7 +324,7 @@ defmodule Onchain.SolidityTest do
       # Output param should be tuple type with components
       assert [output] = get_user.outputs
       assert output.ty == "tuple"
-      assert length(output.components) == 3
+      assert match?([_, _, _], output.components)
     end
 
     test "event with struct type resolves to tuple signature and components" do
@@ -341,7 +341,7 @@ defmodule Onchain.SolidityTest do
       # Input param has tuple type with components
       assert [input] = event.inputs
       assert input.ty == "tuple"
-      assert length(input.components) == 3
+      assert match?([_, _, _], input.components)
     end
 
     test "error with struct type resolves to tuple signature and components" do
@@ -358,7 +358,7 @@ defmodule Onchain.SolidityTest do
       # Input param has tuple type with components
       assert [input] = err.inputs
       assert input.ty == "tuple"
-      assert length(input.components) == 3
+      assert match?([_, _, _], input.components)
     end
 
     test "nested struct resolves recursively" do
@@ -376,13 +376,13 @@ defmodule Onchain.SolidityTest do
       # Output param is tuple with 2 components
       assert [output] = get_nested.outputs
       assert output.ty == "tuple"
-      assert length(output.components) == 2
+      assert match?([_, _], output.components)
 
       # Second component (data) is itself a tuple with 3 sub-components
       data_comp = Enum.at(output.components, 1)
       assert data_comp.name == "data"
       assert data_comp.ty == "tuple"
-      assert length(data_comp.components) == 3
+      assert match?([_, _, _], data_comp.components)
     end
 
     test "parses block-style NatSpec comments" do
@@ -435,7 +435,7 @@ defmodule Onchain.SolidityTest do
     test "reads and parses file" do
       path = Path.join(@priv_contracts, "test_interface.sol")
       assert {:ok, result} = Solidity.parse_sol_file(path)
-      assert length(result.functions) == 6
+      assert match?([_, _, _, _, _, _], result.functions)
     end
 
     test "returns file_error for missing file" do
@@ -448,7 +448,7 @@ defmodule Onchain.SolidityTest do
     test "returns map on success" do
       path = Path.join(@priv_contracts, "test_interface.sol")
       assert %{functions: funcs} = Solidity.parse_sol_file!(path)
-      assert length(funcs) == 6
+      assert match?([_, _, _, _, _, _], funcs)
     end
 
     test "raises on missing file" do
@@ -513,7 +513,7 @@ defmodule Onchain.SolidityTest do
 
       assert [reserve_output] = get_reserve_data.outputs
       assert reserve_output.ty == "tuple"
-      assert length(reserve_output.components) == 15
+      assert match?([_, _, _, _, _, _, _, _, _, _, _, _, _, _, _], reserve_output.components)
 
       configuration = Enum.at(reserve_output.components, 0)
       assert configuration.name == "configuration"
@@ -668,7 +668,7 @@ defmodule Onchain.SolidityTest do
 
       assert {:ok, resolution} = Solidity.resolve_sol_file(root)
       assert resolution.root_contract == "Root"
-      assert length(resolution.files) == 2
+      assert match?([_, _], resolution.files)
       assert Enum.any?(resolution.files, &String.ends_with?(&1, "Dep.sol"))
       assert String.contains?(resolution.source, "interface IRoot")
       assert String.contains?(resolution.source, "interface IDep")

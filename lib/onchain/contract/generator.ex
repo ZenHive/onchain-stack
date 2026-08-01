@@ -117,6 +117,23 @@ defmodule Onchain.Contract.Generator do
 
   # --- ABI Resolution ---
 
+  # Compile-time contract input, resolved from the `use Onchain.Contract.Generator`
+  # options: the parsed ABI, whether it came from real Solidity source (unlocks
+  # struct/enum/NatSpec generation), and any external files to register as
+  # `@external_resource` so recompilation tracks them.
+  defmodule ResolvedInput do
+    @moduledoc false
+
+    @enforce_keys [:abi, :is_sol, :external_files]
+    defstruct [:abi, :is_sol, :external_files]
+
+    @type t :: %__MODULE__{
+            abi: Onchain.Solidity.parsed_abi() | Onchain.Solidity.parsed_sol(),
+            is_sol: boolean(),
+            external_files: [String.t()]
+          }
+  end
+
   @doc false
   @spec resolve_abi(keyword()) :: Onchain.Solidity.parsed_abi()
   def resolve_abi(opts) do
@@ -125,21 +142,20 @@ defmodule Onchain.Contract.Generator do
 
   @doc false
   # Resolves compile-time contract inputs, including real Solidity file graphs.
-  @spec resolve_contract_input(keyword(), Macro.Env.t() | nil) ::
-          %{abi: Onchain.Solidity.parsed_abi(), is_sol: boolean(), external_files: [String.t()]}
+  @spec resolve_contract_input(keyword(), Macro.Env.t() | nil) :: ResolvedInput.t()
   def resolve_contract_input(opts, env) do
     cond do
       sol = Keyword.get(opts, :sol) ->
-        %{abi: Onchain.Solidity.parse_sol!(sol), is_sol: true, external_files: []}
+        %ResolvedInput{abi: Onchain.Solidity.parse_sol!(sol), is_sol: true, external_files: []}
 
       file = Keyword.get(opts, :sol_file) ->
         resolve_sol_file_input(file, opts, env)
 
       json = Keyword.get(opts, :abi_json) ->
-        %{abi: Onchain.Solidity.parse_abi_json!(json), is_sol: false, external_files: []}
+        %ResolvedInput{abi: Onchain.Solidity.parse_abi_json!(json), is_sol: false, external_files: []}
 
       file = Keyword.get(opts, :abi_file) ->
-        %{abi: Onchain.Solidity.parse_abi_file!(file), is_sol: false, external_files: []}
+        %ResolvedInput{abi: Onchain.Solidity.parse_abi_file!(file), is_sol: false, external_files: []}
 
       true ->
         raise ArgumentError,
@@ -149,8 +165,7 @@ defmodule Onchain.Contract.Generator do
 
   @doc false
   # Resolves a root Solidity file relative to the caller module and parses the selected contract.
-  @spec resolve_sol_file_input(String.t(), keyword(), Macro.Env.t() | nil) ::
-          %{abi: Onchain.Solidity.parsed_sol(), is_sol: true, external_files: [String.t()]}
+  @spec resolve_sol_file_input(String.t(), keyword(), Macro.Env.t() | nil) :: ResolvedInput.t()
   defp resolve_sol_file_input(file, opts, env) do
     sol_path = expand_sol_file_path(file, env)
     sol_opts = Keyword.take(opts, [:remappings, :root_contract])
@@ -163,7 +178,7 @@ defmodule Onchain.Contract.Generator do
         {:error, reason} -> raise "Solidity parse failed: #{inspect(reason)}"
       end
 
-    %{abi: abi, is_sol: true, external_files: resolution.files}
+    %ResolvedInput{abi: abi, is_sol: true, external_files: resolution.files}
   end
 
   @doc false
@@ -171,7 +186,6 @@ defmodule Onchain.Contract.Generator do
   @spec expand_sol_file_path(String.t(), Macro.Env.t() | nil) :: String.t()
   defp expand_sol_file_path(file, nil), do: Path.expand(file)
 
-  @doc false
   defp expand_sol_file_path(file, env) do
     Path.expand(file, Path.dirname(env.file))
   end
@@ -213,8 +227,10 @@ defmodule Onchain.Contract.Generator do
         [_single] ->
           f
 
-        collisions when length(collisions) > 1 ->
+        collisions ->
           # Find the input types that distinguish this overload
+          # (guaranteed 2+ elements here: `f` is always a member of its own
+          # group, so the only other case after `[_single]` is a collision)
           suffix = disambiguation_suffix(f, collisions)
           %{f | elixir_name: f.elixir_name <> "_" <> suffix}
       end
@@ -226,10 +242,12 @@ defmodule Onchain.Contract.Generator do
   defp disambiguation_suffix(func, collisions) do
     # For same-arity overloads, suffix with the type of the input that differs
     # Find inputs that are unique to this overload
+    # Tuples, not lists, so unique_type_suffix/2 can index by position in O(1)
+    # instead of walking the list on every Enum.at/2 call.
     other_input_sets =
       collisions
       |> Enum.reject(&(&1.signature == func.signature))
-      |> Enum.map(fn f -> Enum.map(f.inputs, & &1.ty) end)
+      |> Enum.map(fn f -> f.inputs |> Enum.map(& &1.ty) |> List.to_tuple() end)
 
     my_types = Enum.map(func.inputs, & &1.ty)
 
@@ -252,9 +270,9 @@ defmodule Onchain.Contract.Generator do
 
   @doc false
   # Returns the type suffix if this type at position i is unique across all other overloads
-  @spec unique_type_suffix({String.t(), non_neg_integer()}, [[String.t()]]) :: String.t() | nil
+  @spec unique_type_suffix({String.t(), non_neg_integer()}, [tuple()]) :: String.t() | nil
   defp unique_type_suffix({my_type, i}, other_input_sets) do
-    if Enum.all?(other_input_sets, fn other -> Enum.at(other, i) != my_type end) do
+    if Enum.all?(other_input_sets, fn other -> elem(other, i) != my_type end) do
       solidity_type_to_suffix(my_type)
     end
   end
@@ -355,12 +373,9 @@ defmodule Onchain.Contract.Generator do
     annotations =
       if no_return == [], do: annotations, else: annotations ++ [quote(do: @dialyzer({:no_return, unquote(no_return)}))]
 
-    annotations =
-      if no_contracts == [],
-        do: annotations,
-        else: annotations ++ [quote(do: @dialyzer({:no_contracts, unquote(no_contracts)}))]
-
-    annotations
+    if no_contracts == [],
+      do: annotations,
+      else: annotations ++ [quote(do: @dialyzer({:no_contracts, unquote(no_contracts)}))]
   end
 
   @doc false
@@ -396,12 +411,12 @@ defmodule Onchain.Contract.Generator do
         param_lines =
           Enum.map(func.natspec.params, fn {k, v} -> "  - `#{k}`: #{v}" end)
 
-        "\n\n## Parameters\n\n" <> Enum.join(param_lines, "\n")
+        ["\n\n## Parameters\n\n", Enum.join(param_lines, "\n")]
       else
         ""
       end
 
-    base <> param_docs
+    IO.iodata_to_binary([base, param_docs])
   end
 
   @doc false
@@ -570,6 +585,8 @@ defmodule Onchain.Contract.Generator do
   @doc false
   @spec build_write_with_chain([{atom(), atom()}], String.t(), [Macro.t()]) :: Macro.t()
   defp build_write_with_chain(validations, signature, call_params) do
+    calldata_var = Macro.var(:calldata_hex, nil)
+
     validation_clauses =
       Enum.map(validations, fn {var_name, validated_name} ->
         {:<-, [],
@@ -582,11 +599,9 @@ defmodule Onchain.Contract.Generator do
     encode_clause =
       {:<-, [],
        [
-         {:ok, Macro.var(:calldata_hex, nil)},
+         {:ok, calldata_var},
          quote(do: Onchain.ABI.encode_call(unquote(signature), unquote(call_params)))
        ]}
-
-    calldata_var = Macro.var(:calldata_hex, nil)
 
     body =
       quote do

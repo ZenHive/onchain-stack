@@ -49,7 +49,7 @@ defmodule Onchain.Contract.GeneratorIntegrationTest do
       rpc_url = Onchain.RPCCase.rpc_url!()
 
       assert {:ok, values} = ChainlinkModule.latest_round_data(@chainlink_eth_usd, rpc_url: rpc_url)
-      assert length(values) == 5
+      assert match?([_, _, _, _, _], values)
       # answer (ETH price in USD with 8 decimals) should be positive
       assert Enum.at(values, 1) > 0
     end

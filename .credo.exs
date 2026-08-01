@@ -21,79 +21,83 @@
       parse_timeout: 5000,
       color: true,
       checks: %{
-        enabled: [
-          ## Consistency
-          {Credo.Check.Consistency.ExceptionNames, []},
-          {Credo.Check.Consistency.LineEndings, []},
-          {Credo.Check.Consistency.SpaceAroundOperators, []},
-          {Credo.Check.Consistency.SpaceInParentheses, []},
-          {Credo.Check.Consistency.TabsOrSpaces, []},
+        enabled:
+          [
+            ## Consistency
+            {Credo.Check.Consistency.ExceptionNames, []},
+            {Credo.Check.Consistency.LineEndings, []},
+            {Credo.Check.Consistency.SpaceAroundOperators, []},
+            {Credo.Check.Consistency.SpaceInParentheses, []},
+            {Credo.Check.Consistency.TabsOrSpaces, []},
 
-          ## Design
-          {Credo.Check.Design.TagFIXME, []},
-          {Credo.Check.Design.TagTODO, [exit_status: 2]},
+            ## Design
+            {Credo.Check.Design.TagFIXME, []},
+            {Credo.Check.Design.TagTODO, [exit_status: 2]},
 
-          ## Readability
-          {Credo.Check.Readability.FunctionNames, []},
-          {Credo.Check.Readability.MaxLineLength, [priority: :low, max_length: 120]},
-          {Credo.Check.Readability.ModuleAttributeNames, []},
-          {Credo.Check.Readability.ModuleNames, []},
-          {Credo.Check.Readability.ParenthesesInCondition, []},
-          {Credo.Check.Readability.PredicateFunctionNames, []},
-          {Credo.Check.Readability.RedundantBlankLines, []},
-          {Credo.Check.Readability.Semicolons, []},
-          {Credo.Check.Readability.SpaceAfterCommas, []},
-          {Credo.Check.Readability.TrailingBlankLine, []},
-          {Credo.Check.Readability.TrailingWhiteSpace, []},
-          # Specs is scoped to the onchain_evm library + its test support. The
-          # contract generator (lib/onchain/contract/generator.ex) emits modules
-          # at compile time via macro — it carries specs like any hand-written
-          # code, so no exclusion is needed (unlike cartouche, which commits
-          # generated .ex output).
-          {Credo.Check.Readability.Specs,
-           [
-             include_defp: true,
-             files: %{
-               included: ["lib/onchain/", "lib/onchain_evm.ex", "test/support/"]
-             }
-           ]},
-          {Credo.Check.Readability.VariableNames, []},
+            ## Readability
+            {Credo.Check.Readability.FunctionNames, []},
+            {Credo.Check.Readability.MaxLineLength, [priority: :low, max_length: 120]},
+            {Credo.Check.Readability.ModuleAttributeNames, []},
+            {Credo.Check.Readability.ModuleNames, []},
+            {Credo.Check.Readability.ParenthesesInCondition, []},
+            {Credo.Check.Readability.PredicateFunctionNames, []},
+            {Credo.Check.Readability.RedundantBlankLines, []},
+            {Credo.Check.Readability.Semicolons, []},
+            {Credo.Check.Readability.SpaceAfterCommas, []},
+            {Credo.Check.Readability.TrailingBlankLine, []},
+            {Credo.Check.Readability.TrailingWhiteSpace, []},
+            # Specs is scoped to the onchain_evm library + its test support. The
+            # contract generator (lib/onchain/contract/generator.ex) emits modules
+            # at compile time via macro — it carries specs like any hand-written
+            # code, so no exclusion is needed (unlike cartouche, which commits
+            # generated .ex output).
+            {Credo.Check.Readability.Specs,
+             [
+               include_defp: true,
+               files: %{
+                 included: ["lib/onchain/", "lib/onchain_evm.ex", "test/support/"]
+               }
+             ]},
+            {Credo.Check.Readability.VariableNames, []},
 
-          ## Refactor
-          {Credo.Check.Refactor.Apply, []},
-          {Credo.Check.Refactor.CyclomaticComplexity, []},
-          {Credo.Check.Refactor.FilterFilter, []},
-          {Credo.Check.Refactor.FunctionArity, [max_arity: 12]},
-          {Credo.Check.Refactor.LongQuoteBlocks, []},
-          {Credo.Check.Refactor.MatchInCondition, []},
-          {Credo.Check.Refactor.Nesting, []},
-          {Credo.Check.Refactor.RejectReject, []},
+            ## Refactor
+            {Credo.Check.Refactor.Apply, []},
+            {Credo.Check.Refactor.CyclomaticComplexity, []},
+            {Credo.Check.Refactor.FilterFilter, []},
+            {Credo.Check.Refactor.FunctionArity, [max_arity: 12]},
+            {Credo.Check.Refactor.LongQuoteBlocks, []},
+            {Credo.Check.Refactor.MatchInCondition, []},
+            {Credo.Check.Refactor.Nesting, []},
+            {Credo.Check.Refactor.RejectReject, []},
 
-          ## Warnings
-          {Credo.Check.Warning.ApplicationConfigInModuleAttribute, []},
-          {Credo.Check.Warning.BoolOperationOnSameValues, []},
-          {Credo.Check.Warning.Dbg, []},
-          {Credo.Check.Warning.ExpensiveEmptyEnumCheck, []},
-          {Credo.Check.Warning.IExPry, []},
-          {Credo.Check.Warning.IoInspect, []},
-          {Credo.Check.Warning.MissedMetadataKeyInLoggerConfig, []},
-          {Credo.Check.Warning.OperationOnSameValues, []},
-          {Credo.Check.Warning.OperationWithConstantResult, []},
-          {Credo.Check.Warning.RaiseInsideRescue, []},
-          {Credo.Check.Warning.SpecWithStruct, []},
-          {Credo.Check.Warning.StructFieldAmount, []},
-          {Credo.Check.Warning.UnsafeExec, []},
-          {Credo.Check.Warning.UnusedEnumOperation, []},
-          {Credo.Check.Warning.UnusedFileOperation, []},
-          {Credo.Check.Warning.UnusedKeywordOperation, []},
-          {Credo.Check.Warning.UnusedListOperation, []},
-          {Credo.Check.Warning.UnusedMapOperation, []},
-          {Credo.Check.Warning.UnusedPathOperation, []},
-          {Credo.Check.Warning.UnusedRegexOperation, []},
-          {Credo.Check.Warning.UnusedStringOperation, []},
-          {Credo.Check.Warning.UnusedTupleOperation, []},
-          {Credo.Check.Warning.WrongTestFilename, []}
-        ],
+            ## Warnings
+            {Credo.Check.Warning.ApplicationConfigInModuleAttribute, []},
+            {Credo.Check.Warning.BoolOperationOnSameValues, []},
+            {Credo.Check.Warning.Dbg, []},
+            {Credo.Check.Warning.ExpensiveEmptyEnumCheck, []},
+            {Credo.Check.Warning.IExPry, []},
+            {Credo.Check.Warning.IoInspect, []},
+            {Credo.Check.Warning.MissedMetadataKeyInLoggerConfig, []},
+            {Credo.Check.Warning.OperationOnSameValues, []},
+            {Credo.Check.Warning.OperationWithConstantResult, []},
+            {Credo.Check.Warning.RaiseInsideRescue, []},
+            {Credo.Check.Warning.SpecWithStruct, []},
+            {Credo.Check.Warning.StructFieldAmount, []},
+            {Credo.Check.Warning.UnsafeExec, []},
+            {Credo.Check.Warning.UnusedEnumOperation, []},
+            {Credo.Check.Warning.UnusedFileOperation, []},
+            {Credo.Check.Warning.UnusedKeywordOperation, []},
+            {Credo.Check.Warning.UnusedListOperation, []},
+            {Credo.Check.Warning.UnusedMapOperation, []},
+            {Credo.Check.Warning.UnusedPathOperation, []},
+            {Credo.Check.Warning.UnusedRegexOperation, []},
+            {Credo.Check.Warning.UnusedStringOperation, []},
+            {Credo.Check.Warning.UnusedTupleOperation, []},
+            {Credo.Check.Warning.WrongTestFilename, []}
+            # An explicit `enabled` list is authoritative for Credo — it discards
+            # a plugin's default checks. ExSlop's have to be appended or the
+            # plugin is registered but inert.
+          ] ++ Enum.map(ExSlop.recommended_checks(), &{&1, []}),
         disabled: [
           ## Handled by Styler — see https://hexdocs.pm/styler/credo.html
           {Credo.Check.Consistency.MultiAliasImportRequireUse, []},

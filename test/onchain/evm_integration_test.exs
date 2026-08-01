@@ -228,7 +228,7 @@ defmodule Onchain.EVM.IntegrationTest do
       ]
 
       assert {:ok, results} = EVM.simulate_batch(calls, rpc_opts())
-      assert length(results) == 3
+      assert match?([_, _, _], results)
 
       # All should succeed
       Enum.each(results, fn result ->
@@ -343,7 +343,7 @@ defmodule Onchain.EVM.IntegrationTest do
 
       results = EVM.simulate_batch!(calls, rpc_opts())
       assert is_list(results)
-      assert length(results) == 1
+      assert match?([_], results)
     end
   end
 end

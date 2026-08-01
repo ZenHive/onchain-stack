@@ -64,7 +64,7 @@ defmodule Onchain.Solidity.Resolver do
   @spec allow_single_file_fallback?(Solidity.resolved_sol_file(), Solidity.parse_sol_file_opts()) ::
           boolean()
   defp allow_single_file_fallback?(resolution, opts) do
-    length(resolution.files) == 1 and not Keyword.has_key?(opts, :root_contract)
+    match?([_], resolution.files) and not Keyword.has_key?(opts, :root_contract)
   end
 
   @doc false
@@ -146,7 +146,6 @@ defmodule Onchain.Solidity.Resolver do
           {:ok, [{String.t(), String.t()}]} | {:error, {:file_error, String.t()}}
   defp read_remappings_file(nil), do: {:ok, []}
 
-  @doc false
   defp read_remappings_file(path) do
     case File.read(path) do
       {:ok, contents} -> parse_remapping_strings(String.split(contents, "\n"), Path.dirname(path), path)
@@ -182,7 +181,6 @@ defmodule Onchain.Solidity.Resolver do
     {:ok, nil}
   end
 
-  @doc false
   defp parse_remapping_line(line, line_number, base_dir, source_label) do
     trimmed = String.trim(line)
 
@@ -238,7 +236,6 @@ defmodule Onchain.Solidity.Resolver do
     "explicit remapping ##{line_number} is invalid: #{line}"
   end
 
-  @doc false
   defp invalid_remapping_message(source_label, line_number, line) do
     "#{source_label}: invalid remapping on line #{line_number}: #{line}"
   end

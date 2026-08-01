@@ -58,6 +58,20 @@ defmodule Onchain.Contract.GeneratorTest do
       ])
   end
 
+  # Same-arity overload module — two functions sharing a name AND input count,
+  # so disambiguate_collisions/1 must fall into its collision branch and
+  # exercise disambiguation_suffix/2 -> unique_type_suffix/2 (unlike
+  # OverloadModule above, whose two `transfer` overloads differ in arity and
+  # never reach that code path).
+  defmodule SameArityOverloadModule do
+    @moduledoc false
+    use Generator,
+      abi_json: ~s([
+        {"inputs":[{"name":"a","type":"address"},{"name":"b","type":"uint256"}],"name":"swap","outputs":[{"name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"name":"a","type":"uint256"},{"name":"b","type":"address"}],"name":"swap","outputs":[{"name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}
+      ])
+  end
+
   # Empty ABI module
   defmodule EmptyModule do
     @moduledoc false
@@ -147,7 +161,7 @@ defmodule Onchain.Contract.GeneratorTest do
       abi = ChainlinkModule.__contract_abi__()
       assert is_map(abi)
       assert is_list(abi.functions)
-      assert length(abi.functions) == 4
+      assert match?([_, _, _, _], abi.functions)
 
       names = Enum.map(abi.functions, & &1.name)
       assert "decimals" in names
@@ -177,7 +191,7 @@ defmodule Onchain.Contract.GeneratorTest do
 
     test "__contract_abi__/0 matches" do
       abi = ChainlinkFileModule.__contract_abi__()
-      assert length(abi.functions) == 4
+      assert match?([_, _, _, _], abi.functions)
     end
   end
 
@@ -215,7 +229,30 @@ defmodule Onchain.Contract.GeneratorTest do
         Enum.filter(fns, fn {name, _arity} -> name |> Atom.to_string() |> String.starts_with?("transfer") end)
 
       # 2 normal + 2 bang (with default opts arities)
-      assert length(transfer_fns) >= 4
+      assert match?([_, _, _, _ | _], transfer_fns)
+    end
+
+    test "disambiguates genuinely same-arity overloads by differing input type" do
+      # swap(address,uint256) and swap(uint256,address): same name, same input
+      # count (2), so disambiguate_collisions/1's collision branch fires and
+      # calls disambiguation_suffix/2 -> unique_type_suffix/2 for real, unlike
+      # the differing-arity OverloadModule case above.
+      fns = SameArityOverloadModule.__info__(:functions)
+
+      swap_fns =
+        fns
+        |> Enum.filter(fn {name, _arity} -> name |> Atom.to_string() |> String.starts_with?("swap") end)
+        |> Enum.map(&elem(&1, 0))
+        |> Enum.uniq()
+
+      # Each overload gets a distinct elixir_name, suffixed by its
+      # disambiguating (first-differing) input type.
+      assert :swap_address in swap_fns
+      assert :swap_uint256 in swap_fns
+
+      # Both are callable at their natural arity: contract + 2 params + opts.
+      assert function_exported?(SameArityOverloadModule, :swap_address, 4)
+      assert function_exported?(SameArityOverloadModule, :swap_uint256, 4)
     end
   end
 
@@ -341,7 +378,7 @@ defmodule Onchain.Contract.GeneratorTest do
 
       assert result.__struct__ == basket
       assert result.total == 42
-      assert length(result.items) == 2
+      assert match?([_, _], result.items)
 
       [first, second] = result.items
       assert first.__struct__ == item

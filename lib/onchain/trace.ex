@@ -219,10 +219,10 @@ defmodule Onchain.Trace do
     probe_params = %{"to" => @zero_address, "data" => "0x"}
     tracer_config = %{"tracer" => "callTracer"}
 
-    case do_rpc("debug_traceCall", [probe_params, "latest", tracer_config], to_rpc_opts(opts)) do
-      {:ok, _} -> true
-      {:error, _} -> false
-    end
+    match?(
+      {:ok, _},
+      do_rpc("debug_traceCall", [probe_params, "latest", tracer_config], to_rpc_opts(opts))
+    )
   end
 
   # --- Private helpers ---

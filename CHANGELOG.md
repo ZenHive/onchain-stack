@@ -6,6 +6,94 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-08-01
+
+No public API change.
+
+**Minor, not patch.** This was drafted as 0.3.1 while every dependency edit was
+dev/test-scoped. It now narrows a *runtime* requirement (`descripex`), and
+narrowing a runtime bound can fail resolution for a consumer pinned below the
+new floor. That failure is loud rather than silent, but it is still a
+compatibility break and semver should say so.
+
+### Changed — `{:onchain, "~> 0.11"}` → `{:onchain, "~> 0.12"}`
+
+onchain 0.12.0 is the release that raises `zen_websocket` to `~> 0.6.0`, which
+*requires* the gun version carrying the GHSA-w4f7-4cxr-rv3c fix rather than
+merely permitting it. `~> 0.11` admits 0.12.0 but does not require it, so this
+package's lock would have kept resolving onchain 0.11.0 → zen_websocket 0.4.2,
+whose looser gun bound only happens to have landed on a fixed 2.5.0 — a lock
+entry that still satisfies its bound is never re-resolved.
+
+The lock now carries onchain 0.12.0 and zen_websocket 0.6.0. onchain 0.12.0 also
+narrows `descripex` to `~> 0.12.0`, matching what this package now declares
+directly (below). No code change was needed: onchain 0.12.0 makes no public API
+change, and the suite is green against it.
+
+### Changed — hieroglyph 1.6.0 in the lock, `elixir: "~> 1.17"` → `"~> 1.18"`
+
+`mix.exs` gains no `hieroglyph` line — it arrives transitively through
+onchain/cartouche, whose published bounds already admit it — but the lock now
+carries 1.6.0, which restores `ABI.Event.decode_event/4`'s documented total
+contract (unnamed event inputs no longer raise; an array length prefix that
+cannot fit the remaining payload is rejected before the element list is
+allocated) and makes `decode_structs: true` work on the event path.
+
+The Elixir floor moves with it: hieroglyph 1.6.0's encode path uses
+`Enum.sum_by/2` (1.18+), so declaring `~> 1.17` here would let this package
+resolve on 1.17 and then fail compiling a dependency. Same reasoning as the
+`descripex` narrowing below — a loud resolution failure, but still a
+compatibility break.
+
+### Changed — `{:descripex, "~> 0.11"}` → `{:descripex, "~> 0.12.0"}`
+
+descripex 0.12.0 changed `short_name` in `describe/1` output from an atom to a
+string — a consumer-visible contract change shipped at a *minor* bump, which the
+old two-segment `~> 0.11` (`>= 0.11.0 and < 1.0.0`) would have absorbed on any
+fresh resolution without a version bump here. The requirement is now
+three-segment (`< 0.13.0`): a 0.x package that breaks on minor earns the tighter
+form, and the cap gets raised deliberately after reading its release notes.
+
+The `short_name` in `lib/onchain/contract/generator.ex` is an unrelated local
+variable in the ABI enum-constant codegen, not descripex's field — nothing here
+reads `describe/1` output. The suite (220 tests) is green against descripex
+0.12.0 with no code change; the break is in the *bound*, not the behaviour.
+
+### Fixed — 28 `length/1` comparisons, and one redundant guard
+
+`credo --strict` reported 28 findings, all
+`ExSlop.Check.Refactor.LengthComparison` — comparing `length/1` against a
+literal where a pattern match answers the question without the O(n) walk. 26
+were assertions in test files, rewritten to `match?([_, _, ...], list)`; the
+pass/fail boundary is unchanged and no assertion became vacuous. Two were in
+`lib/`: a `match?([_], ...)` in `solidity/resolver.ex`, and in
+`contract/generator.ex` the clause guard `collisions when length(collisions) > 1`
+became a bare `collisions ->`. That last one is behaviour-preserving because
+`groups` is built by `Enum.group_by` over the same list the element comes from,
+so the lookup is never empty and everything not matching `[_single]` has two or
+more members.
+
+### Changed — reach smell findings cleared
+
+`.reach.exs` now carries `smells: [strict: true]` — the flag is the point, since
+`reach.check --smells` raises only when `opts[:strict] || config.smells.strict`
+and otherwise reports findings and exits 0. Cleared: `@doc false` on three
+private functions in `solidity/resolver.ex`, a `case` reducible to `match?/2` in
+`trace.ex`, a repeated-shape map in `contract/generator.ex` replaced by a
+`ResolvedInput` struct, an `Enum.at/2`-in-loop replaced by tuple indexing, and a
+string-concat accumulation replaced by iodata. Findings get fixed, never
+ignore-listed — including the pre-existing `smells: [ignore: [paths: ...]]`
+entries, which were removed after confirming what they had been hiding.
+
+### Changed — the rest of the quality gates now actually gate
+
+- **`mix_audit` added and wired.** `deps.audit.gated` proves the advisory
+  database is current *before* auditing — `mix_audit` discards its own sync exit
+  status (mirego/mix_audit#61), so a database that can no longer sync still
+  prints "No vulnerabilities found" and exits 0.
+- **`agents.check`** fails when `AGENTS.md` has drifted from `CLAUDE.md`.
+- **CI invokes `mix ci`** instead of a hand-maintained check list.
+
 ## [0.3.0] — 2026-06-25
 
 ### Changed — `{:onchain, "~> 0.10"}` → `{:onchain, "~> 0.11"}`

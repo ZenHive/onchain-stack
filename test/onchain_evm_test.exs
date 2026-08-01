@@ -4,6 +4,6 @@ defmodule OnchainEvmTest do
   test "discoverable modules are listed" do
     modules = OnchainEvm.describe()
     assert is_list(modules)
-    assert length(modules) == 4
+    assert match?([_, _, _, _], modules)
   end
 end

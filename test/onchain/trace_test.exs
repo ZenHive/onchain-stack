@@ -197,4 +197,14 @@ defmodule Onchain.TraceTest do
       end
     end
   end
+
+  # --- available?/1 (no input validation, so it always reaches the RPC layer;
+  # point it at an unreachable local port to force a fast, deterministic
+  # {:error, _} without depending on a live Ethereum node) ---
+
+  describe "available?/1" do
+    test "returns false when the RPC call errors" do
+      refute Trace.available?(rpc_url: "http://127.0.0.1:1", timeout: 2_000)
+    end
+  end
 end
