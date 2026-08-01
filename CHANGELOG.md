@@ -1,6 +1,74 @@
 # Changelog
 
-## Unreleased
+## [0.9.0] - 2026-08-01
+
+`lib/` is untouched: no module, function, arity or return shape changed. Most of
+this entry is tooling, CI and agent config. `req` resolves to 0.7.2.
+
+**It is still a minor, not a no-op release.** An earlier draft of this section
+said "no version bump: no runtime dependency requirement moved" — that was true
+when it was written and is no longer, because the `descripex` narrowing below
+moves a requirement that ships in the published package.
+
+### Changed — `{:onchain, "~> 0.11"}` → `{:onchain, "~> 0.12"}`
+
+onchain 0.12.0 is the release that raises `zen_websocket` to `~> 0.6.0`, which
+*requires* the gun version carrying the GHSA-w4f7-4cxr-rv3c fix rather than
+merely permitting it. `~> 0.11` admits 0.12.0 but does not require it, so this
+package's lock would have kept resolving onchain 0.11.0 → zen_websocket 0.4.2,
+whose looser gun bound only happens to have landed on a fixed 2.5.0 — a lock
+entry that still satisfies its bound is never re-resolved.
+
+The lock now carries onchain 0.12.0 and zen_websocket 0.6.0. onchain 0.12.0 also
+narrows `descripex` to `~> 0.12.0`, matching what this package now declares
+directly (below). No code change was needed: onchain 0.12.0 makes no public API
+change, and the suite is green against it.
+
+### Changed — hieroglyph 1.6.0 in the lock, `elixir: "~> 1.17"` → `"~> 1.18"`
+
+`mix.exs` gains no `hieroglyph` line — it arrives transitively through
+onchain/cartouche, whose published bounds already admit it — but the lock now
+carries 1.6.0, which restores `ABI.Event.decode_event/4`'s documented total
+contract (unnamed event inputs no longer raise; an array length prefix that
+cannot fit the remaining payload is rejected before the element list is
+allocated) and makes `decode_structs: true` work on the event path.
+
+The Elixir floor moves with it: hieroglyph 1.6.0's encode path uses
+`Enum.sum_by/2` (1.18+), so declaring `~> 1.17` here would let this package
+resolve on 1.17 and then fail compiling a dependency — the same class of loud
+compatibility break as the `descripex` narrowing below.
+
+### Changed — `{:descripex, "~> 0.11"}` → `{:descripex, "~> 0.12.0"}`
+
+descripex 0.12.0 changed `short_name` in `describe/1` output from an atom to a
+string — a consumer-visible contract change shipped at a *minor* bump, which the
+old two-segment `~> 0.11` (`>= 0.11.0 and < 1.0.0`) would have absorbed on any
+fresh resolution without a version bump here. The requirement is now
+three-segment (`< 0.13.0`): a 0.x package that breaks on minor earns the tighter
+form, and the cap gets raised deliberately after reading its release notes.
+Narrowing a runtime bound can fail resolution for a consumer pinned to descripex
+0.11.x — loud rather than silent, but still a compatibility break.
+
+onchain_tempo does not read `short_name` — nothing in `lib/` or `test/`
+references it, and the suite (142 tests) is green against descripex 0.12.0 with
+no code change. The break is in the *bound*, not the behaviour.
+
+### Changed — the gates now actually gate
+
+- **`smells: [strict: true]` in `.reach.exs`.** The permissive `.reach.exs` the
+  rollout below added was not yet a gate: `reach.check --smells` raises only when
+  `opts[:strict] || config.smells.strict`, so it reported findings and exited 0.
+- **`mix_audit` added and wired.** `deps.audit.gated` proves the advisory
+  database is current *before* auditing — `mix_audit` discards its own sync exit
+  status (mirego/mix_audit#61), so a database that can no longer sync still
+  prints "No vulnerabilities found" and exits 0.
+- **CI invokes `mix ci`** instead of a hand-maintained check list, so the alias
+  and the workflow can no longer drift apart.
+- **MCP config mirrored to all four agent families** (`.cursor/`, `.codex/`,
+  `.grok/`) — a server declared only in `.mcp.json` is invisible to cross-family
+  agents.
+
+---
 
 Analyzer-stack rollout. onchain_tempo was the only repo in the family declaring
 neither `reach` nor `ex_dna`, so `mix reach.check` did not exist here and there
@@ -17,11 +85,17 @@ but, unlike onchain_evm, runs **without** `include_defp` — this codebase's
 private helpers carry no specs, and requiring them would have meant 60+
 signature additions unrelated to the rollout.
 
-An explicit `checks.enabled` list is authoritative for Credo and silently
-discards a plugin's default checks, so ExSlop's are appended via
-`ExSlop.recommended_checks()`. Registering the plugin alone leaves it inert —
-worth knowing, because onchain_evm registers ExSlop the same way and is
-therefore running none of its checks either.
+The **map** form `checks: %{enabled: [...]}` is authoritative for Credo and
+silently discards a plugin's default checks, so ExSlop's are appended via
+`ExSlop.recommended_checks()`. The **list** form `checks: [...]` behaves
+differently — Credo merges it through the `extra` path, so plugin defaults
+survive. Registering the plugin alone is only inert under the map form, and only
+without the append.
+
+(An earlier draft of this entry claimed onchain_evm was "running none of its
+checks either". That is wrong: onchain_evm uses the same map form *and* the same
+`++ ExSlop.recommended_checks()` append, so its ExSlop checks do run. zen_websocket
+and mpp use the list form, where the question does not arise.)
 
 ### Added — `mix agents.check` in the CI gate
 
