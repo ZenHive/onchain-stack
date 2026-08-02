@@ -235,17 +235,65 @@ cartouche — should all have it. Note hieroglyph's and cartouche's skips files
 currently suppress nothing at all (both are at zero findings even without
 `--skip`), which is harmless but means the files are vestigial.
 
+### reach 2.8.2 aborts `--smells` on non-Elixir nodes — never hand-patch `deps/`
+
+`Reach.Evidence.NilParameter` and `Reach.Evidence.ParameterShape` read
+`function.meta.module` with dot access at three sites. Function nodes that are
+not Elixir module functions carry no `:module`, so the read raises and takes the
+**entire smell pass** down before a single finding is reported — the gate fails
+loudly, but what it is really doing is delivering zero smell coverage. Filed as
+[elixir-vibe/reach#36](https://github.com/elixir-vibe/reach/issues/36) with the
+three-line bracket-access fix; upstream is a third-party org, so the family
+works around it rather than waiting:
+
+- **hieroglyph** — the crash came from `src/`, the yecc/leex output, because
+  reach analyzes `:erlc_paths` alongside `:elixirc_paths` by default.
+  `.reach.exs` now sets `checks: [source_paths: ["lib", "test/support"]]`. This
+  is the right scope regardless of the bug: a smell in generated Erlang is
+  unfixable by definition.
+- **onchain_js** — the crash comes from JavaScript nodes the QuickBEAM plugin
+  contributes (`source: nil`), so there is no path to exclude, and `plugins:`
+  is not a `.reach.exs` key. `mix ci` runs `reach.check --arch` **only** here,
+  with `smells: [strict: true]` left in place so the gate returns the moment
+  `--smells` goes back into the alias. This is the family's one repo without
+  smell gating; restore it when a fixed reach ships.
+
+**The trap this hid behind:** both repos had a *hand-edited `deps/reach`* — the
+bracket fix applied directly to the unpacked hex tarball. Local `mix ci` was
+therefore green while CI, which unpacks pristine, was red, and the divergence
+read as "not reproducible locally." Two copies, two different patch generations,
+neither visible to git. **Never edit anything under `deps/`.** To test a
+candidate fix, patch it, confirm, then `mix deps.clean <dep> && mix deps.get` to
+restore pristine *in the same session* — and carry the fix in `.reach.exs`, the
+alias, or an override in `mix.exs`, where CI can see it.
+
 ### Open items
 
 - **No repo tests a fresh dependency resolution.** No workflow runs
   `deps.unlock --all`, deletes `mix.lock`, or matrixes over dep versions, so a
   bound that has stopped holding is invisible until a consumer trips on it. Add
   one job per repo; see the `mix.lock` rationale above.
-- **Five repos have a red `Harness` gate** as of 2026-08-02 (descripex,
-  hieroglyph, onchain, onchain_js, and onchain_aave), plus mpp's `Integration`
-  workflow. onchain_aave's is structural and diagnosed: its CI never checks out
-  the `../onchain_evm` sibling its dev/test path dep needs, so every run since
-  the 0.3.0 release failed at `mix compile`. The others are undiagnosed.
+- **`--summary-only` makes a CI test failure undiagnosable.** Every repo's
+  `precommit.full` runs `test.json --cover ... --summary-only`, and the emitted
+  JSON then carries counts and coverage but **no failure entries** — so
+  onchain_aave's run 30742057271 reports `"failed": 2` and nothing whatsoever
+  about *which* two. The only way back to the identity is to edit the alias and
+  push again. Drop `--summary-only` in CI (keep it locally, where the hooks
+  already print detail), or have the workflow re-run failures verbosely on a
+  non-zero exit.
+- **Four repos have a red `Harness` gate** as of 2026-08-02, plus mpp's
+  `Integration` workflow. Two are now diagnosed and fixed in-tree (hieroglyph,
+  onchain_js — see the reach note below); the remaining two are **flaky, not
+  broken**, which is its own problem because a gate that reds at random gets
+  ignored:
+  - **zen_websocket** — 1 of 414 unit tests fails intermittently. Reproduced
+    locally once, then 7 consecutive green runs including CI's own seed
+    (216415), so it is neither seed- nor order-deterministic. Identity unknown
+    for the same `--summary-only` reason as above.
+  - **onchain_aave** — 2 of 295 fail in CI, 232 pass locally. The `mix compile`
+    break is gone (the `../onchain_evm` path dep became `{:onchain_evm, "~> 0.4",
+    only: [:dev, :test]}` and the Rust toolchain step landed), so this is now a
+    genuine CI-only test failure, identity likewise hidden.
 - **The `ex_ast` 0.13.1 measurement** described above is still unrun.
 
 ---
