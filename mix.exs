@@ -129,7 +129,17 @@ defmodule OnchainJs.MixProject do
         "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
         "doctor --raise",
         "ex_dna --max-clones 0",
-        "reach.check --arch --smells",
+        # `--smells` is OFF here, and only here in the family. reach 2.8.2
+        # aborts the whole smell pass with `KeyError key :module` on any
+        # JavaScript function node (elixir-vibe/reach#36): non-Elixir meta
+        # carries no `:module`, and three sites read it with dot access. This
+        # repo pulls the QuickBEAM plugin in via its `quickbeam` dep, so the JS
+        # nodes are unavoidable — unlike hieroglyph's generated Erlang, they
+        # have no source path to exclude, and `plugins:` is not a `.reach.exs`
+        # key. Restore `--smells` (and drop this comment) as soon as a reach
+        # release carries the bracket-access fix; `.reach.exs` still sets
+        # `smells: [strict: true]` so it gates again the moment it is back.
+        "reach.check --arch",
         "sobelow --skip --exit low",
         "deps.audit.gated",
         "cmd env MIX_ENV=test mix test.json --cover --cover-threshold 25 --summary-only --exclude integration",
