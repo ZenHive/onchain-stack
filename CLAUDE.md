@@ -125,14 +125,19 @@ silently on the next resolution. So the cap-at-next-minor rule applies where the
 protection is worth its cost:
 
 - **Shared upstreams** (descripex, zen_websocket) — three-segment everywhere.
-  This is where the breaks actually happened. Already true in all ten repos.
+  This is where the breaks actually happened. True in all ten repos **as of
+  2026-08-02**: an earlier revision of this file asserted it was already
+  universal, and it was not — cartouche still declared `descripex "~> 0.12"`,
+  the one two-segment bound on the very package whose 0.12.0 broke consumers.
+  Now `~> 0.12.0`. A claim like this is worth re-deriving from the ten
+  `mix.exs` files rather than trusting the prose.
 - **mpp**, the leaf app — three-segment (`onchain ~> 0.12.0`,
   `onchain_tempo ~> 0.9.0`). Nothing consumes mpp, so the cap costs no one.
-- **Intra-family libs as deps** (cartouche, onchain, onchain_tempo) — still
-  two-segment (`~> 0.12`, `~> 0.6`). Tighten these at each repo's *next
-  scheduled release*, not in a dedicated republish wave: an over-tight bound in
-  a published library propagates into strangers' dependency graphs and causes
-  diamond conflicts there, so the cost is borne by consumers, not by us.
+- **Intra-family libs as deps** (cartouche, onchain, onchain_tempo) —
+  two-segment (`~> 0.12`, `~> 0.6`). None of the three has broken on a minor so
+  far. The tradeoff either way: an over-tight bound in a published library
+  propagates into strangers' dependency graphs and can cause diamond conflicts
+  there, while a loose one absorbs a break silently.
 
 Do not read this as licence to loosen a bound that is already three-segment.
 And note the converse case for **third-party** deps: onchain's `ex_ast ~> 0.12`
