@@ -122,7 +122,7 @@ defmodule OnchainJs.MixProject do
         "doctor --raise",
         "ex_dna --max-clones 0",
         "reach.check --arch --smells",
-        "sobelow --skip",
+        "sobelow --skip --exit low",
         "deps.audit.gated",
         "cmd env MIX_ENV=test mix test.json --cover --cover-threshold 25 --summary-only --exclude integration",
         "dialyzer",
