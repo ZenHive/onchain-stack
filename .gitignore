@@ -29,8 +29,5 @@ onchain_tempo-*.tar
 # Hex docs cache
 /.hex-docs/
 
-# Library doesn't commit lock file
-mix.lock
-
 # Test failure tracking
 .mix_test_failures
