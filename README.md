@@ -18,7 +18,7 @@ Pick what you need — consumers who only need `eth_call` never compile Zig or R
 ```elixir
 def deps do
   [
-    {:onchain_js, "~> 0.1"}
+    {:onchain_js, "~> 0.2"}
   ]
 end
 ```

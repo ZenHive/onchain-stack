@@ -4,6 +4,42 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## v0.2.1 — publishable tarball: 11 MB → ~40 KB, LICENSE added (2026-08-02)
+
+No public API change and no requirement change. Both fixes are to what gets
+packaged.
+
+### Fixed — the published tarball was 11 MB of dialyzer PLT
+
+`package/0` declared no `files`, so hex's default list shipped all of `priv/`.
+`priv/` in this repo contains nothing *but* `priv/plts`, where `dialyzer/0`
+pins `plt_local_path`/`plt_core_path`, and `mix hex.build` does not honour
+`.gitignore`. onchain_js 0.2.0 therefore shipped eight PLT files spanning two
+toolchain generations (OTP 27.3.4.11/Elixir 1.18.4 and OTP 29.0-rc3/Elixir
+1.20.0-rc.4) — 11 MB of tarball wrapping ~40 KB of package.
+
+`files` is now explicit and excludes `priv/` entirely. The Zig NIFs this
+package relies on come from the `quickbeam` dependency, not from this repo, so
+nothing under `priv/` belongs in the release.
+
+Found by sweeping the stack after the same defect surfaced in onchain_aave
+0.3.0 (fixed in 0.3.1). hieroglyph, onchain_tempo and cartouche were checked
+and are unaffected — all three already carry an explicit `files` list.
+
+### Fixed — README install block named an unpublishable bound
+
+It read `{:onchain_js, "~> 0.1"}`, but 0.2.0 is the *first* release on Hex —
+v0.1.0 and v0.1.1 exist only as repository history. A consumer copying that
+block got a resolution failure. It now reads `~> 0.2`.
+
+### Added — `LICENSE`
+
+The package declared `licenses: ["MIT"]` with no license text in the repo or
+the tarball. The MIT text is now present and shipped, as in `onchain`,
+`onchain_evm`, `onchain_tempo` and `cartouche`.
+
+---
+
 ## v0.2.0 — first Hex release; descripex 0.12 / onchain 0.12 line
 
 **This is the first release published to Hex.** v0.1.0 and v0.1.1 exist only as

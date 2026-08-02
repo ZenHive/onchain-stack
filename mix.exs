@@ -1,7 +1,7 @@
 defmodule OnchainJs.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.2.1"
   @source_url "https://github.com/ZenHive/onchain_js"
 
   def project do
@@ -83,7 +83,15 @@ defmodule OnchainJs.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => @source_url}
+      links: %{"GitHub" => @source_url},
+      # Explicit list because hex's default `files` ships all of `priv/`, and
+      # `priv/` here holds nothing but the dialyzer PLTs that `dialyzer/0`
+      # pins there (`plt_local_path`). .gitignore does not apply to
+      # `mix hex.build`, so 0.2.0 shipped an 11 MB tarball that was two whole
+      # generations of PLT (OTP 27 and OTP 29-rc) and ~40 KB of package. The
+      # Zig NIFs come from the `quickbeam` dep, not from this repo, so
+      # nothing under `priv/` needs to ship.
+      files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
     ]
   end
 
