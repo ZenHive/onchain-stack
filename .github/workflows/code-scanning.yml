@@ -39,12 +39,18 @@ jobs:
           otp-version: "27"
           elixir-version: "1.18"
 
+      # onchain_evm is a Rustler package that ships no precompiled artifacts,
+      # so its NIF crates (revm, solidity parser) are built from source here.
+      - uses: dtolnay/rust-toolchain@stable
+
       - name: Cache deps & _build
         uses: actions/cache@v6
         with:
           path: |
             deps
             _build
+            ~/.cargo/registry
+            ~/.cargo/git
           key: scan-${{ runner.os }}-otp${{ steps.beam.outputs.otp-version }}-elixir${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
             scan-${{ runner.os }}-otp${{ steps.beam.outputs.otp-version }}-elixir${{ steps.beam.outputs.elixir-version }}-

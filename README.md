@@ -7,11 +7,13 @@ Aave V3 protocol wrappers for Elixir -- pool reads/writes, oracle, math, and typ
 ```elixir
 def deps do
   [
-    {:onchain, "~> 0.8"},
-    {:onchain_aave, "~> 0.2"}
+    {:onchain_aave, "~> 0.3"}
   ]
 end
 ```
+
+`onchain` (`~> 0.12`) arrives transitively — declare it directly only if you
+call it yourself, and then with a bound that admits `~> 0.12`.
 
 ## Modules
 

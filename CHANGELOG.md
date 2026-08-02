@@ -8,6 +8,53 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## v0.3.1 — publishable tarball, no sibling checkout required (2026-08-02)
+
+No public API change and no runtime requirement change: `onchain ~> 0.12`,
+`decimal ~> 3.1` and `descripex ~> 0.12.0` are what 0.3.0 declared. Every
+change here is to what gets packaged and how the repo builds.
+
+### Fixed — the published tarball carried 5.4 MB of dialyzer PLT
+
+`package/0` declared no `files`, so hex's default list shipped all of `priv/`.
+`dialyzer/0` pins `plt_local_path`/`plt_core_path` to `priv/plts`, and
+`mix hex.build` does not honour `.gitignore`, so the four PLT files landed in
+the release: onchain_aave 0.3.0 is a 5.5 MB tarball of which ~16 KB is the
+package. `files` is now explicit — `lib priv/abis .formatter.exs mix.exs
+README.md LICENSE CHANGELOG.md` — matching the sibling packages, which all
+carry an explicit list for the same reason.
+
+### Added — `LICENSE`
+
+The package declared `licenses: ["MIT"]` with no license text in the repo or
+the tarball. The MIT text is now present and shipped, as in `onchain`,
+`onchain_evm` and `cartouche`.
+
+### Fixed — README install block declared bounds that cannot resolve
+
+It read `{:onchain, "~> 0.8"}, {:onchain_aave, "~> 0.2"}`. Since 0.3.0 this
+package requires `onchain ~> 0.12`, so a consumer copying that block got a
+resolution failure. The block now names `{:onchain_aave, "~> 0.3"}` only and
+notes that `onchain` arrives transitively.
+
+### Changed — `onchain_evm` resolves from Hex, not a sibling path
+
+`{:onchain_evm, path: "../onchain_evm", only: [:dev, :test]}` became
+`{:onchain_evm, "~> 0.4", only: [:dev, :test]}` (0.4.0 in the lock). This dep
+is dev/test-only — it backs the revm math cross-validation suites
+(`math_revm_test.exs`, `v4_revm_test.exs`) — so it never appeared in the
+published requirements either before or after. What changes is that a clone of
+this repo alone now builds: no `../onchain_evm` checkout has to exist beside
+it.
+
+Both GitHub workflows drop the second `actions/checkout` of
+`ZenHive/onchain_evm@development` and the `path:`-nested working directory it
+forced, and gain an explicit `dtolnay/rust-toolchain@stable` plus a Cargo
+registry cache — onchain_evm ships no precompiled artifacts, so its NIF crates
+build from source on the runner.
+
+---
+
 ## v0.3.0 — onchain 0.12 line, clone dedup, real gates, bounds narrowed (2026-08-01)
 
 No public API change: every function keeps its name, arity and return shape.

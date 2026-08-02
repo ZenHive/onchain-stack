@@ -1,7 +1,7 @@
 defmodule OnchainAave.MixProject do
   use Mix.Project
 
-  @version "0.3.0"
+  @version "0.3.1"
   @source_url "https://github.com/ZenHive/onchain_aave"
 
   def project do
@@ -87,7 +87,13 @@ defmodule OnchainAave.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => @source_url}
+      links: %{"GitHub" => @source_url},
+      # Explicit list because hex's default `files` ships all of `priv/`, and
+      # `priv/plts/` holds the dialyzer PLTs this project pins there
+      # (`dialyzer/0` sets `plt_local_path`). .gitignore does not apply to
+      # `mix hex.build`, so 0.3.0 shipped a 5.5 MB tarball that was ~5.4 MB
+      # of dev-only PLT. Ship `priv/abis` and nothing else under `priv`.
+      files: ~w(lib priv/abis .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
     ]
   end
 

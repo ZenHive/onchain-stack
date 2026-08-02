@@ -597,7 +597,7 @@ Cross-family harness reviewers read **AGENTS.md** (auto-generated from this file
 
 - All modules use `Onchain.*` namespace (e.g., `Onchain.Aave.Pool`) — same as when they lived in the monolith
 - Pure Elixir, no native deps
-- Path dependency: `{:onchain, path: "../onchain"}`
+- All dependencies resolve from hex.pm — no path or git deps, so the package is publishable as-is: `{:onchain, "~> 0.12"}`
 - Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`
 
 ## Module Layout
@@ -650,5 +650,5 @@ curl -s "https://raw.githubusercontent.com/bgd-labs/aave-address-book/main/safe.
 
 ## Related Packages
 
-- **onchain** — Core Ethereum primitives: `{:onchain, path: "../onchain"}`
-- **onchain_evm** — Rust NIFs + codegen: `{:onchain_evm, path: "../onchain_evm"}`
+- **onchain** — Core Ethereum primitives: `{:onchain, "~> 0.12"}`
+- **onchain_evm** — Rust NIFs + codegen: `{:onchain_evm, "~> 0.4", only: [:dev, :test]}` (hex.pm; dev/test-only, used by the revm math cross-validation suites)
