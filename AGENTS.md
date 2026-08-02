@@ -56,6 +56,40 @@ you release them. The **onchain family** proper is the connected dependency casc
 > into a flat list. A generic all-packages publish dashboard, if ever wanted, is a
 > separate (config-driven) tool, not this cascade-narrative home.
 
+### Every repo's default branch is `main` (aligned 2026-08-02)
+
+All ten, plus this coordination home. **Do not assume — but the answer is now
+uniformly `main`, so stop re-deriving it.** Before 2026-08-02 the family was
+split 7 `development` / 3 `main`, which is what made every agent guess wrong
+about a third of the time.
+
+The split was never a convention anyone chose — it was **provenance**:
+
+- `~/.gitconfig` set `init.defaultBranch = development`, so any repo created
+  locally with `git init` and pushed got `development` as its default (the
+  first branch pushed becomes GitHub's default). That covered descripex,
+  onchain, mpp, onchain_evm, onchain_aave, onchain_js, cartouche.
+- Repos created server-side got the **org** default, which was — and still is —
+  `main` for both ZenHive and inetpeople (`default_repository_branch: "main"`).
+  That covered zen_websocket and onchain_tempo.
+- hieroglyph is a **fork** of `exthereum/abi` and inherited upstream's `main`.
+
+So the local git config and the org setting were quietly fighting, and which one
+won depended on where the repo happened to be born. `init.defaultBranch` is now
+`main`, matching the org — new repos land on `main` whichever way they are
+created. GitHub's platform default has been `main` since 2020-10-01, and Git's
+own builtin follows in 3.0; `development` was never a platform default.
+
+Renaming was cheap because **no repo has both branches** — each has exactly one
+trunk. There is no `main`-is-released / `development`-is-integration model here,
+and the rename did not create one. If you ever want that two-branch model, it is
+a deliberate change, not a thing to reintroduce by naming a branch `development`.
+
+The rename went through the GitHub rename API, which retargets open PRs and
+leaves redirects, so old clone URLs and links keep resolving. Workflow branch
+filters (`on: push/pull_request: branches:`) were updated in the same pass —
+if you add a workflow, target `main`.
+
 ---
 
 ## Dependency graph
