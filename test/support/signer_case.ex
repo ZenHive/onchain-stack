@@ -48,7 +48,6 @@ defmodule Onchain.SignerCase do
     do_poll(tx_hash, rpc_url, interval, max_attempts, 0)
   end
 
-  @doc false
   defp do_poll(_tx_hash, _rpc_url, _interval, max, attempt) when attempt >= max do
     {:error, :receipt_timeout}
   end

@@ -57,7 +57,7 @@ defmodule OnchainAave.MixProject do
       {:descripex, "~> 0.12.0"},
 
       # Dev/test tooling
-      {:onchain_evm, path: "../onchain_evm", only: [:dev, :test]},
+      {:onchain_evm, "~> 0.4", only: [:dev, :test]},
       {:stream_data, "~> 1.0", only: [:dev, :test]},
       {:tidewave, "~> 0.5", only: :dev},
       {:bandit, "~> 1.0", only: :dev},

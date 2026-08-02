@@ -30,25 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MIX_ENV: dev
-    defaults:
-      run:
-        working-directory: onchain_aave
     steps:
       - uses: actions/checkout@v7
-        with:
-          path: onchain_aave
-
-      # onchain_aave/mix.exs declares a sibling path dependency,
-      # {:onchain_evm, path: "../onchain_evm", only: [:dev, :test]}, so the
-      # runner needs an actual ../onchain_evm checkout next to this repo or
-      # `mix deps.get`/`mix compile` fails with "Unchecked dependencies". Do
-      # not remove this checkout. Tracks onchain_evm's default branch
-      # (development), matching the branch this workflow builds against.
-      - uses: actions/checkout@v7
-        with:
-          repository: ZenHive/onchain_evm
-          ref: development
-          path: onchain_evm
 
       - id: beam
         uses: erlef/setup-beam@v1
@@ -60,9 +43,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: |
-            onchain_aave/deps
-            onchain_aave/_build
-          key: scan-${{ runner.os }}-otp${{ steps.beam.outputs.otp-version }}-elixir${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('onchain_aave/**/mix.lock') }}
+            deps
+            _build
+          key: scan-${{ runner.os }}-otp${{ steps.beam.outputs.otp-version }}-elixir${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
             scan-${{ runner.os }}-otp${{ steps.beam.outputs.otp-version }}-elixir${{ steps.beam.outputs.elixir-version }}-
 
@@ -83,5 +66,5 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: onchain_aave/sobelow.sarif
+          sarif_file: sobelow.sarif
           category: sobelow
