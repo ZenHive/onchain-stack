@@ -34,8 +34,5 @@ onchain_evm-*.tar
 # Dialyzer PLT files (rebuildable, large binary blobs)
 /priv/plts/
 
-# Library lock file (consumers generate their own)
-mix.lock
-
 # ExUnit failure tracking
 .mix_test_failures

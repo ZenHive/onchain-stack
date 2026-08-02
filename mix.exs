@@ -144,7 +144,7 @@ defmodule OnchainEvm.MixProject do
         "doctor --raise",
         "ex_dna --max-clones 0",
         "reach.check --arch --smells",
-        "sobelow --skip",
+        "sobelow --skip --exit low",
         "deps.audit.gated",
         "test.json --cover --cover-threshold 85 --summary-only --exclude integration",
         "dialyzer",
