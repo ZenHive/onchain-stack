@@ -37,6 +37,7 @@ jobs:
         uses: erlef/setup-beam@v1
         with:
           version-file: .tool-versions
+          version-type: strict
 
       # onchain_evm is a Rustler package that ships no precompiled artifacts,
       # so its NIF crates (revm, solidity parser) are built from source here.
