@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Onchain stack — cross-repo health sweep.
 #
-# One table for all ten repos: git state, outdated Hex deps, retired deps,
-# known vulnerabilities, open GitHub issues/PRs, and open GitHub security
-# alerts (Dependabot + code scanning).
+# One table for all ten repos: git state, toolchain pin, outdated Hex deps,
+# retired deps, known vulnerabilities, open GitHub issues/PRs, and open GitHub
+# security alerts (Dependabot + code scanning).
 #
 # READ-ONLY by design. It never runs `mix deps.get`, never publishes, never
 # writes to a repo. `git fetch` is the only remote write-ish thing it does and
@@ -32,9 +32,10 @@
 #
 # Exit status:
 #   0  nothing actionable found
-#   1  a HARD finding: vulnerability, retired dep, open security alert, or an
-#      unverifiable advisory database. Outdated deps, open issues/PRs and a
-#      dirty tree are reported but do NOT fail — they are normal working state.
+#   1  a HARD finding: vulnerability, retired dep, open security alert, an
+#      unverifiable advisory database, or a toolchain divergence. Outdated deps,
+#      open issues/PRs and a dirty tree are reported but do NOT fail — they are
+#      normal working state.
 #   2  usage error
 
 set -uo pipefail
@@ -45,6 +46,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Cascade order (upstream → downstream), same order publish-prep.sh uses.
 ALL_REPOS=(descripex zen_websocket hieroglyph cartouche onchain onchain_aave onchain_evm onchain_js onchain_tempo mpp)
+
+# The one toolchain the whole family builds on. Every repo pins it in its own
+# `.tool-versions`, and every workflow reads THAT file via setup-beam's
+# `version-file:` — so a repo cannot grade CI on a runtime nobody develops on.
+# That divergence was real until 2026-08-03: four repos inline-pinned OTP 27 /
+# Elixir 1.18 in CI while local dev resolved 1.20.2-otp-29, and cartouche ran a
+# one-entry `strategy.matrix` pinning a mismatched 1.20.1 / OTP 27.3.
+#
+# Bumping the family toolchain means editing these two lines AND every repo's
+# `.tool-versions`; the TOOLCHAIN column is what makes forgetting a repo visible
+# instead of silent.
+CANON_ERLANG="${ONCHAIN_CANON_ERLANG:-29.0.3}"
+CANON_ELIXIR="${ONCHAIN_CANON_ELIXIR:-1.20.2-otp-29}"
 
 DO_FETCH=1
 DO_GH=1
@@ -146,9 +160,10 @@ probe_repo() {
   local outd="-" blocked="-" retired="-" vuln="-"
   local issues="-" prs="-" dependabot="-" codescan="-"
   local ci_red="-" ci_total="-"
+  local toolchain="-"
 
   if [ ! -d "$dir/.git" ]; then
-    printf '%s\tmissing\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\n' "$repo" >"$TMP/$repo.tsv"
+    printf '%s\tmissing\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\n' "$repo" >"$TMP/$repo.tsv"
     printf 'no repo at %s\n' "$dir" >"$detail"
     return
   fi
@@ -175,6 +190,51 @@ probe_repo() {
   if [ "$dirty" != 0 ]; then
     { printf '  git: %s uncommitted path(s)\n' "$dirty"
       git -C "$dir" status --short | sed 's/^/    /'; } >>"$detail"
+  fi
+
+  # --- toolchain ------------------------------------------------------------
+  # Two independent ways to diverge, and the column reports the worse one:
+  #   pin    — `.tool-versions` disagrees with the canonical pair (or is absent)
+  #   inline — a workflow hardcodes otp-version/elixir-version instead of
+  #            reading `.tool-versions`, so fixing the pin would not reach CI
+  # A matrix-driven pin (`${{ matrix.* }}`) is deliberate multi-version testing
+  # and is NOT counted as inline; only literal single versions are.
+  local tv="$dir/.tool-versions"
+  local tv_erl="" tv_ex="" pin_bad=0 inline_files=""
+  if [ -f "$tv" ]; then
+    tv_erl="$(awk '$1 == "erlang" {print $2; exit}' "$tv")"
+    tv_ex="$(awk '$1 == "elixir" {print $2; exit}' "$tv")"
+    [ "$tv_erl" = "$CANON_ERLANG" ] && [ "$tv_ex" = "$CANON_ELIXIR" ] || pin_bad=1
+  else
+    pin_bad=2
+  fi
+
+  if [ -d "$dir/.github/workflows" ]; then
+    inline_files="$(grep -rlE '^[[:space:]]*(otp|elixir)-version:[[:space:]]*"?[0-9]' \
+      "$dir/.github/workflows" 2>/dev/null | xargs -r -n1 basename | sort -u | tr '\n' ' ')"
+    inline_files="${inline_files% }"
+  fi
+
+  if [ -n "$inline_files" ]; then
+    toolchain="inline"
+    status=fail
+    { printf '  toolchain: workflow(s) hardcode a version instead of reading .tool-versions:\n'
+      printf '    %s\n' "$inline_files"
+      printf '    fix: replace otp-version/elixir-version with `version-file: .tool-versions`\n'
+    } >>"$detail"
+  elif [ "$pin_bad" = 2 ]; then
+    toolchain="none"
+    status=fail
+    printf '  toolchain: no .tool-versions — CI and local dev have no shared source\n' >>"$detail"
+  elif [ "$pin_bad" = 1 ]; then
+    toolchain="drift"
+    status=fail
+    { printf '  toolchain: .tool-versions differs from the family canonical pair\n'
+      printf '    canonical: erlang %s / elixir %s\n' "$CANON_ERLANG" "$CANON_ELIXIR"
+      printf '    this repo: erlang %s / elixir %s\n' "${tv_erl:-none}" "${tv_ex:-none}"
+    } >>"$detail"
+  else
+    toolchain="ok"
   fi
 
   # --- hex.outdated / hex.audit --------------------------------------------
@@ -326,10 +386,10 @@ probe_repo() {
     fi
   fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$repo" "$status" "$git_cell" "$dirty" "$ahead" "$behind" \
     "$outd" "$blocked" "$retired" "$vuln" "$issues" "$prs" "$dependabot" "$codescan" \
-    "$ci_red" "$ci_total" \
+    "$ci_red" "$ci_total" "$toolchain" \
     >"$TMP/$repo.tsv"
 }
 
@@ -358,7 +418,8 @@ if [ "$AS_JSON" = 1 ]; then
   num() { printf '%s' "$1"; }
   for repo in "${REPOS[@]}"; do
     [ -f "$TMP/$repo.tsv" ] && cat "$TMP/$repo.tsv"
-  done | jq -Rs --argjson advisory "$ADVISORY_OK" '
+  done | jq -Rs --argjson advisory "$ADVISORY_OK" \
+                --arg erl "$CANON_ERLANG" --arg ex "$CANON_ELIXIR" '
     split("\n") | map(select(length > 0)) | map(split("\t")) |
     map({
       repo: .[0], status: .[1], git: .[2],
@@ -375,20 +436,23 @@ if [ "$AS_JSON" = 1 ]; then
       code_scanning_enabled: (.[13] != "n/a"),
       code_scanning_alerts: (.[13] | if . == "?" or . == "-" or . == "" or . == "n/a" then null else tonumber end),
       ci_workflows_red: (.[14] | if . == "?" or . == "-" or . == "" then null else tonumber end),
-      ci_workflows_total: (.[15] | if . == "?" or . == "-" or . == "" then null else tonumber end)
-    }) | {advisory_db_verified: ($advisory == 1), repos: .}'
+      ci_workflows_total: (.[15] | if . == "?" or . == "-" or . == "" then null else tonumber end),
+      toolchain: (.[16] | if . == "-" or . == "" then null else . end)
+    }) | {advisory_db_verified: ($advisory == 1),
+          canonical_toolchain: {erlang: $erl, elixir: $ex},
+          repos: .}'
   exit "$exit_code"
 fi
 
-printf '%-16s %-14s %-9s %-8s %-6s %-7s %-5s %-7s %s\n' \
-  "REPO" "GIT" "OUTDATED" "RETIRED" "VULN" "ISSUES" "PRS" "ALERTS" "CI"
-printf '%s\n' "-----------------------------------------------------------------------------------------"
+printf '%-16s %-14s %-7s %-9s %-8s %-6s %-7s %-5s %-7s %s\n' \
+  "REPO" "GIT" "TOOLCH" "OUTDATED" "RETIRED" "VULN" "ISSUES" "PRS" "ALERTS" "CI"
+printf '%s\n' "-------------------------------------------------------------------------------------------------"
 
 saw_no_codescan=0
 
 for repo in "${REPOS[@]}"; do
   [ -f "$TMP/$repo.tsv" ] || continue
-  IFS=$'\t' read -r r st git_cell dirty ahead behind outd blocked retired vuln issues prs dependabot codescan ci_red ci_total <"$TMP/$repo.tsv"
+  IFS=$'\t' read -r r st git_cell dirty ahead behind outd blocked retired vuln issues prs dependabot codescan ci_red ci_total toolchain <"$TMP/$repo.tsv"
 
   if [ "$st" = missing ]; then
     printf '%-16s %s%s%s\n' "$r" "$c_yel" "no repo at $CODE_DIR/$r" "$c_rst"
@@ -441,8 +505,11 @@ for repo in "${REPOS[@]}"; do
   printf -v ci_pad '%-7s' "$ci_cell"
   case "$ci_cell" in ok|-|'?') ;; *) ci_pad="$c_red$ci_pad$c_rst" ;; esac
 
-  printf '%-16s %s %-9s %s %s %-7s %-5s %s %s\n' \
-    "$r" "$git_pad" "$out_cell" "$retired_pad" "$vuln_pad" "$issues" "$prs" "$alerts_pad" "$ci_pad"
+  printf -v tc_pad '%-7s' "$toolchain"
+  case "$toolchain" in ok|-) ;; *) tc_pad="$c_red$tc_pad$c_rst" ;; esac
+
+  printf '%-16s %s %s %-9s %s %s %-7s %-5s %s %s\n' \
+    "$r" "$git_pad" "$tc_pad" "$out_cell" "$retired_pad" "$vuln_pad" "$issues" "$prs" "$alerts_pad" "$ci_pad"
 done
 
 # details
@@ -456,6 +523,9 @@ done
 
 printf '\n%sOUTDATED is possible/blocked — blocked means another dep caps the version%s\n' "$c_dim" "$c_rst"
 printf '%s(e.g. reach pins ex_ast ~> 0.12.0), so it is a decision, not a bump.%s\n' "$c_dim" "$c_rst"
+printf '%sTOOLCH ok = pins erlang %s / elixir %s AND every workflow reads that file.%s\n' \
+  "$c_dim" "$CANON_ERLANG" "$CANON_ELIXIR" "$c_rst"
+printf '%sdrift = pin disagrees · none = no .tool-versions · inline = workflow hardcodes a version.%s\n' "$c_dim" "$c_rst"
 [ "$saw_no_codescan" = 1 ] && \
   printf '%s* code scanning not enabled there — ALERTS counts Dependabot only.%s\n' "$c_dim" "$c_rst"
 
@@ -470,7 +540,7 @@ fi
 if [ "$exit_code" = 0 ]; then
   printf '%sno hard findings.%s Outdated/issues/dirty columns are informational.\n' "$c_grn" "$c_rst"
 else
-  printf '%shard findings present%s (vulnerability, retired dep, security alert, or unverified DB).\n' "$c_red" "$c_rst"
+  printf '%shard findings present%s (vulnerability, retired dep, security alert, toolchain divergence, or unverified DB).\n' "$c_red" "$c_rst"
 fi
 printf '%sRelease readiness is a separate question: ./bin/publish-prep.sh status%s\n' "$c_dim" "$c_rst"
 
