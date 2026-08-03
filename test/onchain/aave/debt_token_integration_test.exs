@@ -1,12 +1,12 @@
 defmodule Onchain.Aave.DebtToken.IntegrationTest do
   use ExUnit.Case, async: false
 
+  alias Onchain.Aave.DebtToken
+
   # Every sibling *_integration_test.exs carries this; this module was the one
   # that never got it, so its two Sepolia tests ran unconditionally and failed on
   # credential-less CI (`sepolia_rpc_url!/0` raises without ETH_SEPOLIA_RPC_URL).
   @moduletag :integration
-
-  alias Onchain.Aave.DebtToken
 
   @aave_sepolia_usdc "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8"
   @delegatee "0xF380B8F1e63e2BEd7CA329CA1FdDbC39B52cC0d3"
