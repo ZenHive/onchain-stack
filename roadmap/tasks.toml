@@ -1,6 +1,6 @@
 schema_version = 2
 project = "onchain_js"
-default_branch = "development"
+default_branch = "main"
 vision = "Run battle-tested npm packages on the BEAM via QuickBEAM — no Node.js required."
 
 [focus]
