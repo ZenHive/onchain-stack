@@ -1,6 +1,6 @@
 schema_version = 2
 project = "onchain_aave"
-default_branch = "development"
+default_branch = "main"
 vision = "Aave V3 protocol wrappers for Elixir — read positions, execute actions, monitor health. Built on the onchain core library (RPC, ABI, signing, address utilities). Part of the five-package onchain family."
 
 [focus]
