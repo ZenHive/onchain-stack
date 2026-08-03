@@ -175,10 +175,18 @@ defmodule OnchainAave.MixProject do
       # Tidewave/bandit's HTTP stack (plug, finch, mint, gun, cowlib, etc.)
       # is not in lib/'s call graph and bloats PLT to ~800 modules.
       plt_add_deps: :apps_direct,
-      plt_add_apps: [:mix],
+      # `:ex_unit` is required because elixirc_paths/1 compiles test/support in
+      # :test, so the case modules there are analyzed — without it every
+      # `flunk/1` callsite reads as `unknown_function` (5 errors, exit 2). The
+      # gate only surfaced it once the integration tests stopped failing first.
+      plt_add_apps: [:mix, :ex_unit],
       plt_local_path: "priv/plts",
-      plt_core_path: "priv/plts",
-      ignore_warnings: ".dialyzer_ignore.exs"
+      plt_core_path: "priv/plts"
+      # No `ignore_warnings:` — `.dialyzer_ignore.exs` was deleted once all 17 of
+      # its entries reported as unnecessary skips. It carried a
+      # `~r/Function Onchain\./` catch-all that would have swallowed any real
+      # unknown_function on an Onchain call, and its own TODO said to remove it
+      # when the upstream Signet.Hex specs were fixed. They are.
     ]
   end
 

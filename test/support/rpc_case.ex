@@ -16,7 +16,11 @@ defmodule Onchain.RPCCase do
   @doc false
   def rpc_opts!, do: [rpc_url: rpc_url!()]
 
-  @doc false
+  # Declared `no_return()` because it only ever raises. Its sibling
+  # `Onchain.SignerCase` inlines the same `flunk/1` call into the `||` branch, so
+  # dialyzer infers a return type there; extracting it into a named function
+  # here makes the raise-only path visible and warn-worthy without the spec.
+  @spec flunk_missing_rpc() :: no_return()
   defp flunk_missing_rpc do
     ExUnit.Assertions.flunk("""
     Missing Ethereum RPC URL!
