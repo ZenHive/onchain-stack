@@ -5,9 +5,9 @@
 # checks, instead of needing a local reviewer to fetch the branch and run the
 # suite. CI and local dev share one gate definition (mix.exs `aliases/0`).
 #
-# Elixir/OTP are pinned inline (this repo has no `.tool-versions`). Adopting a
-# `.tool-versions` and switching to `version-file` would make CI and local dev
-# share one source and is the recommended follow-up.
+# Elixir/OTP come from `.tool-versions` via setup-beam's `version-file`, so CI
+# and local dev resolve one toolchain and cannot silently diverge. Change the
+# toolchain in that file, never here.
 
 name: Harness
 
@@ -36,8 +36,7 @@ jobs:
       - id: beam
         uses: erlef/setup-beam@v1
         with:
-          otp-version: "27"
-          elixir-version: "1.18"
+          version-file: .tool-versions
 
       # onchain_evm is a Rustler package that ships no precompiled artifacts,
       # so its NIF crates (revm, solidity parser) are built from source here.
