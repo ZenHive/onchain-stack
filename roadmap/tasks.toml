@@ -1,6 +1,6 @@
 schema_version = 2
 project = "onchain_evm"
-default_branch = "development"
+default_branch = "main"
 vision = "EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Elixir via Rust NIFs."
 
 [focus]
