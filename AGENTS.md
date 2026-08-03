@@ -90,6 +90,46 @@ leaves redirects, so old clone URLs and links keep resolving. Workflow branch
 filters (`on: push/pull_request: branches:`) were updated in the same pass —
 if you add a workflow, target `main`.
 
+### One toolchain for all ten (aligned 2026-08-03)
+
+```
+erlang 29.0.3
+elixir 1.20.2-otp-29
+```
+
+Every repo pins exactly that in its own `.tool-versions`, and every
+`erlef/setup-beam` step reads **that file** via `version-file:` rather than
+naming a version itself. One source of truth per repo, and the same pair in all
+ten. `fleet-health.sh` declares the canonical pair in `CANON_ERLANG` /
+`CANON_ELIXIR` and reds the sweep on any divergence — bumping the family means
+editing those two lines *and* ten `.tool-versions` files, and the TOOLCHAIN
+column is what makes a forgotten repo visible instead of silent.
+
+What this replaced is worth recording, because each variant looked fine on its
+own and only the cross-repo view exposed them:
+
+- **Four repos had no `.tool-versions` at all** (descripex, zen_websocket,
+  hieroglyph, onchain_aave) and inline-pinned `otp-version: "27"` /
+  `elixir-version: "1.18"` in CI, while local development resolved the global
+  1.20.2-otp-29. So CI graded every PR on a runtime nobody actually developed
+  on. All four carried a comment proposing exactly this fix as a "recommended
+  follow-up" — written, never done.
+- **cartouche ran a one-entry `strategy.matrix`** pinning Elixir `1.20.1` with
+  OTP `27.3`. A matrix implies multi-version coverage; with one entry it bought
+  none, and the pair was one that exists nowhere else in the family. Dissolved
+  to `version-file`; the job is now plain `Harness` (no branch protection
+  referenced the old interpolated name).
+- **onchain_js and onchain_tempo pinned 1.18.4-otp-27 deliberately**, on the
+  assumption that onchain_js's NIFs needed OTP 27. They do not:
+  `quickbeam` arrives as a `zigler_precompiled` artifact and `oxc` as a
+  `rustler_precompiled` one, both keyed by target triple / NIF ABI 2.15 rather
+  than by OTP version — nothing Zig or Rust compiles locally at all. Both NIFs
+  load and execute under OTP 29, verified by running onchain_js's integration
+  tests, not merely by loading them.
+- **The three already-`version-file` repos still drifted** among themselves
+  (onchain on 1.20.1 / erlang 29.0.2, the other two on 29.0.2). Having the
+  mechanism right does not keep the values aligned; only the sweep does.
+
 ---
 
 ## Dependency graph
@@ -314,27 +354,43 @@ alias, or an override in `mix.exs`, where CI can see it.
   `deps.unlock --all`, deletes `mix.lock`, or matrixes over dep versions, so a
   bound that has stopped holding is invisible until a consumer trips on it. Add
   one job per repo; see the `mix.lock` rationale above.
-- **`--summary-only` makes a CI test failure undiagnosable.** Every repo's
-  `precommit.full` runs `test.json --cover ... --summary-only`, and the emitted
-  JSON then carries counts and coverage but **no failure entries** — so
+- **`--summary-only` hides both the failure identity and the retry.** Every
+  repo's `precommit.full` runs `test.json --cover ... --summary-only`, and the
+  emitted JSON then carries counts and coverage but **no failure entries** — so
   onchain_aave's run 30742057271 reports `"failed": 2` and nothing whatsoever
-  about *which* two. The only way back to the identity is to edit the alias and
-  push again. Drop `--summary-only` in CI (keep it locally, where the hooks
-  already print detail), or have the workflow re-run failures verbosely on a
-  non-zero exit.
-- **Four repos have a red `Harness` gate** as of 2026-08-02, plus mpp's
-  `Integration` workflow. Two are now diagnosed and fixed in-tree (hieroglyph,
-  onchain_js — see the reach note below); the remaining two are **flaky, not
-  broken**, which is its own problem because a gate that reds at random gets
-  ignored:
-  - **zen_websocket** — 1 of 414 unit tests fails intermittently. Reproduced
-    locally once, then 7 consecutive green runs including CI's own seed
-    (216415), so it is neither seed- nor order-deterministic. Identity unknown
-    for the same `--summary-only` reason as above.
-  - **onchain_aave** — 2 of 295 fail in CI, 232 pass locally. The `mix compile`
-    break is gone (the `../onchain_evm` path dep became `{:onchain_evm, "~> 0.4",
-    only: [:dev, :test]}` and the Rust toolchain step landed), so this is now a
-    genuine CI-only test failure, identity likewise hidden.
+  about *which* two, and the only way back to the identity is to edit the alias
+  and push again. Worse, the flag also disqualifies ex_unit_json's automatic
+  flaky-retry (`retry_disqualified_opts?/1`,
+  `deps/ex_unit_json/lib/mix/tasks/test_json.ex:654`), so a load-sensitive test
+  that would have passed on its second attempt reds the gate instead. **Dropped
+  in zen_websocket and onchain_aave** (the fast `precommit` alias keeps it,
+  where the hooks already print detail); the remaining eight still carry it.
+- **Two of the four red `Harness` gates are fixed; the flakes were real and are
+  now diagnosed.** hieroglyph and onchain_js were the reach #36 crashes (see
+  below). The other two were called "flaky, not broken" — accurate, and both
+  now have an identified mechanism:
+  - **zen_websocket** — `ZenWebsocket.DebugTest` asserted `log == ""` around a
+    `capture_log/1` call while running `async: true`. `capture_log` intercepts
+    the **global** `:logger`, not the calling process, so under enough
+    concurrency an unrelated async test's warning lands inside the capture and
+    fails the assertion — reproduced at `--max-cases 32 --seed 203` with a
+    `Batch subscribe failed for req_3: :not_connected` line from
+    `BatchSubscriptionManagerTest`. Fixed by making that module `async: false`
+    (ExUnit runs sync tests after all async ones, closing the window). Note
+    this was **not** the `PoolRouter` `{:exit, _}` defect fixed in the same
+    pass: that one needs a caller that traps exits, which no test here does, so
+    it was unreachable from this suite — a genuine latent bug for consumers,
+    but not the cause of the CI red.
+  - **onchain_aave** — identity still hidden at the time of writing; the
+    `--summary-only` drop above is what makes the next run diagnosable.
+- **mpp carries a test that has never matched its own code.**
+  `test/mpp/methods/tempo_test.exs:1847` asserts
+  `~r/atomic store implementing update\/3/`, but the message has read
+  `check_and_mark/2 — atomic single-use is required` since `ee5ba91`
+  (2026-07-08), and `update/3` is no longer in the API at all. The test arrived
+  on 2026-08-01 in `ddc4686`, a harness agent delivery, and landed anyway. A
+  one-line fix, but worth noting *why* it got through: this is exactly the
+  failure `--summary-only` renders invisible.
 - **The `ex_ast` 0.13.1 measurement** described above is still unrun.
 
 ---
@@ -342,12 +398,19 @@ alias, or an override in `mix.exs`, where CI can see it.
 ## Health sweep (all repos at once)
 
 `./bin/fleet-health.sh` answers "is anything wrong anywhere" in one table:
-git state (ahead/behind/dirty), `mix hex.outdated`, `mix hex.audit` (retired),
-`mix deps.audit` (vulnerabilities), open GitHub issues/PRs, and open GitHub
-security alerts (Dependabot + code scanning). ~20s for all ten, four repos in
-parallel. `--json` for machine consumption; `--no-fetch` / `--no-gh` /
-`--no-hex` / `--no-audit` to cut scope; `./bin/fleet-health.sh <repo>...` to
-narrow.
+git state (ahead/behind/dirty), toolchain pin, `mix hex.outdated`,
+`mix hex.audit` (retired), `mix deps.audit` (vulnerabilities), open GitHub
+issues/PRs, and open GitHub security alerts (Dependabot + code scanning). ~20s
+for all ten, four repos in parallel. `--json` for machine consumption;
+`--no-fetch` / `--no-gh` / `--no-hex` / `--no-audit` to cut scope;
+`./bin/fleet-health.sh <repo>...` to narrow.
+
+TOOLCHAIN reports the *worse* of two independent divergences, because fixing
+one without the other fixes nothing: `drift` / `none` means the repo's
+`.tool-versions` disagrees with the canonical pair or is missing, while
+`inline` means a workflow hardcodes a version — and there, correcting the pin
+would never reach CI at all. A matrix-driven pin (`${{ matrix.* }}`) is
+deliberate multi-version testing and is not counted as `inline`.
 
 It is **read-only** — no `deps.get`, no writes into any repo. That is what makes
 its own "dirty tree" column trustworthy.
