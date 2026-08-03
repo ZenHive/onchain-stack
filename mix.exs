@@ -123,6 +123,19 @@ defmodule OnchainAave.MixProject do
       # Comprehensive gate — the harness reviewer's `check_command` and `mix ci`
       # target.
       # Coverage floor is 65 against a 68.44% measured baseline (2026-08-01).
+      #
+      # `--summary-only` is deliberately OMITTED here (2026-08-03): the flag is
+      # in ex_unit_json's `retry_disqualified_opts?/1` list, so it silently
+      # disables the tool's own automatic retry-on-flaky (see
+      # `deps/ex_unit_json/lib/mix/tasks/test_json.ex`). With it set, a
+      # transient failure never gets the self-heal re-run AND its detail is
+      # stripped from the JSON — exactly the "232 pass locally, 2 fail in CI,
+      # identity unknown" shape hit in run 30742057271. Dropping it restores
+      # both: real flakes retry and heal (exit 0, named in a `flaky` array
+      # instead of blocking), and a confirmed failure prints full assertion
+      # detail on stdout instead of a bare summary line. The default output
+      # mode (no `--summary-only`, no `--all`) is already CI-quiet on a green
+      # run — an empty `tests` array — so this costs nothing when nothing fails.
       "precommit.full": [
         "compile --warnings-as-errors",
         "format --check-formatted",
@@ -132,7 +145,7 @@ defmodule OnchainAave.MixProject do
         "reach.check --arch --smells",
         "sobelow --skip --exit low",
         "deps.audit.gated",
-        "cmd env MIX_ENV=test mix test.json --cover --cover-threshold 65 --summary-only --exclude integration",
+        "cmd env MIX_ENV=test mix test.json --cover --cover-threshold 65 --exclude integration",
         "dialyzer",
         # AGENTS.md is what the cross-family (codex/cursor/grok) reviewers read;
         # a stale render makes them gate against rules that already changed.
