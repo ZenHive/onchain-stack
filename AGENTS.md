@@ -63,22 +63,33 @@ uniformly `main`, so stop re-deriving it.** Before 2026-08-02 the family was
 split 7 `development` / 3 `main`, which is what made every agent guess wrong
 about a third of the time.
 
-The split was never a convention anyone chose — it was **provenance**:
+The split was never a convention anyone chose. **`development` spread because an
+earlier automated session changed the ZenHive org's `default_repository_branch`
+to `development`** — a settings change nobody asked for, which then silently
+stamped itself on every repo created server-side while it stood. The local
+`~/.gitconfig` carried `init.defaultBranch = development` alongside it, so
+`git init`-and-push repos landed the same way (the first branch pushed becomes
+GitHub's default). Two defaults, both wrong, from the same cause class.
 
-- `~/.gitconfig` set `init.defaultBranch = development`, so any repo created
-  locally with `git init` and pushed got `development` as its default (the
-  first branch pushed becomes GitHub's default). That covered descripex,
-  onchain, mpp, onchain_evm, onchain_aave, onchain_js, cartouche.
-- Repos created server-side got the **org** default, which was — and still is —
-  `main` for both ZenHive and inetpeople (`default_repository_branch: "main"`).
-  That covered zen_websocket and onchain_tempo.
-- hieroglyph is a **fork** of `exthereum/abi` and inherited upstream's `main`.
+Both are corrected: the org setting was fixed by the operator, and
+`init.defaultBranch` is now `main`. Verified 2026-08-03 —
+`ZenHive.default_repository_branch = main`, `inetpeople.default_repository_branch
+= main`, `git config --global init.defaultBranch = main`. New repos land on
+`main` whichever way they are created. GitHub's platform default has been `main`
+since 2020-10-01, and Git's own builtin follows in 3.0; `development` was never
+a platform default and never a decision here.
 
-So the local git config and the org setting were quietly fighting, and which one
-won depended on where the repo happened to be born. `init.defaultBranch` is now
-`main`, matching the org — new repos land on `main` whichever way they are
-created. GitHub's platform default has been `main` since 2020-10-01, and Git's
-own builtin follows in 3.0; `development` was never a platform default.
+The residue is not fully reconstructible per repo — which trunk a given repo got
+depended on whether it was born before or after the org flip, and hieroglyph is
+a **fork** of `exthereum/abi` that simply inherited upstream's `main`. Don't
+spend effort re-deriving the timeline; the answer everywhere is now `main`.
+
+**The lesson worth keeping: an agent editing org-level or global git settings
+has a blast radius measured in repos-not-yet-created.** Nothing failed at the
+time it happened; the cost arrived months later as ~19 repos on the wrong trunk,
+a harness registry pointing at branches that were about to be deleted, and a
+fleet-wide rename. Treat `gh api -X PATCH orgs/...` and
+`git config --global` as changes that need the operator's explicit go-ahead.
 
 Renaming was cheap because **no repo has both branches** — each has exactly one
 trunk. There is no `main`-is-released / `development`-is-integration model here,
@@ -100,6 +111,17 @@ onchain, onchain_aave, onchain_evm, onchain_js, onchain_tempo), all on
 `harness_dev.projects` on 2026-08-03. When renaming a branch, sweep the
 consumers that *write*: orchestrator registrations, deploy configs, dashboard
 links, anything holding a branch name as data rather than as a URL.
+
+**And check whether the consumer has a second layer.** Patching
+`harness_dev.projects` looked like it had failed — six of seven repos still
+reported `development` after the restart — because harness keeps a *runtime
+override* in `harness_settings` under the key `landing`, which
+`Harness.Landing.Settings.overlay/1` applies **on top of** the registration and
+wins. Only cartouche, which had no override row, showed the patched value. The
+registration is the default; the override is the truth. (`SettingsStore` holds
+no in-memory cache, so a write there takes effect without a restart — the
+restart was never the variable.) Same shape as `.tool-versions` vs an inline
+workflow pin: fixing the layer that loses changes nothing observable.
 
 ### One toolchain for all ten (aligned 2026-08-03)
 
@@ -385,10 +407,10 @@ alias, or an override in `mix.exs`, where CI can see it.
   that would have passed on its second attempt reds the gate instead. **Dropped
   in zen_websocket and onchain_aave** (the fast `precommit` alias keeps it,
   where the hooks already print detail); the remaining eight still carry it.
-- **All four red `Harness` gates are fixed and every repo is green (2026-08-03).**
-  hieroglyph and onchain_js were the reach #36 crashes (see below). The other
-  two were called "flaky, not broken" — half right: zen_websocket's really was
-  a race, onchain_aave's was never flaky at all:
+- **All four originally-red `Harness` gates are fixed (2026-08-03); onchain_aave
+  needed a second pass.** hieroglyph and onchain_js were the reach #36 crashes
+  (see below). The other two were called "flaky, not broken" — half right:
+  zen_websocket's really was a race, onchain_aave's was never flaky at all:
   - **zen_websocket** — `ZenWebsocket.DebugTest` asserted `log == ""` around a
     `capture_log/1` call while running `async: true`. `capture_log` intercepts
     the **global** `:logger`, not the calling process, so under enough
@@ -411,6 +433,22 @@ alias, or an override in `mix.exs`, where CI can see it.
     `retried: 2, confirmed: 2, flaky: 0`, i.e. proved they were not flaky. Both
     halves of the `--summary-only` argument paid off in one run, which is the
     case for dropping it in the remaining eight repos.
+
+    Fixing the tests then exposed a **second, older** failure that had been
+    hiding behind them: `mix ci` never reached its dialyzer step while the suite
+    was red, and dialyzer immediately reported five `unknown_function` errors on
+    `ExUnit.Assertions.flunk/1`. The PLT simply had no `:ex_unit` —
+    `plt_add_apps: [:mix]`, while `elixirc_paths(:test)` compiles `test/support`,
+    so the case modules were analyzed against a PLT that did not contain the
+    assertion library. cartouche, onchain and onchain_evm all carry `:ex_unit`;
+    onchain_aave and onchain_tempo did not (onchain_tempo's `test/support` uses
+    no ExUnit functions, so it never tripped). Fixed in `5d5be9d` — and the same
+    commit deleted `.dialyzer_ignore.exs`, all 17 of whose entries reported as
+    unnecessary skips, including a `~r/Function Onchain\./` catch-all that would
+    have swallowed any genuine unknown_function on an Onchain call. **This is
+    the general shape: a gate that fails early reports one defect and conceals
+    every later step's.** Do not read "the red is fixed" as "the gate is green"
+    until a full run says so.
 - **mpp carries a test that has never matched its own code.**
   `test/mpp/methods/tempo_test.exs:1847` asserts
   `~r/atomic store implementing update\/3/`, but the message has read
