@@ -90,6 +90,17 @@ leaves redirects, so old clone URLs and links keep resolving. Workflow branch
 filters (`on: push/pull_request: branches:`) were updated in the same pass —
 if you add a workflow, target `main`.
 
+**The redirects do not cover everything that names a branch.** `git push` does
+not follow them, so a push to the old name silently *recreates* it. The live
+example was harness: its project registry still carried
+`target_branch: "development"` for seven of these repos (cartouche, mpp,
+onchain, onchain_aave, onchain_evm, onchain_js, onchain_tempo), all on
+`landing_policy: :auto` — so the next autonomous land would have pushed
+`origin/development` back into existence in each. Corrected in
+`harness_dev.projects` on 2026-08-03. When renaming a branch, sweep the
+consumers that *write*: orchestrator registrations, deploy configs, dashboard
+links, anything holding a branch name as data rather than as a URL.
+
 ### One toolchain for all ten (aligned 2026-08-03)
 
 ```
@@ -104,6 +115,15 @@ ten. `fleet-health.sh` declares the canonical pair in `CANON_ERLANG` /
 `CANON_ELIXIR` and reds the sweep on any divergence — bumping the family means
 editing those two lines *and* ten `.tool-versions` files, and the TOOLCHAIN
 column is what makes a forgotten repo visible instead of silent.
+
+**`version-file` requires `version-type: strict` beside it** — setup-beam
+hard-errors with `you have to set version-type=strict if you're using
+version-file` and never installs a toolchain. Both keys are needed together in
+every step; the five repos converted on 2026-08-03 got `version-file` alone and
+took *both* their workflows red instantly, while the five that already used the
+mechanism carried `strict` and stayed green. The failure is loud, but it fires
+at step two, so nothing downstream in the job ever runs and the logs look
+unrelated to the toolchain.
 
 What this replaced is worth recording, because each variant looked fine on its
 own and only the cross-repo view exposed them:
@@ -365,10 +385,10 @@ alias, or an override in `mix.exs`, where CI can see it.
   that would have passed on its second attempt reds the gate instead. **Dropped
   in zen_websocket and onchain_aave** (the fast `precommit` alias keeps it,
   where the hooks already print detail); the remaining eight still carry it.
-- **Two of the four red `Harness` gates are fixed; the flakes were real and are
-  now diagnosed.** hieroglyph and onchain_js were the reach #36 crashes (see
-  below). The other two were called "flaky, not broken" — accurate, and both
-  now have an identified mechanism:
+- **All four red `Harness` gates are fixed and every repo is green (2026-08-03).**
+  hieroglyph and onchain_js were the reach #36 crashes (see below). The other
+  two were called "flaky, not broken" — half right: zen_websocket's really was
+  a race, onchain_aave's was never flaky at all:
   - **zen_websocket** — `ZenWebsocket.DebugTest` asserted `log == ""` around a
     `capture_log/1` call while running `async: true`. `capture_log` intercepts
     the **global** `:logger`, not the calling process, so under enough
@@ -381,8 +401,16 @@ alias, or an override in `mix.exs`, where CI can see it.
     pass: that one needs a caller that traps exits, which no test here does, so
     it was unreachable from this suite — a genuine latent bug for consumers,
     but not the cause of the CI red.
-  - **onchain_aave** — identity still hidden at the time of writing; the
-    `--summary-only` drop above is what makes the next run diagnosable.
+  - **onchain_aave** — not a flake: `debt_token_integration_test.exs` was the
+    one file of nine `*_integration_test.exs` missing `@moduletag :integration`,
+    so its two Sepolia tests ran on every credential-less CI run and failed
+    deterministically on `sepolia_rpc_url!/0`. It read as a flake only because
+    `--summary-only` had reported `"failed": 2` with no identity for weeks.
+    Dropping that flag named the file, the lines and the messages on the very
+    next run — **and** re-enabled the retry, which reported
+    `retried: 2, confirmed: 2, flaky: 0`, i.e. proved they were not flaky. Both
+    halves of the `--summary-only` argument paid off in one run, which is the
+    case for dropping it in the remaining eight repos.
 - **mpp carries a test that has never matched its own code.**
   `test/mpp/methods/tempo_test.exs:1847` asserts
   `~r/atomic store implementing update\/3/`, but the message has read
