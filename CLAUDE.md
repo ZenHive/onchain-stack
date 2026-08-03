@@ -447,14 +447,17 @@ alias, or an override in `mix.exs`, where CI can see it.
     the general shape: a gate that fails early reports one defect and conceals
     every later step's.** Do not read "the red is fixed" as "the gate is green"
     until a full run says so.
-- **mpp carries a test that has never matched its own code.**
-  `test/mpp/methods/tempo_test.exs:1847` asserts
-  `~r/atomic store implementing update\/3/`, but the message has read
-  `check_and_mark/2 — atomic single-use is required` since `ee5ba91`
-  (2026-07-08), and `update/3` is no longer in the API at all. The test arrived
-  on 2026-08-01 in `ddc4686`, a harness agent delivery, and landed anyway. A
-  one-line fix, but worth noting *why* it got through: this is exactly the
-  failure `--summary-only` renders invisible.
+- ~~**mpp carries a test that has never matched its own code.**~~ **Retracted
+  2026-08-03 — the finding was wrong.** It claimed
+  `test/mpp/methods/tempo_test.exs` asserted
+  `~r/atomic store implementing update\/3/` against a message that no longer
+  said that. The message does say it, at `lib/mpp/methods/tempo.ex:464`
+  (`validate_explicit_sponsor_store!/1`, the `update_capable?/1` branch); the
+  test is at line 1863, not 1847, and passes. The mistake was matching
+  `check_and_mark/2 — atomic single-use is required` from a *different* raise in
+  the same module (line 384) and concluding the API had moved. Two raises, two
+  messages, one grep. Worth keeping as a record: a "stale test" claim is cheap
+  to state and cheap to check — run the test before writing it down.
 - **The `ex_ast` 0.13.1 measurement** described above is still unrun.
 
 ---
