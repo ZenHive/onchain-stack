@@ -407,12 +407,14 @@ title = "Implement Onchain.Aave.V4.Hub read wrapper"
 scores = { d = 4, b = 6, u = 5 }
 markers = ["parallel"]
 assignee = "cursor"
+model = "cursor-grok-4.6-high"
 module = "Onchain.Aave.V4.Hub"
 depends_on = [45, 46]
 created_at = "2026-04-20"
 body = """
 Wrap the Hub-level reads selected in Task 46 — likely: member Spokes, credit-line inventory and caps, Hub rate environment / utilization. Three Hubs, one module. Unit tests only at this stage.
 """
+acceptance_criteria = ["The Hub reads selected in Task 46 work across all three configured Hubs and are covered by unit tests."]
 
 [[task]]
 id = 48
@@ -423,12 +425,14 @@ title = "Implement Onchain.Aave.V4.Spoke reads + V4 types"
 scores = { d = 5, b = 7, u = 7 }
 markers = ["parallel"]
 assignee = "codex"
+model = "gpt-5.6-sol"
 module = "Onchain.Aave.V4.Spoke"
 depends_on = [45, 46]
 created_at = "2026-04-20"
 body = """
 Wrap Spoke reads (collateral set, borrowable set, per-Spoke caps, per-user health/position data). Most complex V4 read module; ship the V4 type structs (V4.Types.SpokeUserData, V4.Types.SpokeReserveData — shaped per Task 46's findings). If the module + types together exceed a single session's scope, split on the axis V4.Types.* → separate task.
 """
+acceptance_criteria = ["The Spoke reads selected in Task 46 return the corresponding typed V4 reserve and user data, with unit tests covering successful decoding and errors."]
 
 [[task]]
 id = 49
@@ -439,12 +443,14 @@ title = "Implement Onchain.Aave.V4.Oracle wrapper (Spoke-scoped)"
 scores = { d = 3, b = 5, u = 5 }
 markers = ["parallel"]
 assignee = "grok"
+model = "grok-4.6"
 module = "Onchain.Aave.V4.Oracle"
 depends_on = [45, 46]
 created_at = "2026-04-20"
 body = """
 Onchain.Aave.V4.Oracle takes a Spoke address (not a network) because V4 oracles are Spoke-scoped. Mirror the V3 Oracle function shape where possible: get_asset_price/2, get_asset_prices/2, get_source_of_asset/2, get_base_currency*, get_fallback_oracle/1, plus direct Chainlink aggregator reads. Unit tests.
 """
+acceptance_criteria = ["Callers can perform every Task 46-selected Spoke-scoped oracle read through the V4 wrapper, with unit tests covering results and errors."]
 
 [[task]]
 id = 50
@@ -455,12 +461,14 @@ title = "Implement Onchain.Aave.V4.TokenizationSpoke reads (ERC-4626 share accou
 scores = { d = 3, b = 5, u = 5 }
 markers = ["parallel"]
 assignee = "cursor"
+model = "cursor-grok-4.6-high"
 module = "Onchain.Aave.V4.TokenizationSpoke"
 depends_on = [45, 46]
 created_at = "2026-04-20"
 body = """
 Tokenization Spokes are ERC-4626 vaults — wrap totalAssets, convertToAssets, convertToShares, previewDeposit, previewRedeem, and any V4-specific metadata exposed by ITokenizationSpoke. Also ship a lookup(hub, asset) helper given there are 31 of these. Unit tests.
 """
+acceptance_criteria = ["ERC-4626 accounting reads and Hub/asset lookup work for configured Tokenization Spokes and are covered by unit tests."]
 
 [[task]]
 id = 51
@@ -470,13 +478,14 @@ status = "pending"
 title = "Implement Onchain.Aave.V4.PositionManager ergonomic write wrappers (supply/borrow/repay analogs)"
 scores = { d = 5, b = 8, u = 7 }
 assignee = "cursor"
-model = "claude-opus-4-8-thinking-high"
+model = "cursor-grok-4.6-high"
 module = "Onchain.Aave.V4.PositionManager"
 depends_on = [45, 46, 47, 48]
 created_at = "2026-04-20"
 body = """
 Primary user-facing write surface. Wrap the Giver / Taker / Config / NativeTokenGateway / SignatureGateway entrypoints for the common supply/borrow/repay/withdraw flows. Likely needs to be split across two sessions if all five managers land at once — start with Giver + Taker (the primary supply/borrow flow) and gate the rest as a follow-on if scope grows. Depends on Tasks 47 + 48 (needs to know what Hub/Spoke state to reference). Design constraint: should compose cleanly when executed under DELEGATECALL from a Safe (no storage assumptions about msg.sender identity vs. Safe proxy).
 """
+acceptance_criteria = ["The supported Position Manager flows build valid supply, borrow, repay, and withdraw calls without assuming that msg.sender is the Safe proxy, with unit tests for success and error cases."]
 
 [[task]]
 id = 52

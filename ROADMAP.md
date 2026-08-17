@@ -23,7 +23,7 @@ All foundational V3 tasks are complete. This package provides full Aave V3 read 
 <!-- FOCUS:BEGIN -->
 **Focus phase:** 3 — Math Validation (3 of 5 done · 0 in progress)
 
-**Last shipped:** Task 42 — V4 math cross-validation via revm (V4 live on mainnet 2026-03-30) on 2026-06-09
+**Last shipped:** no recent shipments
 
 **Up next:** Task 54 — Mine defi-skills:intent-to-transaction action surface for onchain_aave coverage gaps [D:3/B:8/U:7 → Eff:2.5] 🎯
 <!-- FOCUS:END -->
