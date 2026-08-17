@@ -9,8 +9,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rustler = "0.38"
-revm = { version = "41", features = ["std"] }
-revm-database = { version = "41", features = ["alloydb"] }
+revm = { version = "42", features = ["std"] }
+revm-database = { version = "42", features = ["alloydb"] }
 alloy-eips = "2.1"
 alloy-primitives = "1.6"
 alloy-provider = { version = "2.1", features = ["reqwest"] }

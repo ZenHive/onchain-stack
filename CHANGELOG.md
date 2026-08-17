@@ -6,6 +6,36 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-08-17
+
+No public Elixir API changed. The native execution engine now follows REVM 42,
+whose updated hardfork and gas-accounting behavior can change simulation
+results; this is therefore a minor rather than a patch release.
+
+### Changed
+
+- Updated both native Rust dependency graphs completely. The EVM NIF now uses
+  REVM 42.0.1 / `revm-database` 42.0.0 and Alloy 2.4.1; the Solidity NIF uses
+  Alloy 1.6.1. Both direct dependency sets are current.
+- Resolved `onchain 0.12.1`, `cartouche 0.7.0`, `descripex 0.12.1`,
+  `hieroglyph 1.6.1`, and `zen_websocket 0.6.1` within the existing runtime
+  requirements.
+- Updated development tooling: `sobelow` 0.14.1 → 0.15.0 and `tidewave`
+  0.8.1 → 0.8.4. `ex_ast` remains on 0.12.10 until Reach 2.8.2's
+  compatibility with 0.13.1 has been measured.
+- The Sobelow gate now uses `--exit low`, so findings fail CI instead of only
+  being printed; the tracked skip fingerprints were regenerated from the
+  reviewed false-positive baseline.
+- CI now uses the family toolchain (Erlang 29.0.3 / Elixir 1.20.2-otp-29) and
+  targets the unified `main` branch.
+
+### Security
+
+- Updated `ruint` to 1.20.0, removed the stale `tracing-subscriber` 0.2.25
+  lock entry, and updated `lru` to 0.18.2. Both native lockfiles now pass
+  `cargo audit` with zero vulnerabilities; only the upstream `derivative` and
+  `paste` maintenance warnings remain.
+
 ## [0.4.0] — 2026-08-01
 
 No public API change.

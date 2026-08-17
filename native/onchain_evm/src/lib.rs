@@ -513,7 +513,7 @@ fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, Ev
 
     let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
     // KNOWN LIMITATION (applies to every Context::mainnet() site below too):
-    // revm 41 defaults to the latest hardfork spec (OSAKA), so a fork pinned to a
+    // revm 42 defaults to the latest hardfork spec, so a fork pinned to a
     // historical block executes under newer EVM rules than were active then. We do
     // not derive SpecId from the forked block because these NIFs fork an arbitrary
     // RPC URL (any L1/L2), and a mainnet block→hardfork table would assign the
