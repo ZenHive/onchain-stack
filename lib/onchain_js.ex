@@ -13,5 +13,12 @@ defmodule OnchainJs do
   | `onchain_aave` | Aave V3 protocol wrappers |
   | `onchain_evm` | Rust NIFs: revm simulation, Solidity parsing, codegen |
   | **`onchain_js`** | JS bridge: npm packages on the BEAM via QuickBEAM |
+
+  ## Discovery
+
+  Use `OnchainJs.describe/0` for a module overview, `OnchainJs.describe/1` for
+  function listings, and `OnchainJs.describe/2` for full function details.
   """
+
+  use Descripex.Discoverable, modules: [OnchainJs.Runtime]
 end

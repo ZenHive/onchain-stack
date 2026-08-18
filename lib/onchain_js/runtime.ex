@@ -39,6 +39,8 @@ defmodule OnchainJs.Runtime do
         )
   """
 
+  use Descripex, namespace: "/runtime"
+
   @type runtime :: GenServer.server()
   @type js_result :: {:ok, term()} | {:error, QuickBEAM.JSError.t()}
 
@@ -51,6 +53,23 @@ defmodule OnchainJs.Runtime do
       restart: :transient
     }
   end
+
+  api(:start_link, "Start a supervised QuickBEAM runtime with a persistent JavaScript context.",
+    params: [
+      opts: [
+        kind: :value,
+        default: [],
+        description:
+          "QuickBEAM options (`:name`, `:script`, `:handlers`, `:define`, `:memory_limit`, " <>
+            "`:max_stack_size`, `:apis`). Defaults `apis: :browser`; a caller-supplied value wins."
+      ]
+    ],
+    returns: %{
+      type: "{:ok, pid()} | {:error, term()}",
+      description: "Runtime handle to pass as the `runtime` argument of every other function here"
+    },
+    composes_with: [:eval, :call, :apply_browser_stubs, :stop]
+  )
 
   @doc """
   Start a new supervised QuickBEAM runtime.
@@ -67,6 +86,28 @@ defmodule OnchainJs.Runtime do
     |> Keyword.put_new(:apis, :browser)
     |> QuickBEAM.start()
   end
+
+  api(
+    :eval,
+    "Evaluate JavaScript source in a runtime. Top-level `await` is supported; promises are awaited before returning.",
+    params: [
+      runtime: [
+        kind: :exchange_data,
+        description: "Runtime handle",
+        source: "start_link/1"
+      ],
+      code: [kind: :value, description: "JavaScript source to evaluate"],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "`:timeout` (ms) and `:vars` (map of globals injected for the duration of this evaluation only)"
+      ]
+    ],
+    returns: %{
+      type: "{:ok, term()} | {:error, QuickBEAM.JSError.t()}",
+      description: "The evaluated expression's value, converted to an Elixir term"
+    }
+  )
 
   @doc """
   Evaluate JavaScript source in `runtime`.
@@ -90,6 +131,27 @@ defmodule OnchainJs.Runtime do
     QuickBEAM.eval(runtime, code, opts)
   end
 
+  api(:call, "Call a global JavaScript function by name. Promise-returning functions are awaited automatically.",
+    params: [
+      runtime: [
+        kind: :exchange_data,
+        description: "Runtime handle",
+        source: "start_link/1"
+      ],
+      fn_name: [
+        kind: :exchange_data,
+        description: "Name of a global JS function, defined by a prior `eval/2` or by a loaded bundle",
+        source: "eval/2"
+      ],
+      args: [kind: :value, description: "Positional arguments, converted from Elixir terms to JS values"],
+      opts: [kind: :value, default: [], description: "`:timeout` (ms)"]
+    ],
+    returns: %{
+      type: "{:ok, term()} | {:error, QuickBEAM.JSError.t()}",
+      description: "The function's return value, converted to an Elixir term"
+    }
+  )
+
   @doc """
   Call a global JavaScript function by name.
 
@@ -111,6 +173,17 @@ defmodule OnchainJs.Runtime do
     QuickBEAM.call(runtime, fn_name, args, opts)
   end
 
+  api(:stop, "Stop a runtime and free its resources. The JavaScript context and everything defined in it is discarded.",
+    params: [
+      runtime: [
+        kind: :exchange_data,
+        description: "Runtime handle",
+        source: "start_link/1"
+      ]
+    ],
+    returns: %{type: ":ok", description: "Always `:ok`; the runtime process is no longer alive"}
+  )
+
   @doc """
   Stop `runtime` and free its resources.
 
@@ -120,6 +193,23 @@ defmodule OnchainJs.Runtime do
   def stop(runtime) do
     QuickBEAM.stop(runtime)
   end
+
+  api(
+    :apply_browser_stubs,
+    "Define the browser globals (`self`, `window`, `navigator`, `location`) that npm browser bundles assume exist. Call before loading a bundle.",
+    params: [
+      runtime: [
+        kind: :exchange_data,
+        description: "Runtime handle",
+        source: "start_link/1"
+      ]
+    ],
+    returns: %{
+      type: ":ok | {:error, term()}",
+      description: "`:ok` once `self === globalThis`, `window === globalThis`, `navigator` and `location` are defined"
+    },
+    composes_with: [:eval]
+  )
 
   @doc """
   Apply the standard browser-global stub sequence to `runtime`.

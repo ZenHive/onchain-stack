@@ -65,10 +65,17 @@ onchain_evm (Rust NIFs — can use onchain_js for solc-js)
 
 ```
 lib/
-  onchain_js.ex                   # Root module
+  onchain_js.ex                   # Root module + Descripex.Discoverable (describe/0,1,2)
   onchain_js/
     application.ex                # Supervision tree
+    runtime.ex                    # QuickBEAM runtime wrapper, Descripex-annotated
+    runtime_supervisor.ex         # DynamicSupervisor for runtimes
 ```
+
+Every public function in an agent-facing module carries a `Descripex` `api()`
+declaration, and the module is registered in `OnchainJs`'s `Discoverable` list
+and in `@annotated` in `test/onchain_js/descripex_test.exs` — those contract
+tests fail if a new public function lands without one.
 
 ## After Every Task
 

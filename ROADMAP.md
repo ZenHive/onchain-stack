@@ -31,7 +31,7 @@
 <!-- TASKS:BEGIN phase=1 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 1 | 🔄 | 🎁 **foundation** · QuickBEAM foundation [D:3/B:7/U:8 → Eff:2.5?] 🎯 |
+| Task 1 | 🔄 | 🎁 **foundation** · 🚀 **v0_3** · QuickBEAM foundation [D:3/B:7/U:8 → Eff:2.5] 🎯 |
 <!-- TASKS:END -->
 
 ---
@@ -41,10 +41,10 @@
 <!-- TASKS:BEGIN phase=2 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 2 | ⬜ | 🎁 **eth_tools** · *OnchainJs.Solc* · solc-js compilation (.sol → ABI + bytecode) [D:4/B:9/U:8 → Eff:2.12?] 🎯 |
-| Task 3 | ⬜ | 🎁 **eth_tools** · *OnchainJs.Uniswap* · Uniswap v3 SDK routing (optimal swap paths, price impact) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
-| Task 4 | ⬜ | 🎁 **eth_tools** · DeFiSaver recipe builder (@defisaver/sdk) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
-| Task 5 | ⬜ | 🎁 **eth_tools** · 1inch Fusion SDK (DEX aggregation) [D:5/B:7/U:6 → Eff:1.3?] 📋 |
+| Task 2 | ⬜ | 🎁 **eth_tools** · 🚀 **v0_3** · *OnchainJs.Solc* · solc-js compilation (.sol → ABI + bytecode) [D:4/B:9/U:8 → Eff:2.12] 🎯 |
+| Task 3 | ⬜ | 🎁 **eth_tools** · 🚀 **v0_4** · *OnchainJs.Uniswap* · Uniswap v3 SDK routing (optimal swap paths, price impact) [D:5/B:8/U:7 → Eff:1.5] 🚀 |
+| Task 4 | ⬜ | 🎁 **eth_tools** · 🚀 **v0_4** · DeFiSaver recipe builder (@defisaver/sdk) [D:5/B:8/U:7 → Eff:1.5] 🚀 |
+| Task 5 | ⬜ | 🎁 **eth_tools** · 🚀 **v0_4** · 1inch Fusion SDK (DEX aggregation) [D:5/B:7/U:6 → Eff:1.3] 📋 |
 <!-- TASKS:END -->
 
 ---
@@ -54,8 +54,8 @@
 <!-- TASKS:BEGIN phase=3 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 6 | ⬜ | 🎁 **cross_validation** · Aave math-utils cross-validation [D:3/B:5/U:4 → Eff:1.5?] 🚀 |
-| Task 7 | ⬜ | 🎁 **cross_validation** · *OnchainJs.Merkle* · Merkle proof construction (airdrops, whitelists, storage proofs) [D:3/B:6/U:5 → Eff:1.83?] 🚀 |
+| Task 6 | ⬜ | 🎁 **cross_validation** · 🚀 **v0_4** · Aave math-utils cross-validation [D:3/B:5/U:4 → Eff:1.5] 🚀 |
+| Task 7 | ⬜ | 🎁 **cross_validation** · 🚀 **v0_4** · *OnchainJs.Merkle* · Merkle proof construction (airdrops, whitelists, storage proofs) [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 <!-- TASKS:END -->
 
 ---
