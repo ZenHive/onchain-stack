@@ -507,6 +507,55 @@ decision to make, not a bump to run.
 
 Health is not release readiness — for local-vs-Hex deltas use `publish-prep.sh`.
 
+### "Is everything up to date?" has two axes — answer both, always
+
+Asked whether the repos are current, it is easy to run `publish-prep.sh status`,
+see ten rows of `published`, and report "yes". That answers **release parity**
+(local `@version` vs Hex) and says nothing about **dependency currency**. A repo
+can sit at perfect Hex parity while its gate runs a year-old analyzer. Both
+questions are already answered by the two scripts — the failure is reporting one
+and dropping the other:
+
+- **Release parity** → `publish-prep.sh status` (LOCAL vs HEX column)
+- **Dependency currency** → `fleet-health.sh`, OUTDATED column, `possible/blocked`
+
+OUTDATED deliberately does **not** fail the sweep, which is exactly what makes it
+easy to read past — a green exit code is not a statement about dep freshness.
+`possible` is work to do; `blocked` is a decision someone already made. Quote
+both numbers, and name what is blocking each `blocked`.
+
+**Three-segment caps belong on first-party deps, not on dev tooling.** The rule
+recorded above exists because descripex and zen_websocket shipped consumer-visible
+breaks at a *minor*. Applied to analyzers it does something else entirely: it turns
+"update available" into `Update not possible` and freezes the gate, while looking
+like a considered pin. mpp was the only repo doing this — `sobelow ~> 0.14.1` and
+`quickbeam ~> 0.10.16` held it at sobelow 0.14.1 / quickbeam 0.10.20 with nothing
+documenting why, while cartouche and onchain were already on sobelow 0.15. Lifted
+to `~> 0.15` / `~> 0.11.0` on 2026-08-18; the family now reports zero `possible`
+across all ten, with only `ex_ast` blocked (by `reach 2.8.2`, deliberately). If you
+do cap a dev tool at a patch line, write the reason next to it or it reads as drift.
+
+### Another session may be working in the same repo — check before you stage
+
+`git add` of a path you edited will also stage **someone else's** uncommitted edits
+to that same path. "Stage path-scoped" does not protect you here, because the paths
+collide. This happened on 2026-08-18: a parallel session was mid-release in
+`onchain_js`, had committed `release: prepare v0.3.0` two minutes earlier and was
+still editing CHANGELOG.md, README.md and `lib/`; a `git add CHANGELOG.md README.md
+...` swept its work-in-progress into an unrelated commit.
+
+Before staging in any family repo, confirm you are alone in it:
+
+```bash
+git log --since='2 hours ago' --oneline   # commits you did not make
+git status --short                        # files you did not touch
+```
+
+If either shows work that is not yours, **stop and leave the repo to that session** —
+do not commit, do not `reset --hard`, do not "tidy". Recovering a commit that
+captured someone else's WIP is `git reset --soft HEAD~1 && git reset`, which
+restores their files unstaged and intact; anything harder than that risks their work.
+
 ## Publish workflow (per repo)
 
 **Tooling:** `./bin/publish-prep.sh status` shows every repo's local-vs-Hex
