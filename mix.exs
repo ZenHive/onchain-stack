@@ -1,7 +1,7 @@
 defmodule OnchainJs.MixProject do
   use Mix.Project
 
-  @version "0.2.1"
+  @version "0.3.0"
   @source_url "https://github.com/ZenHive/onchain_js"
 
   def project do
@@ -49,7 +49,9 @@ defmodule OnchainJs.MixProject do
       # happens to have landed on a fixed 2.5.0. onchain 0.12.0 also narrows
       # `descripex` to `~> 0.12.0`, matching what this package declares below.
       {:onchain, "~> 0.12"},
-      {:quickbeam, "~> 0.10.4"},
+      # Three-segment on purpose: QuickBEAM is a 0.x native runtime dependency,
+      # so each minor line is reviewed and tested before this cap moves.
+      {:quickbeam, "~> 0.11.0"},
       {:npm, "~> 0.7"},
       # Three-segment on purpose (caps at < 0.13.0): descripex 0.12.0 changed
       # `short_name` in describe/1 output from atom to string at a *minor*

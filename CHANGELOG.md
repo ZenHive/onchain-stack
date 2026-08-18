@@ -4,6 +4,25 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## v0.3.0 — QuickBEAM 0.11 and dependency refresh (2026-08-18)
+
+### Changed
+
+- Raised the QuickBEAM requirement from `~> 0.10.4` to `~> 0.11.0`. The
+  three-segment requirement deliberately caps this native 0.x dependency at
+  the reviewed minor line. QuickBEAM 0.11 adds VM pinning support, Windows
+  precompiled artifacts, safer native-addon initialization and promise deadline
+  handling while retaining the APIs consumed by onchain_js.
+- Refreshed the lock to the published family releases: onchain 0.12.1,
+  cartouche 0.7.0, descripex 0.12.1, hieroglyph 1.6.1 and zen_websocket 0.6.1.
+- Updated castore to 1.0.21, mint_web_socket to 1.0.6, Sobelow to 0.15.0 and
+  Tidewave to 0.8.4. QuickBEAM now brings varint 1.6.0 transitively.
+
+There is no onchain_js public API change. All installable dependencies are
+current; ex_ast remains on 0.12.x because reach 2.8.2 constrains that line.
+
+---
+
 ## v0.2.1 — publishable tarball: 11 MB → ~40 KB, LICENSE added (2026-08-02)
 
 No public API change and no requirement change. Both fixes are to what gets
