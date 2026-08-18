@@ -2,7 +2,7 @@ defmodule OnchainJs.RuntimeSupervisor do
   @moduledoc """
   `DynamicSupervisor` for `OnchainJs.Runtime` processes.
 
-  Started as part of the `OnchainJs.Application` supervision tree under the
+  Started as part of the OnchainJs application supervision tree under the
   registered name `OnchainJs.RuntimeSupervisor`. No runtimes are started by
   default — consumers spawn supervised runtimes on demand:
 
@@ -15,7 +15,7 @@ defmodule OnchainJs.RuntimeSupervisor do
       :ok = DynamicSupervisor.terminate_child(OnchainJs.RuntimeSupervisor, pid)
 
   Strategy is `:one_for_one`: a crashed runtime is not auto-restarted because
-  child specs from `OnchainJs.Runtime.child_spec/1` use `restart: :transient`,
+  the child specs `OnchainJs.Runtime` builds use `restart: :transient`,
   matching the lifetime of the loaded JS bundle.
   """
 

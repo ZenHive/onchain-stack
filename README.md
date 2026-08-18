@@ -36,6 +36,18 @@ end
 
 QuickBEAM embeds QuickJS-NG as a Zig NIF. Each runtime is a GenServer with a persistent JavaScript context. npm_ex manages package installation without Node.js.
 
+## Discovery
+
+The API describes itself, so an agent can learn how to call it without reading the source:
+
+```elixir
+OnchainJs.describe()                  # modules and namespaces
+OnchainJs.describe(:runtime)          # function list with specs
+OnchainJs.describe(:runtime, :eval)   # params, kinds, defaults, return shape
+```
+
+Parameters are tagged by kind: `:value` is something you supply, `:exchange_data` is something you must obtain first (the runtime handle names `start_link/1` as its source). `Descripex.Manifest.build/1` renders the whole surface as JSON and `Descripex.MCP.tools/1` renders it as MCP tool definitions.
+
 ## Testing
 
 ```bash

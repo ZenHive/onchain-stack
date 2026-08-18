@@ -4,7 +4,7 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## v0.3.0 — QuickBEAM 0.11 and dependency refresh (2026-08-18)
+## v0.3.0 — self-describing API, QuickBEAM 0.11 and dependency refresh (2026-08-18)
 
 ### Changed
 
@@ -18,8 +18,47 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 - Updated castore to 1.0.21, mint_web_socket to 1.0.6, Sobelow to 0.15.0 and
   Tidewave to 0.8.4. QuickBEAM now brings varint 1.6.0 transitively.
 
-There is no onchain_js public API change. All installable dependencies are
-current; ex_ast remains on 0.12.x because reach 2.8.2 constrains that line.
+The dependency refresh itself carries no onchain_js public API change. All
+installable dependencies are current; ex_ast remains on 0.12.x because reach
+2.8.2 constrains that line.
+
+### Added — the API is self-describing (`descripex`)
+
+`{:descripex, "~> 0.12.0"}` was declared as a dependency and referenced nowhere
+in `lib/`, while `CLAUDE.md` listed "self-describing APIs via the `api()` macro"
+as part of the architecture. That gap is closed.
+
+`OnchainJs.Runtime` now carries a `use Descripex, namespace: "/runtime"` and an
+`api()` declaration for every public function (`start_link/1`, `eval/2,3`,
+`call/3,4`, `stop/1`, `apply_browser_stubs/1`). The runtime handle is declared
+`kind: :exchange_data` with `source: "start_link/1"` — an agent reading the
+manifest can tell that the handle must be obtained before anything else is
+callable, rather than guessing it is a value to supply.
+
+`OnchainJs` gains `use Descripex.Discoverable`, so the three progressive
+disclosure levels work:
+
+    OnchainJs.describe()                  # modules and namespaces
+    OnchainJs.describe(:runtime)          # function list
+    OnchainJs.describe(:runtime, :eval)   # params, kinds, defaults, returns
+
+`Descripex.Manifest.build/1` and `Descripex.MCP.tools/1` therefore cover this
+package, matching how `onchain` and `onchain_tempo` already expose themselves.
+
+### Added — contract tests so the hints cannot rot
+
+`test/onchain_js/descripex_test.exs` asserts that every documented public
+function of an annotated module has an `api()` declaration, that `:hints` reach
+the BEAM doc chunk for *every* arity, that each param states a kind and a
+description, that each `:exchange_data` param names its `source`, and that the
+manifest/MCP surfaces build. A function added later without an `api()` fails the
+suite instead of silently disappearing from `describe/2`.
+
+Roadmap tasks 1–5 and 7 gained the same requirement as an acceptance criterion,
+so each new module (`Solc`, `Uniswap`, `Merkle`, …) is annotated when it lands
+rather than swept up afterwards.
+
+Coverage moved 27.78% → 35.0% against the 25% floor.
 
 ---
 
