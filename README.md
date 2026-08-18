@@ -12,7 +12,7 @@ Built on [onchain](https://hex.pm/packages/onchain).
 ```elixir
 def deps do
   [
-    {:onchain_tempo, "~> 0.7"}
+    {:onchain_tempo, "~> 0.9"}
   ]
 end
 ```

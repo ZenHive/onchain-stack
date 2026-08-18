@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.9.1] - 2026-08-18
+
+No public API or runtime requirement changed.
+
+### Changed
+
+- Verified the library against the published family updates: onchain 0.12.1,
+  cartouche 0.7.0, descripex 0.12.1, hieroglyph 1.6.1 and zen_websocket 0.6.1.
+- Updated the development lock to Sobelow 0.15.0 and Tidewave 0.8.4. All
+  installable dependencies are current; ex_ast remains on the 0.12.x line
+  required by reach 2.8.2.
+- Corrected the README installation example from the old `~> 0.7` line to
+  `~> 0.9`.
+
+---
+
 ## [0.9.0] - 2026-08-01
 
 `lib/` is untouched: no module, function, arity or return shape changed. Most of
