@@ -1,7 +1,7 @@
 defmodule OnchainAave.MixProject do
   use Mix.Project
 
-  @version "0.3.1"
+  @version "0.3.2"
   @source_url "https://github.com/ZenHive/onchain_aave"
 
   def project do
@@ -57,7 +57,7 @@ defmodule OnchainAave.MixProject do
       {:descripex, "~> 0.12.0"},
 
       # Dev/test tooling
-      {:onchain_evm, "~> 0.4", only: [:dev, :test]},
+      {:onchain_evm, "~> 0.5", only: [:dev, :test]},
       {:stream_data, "~> 1.0", only: [:dev, :test]},
       {:tidewave, "~> 0.5", only: :dev},
       {:bandit, "~> 1.0", only: :dev},
@@ -71,9 +71,8 @@ defmodule OnchainAave.MixProject do
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.39", only: :dev, runtime: false},
 
-      # reach PDG arch/smell gates. `mix reach.check` is only available where
-      # reach is declared; ex_ast is its required dep-level floor.
-      {:ex_ast, "~> 0.12", only: [:dev, :test], runtime: false},
+      # Reach 2.8.2 caps ex_ast at ~> 0.12.0; Reach uses APIs retained by ex_ast 0.13.
+      {:ex_ast, "~> 0.13", override: true, only: [:dev, :test], runtime: false},
       {:reach, "~> 2.8", only: [:dev, :test], runtime: false},
       # Clone detection (vibe_kit baseline) — matches sibling repos.
       {:ex_dna, "~> 1.5", only: [:dev, :test], runtime: false}

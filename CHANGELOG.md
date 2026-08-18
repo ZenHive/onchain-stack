@@ -8,6 +8,26 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## v0.3.2 — dependency refresh (2026-08-17)
+
+No public API or runtime dependency requirement changed.
+
+### Changed
+
+- Resolved `onchain 0.12.1`, `cartouche 0.7.0`, `descripex 0.12.1`,
+  `hieroglyph 1.6.1`, and `zen_websocket 0.6.1` within the existing runtime
+  requirements.
+- Raised the dev/test-only `onchain_evm` requirement from `~> 0.4` to
+  `~> 0.5`. Its REVM 42 engine can change simulation results; the Aave math
+  cross-validation suites remain green against the new engine. This dependency
+  is not part of the published runtime requirements.
+- Updated development tooling: `sobelow` 0.14.1 → 0.15.0, `tidewave`
+  0.8.1 → 0.8.4, and `ex_ast` 0.12.10 → 0.13.1. Reach 2.8.2 still declares
+  `ex_ast ~> 0.12.0`; the direct dev/test override preserves the same clean
+  smell result under 0.13.1.
+
+---
+
 ## v0.3.1 — publishable tarball, no sibling checkout required (2026-08-02)
 
 No public API change and no runtime requirement change: `onchain ~> 0.12`,
