@@ -62,6 +62,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
   @hub_desc "Hub atom: :core, :prime, or :plus"
   @asset_desc "Underlying asset atom, e.g. :weth, :usdc, :pt_susde"
   @account_desc "Account address as 0x hex string or 20-byte binary"
+  @bytes32_size 32
 
   # --- lookup ---
 
@@ -491,6 +492,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
   defp unwrap_address({:error, _} = error), do: error
 
   @spec unwrap_bytes32({:ok, list()} | {:error, term()}) :: {:ok, String.t()} | {:error, term()}
-  defp unwrap_bytes32({:ok, [bin]}) when is_binary(bin) and byte_size(bin) == 32, do: {:ok, Hex.encode(bin)}
+  defp unwrap_bytes32({:ok, [bin]}) when is_binary(bin) and byte_size(bin) == @bytes32_size, do: {:ok, Hex.encode(bin)}
+
   defp unwrap_bytes32({:error, _} = error), do: error
 end

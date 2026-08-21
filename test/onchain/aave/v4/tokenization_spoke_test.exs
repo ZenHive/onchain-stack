@@ -20,6 +20,9 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
   @redeem_hash <<4::256>>
   @permit_hash <<5::256>>
   @domain_hash <<6::256>>
+  @rpc_timeout_ms 2_000
+  @stub_start_timeout_ms 1_000
+  @stub_accept_timeout_ms 5_000
 
   describe "lookup/3" do
     test "resolves configured Tokenization Spokes across Core, Prime, and Plus" do
@@ -137,7 +140,7 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
       {:ok, spoke} = TokenizationSpoke.lookup(:core, :weth)
       {:ok, usdc} = TokenizationSpoke.lookup(:core, :usdc)
       {:ok, prime} = TokenizationSpoke.lookup(:prime, :weth)
-      payloads = selector_payloads()
+      payloads = calldata_payloads()
       {:ok, seen} = Agent.start_link(fn -> [] end)
       url = start_rpc_stub(fn body -> handle_eth_call(body, payloads, seen) end)
 
@@ -149,7 +152,11 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
         spoke: spoke,
         usdc: usdc,
         prime: prime,
-        rpc_opts: [rpc_url: url, timeout: 2_000, req_options: [connect_options: [protocols: [:http1]]]],
+        rpc_opts: [
+          rpc_url: url,
+          timeout: @rpc_timeout_ms,
+          req_options: [connect_options: [protocols: [:http1]]]
+        ],
         seen: seen
       }
     end
@@ -175,6 +182,15 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
       assert {:ok, @max_amount} = TokenizationSpoke.max_mint(spoke, @owner, rpc_opts)
       assert {:ok, @max_amount} = TokenizationSpoke.max_withdraw(spoke, @owner, rpc_opts)
       assert {:ok, @max_amount} = TokenizationSpoke.max_redeem(spoke, @owner, rpc_opts)
+    end
+
+    test "amount reads accept and forward the zero boundary", %{spoke: spoke, rpc_opts: rpc_opts} do
+      assert {:ok, 0} = TokenizationSpoke.convert_to_shares(spoke, 0, rpc_opts)
+      assert {:ok, 0} = TokenizationSpoke.convert_to_assets(spoke, 0, rpc_opts)
+      assert {:ok, 0} = TokenizationSpoke.preview_deposit(spoke, 0, rpc_opts)
+      assert {:ok, 0} = TokenizationSpoke.preview_mint(spoke, 0, rpc_opts)
+      assert {:ok, 0} = TokenizationSpoke.preview_withdraw(spoke, 0, rpc_opts)
+      assert {:ok, 0} = TokenizationSpoke.preview_redeem(spoke, 0, rpc_opts)
     end
 
     test "V4-specific metadata reads decode from a configured Tokenization Spoke", %{
@@ -236,42 +252,48 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
   defp tokenization_assets(:prime), do: ~w(cbbtc gho usdc usdt wbtc weth wsteth)a
   defp tokenization_assets(:plus), do: ~w(gho pt_susde pt_usde susde usdc usde usdt)a
 
-  defp selector_payloads do
+  defp calldata_payloads do
     {:ok, owner_bin} = Onchain.Address.validate(@owner)
     {:ok, weth_bin} = Onchain.Address.validate("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
     {:ok, hub_bin} = Onchain.Address.validate(Contracts.address!(:v4_core_hub))
 
     %{
-      selector("asset()", []) => encode("(address)", [{weth_bin}]),
-      selector("totalAssets()", []) => encode("(uint256)", [{@total_assets}]),
-      selector("totalSupply()", []) => encode("(uint256)", [{@total_supply}]),
-      selector("balanceOf(address)", [owner_bin]) => encode("(uint256)", [{@balance}]),
-      selector("convertToShares(uint256)", [@assets]) => encode("(uint256)", [{@shares}]),
-      selector("convertToAssets(uint256)", [@shares]) => encode("(uint256)", [{@assets}]),
-      selector("previewDeposit(uint256)", [@assets]) => encode("(uint256)", [{@shares}]),
-      selector("previewMint(uint256)", [@shares]) => encode("(uint256)", [{@assets}]),
-      selector("previewWithdraw(uint256)", [@assets]) => encode("(uint256)", [{@shares}]),
-      selector("previewRedeem(uint256)", [@shares]) => encode("(uint256)", [{@assets}]),
-      selector("maxDeposit(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
-      selector("maxMint(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
-      selector("maxWithdraw(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
-      selector("maxRedeem(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
-      selector("hub()", []) => encode("(address)", [{hub_bin}]),
-      selector("assetId()", []) => encode("(uint256)", [{@asset_id}]),
-      selector("MAX_ALLOWED_SPOKE_CAP()", []) => encode("(uint256)", [{@spoke_cap}]),
-      selector("PERMIT_NONCE_NAMESPACE()", []) => encode("(uint256)", [{@permit_ns}]),
-      selector("DEPOSIT_TYPEHASH()", []) => encode("(bytes32)", [{@deposit_hash}]),
-      selector("MINT_TYPEHASH()", []) => encode("(bytes32)", [{@mint_hash}]),
-      selector("WITHDRAW_TYPEHASH()", []) => encode("(bytes32)", [{@withdraw_hash}]),
-      selector("REDEEM_TYPEHASH()", []) => encode("(bytes32)", [{@redeem_hash}]),
-      selector("PERMIT_TYPEHASH()", []) => encode("(bytes32)", [{@permit_hash}]),
-      selector("DOMAIN_SEPARATOR()", []) => encode("(bytes32)", [{@domain_hash}])
+      calldata("asset()", []) => encode("(address)", [{weth_bin}]),
+      calldata("totalAssets()", []) => encode("(uint256)", [{@total_assets}]),
+      calldata("totalSupply()", []) => encode("(uint256)", [{@total_supply}]),
+      calldata("balanceOf(address)", [owner_bin]) => encode("(uint256)", [{@balance}]),
+      calldata("convertToShares(uint256)", [@assets]) => encode("(uint256)", [{@shares}]),
+      calldata("convertToAssets(uint256)", [@shares]) => encode("(uint256)", [{@assets}]),
+      calldata("previewDeposit(uint256)", [@assets]) => encode("(uint256)", [{@shares}]),
+      calldata("previewMint(uint256)", [@shares]) => encode("(uint256)", [{@assets}]),
+      calldata("previewWithdraw(uint256)", [@assets]) => encode("(uint256)", [{@shares}]),
+      calldata("previewRedeem(uint256)", [@shares]) => encode("(uint256)", [{@assets}]),
+      calldata("convertToShares(uint256)", [0]) => encode("(uint256)", [{0}]),
+      calldata("convertToAssets(uint256)", [0]) => encode("(uint256)", [{0}]),
+      calldata("previewDeposit(uint256)", [0]) => encode("(uint256)", [{0}]),
+      calldata("previewMint(uint256)", [0]) => encode("(uint256)", [{0}]),
+      calldata("previewWithdraw(uint256)", [0]) => encode("(uint256)", [{0}]),
+      calldata("previewRedeem(uint256)", [0]) => encode("(uint256)", [{0}]),
+      calldata("maxDeposit(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
+      calldata("maxMint(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
+      calldata("maxWithdraw(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
+      calldata("maxRedeem(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
+      calldata("hub()", []) => encode("(address)", [{hub_bin}]),
+      calldata("assetId()", []) => encode("(uint256)", [{@asset_id}]),
+      calldata("MAX_ALLOWED_SPOKE_CAP()", []) => encode("(uint256)", [{@spoke_cap}]),
+      calldata("PERMIT_NONCE_NAMESPACE()", []) => encode("(uint256)", [{@permit_ns}]),
+      calldata("DEPOSIT_TYPEHASH()", []) => encode("(bytes32)", [{@deposit_hash}]),
+      calldata("MINT_TYPEHASH()", []) => encode("(bytes32)", [{@mint_hash}]),
+      calldata("WITHDRAW_TYPEHASH()", []) => encode("(bytes32)", [{@withdraw_hash}]),
+      calldata("REDEEM_TYPEHASH()", []) => encode("(bytes32)", [{@redeem_hash}]),
+      calldata("PERMIT_TYPEHASH()", []) => encode("(bytes32)", [{@permit_hash}]),
+      calldata("DOMAIN_SEPARATOR()", []) => encode("(bytes32)", [{@domain_hash}])
     }
   end
 
-  defp selector(signature, params) do
+  defp calldata(signature, params) do
     {:ok, hex} = Onchain.ABI.encode_call(signature, params)
-    String.slice(hex, 0, 10)
+    String.downcase(hex)
   end
 
   defp encode(types, data) do
@@ -280,10 +302,10 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
 
   defp handle_eth_call(%{"method" => "eth_call", "params" => [%{"data" => data, "to" => to} | _]}, payloads, seen) do
     Agent.update(seen, &[to | &1])
-    sel = String.slice(String.downcase(data), 0, 10)
+    calldata = String.downcase(data)
 
-    Map.get_lazy(payloads, sel, fn ->
-      flunk("stub has no payload for selector #{sel} (data=#{data})")
+    Map.get_lazy(payloads, calldata, fn ->
+      flunk("stub has no payload for calldata #{data}")
     end)
   end
 
@@ -303,7 +325,7 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
     receive do
       {:stub_ready, ^pid} -> :ok
     after
-      1_000 -> flunk("JSON-RPC stub failed to start")
+      @stub_start_timeout_ms -> flunk("JSON-RPC stub failed to start")
     end
 
     on_exit(fn ->
@@ -315,7 +337,7 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
   end
 
   defp stub_loop(listen, handler) do
-    case :gen_tcp.accept(listen, 5_000) do
+    case :gen_tcp.accept(listen, @stub_accept_timeout_ms) do
       {:ok, sock} ->
         serve_one(sock, handler)
         stub_loop(listen, handler)
