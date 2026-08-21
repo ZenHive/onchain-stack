@@ -4,6 +4,7 @@ defmodule Onchain.Aave.V4.HubTest do
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.V4.Hub
   alias Onchain.Aave.V4.Hub.Asset
+  alias Onchain.Aave.V4.Hub.AssetConfig
   alias Onchain.Aave.V4.Hub.SpokeConfig
   alias Onchain.Aave.V4.Hub.SpokeData
 
@@ -15,8 +16,11 @@ defmodule Onchain.Aave.V4.HubTest do
   @asset_tuple {1_000, 10, 6, 800, 50, -3, 200, 15, 5, 1_000_000, 50_000, 1_700_000_000, <<1::160>>, <<2::160>>,
                 <<3::160>>, <<4::160>>, 7}
 
+  @asset_config_tuple {<<4::160>>, 5, <<2::160>>, <<3::160>>}
   @spoke_data_tuple {200, 15, -3, 800, 1_000_000, 500_000, 2_000, true, false, 7}
   @spoke_config_tuple {1_000_000, 500_000, 2_000, true, false}
+  @spoke_premium_ray 7_000_000_000_000_000_000_000_000_000
+  @asset_premium_ray 9_000_000_000_000_000_000_000_000_000
 
   describe "hub_address/2" do
     test "resolves all three configured Hubs to distinct checksummed addresses" do
@@ -56,9 +60,12 @@ defmodule Onchain.Aave.V4.HubTest do
           &Hub.get_spoke(:core, @asset_id, &1),
           &Hub.get_spoke_config(:core, @asset_id, &1),
           &Hub.get_spoke_added_assets(:core, @asset_id, &1),
+          &Hub.get_spoke_added_shares(:core, @asset_id, &1),
           &Hub.get_spoke_drawn_shares(:core, @asset_id, &1),
           &Hub.get_spoke_owed(:core, @asset_id, &1),
           &Hub.get_spoke_total_owed(:core, @asset_id, &1),
+          &Hub.get_spoke_premium_ray(:core, @asset_id, &1),
+          &Hub.get_spoke_premium_data(:core, @asset_id, &1),
           &Hub.get_spoke_deficit_ray(:core, @asset_id, &1)
         ],
         fn fun ->
@@ -69,11 +76,36 @@ defmodule Onchain.Aave.V4.HubTest do
 
     test "get_asset_id/3 rejects an invalid underlying address" do
       assert {:error, {:invalid_address, "bad"}} = Hub.get_asset_id(:core, "bad")
+      assert {:error, {:invalid_address, "bad"}} = Hub.underlying_listed?(:core, "bad")
     end
 
     test "reads fail unknown_hub before RPC" do
-      assert {:error, {:unknown_hub, :bogus}} = Hub.get_asset_count(:bogus)
-      assert {:error, {:unknown_hub, :bogus}} = Hub.get_spoke_count(:bogus, @asset_id)
+      reads = [
+        fn -> Hub.get_asset_count(:bogus) end,
+        fn -> Hub.get_spoke_count(:bogus, @asset_id) end,
+        fn -> Hub.get_spoke_address(:bogus, @asset_id, 0) end,
+        fn -> Hub.get_asset(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_config(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_accrued_fees(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_swept(:bogus, @asset_id) end,
+        fn -> Hub.get_added_assets(:bogus, @asset_id) end,
+        fn -> Hub.get_added_shares(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_liquidity(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_owed(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_total_owed(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_premium_ray(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_drawn_shares(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_premium_data(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_deficit_ray(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_drawn_rate(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_drawn_index(:bogus, @asset_id) end,
+        fn -> Hub.get_asset_id(:bogus, @usdc) end,
+        fn -> Hub.get_asset_underlying_and_decimals(:bogus, @asset_id) end
+      ]
+
+      Enum.each(reads, fn read ->
+        assert {:error, {:unknown_hub, :bogus}} = read.()
+      end)
     end
 
     test "reads fail on a V3-only network" do
@@ -105,6 +137,15 @@ defmodule Onchain.Aave.V4.HubTest do
       assert data.active
       refute data.halted
       assert data.premium_offset_ray == -3
+    end
+
+    test "AssetConfig.from_raw/1 checksums configuration addresses" do
+      config = AssetConfig.from_raw(@asset_config_tuple)
+
+      assert config.fee_receiver == Onchain.Address.checksum!(<<4::160>>)
+      assert config.liquidity_fee == 5
+      assert config.ir_strategy == Onchain.Address.checksum!(<<2::160>>)
+      assert config.reinvestment_controller == Onchain.Address.checksum!(<<3::160>>)
     end
 
     test "SpokeConfig.from_raw/1 keeps caps and flags" do
@@ -146,19 +187,33 @@ defmodule Onchain.Aave.V4.HubTest do
                  Hub.get_spoke_config(hub, @asset_id, spoke, rpc_opts)
 
         assert {:ok, 800} = Hub.get_spoke_added_assets(hub, @asset_id, spoke, rpc_opts)
+        assert {:ok, 790} = Hub.get_spoke_added_shares(hub, @asset_id, spoke, rpc_opts)
         assert {:ok, 200} = Hub.get_spoke_drawn_shares(hub, @asset_id, spoke, rpc_opts)
         assert {:ok, {100, 7}} = Hub.get_spoke_owed(hub, @asset_id, spoke, rpc_opts)
         assert {:ok, 107} = Hub.get_spoke_total_owed(hub, @asset_id, spoke, rpc_opts)
+        assert {:ok, @spoke_premium_ray} = Hub.get_spoke_premium_ray(hub, @asset_id, spoke, rpc_opts)
+
+        assert {:ok, {15, -3}} = Hub.get_spoke_premium_data(hub, @asset_id, spoke, rpc_opts)
         assert {:ok, 7} = Hub.get_spoke_deficit_ray(hub, @asset_id, spoke, rpc_opts)
 
+        assert {:ok, true} = Hub.underlying_listed?(hub, @usdc, rpc_opts)
         assert {:ok, 5} = Hub.get_asset_count(hub, rpc_opts)
 
         assert {:ok, %Asset{liquidity: 1_000, drawn_rate: 50_000, premium_offset_ray: -3}} =
                  Hub.get_asset(hub, @asset_id, rpc_opts)
 
+        assert {:ok, %AssetConfig{liquidity_fee: 5}} = Hub.get_asset_config(hub, @asset_id, rpc_opts)
+        assert {:ok, 8} = Hub.get_asset_accrued_fees(hub, @asset_id, rpc_opts)
+        assert {:ok, 50} = Hub.get_asset_swept(hub, @asset_id, rpc_opts)
+        assert {:ok, 900} = Hub.get_added_assets(hub, @asset_id, rpc_opts)
+        assert {:ok, 880} = Hub.get_added_shares(hub, @asset_id, rpc_opts)
         assert {:ok, 1_000} = Hub.get_asset_liquidity(hub, @asset_id, rpc_opts)
         assert {:ok, {100, 7}} = Hub.get_asset_owed(hub, @asset_id, rpc_opts)
         assert {:ok, 107} = Hub.get_asset_total_owed(hub, @asset_id, rpc_opts)
+        assert {:ok, @asset_premium_ray} = Hub.get_asset_premium_ray(hub, @asset_id, rpc_opts)
+
+        assert {:ok, 200} = Hub.get_asset_drawn_shares(hub, @asset_id, rpc_opts)
+        assert {:ok, {15, -3}} = Hub.get_asset_premium_data(hub, @asset_id, rpc_opts)
         assert {:ok, 7} = Hub.get_asset_deficit_ray(hub, @asset_id, rpc_opts)
         assert {:ok, 50_000} = Hub.get_asset_drawn_rate(hub, @asset_id, rpc_opts)
         assert {:ok, 1_000_000} = Hub.get_asset_drawn_index(hub, @asset_id, rpc_opts)
@@ -202,23 +257,35 @@ defmodule Onchain.Aave.V4.HubTest do
       selector("isSpokeListed(uint256,address)", [0, spoke_bin]) => encode("(bool)", [{true}]),
       selector("getSpokeAddress(uint256,uint256)", [0, 0]) => encode("(address)", [{spoke_bin}]),
       selector("getSpoke(uint256,address)", [0, spoke_bin]) =>
-        encode("((uint256,uint256,int256,uint256,uint256,uint256,uint256,bool,bool,uint256))", [{@spoke_data_tuple}]),
+        encode("((uint120,uint120,int200,uint120,uint40,uint40,uint24,bool,bool,uint200))", [{@spoke_data_tuple}]),
       selector("getSpokeConfig(uint256,address)", [0, spoke_bin]) =>
-        encode("((uint256,uint256,uint256,bool,bool))", [{@spoke_config_tuple}]),
+        encode("((uint40,uint40,uint24,bool,bool))", [{@spoke_config_tuple}]),
       selector("getSpokeAddedAssets(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{800}]),
+      selector("getSpokeAddedShares(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{790}]),
       selector("getSpokeDrawnShares(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{200}]),
       selector("getSpokeOwed(uint256,address)", [0, spoke_bin]) => encode("(uint256,uint256)", [{100, 7}]),
       selector("getSpokeTotalOwed(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{107}]),
+      selector("getSpokePremiumRay(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{@spoke_premium_ray}]),
+      selector("getSpokePremiumData(uint256,address)", [0, spoke_bin]) => encode("(uint256,int256)", [{15, -3}]),
       selector("getSpokeDeficitRay(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{7}]),
+      selector("isUnderlyingListed(address)", [usdc_bin]) => encode("(bool)", [{true}]),
       selector("getAssetCount()", []) => encode("(uint256)", [{5}]),
       selector("getAsset(uint256)", [0]) =>
         encode(
-          "((uint256,uint256,uint256,uint256,uint256,int256,uint256,uint256,uint256,uint256,uint256,uint256,address,address,address,address,uint256))",
+          "((uint120,uint120,uint8,uint120,uint120,int200,uint120,uint120,uint16,uint120,uint96,uint40,address,address,address,address,uint200))",
           [{@asset_tuple}]
         ),
+      selector("getAssetConfig(uint256)", [0]) => encode("((address,uint16,address,address))", [{@asset_config_tuple}]),
+      selector("getAssetAccruedFees(uint256)", [0]) => encode("(uint256)", [{8}]),
+      selector("getAssetSwept(uint256)", [0]) => encode("(uint256)", [{50}]),
+      selector("getAddedAssets(uint256)", [0]) => encode("(uint256)", [{900}]),
+      selector("getAddedShares(uint256)", [0]) => encode("(uint256)", [{880}]),
       selector("getAssetLiquidity(uint256)", [0]) => encode("(uint256)", [{1_000}]),
       selector("getAssetOwed(uint256)", [0]) => encode("(uint256,uint256)", [{100, 7}]),
       selector("getAssetTotalOwed(uint256)", [0]) => encode("(uint256)", [{107}]),
+      selector("getAssetPremiumRay(uint256)", [0]) => encode("(uint256)", [{@asset_premium_ray}]),
+      selector("getAssetDrawnShares(uint256)", [0]) => encode("(uint256)", [{200}]),
+      selector("getAssetPremiumData(uint256)", [0]) => encode("(uint256,int256)", [{15, -3}]),
       selector("getAssetDeficitRay(uint256)", [0]) => encode("(uint256)", [{7}]),
       selector("getAssetDrawnRate(uint256)", [0]) => encode("(uint256)", [{50_000}]),
       selector("getAssetDrawnIndex(uint256)", [0]) => encode("(uint256)", [{1_000_000}]),

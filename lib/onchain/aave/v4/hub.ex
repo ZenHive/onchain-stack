@@ -30,16 +30,28 @@ defmodule Onchain.Aave.V4.Hub do
   | `get_spoke/4` | Credit-line inventory + caps (`SpokeData`) |
   | `get_spoke_config/4` | Caps / threshold / active / halted |
   | `get_spoke_added_assets/4` | Assets added by a Spoke |
+  | `get_spoke_added_shares/4` | Shares added by a Spoke |
   | `get_spoke_drawn_shares/4` | Drawn shares (credit line drawn) |
   | `get_spoke_owed/4` | Drawn + premium owed by a Spoke |
   | `get_spoke_total_owed/4` | Total owed by a Spoke |
+  | `get_spoke_premium_ray/4` | Premium owed by a Spoke (RAY) |
+  | `get_spoke_premium_data/4` | Premium shares + offset for a Spoke |
   | `get_spoke_deficit_ray/4` | Spoke deficit (RAY) |
+  | `underlying_listed?/3` | Whether an underlying is listed |
   | `get_asset_count/2` | Listed assets on the Hub |
   | `get_asset/3` | Full `Asset` (liquidity, rates, shares) |
+  | `get_asset_config/3` | Fee receiver, fee, strategy, controller |
+  | `get_added_assets/3` | Total assets added across Spokes |
+  | `get_added_shares/3` | Total shares added across Spokes |
   | `get_asset_liquidity/3` | Available liquidity |
   | `get_asset_owed/3` | Hub-wide drawn + premium owed |
   | `get_asset_total_owed/3` | Hub-wide total owed |
+  | `get_asset_premium_ray/3` | Hub-wide premium owed (RAY) |
+  | `get_asset_drawn_shares/3` | Hub-wide drawn shares |
+  | `get_asset_premium_data/3` | Hub-wide premium shares + offset |
   | `get_asset_deficit_ray/3` | Hub-wide deficit (RAY) |
+  | `get_asset_accrued_fees/3` | Accrued fees not yet minted |
+  | `get_asset_swept/3` | Liquidity held by the reinvestment controller |
   | `get_asset_drawn_rate/3` | Current drawn rate (RAY) |
   | `get_asset_drawn_index/3` | Current drawn index (RAY) |
   | `get_asset_id/3` | Asset id for an underlying |
@@ -51,6 +63,7 @@ defmodule Onchain.Aave.V4.Hub do
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.Opts
   alias Onchain.Aave.V4.Hub.Asset
+  alias Onchain.Aave.V4.Hub.AssetConfig
   alias Onchain.Aave.V4.Hub.SpokeConfig
   alias Onchain.Aave.V4.Hub.SpokeData
   alias Onchain.Address
@@ -60,9 +73,10 @@ defmodule Onchain.Aave.V4.Hub do
 
   @hub_contracts %{core: :v4_core_hub, prime: :v4_prime_hub, plus: :v4_plus_hub}
 
-  @asset_response "((uint256,uint256,uint256,uint256,uint256,int256,uint256,uint256,uint256,uint256,uint256,uint256,address,address,address,address,uint256))"
-  @spoke_data_response "((uint256,uint256,int256,uint256,uint256,uint256,uint256,bool,bool,uint256))"
-  @spoke_config_response "((uint256,uint256,uint256,bool,bool))"
+  @asset_response "((uint120,uint120,uint8,uint120,uint120,int200,uint120,uint120,uint16,uint120,uint96,uint40,address,address,address,address,uint200))"
+  @asset_config_response "((address,uint16,address,address))"
+  @spoke_data_response "((uint120,uint120,int200,uint120,uint40,uint40,uint24,bool,bool,uint200))"
+  @spoke_config_response "((uint40,uint40,uint24,bool,bool))"
 
   @opts_desc "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
   @hub_desc "Hub atom: :core, :prime, or :plus"
@@ -207,6 +221,24 @@ defmodule Onchain.Aave.V4.Hub do
     call_spoke_uint(hub, "getSpokeAddedAssets(uint256,address)", asset_id, spoke, opts)
   end
 
+  # --- get_spoke_added_shares ---
+
+  api(:get_spoke_added_shares, "Shares added to the Hub by a Spoke.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      spoke: [kind: :value, description: @spoke_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Added shares"}
+  )
+
+  @spec get_spoke_added_shares(hub(), non_neg_integer(), String.t() | binary(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def get_spoke_added_shares(hub, asset_id, spoke, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
+    call_spoke_uint(hub, "getSpokeAddedShares(uint256,address)", asset_id, spoke, opts)
+  end
+
   # --- get_spoke_drawn_shares ---
 
   api(:get_spoke_drawn_shares, "Drawn shares of an asset for a Spoke.",
@@ -266,6 +298,47 @@ defmodule Onchain.Aave.V4.Hub do
     call_spoke_uint(hub, "getSpokeTotalOwed(uint256,address)", asset_id, spoke, opts)
   end
 
+  # --- get_spoke_premium_ray ---
+
+  api(:get_spoke_premium_ray, "Premium a Spoke owes the Hub, RAY-scaled.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      spoke: [kind: :value, description: @spoke_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Premium owed, RAY-scaled"}
+  )
+
+  @spec get_spoke_premium_ray(hub(), non_neg_integer(), String.t() | binary(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def get_spoke_premium_ray(hub, asset_id, spoke, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
+    call_spoke_uint(hub, "getSpokePremiumRay(uint256,address)", asset_id, spoke, opts)
+  end
+
+  # --- get_spoke_premium_data ---
+
+  api(:get_spoke_premium_data, "Premium shares and offset for a Spoke.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      spoke: [kind: :value, description: @spoke_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{
+      type: "{:ok, {non_neg_integer(), integer()}} | {:error, term()}",
+      description: "{premium shares, premium offset RAY}"
+    }
+  )
+
+  @spec get_spoke_premium_data(hub(), non_neg_integer(), String.t() | binary(), keyword()) ::
+          {:ok, {non_neg_integer(), integer()}} | {:error, term()}
+  def get_spoke_premium_data(hub, asset_id, spoke, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
+    hub
+    |> call_spoke("getSpokePremiumData(uint256,address)", "(uint256,int256)", asset_id, spoke, opts)
+    |> unwrap_premium_data()
+  end
+
   # --- get_spoke_deficit_ray ---
 
   api(:get_spoke_deficit_ray, "Spoke deficit for an asset, RAY-scaled.",
@@ -282,6 +355,27 @@ defmodule Onchain.Aave.V4.Hub do
           {:ok, non_neg_integer()} | {:error, term()}
   def get_spoke_deficit_ray(hub, asset_id, spoke, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
     call_spoke_uint(hub, "getSpokeDeficitRay(uint256,address)", asset_id, spoke, opts)
+  end
+
+  # --- underlying_listed? ---
+
+  api(:underlying_listed?, "Whether an underlying token is listed on the Hub.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      underlying: [kind: :value, description: "Underlying asset address as 0x hex or 20-byte binary"],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, boolean()} | {:error, term()}", description: "true if the underlying is listed"}
+  )
+
+  @spec underlying_listed?(hub(), String.t() | binary(), keyword()) ::
+          {:ok, boolean()} | {:error, term()}
+  def underlying_listed?(hub, underlying, opts \\ []) do
+    with {:ok, underlying_bin} <- Address.validate(underlying) do
+      hub
+      |> call_hub("isUnderlyingListed(address)", [underlying_bin], "(bool)", opts)
+      |> unwrap_bool()
+    end
   end
 
   # --- get_asset_count ---
@@ -315,6 +409,93 @@ defmodule Onchain.Aave.V4.Hub do
     hub
     |> call_hub("getAsset(uint256)", [asset_id], @asset_response, opts)
     |> unwrap_asset()
+  end
+
+  # --- get_asset_config ---
+
+  api(:get_asset_config, "Hub asset fee and interest-rate configuration.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, AssetConfig.t()} | {:error, term()}", description: "AssetConfig struct"}
+  )
+
+  @spec get_asset_config(hub(), non_neg_integer(), keyword()) ::
+          {:ok, AssetConfig.t()} | {:error, term()}
+  def get_asset_config(hub, asset_id, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
+    hub
+    |> call_hub("getAssetConfig(uint256)", [asset_id], @asset_config_response, opts)
+    |> unwrap_asset_config()
+  end
+
+  # --- get_asset_accrued_fees ---
+
+  api(:get_asset_accrued_fees, "Accrued asset fees not yet minted as shares.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Accrued fees in asset units"}
+  )
+
+  @spec get_asset_accrued_fees(hub(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def get_asset_accrued_fees(hub, asset_id, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
+    call_uint(hub, "getAssetAccruedFees(uint256)", [asset_id], opts)
+  end
+
+  # --- get_asset_swept ---
+
+  api(:get_asset_swept, "Liquidity held by the asset's reinvestment controller.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Swept liquidity in asset units"}
+  )
+
+  @spec get_asset_swept(hub(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def get_asset_swept(hub, asset_id, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
+    call_uint(hub, "getAssetSwept(uint256)", [asset_id], opts)
+  end
+
+  # --- get_added_assets ---
+
+  api(:get_added_assets, "Total assets added to the Hub across all Spokes.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Added assets in token units"}
+  )
+
+  @spec get_added_assets(hub(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def get_added_assets(hub, asset_id, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
+    call_uint(hub, "getAddedAssets(uint256)", [asset_id], opts)
+  end
+
+  # --- get_added_shares ---
+
+  api(:get_added_shares, "Total added shares on the Hub across all Spokes.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Added shares"}
+  )
+
+  @spec get_added_shares(hub(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def get_added_shares(hub, asset_id, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
+    call_uint(hub, "getAddedShares(uint256)", [asset_id], opts)
   end
 
   # --- get_asset_liquidity ---
@@ -371,6 +552,62 @@ defmodule Onchain.Aave.V4.Hub do
           {:ok, non_neg_integer()} | {:error, term()}
   def get_asset_total_owed(hub, asset_id, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
     call_uint(hub, "getAssetTotalOwed(uint256)", [asset_id], opts)
+  end
+
+  # --- get_asset_premium_ray ---
+
+  api(:get_asset_premium_ray, "Hub-wide premium owed for an asset, RAY-scaled.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Premium owed, RAY-scaled"}
+  )
+
+  @spec get_asset_premium_ray(hub(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def get_asset_premium_ray(hub, asset_id, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
+    call_uint(hub, "getAssetPremiumRay(uint256)", [asset_id], opts)
+  end
+
+  # --- get_asset_drawn_shares ---
+
+  api(:get_asset_drawn_shares, "Hub-wide drawn shares for an asset.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Drawn shares"}
+  )
+
+  @spec get_asset_drawn_shares(hub(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def get_asset_drawn_shares(hub, asset_id, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
+    call_uint(hub, "getAssetDrawnShares(uint256)", [asset_id], opts)
+  end
+
+  # --- get_asset_premium_data ---
+
+  api(:get_asset_premium_data, "Hub-wide premium shares and offset for an asset.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{
+      type: "{:ok, {non_neg_integer(), integer()}} | {:error, term()}",
+      description: "{premium shares, premium offset RAY}"
+    }
+  )
+
+  @spec get_asset_premium_data(hub(), non_neg_integer(), keyword()) ::
+          {:ok, {non_neg_integer(), integer()}} | {:error, term()}
+  def get_asset_premium_data(hub, asset_id, opts \\ []) when is_integer(asset_id) and asset_id >= 0 do
+    hub
+    |> call_hub("getAssetPremiumData(uint256)", [asset_id], "(uint256,int256)", opts)
+    |> unwrap_premium_data()
   end
 
   # --- get_asset_deficit_ray ---
@@ -518,9 +755,21 @@ defmodule Onchain.Aave.V4.Hub do
   defp unwrap_pair({:ok, [a, b]}) when is_integer(a) and is_integer(b), do: {:ok, {a, b}}
   defp unwrap_pair({:error, _} = error), do: error
 
+  @spec unwrap_premium_data({:ok, list()} | {:error, term()}) ::
+          {:ok, {non_neg_integer(), integer()}} | {:error, term()}
+  defp unwrap_premium_data({:ok, [shares, offset]}) when is_integer(shares) and shares >= 0 and is_integer(offset),
+    do: {:ok, {shares, offset}}
+
+  defp unwrap_premium_data({:error, _} = error), do: error
+
   @spec unwrap_asset({:ok, list()} | {:error, term()}) :: {:ok, Asset.t()} | {:error, term()}
   defp unwrap_asset({:ok, [fields]}) when is_tuple(fields), do: {:ok, Asset.from_raw(fields)}
   defp unwrap_asset({:error, _} = error), do: error
+
+  @spec unwrap_asset_config({:ok, list()} | {:error, term()}) ::
+          {:ok, AssetConfig.t()} | {:error, term()}
+  defp unwrap_asset_config({:ok, [fields]}) when is_tuple(fields), do: {:ok, AssetConfig.from_raw(fields)}
+  defp unwrap_asset_config({:error, _} = error), do: error
 
   @spec unwrap_spoke_data({:ok, list()} | {:error, term()}) :: {:ok, SpokeData.t()} | {:error, term()}
   defp unwrap_spoke_data({:ok, [fields]}) when is_tuple(fields), do: {:ok, SpokeData.from_raw(fields)}
@@ -621,6 +870,48 @@ defmodule Onchain.Aave.V4.Hub.Asset do
       reinvestment_controller: Address.checksum!(reinvestment),
       fee_receiver: Address.checksum!(fee_receiver),
       deficit_ray: deficit_ray
+    }
+  end
+end
+
+defmodule Onchain.Aave.V4.Hub.AssetConfig do
+  @moduledoc """
+  Typed `IHub.AssetConfig` — fee and interest-rate configuration for a Hub asset.
+  """
+
+  use Descripex, namespace: "/aave/v4/hub/asset-config"
+
+  alias Onchain.Address
+
+  @enforce_keys [:fee_receiver, :liquidity_fee, :ir_strategy, :reinvestment_controller]
+
+  defstruct @enforce_keys
+
+  @type t :: %__MODULE__{
+          fee_receiver: String.t(),
+          liquidity_fee: non_neg_integer(),
+          ir_strategy: String.t(),
+          reinvestment_controller: String.t()
+        }
+
+  api(:from_raw, "Convert a decoded IHub.AssetConfig tuple into a typed struct.",
+    params: [
+      raw: [
+        kind: :exchange_data,
+        description: "4-element tuple from getAssetConfig",
+        source: "Onchain.Aave.V4.Hub.get_asset_config/3"
+      ]
+    ],
+    returns: %{type: :struct, description: "%Onchain.Aave.V4.Hub.AssetConfig{}"}
+  )
+
+  @spec from_raw(tuple()) :: t()
+  def from_raw({fee_receiver, liquidity_fee, ir_strategy, reinvestment_controller}) do
+    %__MODULE__{
+      fee_receiver: Address.checksum!(fee_receiver),
+      liquidity_fee: liquidity_fee,
+      ir_strategy: Address.checksum!(ir_strategy),
+      reinvestment_controller: Address.checksum!(reinvestment_controller)
     }
   end
 end
