@@ -656,6 +656,7 @@ lib/onchain/aave/
   oracle.ex                   # getAssetPrice + Chainlink
   ui_pool_data_provider.ex    # bulk reserve/user data
   faucet.ex                   # testnet faucet interactions
+  v4/hub.ex                   # V4 Hub reads (member Spokes, credit lines, rate environment)
   types/
     user_account_data.ex
     aggregated_reserve_data.ex

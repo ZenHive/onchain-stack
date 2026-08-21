@@ -4,6 +4,6 @@ defmodule OnchainAaveTest do
   test "discoverable modules are listed" do
     modules = OnchainAave.describe()
     assert is_list(modules)
-    assert length(modules) == 11
+    assert length(modules) == 12
   end
 end
