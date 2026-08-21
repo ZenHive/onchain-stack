@@ -21,12 +21,24 @@ defmodule OnchainAave do
       Onchain.Aave.DebtToken,
       Onchain.Aave.UiPoolDataProvider,
       Onchain.Aave.Faucet,
+      Onchain.Aave.Math.V4,
       Onchain.Aave.V4.Hub,
       Onchain.Aave.V4.Oracle,
+      Onchain.Aave.V4.Spoke,
       Onchain.Aave.V4.TokenizationSpoke,
       Onchain.Aave.Types.UserAccountData,
       Onchain.Aave.Types.AggregatedReserveData,
       Onchain.Aave.Types.BaseCurrencyInfo,
-      Onchain.Aave.Types.UserReserveData
+      Onchain.Aave.Types.UserReserveData,
+      Onchain.Aave.V4.Hub.Asset,
+      Onchain.Aave.V4.Hub.AssetConfig,
+      Onchain.Aave.V4.Hub.SpokeConfig,
+      Onchain.Aave.V4.Hub.SpokeData,
+      Onchain.Aave.V4.Types.SpokeDynamicReserveConfig,
+      Onchain.Aave.V4.Types.SpokeLiquidationConfig,
+      Onchain.Aave.V4.Types.SpokeReserveConfig,
+      Onchain.Aave.V4.Types.SpokeReserveData,
+      Onchain.Aave.V4.Types.SpokeUserData,
+      Onchain.Aave.V4.Types.SpokeUserPosition
     ]
 end
