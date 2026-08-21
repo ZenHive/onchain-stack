@@ -450,21 +450,22 @@ started_at = "2026-08-21"
 id = 49
 phase = 5
 bundle = "v4_support"
-status = "pending"
+status = "in_progress"
 title = "Implement Onchain.Aave.V4.Oracle wrapper (Spoke-scoped)"
 scores = { d = 3, b = 5, u = 5 }
 markers = ["parallel"]
-assignee = "grok"
-model = "grok-4.6"
-module = "Onchain.Aave.V4.Oracle"
 depends_on = [45, 46]
+acceptance_criteria = ["Callers can perform every Task 46-selected Spoke-scoped oracle read through the V4 wrapper, with unit tests covering results and errors."]
 files_to_modify = ["lib/onchain/aave/v4/oracle.ex", "test/onchain/aave/v4/oracle_test.exs"]
 touches = ["lib/onchain/aave/v4/oracle.ex", "test/onchain/aave/v4/oracle_test.exs", "V4_SCOPING.md"]
-created_at = "2026-04-20"
+assignee = "grok"
+module = "Onchain.Aave.V4.Oracle"
+model = "grok-4.6"
 body = """
 Onchain.Aave.V4.Oracle takes a Spoke address (not a network) because V4 oracles are Spoke-scoped. Mirror the V3 Oracle function shape where possible: get_asset_price/2, get_asset_prices/2, get_source_of_asset/2, get_base_currency*, get_fallback_oracle/1, plus direct Chainlink aggregator reads. Unit tests.
 """
-acceptance_criteria = ["Callers can perform every Task 46-selected Spoke-scoped oracle read through the V4 wrapper, with unit tests covering results and errors."]
+created_at = "2026-04-20"
+started_at = "2026-08-21"
 
 [[task]]
 id = 50
