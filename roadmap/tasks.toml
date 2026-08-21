@@ -429,21 +429,22 @@ shipped_in = "fc09e96bc9cd2dc985d722e1527c8591879b7c2b"
 id = 48
 phase = 5
 bundle = "v4_support"
-status = "pending"
+status = "in_progress"
 title = "Implement Onchain.Aave.V4.Spoke reads + V4 types"
 scores = { d = 5, b = 7, u = 7 }
 markers = ["parallel"]
-assignee = "codex"
-model = "gpt-5.6-sol"
-module = "Onchain.Aave.V4.Spoke"
 depends_on = [45, 46]
+acceptance_criteria = ["The Spoke reads selected in Task 46 return the corresponding typed V4 reserve and user data, with unit tests covering successful decoding and errors."]
 files_to_modify = ["lib/onchain/aave/v4/spoke.ex", "lib/onchain/aave/v4/types/", "test/onchain/aave/v4/spoke_test.exs"]
 touches = ["lib/onchain/aave/v4/spoke.ex", "lib/onchain/aave/v4/types/", "test/onchain/aave/v4/spoke_test.exs", "V4_SCOPING.md"]
-created_at = "2026-04-20"
+assignee = "codex"
+module = "Onchain.Aave.V4.Spoke"
+model = "gpt-5.6-sol"
 body = """
 Wrap Spoke reads (collateral set, borrowable set, per-Spoke caps, per-user health/position data). Most complex V4 read module; ship the V4 type structs (V4.Types.SpokeUserData, V4.Types.SpokeReserveData — shaped per Task 46's findings). If the module + types together exceed a single session's scope, split on the axis V4.Types.* → separate task.
 """
-acceptance_criteria = ["The Spoke reads selected in Task 46 return the corresponding typed V4 reserve and user data, with unit tests covering successful decoding and errors."]
+created_at = "2026-04-20"
+started_at = "2026-08-21"
 
 [[task]]
 id = 49
