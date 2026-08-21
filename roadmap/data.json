@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "project": "onchain_evm",
-  "default_branch": "development",
+  "default_branch": "main",
   "vision": "EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Elixir via Rust NIFs.",
   "focus": {
     "phase": 2
@@ -47,7 +47,7 @@
     "bundle5_evm_input_validation_round2": {
       "phase": 2,
       "order": 5,
-      "description": "Bundle 5: EVM Input Validation Round 2 — discovered 2026-04-22 during onchain_aave Task 41 (first real consumer integration). All four fit the 'NIF catches what Elixir should' pattern — validation that happens after the NIF boundary with bare-string reasons, when it should happen at the Elixir layer with tagged error atoms."
+      "description": "Bundle 5: EVM Input Validation Round 2 — discovered 2026-04-22 during onchain_aave Task 41 (first real consumer integration). Scoped as one class invariant (Task 57) after four point-fix tasks were merged: the 'NIF catches what Elixir should' pattern — validation that happens after the NIF boundary with bare-string reasons, when it should happen at the Elixir layer with tagged error atoms."
     },
     "contract_codegen": {
       "phase": 1,
@@ -455,7 +455,7 @@
       "id": 45,
       "phase": 2,
       "bundle": "bundle5_evm_input_validation_round2",
-      "status": "pending",
+      "status": "superseded",
       "title": "`simulate_batch/2` input shape validation — reject non-list `calls` and non-2-tuple elements before `validate_calls/1`",
       "scores": {
         "d": 2,
@@ -475,7 +475,7 @@
       "id": 46,
       "phase": 2,
       "bundle": "bundle5_evm_input_validation_round2",
-      "status": "pending",
+      "status": "superseded",
       "title": "Validate `:value` option as 0x-prefixed even-length hex U256, not any binary",
       "scores": {
         "d": 2,
@@ -495,7 +495,7 @@
       "id": 47,
       "phase": 2,
       "bundle": "bundle5_evm_input_validation_round2",
-      "status": "pending",
+      "status": "superseded",
       "title": "Validate `:state_overrides` nested keys/values are strings, per `@type state_overrides`",
       "scores": {
         "d": 2,
@@ -515,7 +515,7 @@
       "id": 48,
       "phase": 2,
       "bundle": "bundle5_evm_input_validation_round2",
-      "status": "pending",
+      "status": "superseded",
       "title": "Bound-check `:block` hex values against u64 max in `parse_hex_block/2`",
       "scores": {
         "d": 2,
@@ -791,6 +791,80 @@
       "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1782346051548-e6a684bb, de0f95575238a0d5b7fa87fb41048ef3d1fbc364).",
       "delivered_by": "codex",
       "verified": true,
+      "cross_repo": []
+    },
+    {
+      "id": "56",
+      "phase": 3,
+      "bundle": "standalone",
+      "status": "pending",
+      "title": "Independent EVM semantics and exact-bytecode verification harness",
+      "scores": {
+        "d": 8,
+        "b": 10,
+        "u": 8
+      },
+      "eff": 1.13,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [
+        "security"
+      ],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-5.6-sol",
+      "acceptance_criteria": [
+        "Pinned official Ethereum execution vectors exercise representative fork-sensitive CALL/CREATE/storage/revert/log/gas semantics through the revm-backed executor",
+        "A separately implemented KEVM/Kontrol oracle evaluates the same exact bytecode and initial state; status, return/revert data, logs and relevant post-state agree",
+        "At least one deliberately corrupted storage/call/revert behavior is detected and makes the verification run fail",
+        "A commit-bound ledger records vector provenance, fork/EVM revision, initial state, revm/KEVM/Kontrol versions, bytecode hashes, configurations and outcomes",
+        "The harness adds no runtime public API; focused tests and the repository's canonical gate pass"
+      ],
+      "touches": [
+        "native/onchain_evm/",
+        "test/onchain/",
+        ".github/workflows/"
+      ],
+      "body": "Establish independent semantic evidence for Onchain.EVM's revm-backed execution so future Solidity products can distinguish simulator agreement from self-confirming fixtures. Bind every comparison to exact bytecode and initial state, cover fork-sensitive EVM behavior from provider-owned Ethereum vectors, and use KEVM/Kontrol as an independently implemented execution oracle. Preserve deliberate bad-bytecode/state-effect controls and a verification ledger; a green exit code without the expected negative-control failure is invalid.\n",
+      "created_at": "2026-08-17",
+      "scored_at": "2026-08-17",
+      "cross_repo": []
+    },
+    {
+      "id": "57",
+      "phase": 2,
+      "bundle": "bundle5_evm_input_validation_round2",
+      "status": "pending",
+      "title": "Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF",
+      "scores": {
+        "d": 3,
+        "b": 6,
+        "u": 6
+      },
+      "eff": 2.0,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "module": "Onchain.EVM",
+      "acceptance_criteria": [
+        "Every option named in Onchain.EVM's public typespecs, plus the `calls` argument of simulate_batch/2, returns a tagged `{:error, {atom, term}}` for malformed input without invoking the NIF",
+        "A test enumerates the documented option surface and fails when a documented option has no Elixir-layer guard, rather than asserting only the four known cases",
+        "simulate_batch/2 returns a tagged error for a non-list `calls` and for elements that are not 2-tuples — no silent {:ok, []}, no escaping FunctionClauseError",
+        "Each of the four premises above is either reproduced before its fix or recorded as no-longer-reproducing",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "Rust-side changes under native/ — panic removal is Task 31, source-size limits are Task 32",
+        "New public functions or changes to the success-path return shapes"
+      ],
+      "touches": [
+        "lib/onchain/evm.ex",
+        "test/onchain/evm_test.exs"
+      ],
+      "body": "Close the \"NIF catches what Elixir should\" class as an invariant rather than patching its four known instances. Every option `Onchain.EVM` documents in its public typespecs must be validated at the Elixir layer and rejected with a tagged `{:error, {tag, term}}` tuple, so a malformed option never crosses the NIF boundary and never surfaces as a bare-string `{:evm_error, \"...\"}` from Rust or as a raised exception escaping the `{:ok, _} | {:error, _}` contract.\n\nKnown instances — Tasks 45, 46, 47 and 48, superseded by this one — all discovered 2026-04-22 during onchain_aave Task 41 (first real consumer integration) — treat each as a premise to re-confirm against current code before fixing, not as established behavior:\n- `simulate_batch/2` accepts any `Enumerable`, so `%{}` returns a silent `{:ok, []}`; non-2-tuple elements raise `FunctionClauseError` out of `validate_calls/1`.\n- `maybe_put_value/2` checks only `is_binary/1`, so `\"\"` and `\"not-a-hex\"` reach Rust as an invalid-U256 error.\n- `maybe_put_state_overrides/2` does not enforce the all-strings rule its own `@type state_overrides` documents; atom keys and integer values fail in Rust.\n- `parse_hex_block/2` applies no upper bound, so a >u64 value fails as `invalid param type: block_number` in the NIF.\n\nThis is the second round of the same class (Bundle 1 was the first), which is the reason to ship the invariant and its enumerating test instead of four more point fixes. The deliverable that closes the class is a test that walks the documented option surface itself, so a newly documented option without an Elixir-layer guard fails the suite rather than becoming a Round 3 task.\n",
+      "created_at": "2026-08-21",
+      "scored_at": "2026-08-21",
       "cross_repo": []
     }
   ]

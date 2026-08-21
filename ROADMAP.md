@@ -11,9 +11,9 @@
 ---
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 2 — Quality & Reliability Improvements (12 of 20 done · 0 in progress)
+**Focus phase:** 2 — Quality & Reliability Improvements (12 of 21 done · 0 in progress)
 
-**Last shipped:** Task 54 — Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump, Task 55 — Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory on 2026-06-25
+**Last shipped:** no recent shipments
 
 **Up next:** Task 50 — Document `simulate_batch/2` partial-failure semantics in `@moduledoc` [D:1/B:3/U:4 → Eff:3.5] 🎯
 <!-- FOCUS:END -->
@@ -75,12 +75,13 @@ Bundles identified via code review — grouped by shared code and common goals.
 | Task 41 | ✅ | 🎁 **bundle4_documentation_specs** · *Onchain.Contract.Generator* · Document Generator options — add `:abi_file`, `:remappings`, and `:root_contract` to moduledoc [D:2/B:4/U:5 → Eff:2.25?] 🎯 |
 | Task 42 | ⬜ | 🎁 **bundle4_documentation_specs** · *Both native crates* · Add module-level Rust documentation — doc comments on both native crate entry points [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
 | Task 50 | ⬜ | 🎁 **bundle4_documentation_specs** · *Onchain.EVM* · Document `simulate_batch/2` partial-failure semantics in `@moduledoc` [D:1/B:3/U:4 → Eff:3.5?] 🎯 |
-| Task 45 | ⬜ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · `simulate_batch/2` input shape validation — reject non-list `calls` and non-2-tuple elements before `validate_calls/1` [D:2/B:6/U:5 → Eff:2.75?] 🎯 |
-| Task 46 | ⬜ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate `:value` option as 0x-prefixed even-length hex U256, not any binary [D:2/B:5/U:4 → Eff:2.25?] 🎯 |
-| Task 47 | ⬜ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate `:state_overrides` nested keys/values are strings, per `@type state_overrides` [D:2/B:5/U:4 → Eff:2.25?] 🎯 |
-| Task 48 | ⬜ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Bound-check `:block` hex values against u64 max in `parse_hex_block/2` [D:2/B:4/U:3 → Eff:1.75?] 🚀 |
-| Task 54 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *Onchain.EVM* · Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump [D:4/B:7/U:6 → Eff:1.62] 🚀 |
-| Task 55 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory [D:9/B:6/U:7 → Eff:0.72] ⚠️ |
+| Task 45 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · `simulate_batch/2` input shape validation — reject non-list `calls` and non-2-tuple elements before `validate_calls/1` [D:2/B:6/U:5 → Eff:2.75?] 🎯 |
+| Task 46 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate `:value` option as 0x-prefixed even-length hex U256, not any binary [D:2/B:5/U:4 → Eff:2.25?] 🎯 |
+| Task 47 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate `:state_overrides` nested keys/values are strings, per `@type state_overrides` [D:2/B:5/U:4 → Eff:2.25?] 🎯 |
+| Task 48 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Bound-check `:block` hex values against u64 max in `parse_hex_block/2` [D:2/B:4/U:3 → Eff:1.75?] 🚀 |
+| Task 54 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *Onchain.EVM* · Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
+| Task 55 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory [D:9/B:6/U:7 → Eff:0.72?] ⚠️ |
+| Task 57 | ⬜ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF [D:3/B:6/U:6 → Eff:2.0] 🎯 |
 <!-- TASKS:END -->
 
 ---
@@ -100,6 +101,7 @@ Standalone tasks: Rust unit tests, tokio runtime reuse, clippy CI, codegen exten
 | Task 51 | ⬜ | 🎁 **standalone** · *(cross-cutting research)* · Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
 | Task 52 | ⬜ | 🎁 **standalone** · *Onchain.Contract.Generator* · Codegen-emit per-contract Multicall helper modules [D:5/B:7/U:6 → Eff:1.3?] 📋 |
 | Task 53 | ⬜ | 🎁 **standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases [D:5/B:8/U:8 → Eff:1.6?] 🚀 |
+| Task 56 | ⬜ | 🎁 **standalone** · 🔒 Independent EVM semantics and exact-bytecode verification harness [D:8/B:10/U:8 → Eff:1.12] 📋 |
 <!-- TASKS:END -->
 
 ---
