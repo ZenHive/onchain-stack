@@ -522,9 +522,32 @@ module = "Onchain.Aave.V4.PositionManager"
 depends_on = [45, 46, 47, 48]
 created_at = "2026-04-20"
 body = """
-Primary user-facing write surface. Wrap the Giver / Taker / Config / NativeTokenGateway / SignatureGateway entrypoints for the common supply/borrow/repay/withdraw flows. Likely needs to be split across two sessions if all five managers land at once — start with Giver + Taker (the primary supply/borrow flow) and gate the rest as a follow-on if scope grows. Depends on Tasks 47 + 48 (needs to know what Hub/Spoke state to reference). Design constraint: should compose cleanly when executed under DELEGATECALL from a Safe (no storage assumptions about msg.sender identity vs. Safe proxy).
+Primary user-facing write surface for V4. V4 has no `Pool`: supply/repay go through the Giver Position Manager (`:v4_giver_position_manager`) and borrow/withdraw through the Taker Position Manager (`:v4_taker_position_manager`), both already registered in `Onchain.Aave.Contracts`. Follow the V3 `Onchain.Aave.Pool` write convention (validate addresses, split network/signer opts, encode + sign + send) so the two trees read alike.
+
+Verified against the provider-owned interfaces at https://github.com/aave/aave-v4 (`src/position-manager/interfaces/`) on 2026-08-21 — build against the deployed contracts, not against these notes:
+
+- Giver: `supplyOnBehalfOf(address spoke, uint256 reserveId, uint256 amount, address onBehalfOf)` and `repayOnBehalfOf(...)`, same shape, both returning `(uint256, uint256)`.
+- Taker: `borrowOnBehalfOf(address spoke, uint256 reserveId, uint256 amount, address onBehalfOf)` and `withdrawOnBehalfOf(...)`. The **caller** receives the assets and must already hold an allowance granted by `onBehalfOf`, so the allowance surface is part of this task, not a follow-on: `approveBorrow` / `approveWithdraw(address spoke, uint256 reserveId, address spender, uint256 amount)`, `renounceBorrowAllowance` / `renounceWithdrawAllowance(address spoke, uint256 reserveId, address owner)`, and the views `borrowAllowance` / `withdrawAllowance(address spoke, uint256 reserveId, address owner, address spender)`. Insufficient allowance reverts with the custom errors `InsufficientBorrowAllowance(uint256,uint256)` / `InsufficientWithdrawAllowance(uint256,uint256)`.
+
+Two shape traps worth naming. First, V4 addresses a reserve by `uint256 reserveId` **scoped to a Spoke**, not by the asset address V3 used — the reserve id comes from the Spoke reads landed in Task 48, and passing an asset address where a reserve id belongs encodes silently and reverts on chain. Second, every entrypoint above is either `onBehalfOf`-parameterised or allowance-gated; none infers the position owner from `msg.sender`. That is what makes the Safe/DELEGATECALL constraint satisfiable, and it is also the thing an ergonomic wrapper is most likely to destroy by defaulting the owner to the signer address for convenience. Keep the owner an explicit, required argument on every wrapper.
 """
-acceptance_criteria = ["The supported Position Manager flows build valid supply, borrow, repay, and withdraw calls without assuming that msg.sender is the Safe proxy, with unit tests for success and error cases."]
+acceptance_criteria = [
+  "Giver wrappers build `supplyOnBehalfOf` and `repayOnBehalfOf` calls, and Taker wrappers build `borrowOnBehalfOf` and `withdrawOnBehalfOf` calls, against the addresses resolved from `Onchain.Aave.Contracts`; unit tests assert the encoded selector and the full argument tuple for each.",
+  "The Taker allowance surface is wrapped: `approveBorrow`, `approveWithdraw`, `renounceBorrowAllowance`, `renounceWithdrawAllowance` as writes, and `borrowAllowance` / `withdrawAllowance` as reads, with decoding tests for the views.",
+  "Every wrapper takes the position owner as an explicit required argument and never substitutes the signer address for it. A test signs with one key and encodes a different `on_behalf_of`, asserting the owner in the calldata is the supplied one.",
+  "ABI shape is confirmed against the deployed contracts rather than assumed: at least one `@moduletag :integration` test issues a live `eth_call` against a Taker view (e.g. `borrowAllowance` or `BORROW_PERMIT_TYPEHASH`) on the mainnet archive node and asserts a decoded value, flunking with the required env vars when RPC is unavailable.",
+  "`InsufficientBorrowAllowance` and `InsufficientWithdrawAllowance` revert data is surfaced as a tagged error tuple carrying both the allowance and required amounts, not as raw hex; a unit test decodes each from its custom-error selector.",
+  "Invalid input is rejected before any RPC call: bad spoke/owner/spender addresses and a negative or non-integer amount return tagged error tuples, with tests.",
+  "`mix ci` is green, and `mix test.json --cover` reports at least 95% line coverage for the new module(s) — this is a money path per the critical-rules coverage tiers.",
+  "The new module(s) are registered in `OnchainAave.describe/0` (the discovery-manifest invariant test in `test/onchain_aave_test.exs` fails otherwise)."
+]
+out_of_scope = [
+  "Config Position Manager, Native Token Gateway, and Signature Gateway — separate surfaces (position configuration, ETH wrapping, EIP-712 intents); file a follow-on after this lands if they are wanted.",
+  "The `approveBorrowWithSig` / `approveWithdrawWithSig` EIP-712 permit variants on the Taker — they belong with the Signature Gateway work above.",
+  "Sending live V4 transactions on mainnet. Write paths are pinned by encoded-calldata unit tests; V4 has no Sepolia deployment (see Task 52, blocked on one)."
+]
+files_to_modify = ["lib/onchain/aave/v4/position_manager.ex", "lib/onchain_aave.ex", "test/onchain/aave/v4/position_manager_test.exs"]
+touches = ["lib/onchain/aave/v4/position_manager.ex", "lib/onchain_aave.ex", "test/onchain/aave/v4/position_manager_test.exs", "V4_SCOPING.md", "CHANGELOG.md"]
 
 [[task]]
 id = 52
