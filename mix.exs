@@ -62,8 +62,8 @@ defmodule OnchainEvm.MixProject do
       {:rustler, "~> 0.38", runtime: false},
 
       # Dev/test tooling
-      {:tidewave, "~> 0.5", only: :dev},
-      {:bandit, "~> 1.0", only: :dev},
+      {:tidewave, "~> 0.9", only: :dev},
+      {:bandit, "~> 1.12", only: :dev},
       {:ex_unit_json, "~> 0.4", only: [:dev, :test], runtime: false},
       {:dialyzer_json, "~> 0.1", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.0", only: [:dev, :test], runtime: false},

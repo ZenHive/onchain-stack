@@ -6,6 +6,23 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Updated Hex lock to `bandit` 1.12.5, `tidewave` 0.9.0, and `req` 0.7.3.
+  `mix.exs` now requires `{:bandit, "~> 1.12"}` and `{:tidewave, "~> 0.9"}`.
+- Refreshed both native Cargo lockfiles within existing `Cargo.toml` bounds
+  (direct crates were already current: REVM 42.0.1, Alloy 2.4.1 / 1.6.1,
+  rustler 0.38.0). Transitive bumps include `h2` 0.4.18, `quinn-proto`
+  0.11.17, `either` 1.18.0, and `ref-cast` 1.0.27.
+- `ex_ast` stays on 0.12.10: Reach 2.8.2 still requires `~> 0.12.0`, so
+  0.13.1 is blocked until Reach widens that bound.
+
+### Security
+
+- `bandit` 1.12.5 is the patched release for GHSA-xj8g-532w-jv94 and
+  GHSA-x3gh-xhj4-3vq8. Both native lockfiles still pass `cargo audit`
+  with only the upstream `derivative` / `paste` maintenance warnings.
+
 ## [0.5.0] — 2026-08-17
 
 No public Elixir API changed. The native execution engine now follows REVM 42,
