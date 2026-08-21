@@ -1,6 +1,6 @@
 # Onchain Aave
 
-Aave V3 protocol wrappers for Elixir. Depends on `onchain` core for RPC, ABI, signing, and address utilities.
+Aave V3 and V4 protocol wrappers for Elixir. Depends on `onchain` core for RPC, ABI, signing, and address utilities.
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
      harness-driven — the OTP dispatch→review→land loop is the active workflow). onchain-workspace

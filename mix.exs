@@ -80,7 +80,7 @@ defmodule OnchainAave.MixProject do
   end
 
   defp description do
-    "Aave V3 protocol wrappers for Elixir — pool reads/writes, oracle, math, and type structs. Built on onchain."
+    "Aave V3 and V4 protocol wrappers for Elixir — pool reads/writes, Hub-and-Spoke reads, Position Manager writes, oracle, math, and type structs. Built on onchain."
   end
 
   defp package do

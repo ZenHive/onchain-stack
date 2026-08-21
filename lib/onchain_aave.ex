@@ -1,6 +1,6 @@
 defmodule OnchainAave do
   @moduledoc """
-  Aave V3 protocol wrappers for Elixir.
+  Aave V3 and V4 protocol wrappers for Elixir.
 
   Provides pool reads/writes, oracle price feeds, math conversions,
   typed response structs, and Aave V4 Hub, Spoke, oracle, Tokenization

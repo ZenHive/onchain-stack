@@ -6,6 +6,50 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Added — Aave V4 support (Hub-and-Spoke)
+
+Aave V4 went live on Ethereum mainnet on 2026-03-30 with an architecture that is
+not a drop-in extension of V3: the monolithic `Pool` is replaced by Hubs
+(routing + rate environment + credit lines), Spokes (risk-isolated borrow venues,
+each with its own oracle), ERC-4626 Tokenization Spokes (supply positions), and
+Position Managers (the user-facing write entrypoints). The V3 tree is untouched;
+V4 lands as a sibling under `Onchain.Aave.V4.*`. Addresses are registered in
+`Onchain.Aave.Contracts` under flat `:v4_`-prefixed keys, with Tokenization
+Spokes resolved by `{hub, asset}`.
+
+- `Onchain.Aave.V4.Hub` — Hub reads: member Spokes, credit lines (drawn and
+  premium shares, deficits), and the rate environment.
+- `Onchain.Aave.V4.Spoke` — per-Spoke reads. V4 has no global
+  `getUserAccountData`; user health is Spoke-scoped and shaped by that Spoke's
+  collateral and borrowable sets. Reserves are addressed by `uint256 reserveId`
+  scoped to a Spoke, not by asset address as in V3.
+- `Onchain.Aave.V4.Oracle` — Spoke-scoped `IAaveOracle` and Chainlink reads. The
+  oracle is a property of each Spoke rather than a single protocol-wide feed.
+- `Onchain.Aave.V4.TokenizationSpoke` — ERC-4626 share accounting for supply
+  positions, which replace V3's aTokens.
+- `Onchain.Aave.V4.PositionManager` — the V4 write surface. Supply and repay go
+  through the Giver Position Manager, borrow and withdraw through the Taker.
+  Every position action takes the owner as an explicit required argument; none
+  infers it from `msg.sender`, so the wrappers compose under DELEGATECALL from a
+  Safe. Borrow and withdraw send the assets to the *caller* and require an
+  allowance from the owner, so the allowance surface (`approve_borrow`,
+  `approve_withdraw`, the `renounce_*` counterparts, and the two allowance
+  views) ships with them. `InsufficientBorrowAllowance` and
+  `InsufficientWithdrawAllowance` reverts decode to tagged tuples carrying the
+  allowance and the required amount.
+- `Onchain.Aave.Math.V4` — V4 math conversions alongside the V3 helpers.
+
+There is no stable-rate borrowing in V4, and no `UiPoolDataProvider` analog.
+V4 is Ethereum-mainnet only, so the write paths are pinned by encoded-calldata
+unit tests rather than testnet sends.
+
+### Changed
+
+- `OnchainAave.describe/0` registers every public module. The manifest test now
+  derives its expectation from the compiled application instead of asserting a
+  hardcoded module count, so a module that is added without being registered
+  fails the suite rather than reaching consumers undiscoverable.
+
 ---
 
 ## v0.3.2 — dependency refresh (2026-08-17)
