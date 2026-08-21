@@ -513,7 +513,7 @@ shipped_in = "e76f0d41e715d3d7c6a6188828184f3719b92dae"
 id = 51
 phase = 5
 bundle = "v4_support"
-status = "in_progress"
+status = "done"
 title = "Implement Onchain.Aave.V4.PositionManager ergonomic write wrappers (supply/borrow/repay analogs)"
 scores = { d = 5, b = 8, u = 7 }
 depends_on = [45, 46, 47, 48]
@@ -547,8 +547,15 @@ Verified against the provider-owned interfaces at https://github.com/aave/aave-v
 
 Two shape traps worth naming. First, V4 addresses a reserve by `uint256 reserveId` **scoped to a Spoke**, not by the asset address V3 used — the reserve id comes from the Spoke reads landed in Task 48, and passing an asset address where a reserve id belongs encodes silently and reverts on chain. Second, every entrypoint above is either `onBehalfOf`-parameterised or allowance-gated; none infers the position owner from `msg.sender`. That is what makes the Safe/DELEGATECALL constraint satisfiable, and it is also the thing an ergonomic wrapper is most likely to destroy by defaulting the owner to the signer address for convenience. Keep the owner an explicit, required argument on every wrapper.
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1787317001998-793a64aa, b1157c34eb3f0a7e86da749cff4defbea7e96032)."
+delivered_by = "cursor"
+verified = true
+verified_by = "codex"
+verification_ref = "harness-run:run-1787317001998-793a64aa"
 created_at = "2026-04-20"
 started_at = "2026-08-21"
+done_at = "2026-08-21"
+shipped_in = "b1157c34eb3f0a7e86da749cff4defbea7e96032"
 
 [[task]]
 id = 52
