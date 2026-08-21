@@ -642,7 +642,7 @@
       "id": 48,
       "phase": 5,
       "bundle": "v4_support",
-      "status": "in_progress",
+      "status": "done",
       "title": "Implement Onchain.Aave.V4.Spoke reads + V4 types",
       "scores": {
         "d": 5,
@@ -676,9 +676,16 @@
         "test/onchain/aave/v4/spoke_test.exs",
         "V4_SCOPING.md"
       ],
+      "shipped_in": "d040a27e9c0f0712bac061d8c45000152258228e",
       "body": "Wrap Spoke reads (collateral set, borrowable set, per-Spoke caps, per-user health/position data). Most complex V4 read module; ship the V4 type structs (V4.Types.SpokeUserData, V4.Types.SpokeReserveData — shaped per Task 46's findings). If the module + types together exceed a single session's scope, split on the axis V4.Types.* → separate task.\n",
       "created_at": "2026-04-20",
       "started_at": "2026-08-21",
+      "done_at": "2026-08-21",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1787296517872-28d1e369, d040a27e9c0f0712bac061d8c45000152258228e).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1787296517872-28d1e369",
       "cross_repo": []
     },
     {
