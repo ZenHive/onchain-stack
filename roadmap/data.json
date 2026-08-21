@@ -733,7 +733,7 @@
       "id": 50,
       "phase": 5,
       "bundle": "v4_support",
-      "status": "in_progress",
+      "status": "done",
       "title": "Implement Onchain.Aave.V4.TokenizationSpoke reads (ERC-4626 share accounting)",
       "scores": {
         "d": 3,
@@ -765,9 +765,16 @@
         "test/onchain/aave/v4/tokenization_spoke_test.exs",
         "V4_SCOPING.md"
       ],
+      "shipped_in": "e76f0d41e715d3d7c6a6188828184f3719b92dae",
       "body": "Tokenization Spokes are ERC-4626 vaults — wrap totalAssets, convertToAssets, convertToShares, previewDeposit, previewRedeem, and any V4-specific metadata exposed by ITokenizationSpoke. Also ship a lookup(hub, asset) helper given there are 31 of these. Unit tests.\n",
       "created_at": "2026-04-20",
       "started_at": "2026-08-21",
+      "done_at": "2026-08-21",
+      "implemented": "Landed by cursor via merge-train; reviewer-approved (run run-1787296526753-07002de8, e76f0d41e715d3d7c6a6188828184f3719b92dae).",
+      "delivered_by": "cursor",
+      "verified": true,
+      "verified_by": "codex",
+      "verification_ref": "harness-run:run-1787296526753-07002de8",
       "cross_repo": []
     },
     {
