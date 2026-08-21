@@ -573,3 +573,21 @@ delivered_by = "cursor"
 verified = true
 done_at = "2026-06-09"
 shipped_in = "5c60dbcce677ee9735004a8f3ab744b5e7d4ea5e"
+
+[[task]]
+id = "56"
+phase = 3
+bundle = "math_validation"
+status = "pending"
+title = "Mutation-grade Aave V3/V4 math differential suite"
+scores = { d = 5, b = 10, u = 8 }
+markers = ["security"]
+acceptance_criteria = ["Property domains cover every public V3/V4 math operation across zero, unit, boundary, overflow-adjacent and rounding-sensitive inputs", "Results are differential-checked against pinned official Aave Solidity math compiled to exact bytecode and executed through onchain_evm/revm", "A reproducible mutation campaign exercises arithmetic operators, comparisons, clamps and rounding directions; every survivor is classified with evidence", "A deliberately wrong rounding/boundary implementation is caught by the suite and fails the verification run", "The ledger records Aave source authority, compiler settings, bytecode hashes, mutator/tool versions and survivor review; critical touched modules remain at least 95% covered and mix ci passes"]
+touches = ["lib/onchain/aave/math.ex", "lib/onchain/aave/math/", "test/onchain/aave/math_test.exs", "test/onchain/aave/math_revm_test.exs", "test/onchain/aave/math/"]
+assignee = "grok"
+model = "grok-4.6"
+body = """
+Turn the existing V3/V4 unit, integration and revm checks into an adequacy-tested financial-math oracle. The official Aave contracts and observed deployed semantics define the formulas; locally compiled reference bytecode is evidence only when its source, compiler settings and hashes are pinned. Grade the suite with generated and domain mutations so a shared wrong constant, rounding direction or boundary assumption cannot be ratified by matching fixtures.
+"""
+created_at = "2026-08-17"
+scored_at = "2026-08-17"
