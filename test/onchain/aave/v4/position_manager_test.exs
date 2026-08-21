@@ -269,6 +269,28 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
     end
   end
 
+  describe "Taker write reverts" do
+    test "borrow surfaces InsufficientBorrowAllowance from gas estimation" do
+      {:ok, revert} =
+        Onchain.ABI.encode_call("InsufficientBorrowAllowance(uint256,uint256)", [@allowance, @required])
+
+      url = start_rpc_stub(fn _body -> {:rpc_error, revert_error(revert)} end)
+
+      assert {:error, {:insufficient_borrow_allowance, @allowance, @required}} =
+               PositionManager.borrow(@spoke, @reserve_id, @amount, @owner, signer_opts(url))
+    end
+
+    test "withdraw surfaces InsufficientWithdrawAllowance from gas estimation" do
+      {:ok, revert} =
+        Onchain.ABI.encode_call("InsufficientWithdrawAllowance(uint256,uint256)", [@allowance, @required])
+
+      url = start_rpc_stub(fn _body -> {:rpc_error, revert_error(revert)} end)
+
+      assert {:error, {:insufficient_withdraw_allowance, @allowance, @required}} =
+               PositionManager.withdraw(@spoke, @reserve_id, @amount, @owner, signer_opts(url))
+    end
+  end
+
   describe "Taker allowance views" do
     setup do
       payloads = allowance_payloads()
@@ -406,6 +428,10 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
 
   defp rpc_opts(url) do
     [rpc_url: url, timeout: @rpc_timeout_ms, req_options: [connect_options: [protocols: [:http1]]]]
+  end
+
+  defp signer_opts(url) do
+    [private_key: @signer_key, nonce: 0, chain_id: 1] ++ rpc_opts(url)
   end
 
   defp start_rpc_stub(handler) do
