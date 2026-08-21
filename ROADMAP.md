@@ -99,7 +99,7 @@ V4 went live on Ethereum mainnet on 2026-03-30 with a Hub-and-Spoke architecture
 | Task 47 `[P]` | ✅ | 🎁 **v4_support** · *Onchain.Aave.V4.Hub* · Implement Onchain.Aave.V4.Hub read wrapper [D:4/B:6/U:5 → Eff:1.38?] 📋 |
 | Task 48 `[P]` | 🔄 | 🎁 **v4_support** · *Onchain.Aave.V4.Spoke* · Implement Onchain.Aave.V4.Spoke reads + V4 types [D:5/B:7/U:7 → Eff:1.4?] 📋 |
 | Task 49 `[P]` | 🔄 | 🎁 **v4_support** · *Onchain.Aave.V4.Oracle* · Implement Onchain.Aave.V4.Oracle wrapper (Spoke-scoped) [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
-| Task 50 `[P]` | ⬜ | 🎁 **v4_support** · *Onchain.Aave.V4.TokenizationSpoke* · Implement Onchain.Aave.V4.TokenizationSpoke reads (ERC-4626 share accounting) [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
+| Task 50 `[P]` | 🔄 | 🎁 **v4_support** · *Onchain.Aave.V4.TokenizationSpoke* · Implement Onchain.Aave.V4.TokenizationSpoke reads (ERC-4626 share accounting) [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
 | Task 51 | ⬜ | 🎁 **v4_support** · *Onchain.Aave.V4.PositionManager* · Implement Onchain.Aave.V4.PositionManager ergonomic write wrappers (supply/borrow/repay analogs) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
 | Task 52 | 🔶 | 🎁 **v4_support** · *test/onchain/aave/v4/* · V4 integration tests (mainnet forked reads; gated on Sepolia V4 deployment for writes) [D:4/B:6/U:5 → Eff:1.38?] 📋 ⛔ Write tests gated until Aave deploys V4 on a testnet — none exists as of 2026-04-20. |
 | Task 57 | ⬜ | 🎁 **v4_support** · *Onchain.Aave.V4.Hub* · Wrap remaining IHub preview converters and Hub bound constants [D:3/B:4/U:5 → Eff:1.5] 🚀 |
