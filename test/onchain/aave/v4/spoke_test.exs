@@ -60,6 +60,32 @@ defmodule Onchain.Aave.V4.SpokeTest do
       assert user_data.active_collateral_count == 2
       assert user_data.borrow_count == 1
     end
+
+    test "remaining type structs convert from_raw including a frozen-only flag mask" do
+      frozen = SpokeReserveData.from_raw({@underlying_bin, @hub_bin, 1, 18, 0, 0x02, 0})
+      assert frozen.frozen
+      refute frozen.paused
+      refute frozen.borrowable
+      refute frozen.receive_shares_enabled
+
+      assert %SpokeReserveConfig{collateral_risk: 1_200, paused: true, frozen: false, borrowable: true} =
+               SpokeReserveConfig.from_raw(@reserve_config_tuple)
+
+      assert %SpokeDynamicReserveConfig{
+               collateral_factor: 8_300,
+               max_liquidation_bonus: 10_555,
+               liquidation_fee: 1_000
+             } = SpokeDynamicReserveConfig.from_raw(@dynamic_config_tuple)
+
+      assert %SpokeLiquidationConfig{
+               target_health_factor: 1_240_000_000_000_000_000,
+               health_factor_for_max_bonus: 900_000_000_000_000_000,
+               liquidation_bonus_factor: 9_000
+             } = SpokeLiquidationConfig.from_raw(@liquidation_config_tuple)
+
+      assert %SpokeUserPosition{drawn_shares: 40, premium_offset_ray: -3, supplied_shares: 300} =
+               SpokeUserPosition.from_raw(@user_position_tuple)
+    end
   end
 
   describe "Spoke reads" do
@@ -187,6 +213,92 @@ defmodule Onchain.Aave.V4.SpokeTest do
 
       assert {:error, {:decode_error, _reason}} =
                Spoke.get_reserve(@spoke, @reserve_id, rpc_opts(url))
+    end
+  end
+
+  describe "captured Main Spoke ABI payloads" do
+    @weth "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+    @empty_user "0x0000000000000000000000000000000000000001"
+    @max_uint256 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+
+    # Captured 2026-08-21 from Ethereum archive `eth_call` against Main Spoke
+    # 0x94e7A5dCbE816e498b89aB752661904E2F56c485 — independent of the local encoder.
+    @mainnet_get_reserve_0 "0x000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000cca852bc40e560adc3b1cc58ca5b55638ce826c9000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000000000"
+    @mainnet_get_liquidation_config "0x00000000000000000000000000000000000000000000000011355d6e217c00000000000000000000000000000000000000000000000000000c7d713b49da00000000000000000000000000000000000000000000000000000000000000002328"
+    @mainnet_get_user_account_data "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    @mainnet_get_user_position "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    @mainnet_get_dynamic_reserve_config "0x000000000000000000000000000000000000000000000000000000000000206c000000000000000000000000000000000000000000000000000000000000293b00000000000000000000000000000000000000000000000000000000000003e8"
+
+    setup do
+      {:ok, seen} = Agent.start_link(fn -> [] end)
+      {:ok, user_bin} = Onchain.Address.validate(@empty_user)
+
+      payloads = %{
+        selector("getReserve(uint256)", [0]) => @mainnet_get_reserve_0,
+        selector("getLiquidationConfig()", []) => @mainnet_get_liquidation_config,
+        selector("getUserAccountData(address)", [user_bin]) => @mainnet_get_user_account_data,
+        selector("getUserPosition(uint256,address)", [0, user_bin]) => @mainnet_get_user_position,
+        selector("getDynamicReserveConfig(uint256,uint32)", [0, 0]) => @mainnet_get_dynamic_reserve_config
+      }
+
+      url = start_rpc_stub(fn body -> handle_eth_call(body, payloads, seen) end)
+
+      on_exit(fn ->
+        if Process.alive?(seen), do: Agent.stop(seen)
+      end)
+
+      %{rpc_opts: rpc_opts(url)}
+    end
+
+    test "decodes captured Main Spoke reserve, user, and config tuples", %{rpc_opts: rpc_opts} do
+      assert {:ok,
+              %SpokeReserveData{
+                underlying: @weth,
+                hub: @hub,
+                asset_id: 0,
+                decimals: 18,
+                collateral_risk: 0,
+                flags: 12,
+                paused: false,
+                frozen: false,
+                borrowable: true,
+                receive_shares_enabled: true,
+                dynamic_config_key: 0
+              }} = Spoke.get_reserve(@spoke, 0, rpc_opts)
+
+      assert {:ok,
+              %SpokeLiquidationConfig{
+                target_health_factor: 1_240_000_000_000_000_000,
+                health_factor_for_max_bonus: 900_000_000_000_000_000,
+                liquidation_bonus_factor: 9_000
+              }} = Spoke.get_liquidation_config(@spoke, rpc_opts)
+
+      assert {:ok,
+              %SpokeUserData{
+                risk_premium: 0,
+                avg_collateral_factor: 0,
+                health_factor: @max_uint256,
+                total_collateral_value: 0,
+                total_debt_value_ray: 0,
+                active_collateral_count: 0,
+                borrow_count: 0
+              }} = Spoke.get_user_account_data(@spoke, @empty_user, rpc_opts)
+
+      assert {:ok,
+              %SpokeUserPosition{
+                drawn_shares: 0,
+                premium_shares: 0,
+                premium_offset_ray: 0,
+                supplied_shares: 0,
+                dynamic_config_key: 0
+              }} = Spoke.get_user_position(@spoke, 0, @empty_user, rpc_opts)
+
+      assert {:ok,
+              %SpokeDynamicReserveConfig{
+                collateral_factor: 8_300,
+                max_liquidation_bonus: 10_555,
+                liquidation_fee: 1_000
+              }} = Spoke.get_dynamic_reserve_config(@spoke, 0, 0, rpc_opts)
     end
   end
 

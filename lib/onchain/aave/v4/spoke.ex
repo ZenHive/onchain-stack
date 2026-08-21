@@ -61,16 +61,46 @@ defmodule Onchain.Aave.V4.Spoke do
   @spec get_reserve_count(address(), keyword()) :: result(non_neg_integer())
   def get_reserve_count(spoke, opts \\ []), do: call_uint(spoke, "getReserveCount()", [], opts)
 
-  for {name, signature, description} <- [
-        {:get_reserve_supplied_assets, "getReserveSuppliedAssets(uint256)", "total supplied assets"},
-        {:get_reserve_supplied_shares, "getReserveSuppliedShares(uint256)", "total supplied shares"},
-        {:get_reserve_total_debt, "getReserveTotalDebt(uint256)", "total reserve debt"}
-      ] do
-    @doc "Fetch the #{description} for a Spoke reserve."
-    @spec unquote(name)(address(), non_neg_integer(), keyword()) :: result(non_neg_integer())
-    def unquote(name)(spoke, reserve_id, opts \\ []) when is_integer(reserve_id) and reserve_id >= 0 do
-      call_uint(spoke, unquote(signature), [reserve_id], opts)
-    end
+  api(:get_reserve_supplied_assets, "Fetch the total supplied assets for a Spoke reserve.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      reserve_id: [kind: :value, description: @reserve_id_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}"}
+  )
+
+  @spec get_reserve_supplied_assets(address(), non_neg_integer(), keyword()) :: result(non_neg_integer())
+  def get_reserve_supplied_assets(spoke, reserve_id, opts \\ []) when is_integer(reserve_id) and reserve_id >= 0 do
+    call_uint(spoke, "getReserveSuppliedAssets(uint256)", [reserve_id], opts)
+  end
+
+  api(:get_reserve_supplied_shares, "Fetch the total supplied shares for a Spoke reserve.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      reserve_id: [kind: :value, description: @reserve_id_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}"}
+  )
+
+  @spec get_reserve_supplied_shares(address(), non_neg_integer(), keyword()) :: result(non_neg_integer())
+  def get_reserve_supplied_shares(spoke, reserve_id, opts \\ []) when is_integer(reserve_id) and reserve_id >= 0 do
+    call_uint(spoke, "getReserveSuppliedShares(uint256)", [reserve_id], opts)
+  end
+
+  api(:get_reserve_total_debt, "Fetch the total reserve debt for a Spoke reserve.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      reserve_id: [kind: :value, description: @reserve_id_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}"}
+  )
+
+  @spec get_reserve_total_debt(address(), non_neg_integer(), keyword()) :: result(non_neg_integer())
+  def get_reserve_total_debt(spoke, reserve_id, opts \\ []) when is_integer(reserve_id) and reserve_id >= 0 do
+    call_uint(spoke, "getReserveTotalDebt(uint256)", [reserve_id], opts)
   end
 
   api(:get_reserve_debt, "Fetch drawn and premium debt for a Spoke reserve.",
@@ -181,19 +211,72 @@ defmodule Onchain.Aave.V4.Spoke do
     |> unwrap_bool_pair()
   end
 
-  for {name, signature, description} <- [
-        {:get_user_supplied_assets, "getUserSuppliedAssets(uint256,address)", "supplied assets"},
-        {:get_user_supplied_shares, "getUserSuppliedShares(uint256,address)", "supplied shares"},
-        {:get_user_total_debt, "getUserTotalDebt(uint256,address)", "total debt"},
-        {:get_user_premium_debt_ray, "getUserPremiumDebtRay(uint256,address)", "RAY-scaled premium debt"}
-      ] do
-    @doc "Fetch a user's #{description} for a Spoke reserve."
-    @spec unquote(name)(address(), non_neg_integer(), address(), keyword()) :: result(non_neg_integer())
-    def unquote(name)(spoke, reserve_id, user, opts \\ []) when is_integer(reserve_id) and reserve_id >= 0 do
-      spoke
-      |> call_with_address(unquote(signature), [reserve_id], user, "(uint256)", opts)
-      |> unwrap_uint()
-    end
+  api(:get_user_supplied_assets, "Fetch a user's supplied assets for a Spoke reserve.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      reserve_id: [kind: :value, description: @reserve_id_desc],
+      user: [kind: :value, description: @user_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}"}
+  )
+
+  @spec get_user_supplied_assets(address(), non_neg_integer(), address(), keyword()) :: result(non_neg_integer())
+  def get_user_supplied_assets(spoke, reserve_id, user, opts \\ []) when is_integer(reserve_id) and reserve_id >= 0 do
+    spoke
+    |> call_with_address("getUserSuppliedAssets(uint256,address)", [reserve_id], user, "(uint256)", opts)
+    |> unwrap_uint()
+  end
+
+  api(:get_user_supplied_shares, "Fetch a user's supplied shares for a Spoke reserve.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      reserve_id: [kind: :value, description: @reserve_id_desc],
+      user: [kind: :value, description: @user_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}"}
+  )
+
+  @spec get_user_supplied_shares(address(), non_neg_integer(), address(), keyword()) :: result(non_neg_integer())
+  def get_user_supplied_shares(spoke, reserve_id, user, opts \\ []) when is_integer(reserve_id) and reserve_id >= 0 do
+    spoke
+    |> call_with_address("getUserSuppliedShares(uint256,address)", [reserve_id], user, "(uint256)", opts)
+    |> unwrap_uint()
+  end
+
+  api(:get_user_total_debt, "Fetch a user's total debt for a Spoke reserve.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      reserve_id: [kind: :value, description: @reserve_id_desc],
+      user: [kind: :value, description: @user_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}"}
+  )
+
+  @spec get_user_total_debt(address(), non_neg_integer(), address(), keyword()) :: result(non_neg_integer())
+  def get_user_total_debt(spoke, reserve_id, user, opts \\ []) when is_integer(reserve_id) and reserve_id >= 0 do
+    spoke
+    |> call_with_address("getUserTotalDebt(uint256,address)", [reserve_id], user, "(uint256)", opts)
+    |> unwrap_uint()
+  end
+
+  api(:get_user_premium_debt_ray, "Fetch a user's RAY-scaled premium debt for a Spoke reserve.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      reserve_id: [kind: :value, description: @reserve_id_desc],
+      user: [kind: :value, description: @user_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}"}
+  )
+
+  @spec get_user_premium_debt_ray(address(), non_neg_integer(), address(), keyword()) :: result(non_neg_integer())
+  def get_user_premium_debt_ray(spoke, reserve_id, user, opts \\ []) when is_integer(reserve_id) and reserve_id >= 0 do
+    spoke
+    |> call_with_address("getUserPremiumDebtRay(uint256,address)", [reserve_id], user, "(uint256)", opts)
+    |> unwrap_uint()
   end
 
   api(:get_user_debt, "Fetch a user's drawn and premium debt for a Spoke reserve.",
@@ -326,17 +409,34 @@ defmodule Onchain.Aave.V4.Spoke do
     end
   end
 
-  for {name, signature, return_type, description} <- [
-        {:get_liquidation_logic, "getLiquidationLogic()", "(address)", "liquidation logic library"},
-        {:oracle, "ORACLE()", "(address)", "Spoke oracle"}
-      ] do
-    @doc "Fetch the #{description} address."
-    @spec unquote(name)(address(), keyword()) :: result(String.t())
-    def unquote(name)(spoke, opts \\ []) do
-      spoke
-      |> Contract.call(unquote(signature), [], unquote(return_type), opts)
-      |> unwrap_address()
-    end
+  api(:get_liquidation_logic, "Fetch the liquidation logic library address.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, String.t()} | {:error, term()}"}
+  )
+
+  @spec get_liquidation_logic(address(), keyword()) :: result(String.t())
+  def get_liquidation_logic(spoke, opts \\ []) do
+    spoke
+    |> Contract.call("getLiquidationLogic()", [], "(address)", opts)
+    |> unwrap_address()
+  end
+
+  api(:oracle, "Fetch the Spoke oracle address.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, String.t()} | {:error, term()}"}
+  )
+
+  @spec oracle(address(), keyword()) :: result(String.t())
+  def oracle(spoke, opts \\ []) do
+    spoke
+    |> Contract.call("ORACLE()", [], "(address)", opts)
+    |> unwrap_address()
   end
 
   api(:max_user_reserves_limit, "Fetch the maximum collateral and borrow reserve count per user.",
