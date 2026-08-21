@@ -788,7 +788,7 @@
       "id": 51,
       "phase": 5,
       "bundle": "v4_support",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Implement Onchain.Aave.V4.PositionManager ergonomic write wrappers (supply/borrow/repay analogs)",
       "scores": {
         "d": 5,
@@ -837,6 +837,7 @@
       ],
       "body": "Primary user-facing write surface for V4. V4 has no `Pool`: supply/repay go through the Giver Position Manager (`:v4_giver_position_manager`) and borrow/withdraw through the Taker Position Manager (`:v4_taker_position_manager`), both already registered in `Onchain.Aave.Contracts`. Follow the V3 `Onchain.Aave.Pool` write convention (validate addresses, split network/signer opts, encode + sign + send) so the two trees read alike.\n\nVerified against the provider-owned interfaces at https://github.com/aave/aave-v4 (`src/position-manager/interfaces/`) on 2026-08-21 — build against the deployed contracts, not against these notes:\n\n- Giver: `supplyOnBehalfOf(address spoke, uint256 reserveId, uint256 amount, address onBehalfOf)` and `repayOnBehalfOf(...)`, same shape, both returning `(uint256, uint256)`.\n- Taker: `borrowOnBehalfOf(address spoke, uint256 reserveId, uint256 amount, address onBehalfOf)` and `withdrawOnBehalfOf(...)`. The **caller** receives the assets and must already hold an allowance granted by `onBehalfOf`, so the allowance surface is part of this task, not a follow-on: `approveBorrow` / `approveWithdraw(address spoke, uint256 reserveId, address spender, uint256 amount)`, `renounceBorrowAllowance` / `renounceWithdrawAllowance(address spoke, uint256 reserveId, address owner)`, and the views `borrowAllowance` / `withdrawAllowance(address spoke, uint256 reserveId, address owner, address spender)`. Insufficient allowance reverts with the custom errors `InsufficientBorrowAllowance(uint256,uint256)` / `InsufficientWithdrawAllowance(uint256,uint256)`.\n\nTwo shape traps worth naming. First, V4 addresses a reserve by `uint256 reserveId` **scoped to a Spoke**, not by the asset address V3 used — the reserve id comes from the Spoke reads landed in Task 48, and passing an asset address where a reserve id belongs encodes silently and reverts on chain. Second, every entrypoint above is either `onBehalfOf`-parameterised or allowance-gated; none infers the position owner from `msg.sender`. That is what makes the Safe/DELEGATECALL constraint satisfiable, and it is also the thing an ergonomic wrapper is most likely to destroy by defaulting the owner to the signer address for convenience. Keep the owner an explicit, required argument on every wrapper.\n",
       "created_at": "2026-04-20",
+      "started_at": "2026-08-21",
       "cross_repo": []
     },
     {
