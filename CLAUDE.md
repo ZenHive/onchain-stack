@@ -51,6 +51,7 @@ lib/onchain/aave/
   faucet.ex                   # testnet faucet interactions
   v4/hub.ex                   # V4 Hub reads (member Spokes, credit lines, rate environment)
   v4/oracle.ex                # V4 Spoke-scoped IAaveOracle + Chainlink reads
+  v4/tokenization_spoke.ex    # V4 ERC-4626 Tokenization Spoke reads (lookup, share accounting)
   types/
     user_account_data.ex
     aggregated_reserve_data.ex

@@ -3,8 +3,8 @@ defmodule OnchainAave do
   Aave V3 protocol wrappers for Elixir.
 
   Provides pool reads/writes, oracle price feeds, math conversions,
-  typed response structs, and Aave V4 Hub and Spoke-oracle reads. Built
-  on the `onchain` core library.
+  typed response structs, and Aave V4 Hub, Spoke-oracle, and Tokenization
+  Spoke reads. Built on the `onchain` core library.
 
   ## Discovery
 
@@ -23,6 +23,7 @@ defmodule OnchainAave do
       Onchain.Aave.Faucet,
       Onchain.Aave.V4.Hub,
       Onchain.Aave.V4.Oracle,
+      Onchain.Aave.V4.TokenizationSpoke,
       Onchain.Aave.Types.UserAccountData,
       Onchain.Aave.Types.AggregatedReserveData,
       Onchain.Aave.Types.BaseCurrencyInfo,

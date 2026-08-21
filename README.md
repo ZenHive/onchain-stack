@@ -29,6 +29,7 @@ call it yourself, and then with a bound that admits `~> 0.12`.
 | `Onchain.Aave.Faucet` | Testnet faucet interactions (mint test tokens) |
 | `Onchain.Aave.V4.Hub` | V4 Hub reads across Core/Prime/Plus (member Spokes, credit-line inventory and caps, rate environment) |
 | `Onchain.Aave.V4.Oracle` | V4 Spoke-scoped IAaveOracle reads (reserve prices, sources, decimals) plus Chainlink feeds |
+| `Onchain.Aave.V4.TokenizationSpoke` | V4 ERC-4626 Tokenization Spoke reads (`lookup(hub, asset)`, share accounting, Hub/asset metadata) |
 
 ## Discovery
 
