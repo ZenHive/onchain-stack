@@ -410,6 +410,8 @@ assignee = "cursor"
 model = "cursor-grok-4.6-high"
 module = "Onchain.Aave.V4.Hub"
 depends_on = [45, 46]
+files_to_modify = ["lib/onchain/aave/v4/hub.ex", "test/onchain/aave/v4/hub_test.exs"]
+touches = ["lib/onchain/aave/v4/hub.ex", "test/onchain/aave/v4/hub_test.exs", "V4_SCOPING.md"]
 created_at = "2026-04-20"
 body = """
 Wrap the Hub-level reads selected in Task 46 — likely: member Spokes, credit-line inventory and caps, Hub rate environment / utilization. Three Hubs, one module. Unit tests only at this stage.
@@ -428,6 +430,8 @@ assignee = "codex"
 model = "gpt-5.6-sol"
 module = "Onchain.Aave.V4.Spoke"
 depends_on = [45, 46]
+files_to_modify = ["lib/onchain/aave/v4/spoke.ex", "lib/onchain/aave/v4/types/", "test/onchain/aave/v4/spoke_test.exs"]
+touches = ["lib/onchain/aave/v4/spoke.ex", "lib/onchain/aave/v4/types/", "test/onchain/aave/v4/spoke_test.exs", "V4_SCOPING.md"]
 created_at = "2026-04-20"
 body = """
 Wrap Spoke reads (collateral set, borrowable set, per-Spoke caps, per-user health/position data). Most complex V4 read module; ship the V4 type structs (V4.Types.SpokeUserData, V4.Types.SpokeReserveData — shaped per Task 46's findings). If the module + types together exceed a single session's scope, split on the axis V4.Types.* → separate task.
@@ -446,6 +450,8 @@ assignee = "grok"
 model = "grok-4.6"
 module = "Onchain.Aave.V4.Oracle"
 depends_on = [45, 46]
+files_to_modify = ["lib/onchain/aave/v4/oracle.ex", "test/onchain/aave/v4/oracle_test.exs"]
+touches = ["lib/onchain/aave/v4/oracle.ex", "test/onchain/aave/v4/oracle_test.exs", "V4_SCOPING.md"]
 created_at = "2026-04-20"
 body = """
 Onchain.Aave.V4.Oracle takes a Spoke address (not a network) because V4 oracles are Spoke-scoped. Mirror the V3 Oracle function shape where possible: get_asset_price/2, get_asset_prices/2, get_source_of_asset/2, get_base_currency*, get_fallback_oracle/1, plus direct Chainlink aggregator reads. Unit tests.
@@ -464,6 +470,8 @@ assignee = "cursor"
 model = "cursor-grok-4.6-high"
 module = "Onchain.Aave.V4.TokenizationSpoke"
 depends_on = [45, 46]
+files_to_modify = ["lib/onchain/aave/v4/tokenization_spoke.ex", "test/onchain/aave/v4/tokenization_spoke_test.exs"]
+touches = ["lib/onchain/aave/v4/tokenization_spoke.ex", "test/onchain/aave/v4/tokenization_spoke_test.exs", "V4_SCOPING.md"]
 created_at = "2026-04-20"
 body = """
 Tokenization Spokes are ERC-4626 vaults — wrap totalAssets, convertToAssets, convertToShares, previewDeposit, previewRedeem, and any V4-specific metadata exposed by ITokenizationSpoke. Also ship a lookup(hub, asset) helper given there are 31 of these. Unit tests.
