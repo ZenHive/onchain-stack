@@ -1362,7 +1362,7 @@
       "id": "63",
       "phase": 3,
       "bundle": "standalone",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Close the assertion gap in the semantics harness: every vector asserted against every key the oracle checks",
       "scores": {
         "d": 5,
@@ -1397,6 +1397,7 @@
       ],
       "body": "Filed 2026-08-22 by the orchestrator from two reviewer concerns on Task 56's run (run-1787389160672-cbfd01cd, verdict approve with `review_warning`). Merged into one task because they are one defect class, not two patches.\n\nThe harness's whole claim is differential: revm is checked against official `ethereum/tests` vectors, with KEVM/Kontrol as the independent oracle. That claim is only as strong as the weakest comparator, and the comparators are uneven. Verified by reading `native/onchain_evm/src/semantics_verification.rs` at 34b41fe:\n\n- `assert_blockchain_vector` asserts status, `output`, `gasUsed`, empty logs, and the full post-state.\n- The SSTORE VMTest asserts `out`, `gas`, and `post`.\n- The LOG VMTest, sitting in the same test function, asserts `gas` and the log's address/topics/data — and never touches `out` or `post`.\n\nKEVM's GST checking keeps `out`, `gas`, `logs` and `post` for VMTESTS, so for `log1_nonEmptyMem` the claimed oracle agreement is broader than what the Rust comparator establishes. Nothing is wrong today; the gap is that a passing test proves less than it appears to.\n\nThe second concern is a coverage gap of the same kind: the committed CREATE vector is `CREATE_EmptyContractWithStorage`, which runs the CREATE opcode inside a CALL. A create transaction configures the fork differently and is not exercised.\n\nScope this as the invariant, not the instance. Hand-fixing the LOG call site leaves the next contributor free to add a vector that checks two of four keys, and the reviewer of that diff would have no written rule to reject it against. Derive the assertion set from the fixture so under-assertion becomes impossible rather than merely absent.\n",
       "created_at": "2026-08-22",
+      "started_at": "2026-08-22",
       "scored_at": "2026-08-22",
       "cross_repo": []
     }
