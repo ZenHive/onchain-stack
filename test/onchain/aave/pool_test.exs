@@ -397,7 +397,7 @@ defmodule Onchain.Aave.PoolTest do
 
   describe "get_user_account_data/2 decode path" do
     test "decodes the six raw uint256 values into scaled Decimal fields" do
-      {:ok, seen} = Agent.start_link(fn -> [] end)
+      seen = start_supervised!({Agent, fn -> [] end})
       url = start_stub(%{account_data_selector() => account_data_payload()}, seen)
 
       assert {:ok, data} = Pool.get_user_account_data(@valid_address, RPCStub.rpc_opts(url))
@@ -462,13 +462,14 @@ defmodule Onchain.Aave.PoolTest do
 
   describe "bang write wrappers" do
     test "supply!/withdraw!/borrow!/repay! return the broadcast tx hash on success" do
-      for fun <- [
-            &Pool.supply!/4,
-            &Pool.withdraw!/4,
-            &Pool.borrow!/4,
-            &Pool.repay!/4
+      for {fun, name} <- [
+            {&Pool.supply!/4, :supply},
+            {&Pool.withdraw!/4, :withdraw},
+            {&Pool.borrow!/4, :borrow},
+            {&Pool.repay!/4, :repay}
           ] do
-        {:ok, seen} = Agent.start_link(fn -> [] end)
+        # One supervised Agent per operation — a shared child id would collide.
+        seen = start_supervised!(Supervisor.child_spec({Agent, fn -> [] end}, id: name))
         url = RPCStub.start(RPCStub.send_tx_handler(@tx_hash, seen))
 
         assert @tx_hash == fun.(@valid_address, @test_amount, @valid_address_2, RPCStub.write_opts(url))
