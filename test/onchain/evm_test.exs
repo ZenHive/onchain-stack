@@ -209,6 +209,22 @@ defmodule Onchain.EVMTest do
                )
     end
 
+    test "returns error for signed hex value" do
+      assert {:error, {:invalid_value, "0x-1"}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 value: "0x-1"
+               )
+    end
+
+    test "returns error for an explicit nil value" do
+      assert {:error, {:invalid_value, nil}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 value: nil
+               )
+    end
+
     test "returns error for negative gas_limit" do
       assert {:error, {:invalid_gas_limit, -1}} =
                EVM.simulate_call(@valid_address, @valid_data,
@@ -251,6 +267,16 @@ defmodule Onchain.EVMTest do
 
     test "returns error for state_overrides with atom keys" do
       overrides = %{atom_key: %{"balance" => "0x1"}}
+
+      assert {:error, {:invalid_state_overrides, ^overrides}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 state_overrides: overrides
+               )
+    end
+
+    test "returns error for state_overrides with a raw binary address key" do
+      overrides = %{<<0::160>> => %{"balance" => "0x1"}}
 
       assert {:error, {:invalid_state_overrides, ^overrides}} =
                EVM.simulate_call(@valid_address, @valid_data,

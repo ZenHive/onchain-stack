@@ -255,6 +255,18 @@ defmodule Onchain.EVM.ParamsTest do
       end)
     end
 
+    test "every sim_opts key rejects an explicit nil value" do
+      Enum.each(documented_sim_opt_keys(), fn key ->
+        opts = Keyword.put([rpc_url: @valid_rpc_url], key, nil)
+        result = Params.build_call_params(@valid_address, @valid_data, opts)
+
+        assert {:error, {tag, _reason}} = result,
+               "#{key}: nil was treated as an omitted option: #{inspect(result)}"
+
+        assert is_atom(tag)
+      end)
+    end
+
     # Reproduced 2026-08-22: "" and "not-a-hex" assembled into the NIF params map.
     test "rejects an empty :value" do
       assert {:error, {:invalid_value, ""}} =
@@ -270,6 +282,16 @@ defmodule Onchain.EVM.ParamsTest do
                  rpc_url: @valid_rpc_url,
                  value: "not-a-hex"
                )
+    end
+
+    test "rejects signed :value strings" do
+      for value <- ["0x-1", "0x+1"] do
+        assert {:error, {:invalid_value, ^value}} =
+                 Params.build_call_params(@valid_address, @valid_data,
+                   rpc_url: @valid_rpc_url,
+                   value: value
+                 )
+      end
     end
 
     test "rejects a :value above U256::MAX" do
@@ -305,6 +327,26 @@ defmodule Onchain.EVM.ParamsTest do
 
     test "rejects :state_overrides whose keys are not addresses" do
       overrides = %{"not-an-address" => %{"balance" => "0x1"}}
+
+      assert {:error, {:invalid_state_overrides, ^overrides}} =
+               Params.build_call_params(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 state_overrides: overrides
+               )
+    end
+
+    test "rejects :state_overrides with raw binary address keys" do
+      overrides = %{<<0::160>> => %{"balance" => "0x1"}}
+
+      assert {:error, {:invalid_state_overrides, ^overrides}} =
+               Params.build_call_params(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 state_overrides: overrides
+               )
+    end
+
+    test "rejects :state_overrides with non-UTF-8 strings" do
+      overrides = %{@valid_address => %{"balance" => <<255>>}}
 
       assert {:error, {:invalid_state_overrides, ^overrides}} =
                Params.build_call_params(@valid_address, @valid_data,

@@ -146,20 +146,20 @@ defmodule Onchain.EVM.Params do
   # The NIF handles both via resolve_block_id — tag strings are resolved natively by Alloy.
   @spec maybe_put_block(map(), EVM.sim_opts()) :: {:ok, map()} | {:error, {:invalid_block, term()}}
   defp maybe_put_block(params, opts) do
-    case Keyword.get(opts, :block) do
-      nil ->
+    case Keyword.fetch(opts, :block) do
+      :error ->
         {:ok, params}
 
-      tag when tag in @block_tags ->
+      {:ok, tag} when tag in @block_tags ->
         {:ok, Map.put(params, "block_tag", tag)}
 
-      n when is_integer(n) and n >= 0 and n <= @u64_max ->
+      {:ok, n} when is_integer(n) and n >= 0 and n <= @u64_max ->
         {:ok, Map.put(params, "block_number", n)}
 
-      "0x" <> _ = hex ->
+      {:ok, "0x" <> _ = hex} ->
         parse_hex_block(params, hex)
 
-      other ->
+      {:ok, other} ->
         {:error, {:invalid_block, other}}
     end
   end
@@ -184,11 +184,11 @@ defmodule Onchain.EVM.Params do
   # Validates and adds the :from address to params. Returns error for invalid addresses.
   @spec maybe_put_from(map(), EVM.sim_opts()) :: {:ok, map()} | {:error, {:invalid_address, term()}}
   defp maybe_put_from(params, opts) do
-    case Keyword.get(opts, :from) do
-      nil ->
+    case Keyword.fetch(opts, :from) do
+      :error ->
         {:ok, params}
 
-      from ->
+      {:ok, from} ->
         case ensure_hex_address(from) do
           {:ok, hex} -> {:ok, Map.put(params, "from", hex)}
           {:error, _} -> {:error, {:invalid_address, from}}
@@ -200,11 +200,11 @@ defmodule Onchain.EVM.Params do
   # Validates and adds :value (must be a 0x-prefixed U256 hex quantity) to params.
   @spec maybe_put_value(map(), EVM.sim_opts()) :: {:ok, map()} | {:error, {:invalid_value, term()}}
   defp maybe_put_value(params, opts) do
-    case Keyword.get(opts, :value) do
-      nil ->
+    case Keyword.fetch(opts, :value) do
+      :error ->
         {:ok, params}
 
-      val ->
+      {:ok, val} ->
         case parse_u256_hex(val) do
           {:ok, hex} -> {:ok, Map.put(params, "value", hex)}
           :error -> {:error, {:invalid_value, val}}
@@ -214,9 +214,13 @@ defmodule Onchain.EVM.Params do
 
   @spec parse_u256_hex(term()) :: {:ok, String.t()} | :error
   defp parse_u256_hex("0x" <> rest = hex) do
-    case Integer.parse(rest, 16) do
-      {n, ""} when n <= @u256_max -> {:ok, hex}
-      _ -> :error
+    if Onchain.Hex.valid?(hex) do
+      case Integer.parse(rest, 16) do
+        {n, ""} when n <= @u256_max -> {:ok, hex}
+        _ -> :error
+      end
+    else
+      :error
     end
   end
 
@@ -226,10 +230,10 @@ defmodule Onchain.EVM.Params do
   # Validates and adds :gas_limit (must be a positive integer) to params.
   @spec maybe_put_gas_limit(map(), EVM.sim_opts()) :: {:ok, map()} | {:error, {:invalid_gas_limit, term()}}
   defp maybe_put_gas_limit(params, opts) do
-    case Keyword.get(opts, :gas_limit) do
-      nil -> {:ok, params}
-      gl when is_integer(gl) and gl > 0 and gl <= @u64_max -> {:ok, Map.put(params, "gas_limit", gl)}
-      other -> {:error, {:invalid_gas_limit, other}}
+    case Keyword.fetch(opts, :gas_limit) do
+      :error -> {:ok, params}
+      {:ok, gl} when is_integer(gl) and gl > 0 and gl <= @u64_max -> {:ok, Map.put(params, "gas_limit", gl)}
+      {:ok, other} -> {:error, {:invalid_gas_limit, other}}
     end
   end
 
@@ -238,9 +242,9 @@ defmodule Onchain.EVM.Params do
   @spec maybe_put_state_overrides(map(), EVM.sim_opts()) ::
           {:ok, map()} | {:error, {:invalid_state_overrides, term()}}
   defp maybe_put_state_overrides(params, opts) do
-    case Keyword.get(opts, :state_overrides) do
-      nil -> {:ok, params}
-      overrides -> put_state_overrides(params, overrides)
+    case Keyword.fetch(opts, :state_overrides) do
+      :error -> {:ok, params}
+      {:ok, overrides} -> put_state_overrides(params, overrides)
     end
   end
 
@@ -261,7 +265,7 @@ defmodule Onchain.EVM.Params do
   end
 
   @spec valid_override_entry?(term()) :: boolean()
-  defp valid_override_entry?({addr, fields}) when is_binary(addr) and is_map(fields) do
+  defp valid_override_entry?({"0x" <> _ = addr, fields}) when is_map(fields) do
     match?({:ok, _}, ensure_hex_address(addr)) and valid_override_fields?(fields)
   end
 
@@ -269,7 +273,9 @@ defmodule Onchain.EVM.Params do
 
   @spec valid_override_fields?(map()) :: boolean()
   defp valid_override_fields?(fields) do
-    Enum.all?(fields, fn {k, v} -> is_binary(k) and is_binary(v) end)
+    Enum.all?(fields, fn {key, value} ->
+      is_binary(key) and String.valid?(key) and is_binary(value) and String.valid?(value)
+    end)
   end
 
   @doc false
@@ -277,10 +283,10 @@ defmodule Onchain.EVM.Params do
   # Caps each individual RPC request, not aggregate simulation time. NIF default is 30s.
   @spec maybe_put_timeout_ms(map(), EVM.sim_opts()) :: {:ok, map()} | {:error, {:invalid_timeout_ms, term()}}
   defp maybe_put_timeout_ms(params, opts) do
-    case Keyword.get(opts, :timeout_ms) do
-      nil -> {:ok, params}
-      ms when is_integer(ms) and ms > 0 and ms <= @u64_max -> {:ok, Map.put(params, "timeout_ms", ms)}
-      other -> {:error, {:invalid_timeout_ms, other}}
+    case Keyword.fetch(opts, :timeout_ms) do
+      :error -> {:ok, params}
+      {:ok, ms} when is_integer(ms) and ms > 0 and ms <= @u64_max -> {:ok, Map.put(params, "timeout_ms", ms)}
+      {:ok, other} -> {:error, {:invalid_timeout_ms, other}}
     end
   end
 end
