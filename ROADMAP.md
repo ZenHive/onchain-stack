@@ -21,9 +21,9 @@ All foundational V3 tasks are complete. This package provides full Aave V3 read 
 ## 🎯 Current Focus
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 3 — Math Validation (3 of 6 done · 1 in progress)
+**Focus phase:** 3 — Math Validation (4 of 6 done · 0 in progress)
 
-**Last shipped:** no recent shipments
+**Last shipped:** Task 56 — Mutation-grade Aave V3/V4 math differential suite on 2026-08-22
 
 **Up next:** Task 54 — Mine defi-skills:intent-to-transaction action surface for onchain_aave coverage gaps [D:3/B:8/U:7 → Eff:2.5] 🎯
 <!-- FOCUS:END -->
@@ -67,7 +67,7 @@ They cover different failure modes: revm catches drift from the contracts, JS ca
 | Task 41 | ✅ | 🎁 **math_validation** · *test/onchain/aave/math_revm_test.exs* · Cross-validate Aave.Math via revm against on-chain Aave V3 [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
 | Task 42 | ✅ | 🎁 **math_validation** · *Onchain.Aave.Math.V4* · V4 math cross-validation via revm (V4 live on mainnet 2026-03-30) [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
 | Task 43 | 🔶 | 🎁 **math_validation** · *Onchain.Aave.Summary* · Cross-validate aggregation helpers via @aave/math-utils (QuickBEAM) [D:4/B:6/U:4 → Eff:1.25?] 📋 ⛔ Gated until onchain_aave grows off-chain aggregation helpers; no V4 JS lib as of 2026-04-20 (re-check before acting). |
-| Task 56 | 🔄 | 🎁 **math_validation** · 🔒 Mutation-grade Aave V3/V4 math differential suite [D:5/B:10/U:8 → Eff:1.8] 🚀 |
+| Task 56 | ✅ | 🎁 **math_validation** · 🔒 Mutation-grade Aave V3/V4 math differential suite [D:5/B:10/U:8 → Eff:1.8] 🚀 |
 <!-- TASKS:END -->
 
 ---

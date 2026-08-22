@@ -960,7 +960,7 @@
       "id": "56",
       "phase": 3,
       "bundle": "math_validation",
-      "status": "in_progress",
+      "status": "done",
       "title": "Mutation-grade Aave V3/V4 math differential suite",
       "scores": {
         "d": 5,
@@ -990,10 +990,17 @@
         "test/onchain/aave/math_revm_test.exs",
         "test/onchain/aave/math/"
       ],
+      "shipped_in": "656a5b01c14f56d110e5adc1bafb02874896e633",
       "body": "Turn the existing V3/V4 unit, integration and revm checks into an adequacy-tested financial-math oracle. The official Aave contracts and observed deployed semantics define the formulas; locally compiled reference bytecode is evidence only when its source, compiler settings and hashes are pinned. Grade the suite with generated and domain mutations so a shared wrong constant, rounding direction or boundary assumption cannot be ratified by matching fixtures.\n",
       "created_at": "2026-08-17",
       "started_at": "2026-08-22",
+      "done_at": "2026-08-22",
       "scored_at": "2026-08-17",
+      "implemented": "Landed by grok via merge-train; reviewer-approved (run run-1787368638394-f03c2e09, 656a5b01c14f56d110e5adc1bafb02874896e633).",
+      "delivered_by": "grok",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1787368638394-f03c2e09",
       "cross_repo": []
     },
     {
