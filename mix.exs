@@ -1,7 +1,7 @@
 defmodule OnchainJs.MixProject do
   use Mix.Project
 
-  @version "0.3.0"
+  @version "0.3.1"
   @source_url "https://github.com/ZenHive/onchain_js"
 
   def project do
@@ -46,8 +46,8 @@ defmodule OnchainJs.MixProject do
       # the GHSA-w4f7-4cxr-rv3c fix rather than merely permitting it. `~> 0.11`
       # admits 0.12.0 but does not require it, so this lock would keep resolving
       # onchain 0.11.0 -> zen_websocket 0.4.2, whose looser gun bound only
-      # happens to have landed on a fixed 2.5.0. onchain 0.12.0 also narrows
-      # `descripex` to `~> 0.12.0`, matching what this package declares below.
+      # happens to have landed on a fixed 2.5.0. Two-segment, so onchain 0.13.0
+      # resolves here without a bound edit.
       {:onchain, "~> 0.12"},
       # Three-segment on purpose: QuickBEAM is a 0.x native runtime dependency,
       # so each minor line is reviewed and tested before this cap moves.
@@ -74,7 +74,11 @@ defmodule OnchainJs.MixProject do
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
       {:ex_dna, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:ex_ast, "~> 0.12", only: [:dev, :test], runtime: false},
+      # `override: true` on purpose: reach 2.8.2 declares `ex_ast ~> 0.12.0`,
+      # which would otherwise hold this repo at 0.12.10. Measured on onchain
+      # 2026-08-22: `mix reach.check --dead-code --arch --smells` produces
+      # identical output over identical scope under 0.12.10 and 0.13.1.
+      {:ex_ast, "~> 0.13", override: true, only: [:dev, :test], runtime: false},
       {:reach, "~> 2.8", only: [:dev, :test], runtime: false}
     ]
   end

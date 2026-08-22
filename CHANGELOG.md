@@ -4,6 +4,26 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## v0.3.1 — widened descripex bound (2026-08-22)
+
+No public API or runtime behaviour changed.
+
+### Changed
+
+- Widened the `descripex` requirement from `~> 0.12.0` to `~> 0.12`. The
+  three-segment cap turned every additive descripex minor into a forced
+  nine-repo release cascade while protecting nothing in-family — `mix.lock` is
+  committed, so a new descripex only ever lands through a deliberate
+  `mix deps.update` behind `mix ci`.
+- Resolved the refreshed family upstreams: onchain 0.13.0, descripex 0.13.0,
+  cartouche 0.7.1, hieroglyph 1.6.2 and zen_websocket 0.7.1.
+- Adopted `ex_ast` 0.13.1 via `override: true`, which reach 2.8.2 would
+  otherwise cap at 0.12.10. Measured on onchain 2026-08-22: `mix reach.check
+  --dead-code --arch --smells` produces identical output over identical scope
+  under both versions.
+
+---
+
 ## v0.3.0 — self-describing API, QuickBEAM 0.11 and dependency refresh (2026-08-18)
 
 ### Changed
