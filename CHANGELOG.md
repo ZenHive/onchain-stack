@@ -8,6 +8,16 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ### Added
 
+- **`mix ci` gates the Rust half.** The comprehensive gate now runs `cargo test`
+  and `cargo clippy --all-targets -- -D warnings` over both native crates after
+  the Elixir suite, so a Rust regression or a new clippy diagnostic fails the
+  same gate Elixir does. Each crate denies `clippy::unwrap_used` in its
+  `Cargo.toml`, with a crate-root `#![cfg_attr(test, allow(...))]` so test code
+  keeps its unwraps; `expect_used` stays allowed. The dispatch-scale
+  `mix check.dispatch` and the fast `mix precommit` loop are unchanged — neither
+  pays the cargo cost. A host without `cargo`, or without the clippy component,
+  is reported as a skip rather than failed.
+
 - **Independent EVM semantics verification against official `ethereum/tests`.**
   A test-only harness replays official Istanbul and Frontier vectors
   (CALL/CREATE/revert, SSTORE/LOG/gas, and a top-level create transaction)
