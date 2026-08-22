@@ -1033,3 +1033,34 @@ Step 4 is the first genuinely public, hard-to-undo action in this repo's history
 """
 created_at = "2026-08-22"
 scored_at = "2026-08-22"
+
+[[task]]
+id = "63"
+phase = 3
+bundle = "standalone"
+status = "pending"
+title = "Close the assertion gap in the semantics harness: every vector asserted against every key the oracle checks"
+scores = { d = 5, b = 8, u = 6 }
+depends_on = [56]
+acceptance_criteria = ["The LOG VMTest comparator asserts the fixture's `out` and its `post` state, not only gas and log fields — today `revm_matches_official_vm_storage_log_and_gas_vectors` checks all three for `sstore_load_1` and skips both for `log1_nonEmptyMem`, in the same function, on the same fixture format", "The asymmetry cannot silently return: a vector's assertion set is derived from what the fixture declares rather than hand-written per case, so a newly committed vector carrying `out`/`post`/`gas` is checked on all of them by construction. This is the point of the task — patching the one LOG call site and leaving the next vector free to under-assert is not a fix", "A top-level create *transaction* vector is covered, not only `CREATE_EmptyContractWithStorage`, which exercises the CREATE opcode from inside a CALL. Contract creation as a transaction is a distinct path through the fork configuration", "The negative control still fails for every strengthened assertion — a corrupted `out` and a corrupted `post` entry must each be rejected, the same way corrupted storage already is. An assertion that cannot fail is not an assertion", "`verification-ledger.json` reflects the widened key set, so the ledger does not claim more agreement than the comparators establish", "cargo test passes for both crates and mix ci passes"]
+out_of_scope = ["Wiring `verify-semantics.sh` into `mix ci` — it needs Docker and the pinned ~GB Kontrol image on the host, which no gate may assume. The reviewer raised this on run run-1787389160672-cbfd01cd; it is declined by design, not deferred", "Adding the cargo suites to `mix ci` — that is Task 43", "Broadening the vector set beyond the create-transaction gap named above"]
+touches = ["native/onchain_evm/src/semantics_verification.rs", "native/onchain_evm/testdata/"]
+assignee = "cursor"
+model = "cursor-grok-4.6-high"
+body = """
+Filed 2026-08-22 by the orchestrator from two reviewer concerns on Task 56's run (run-1787389160672-cbfd01cd, verdict approve with `review_warning`). Merged into one task because they are one defect class, not two patches.
+
+The harness's whole claim is differential: revm is checked against official `ethereum/tests` vectors, with KEVM/Kontrol as the independent oracle. That claim is only as strong as the weakest comparator, and the comparators are uneven. Verified by reading `native/onchain_evm/src/semantics_verification.rs` at 34b41fe:
+
+- `assert_blockchain_vector` asserts status, `output`, `gasUsed`, empty logs, and the full post-state.
+- The SSTORE VMTest asserts `out`, `gas`, and `post`.
+- The LOG VMTest, sitting in the same test function, asserts `gas` and the log's address/topics/data — and never touches `out` or `post`.
+
+KEVM's GST checking keeps `out`, `gas`, `logs` and `post` for VMTESTS, so for `log1_nonEmptyMem` the claimed oracle agreement is broader than what the Rust comparator establishes. Nothing is wrong today; the gap is that a passing test proves less than it appears to.
+
+The second concern is a coverage gap of the same kind: the committed CREATE vector is `CREATE_EmptyContractWithStorage`, which runs the CREATE opcode inside a CALL. A create transaction configures the fork differently and is not exercised.
+
+Scope this as the invariant, not the instance. Hand-fixing the LOG call site leaves the next contributor free to add a vector that checks two of four keys, and the reviewer of that diff would have no written rule to reject it against. Derive the assertion set from the fixture so under-assertion becomes impossible rather than merely absent.
+"""
+created_at = "2026-08-22"
+scored_at = "2026-08-22"
