@@ -128,6 +128,20 @@ defmodule OnchainEvm.MixProject do
         "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4009) end)'"
       ],
       integration: ["test.json --only integration"],
+      # Dispatch-scale gate — what the harness reviewer runs per run (registered
+      # as the project's `check_command`). Static checks only: no dialyzer (cold
+      # PLT dominates a fresh worktree), no coverage, no test run — the reviewer
+      # picks focused `mix test.json` invocations for the behavior it touched.
+      # `mix ci` stays the landed-base gate.
+      "check.dispatch": [
+        "format --check-formatted",
+        "compile --warnings-as-errors",
+        "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
+        "doctor --raise",
+        "ex_dna --max-clones 0",
+        "reach.check --arch --smells",
+        "sobelow --skip --exit low"
+      ],
       # Fast local pre-commit loop — skips the cold-PLT dialyzer and full coverage
       # pass so it stays quick on incremental edits.
       precommit: [
@@ -137,7 +151,7 @@ defmodule OnchainEvm.MixProject do
         "ex_dna --max-clones 0",
         "test.json --exclude integration"
       ],
-      # Comprehensive gate — the harness reviewer's `check_command` and `mix ci` target.
+      # Comprehensive gate — landed-base Architect/QA pass and `mix ci` target.
       "precommit.full": [
         "compile --warnings-as-errors",
         "format --check-formatted",

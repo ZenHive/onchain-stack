@@ -23,7 +23,7 @@ Portfolio default — carried by `harness-workflow.md` § "Delegation roster —
 
 Self-contained so it survives into `AGENTS.md` on regen — cross-family reviewers (codex / cursor / grok) read `AGENTS.md`, not the Claude skill set.
 
-- **Canonical gate:** `mix precommit.full` (alias `mix ci`) — the comprehensive pass the harness reviewer's `check_command` runs. Fast local loop: `mix precommit` (skips the cold-PLT dialyzer + full coverage). Both are defined in `mix.exs` aliases and pinned to `MIX_ENV=test` via `def cli`.
+- **Canonical gate:** `mix precommit.full` (alias `mix ci`) — the landed-base / Architect-QA pass. Dispatch-scale hint for harness reviewers: `mix check.dispatch` (static checks only; the reviewer adds focused `mix test.json` for touched behavior). Fast local loop: `mix precommit` (skips the cold-PLT dialyzer + full coverage). Aliases are defined in `mix.exs` and pinned to `MIX_ENV=test` via `def cli` where they run tests.
 - `mix precommit.full` runs, in order: `compile --warnings-as-errors`, `format --check-formatted`, `credo --strict` (ignoring TODO/FIXME tags; ExSlop plugin enabled in `.credo.exs`), `doctor --raise`, `ex_dna --max-clones 0` (zero-clone budget), `reach.check --arch --smells` (policy in `.reach.exs`), `sobelow --skip`, `deps.audit.gated`, `test.json --cover --cover-threshold 85 --exclude integration`, `dialyzer`, `agents.check`. Nothing runs it for you — the GitHub Actions workflows were removed family-wide on 2026-08-22, so a local green is the only green there is.
 - **`mix test.json` (`ex_unit_json`) and `mix dialyzer.json` (`dialyzer_json`) emit JSON by design — this is NOT a build failure.** Parse the JSON for real failures; never flag the envelope itself. Plain `mix dialyzer` is the authoritative dialyzer check when the JSON encoder can't serialize a warning shape (it's what the gate runs).
 - **`reach.check --arch --smells` gates from `.reach.exs`** (`smells: [strict: true]`). Smell findings must be fixed for real; the `smells.ignore.paths` entry already present is scoped to a metaprogramming-inherent finding (see the comment in `.reach.exs`) — never add to that list to make a new finding disappear.
@@ -37,7 +37,7 @@ Self-contained so it survives into `AGENTS.md` on regen — cross-family reviewe
 - All modules use `Onchain.*` namespace (e.g., `Onchain.EVM`) — same as when they lived in the monolith
 - Rust NIFs via Rustler: `otp_app: :onchain_evm` (not `:onchain`)
 - Two native crates: `native/onchain_evm/` (revm) and `native/onchain_solidity/` (Alloy + solang-parser)
-- Hex dependency: `{:onchain, "~> 0.5"}`
+- Hex dependency: `{:onchain, "~> 0.12"}`
 - Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`
 
 ## Module Layout
@@ -90,5 +90,5 @@ Integration tests require `ETHEREUM_API_URL` or `ETH_RPC_URL` env var.
 
 ## Related Packages
 
-- **onchain** — Core Ethereum primitives: `{:onchain, "~> 0.5"}`
+- **onchain** — Core Ethereum primitives: `{:onchain, "~> 0.12"}`
 - **onchain_aave** — Aave V3 wrappers: `{:onchain_aave, "~> 0.1"}`

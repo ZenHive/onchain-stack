@@ -9,8 +9,8 @@ Requires a Rust toolchain for NIF compilation.
 ```elixir
 def deps do
   [
-    {:onchain, "~> 0.10"},
-    {:onchain_evm, "~> 0.3"}
+    {:onchain, "~> 0.12"},
+    {:onchain_evm, "~> 0.5"}
   ]
 end
 ```
@@ -43,10 +43,15 @@ Onchain.EVM.simulate_batch(calls, rpc_url: url)
 
 | Option | Meaning |
 |--------|---------|
-| `:rpc_url` | RPC endpoint to fork from (required; validated — empty/non-HTTP(S)/hostless rejected) |
+| `:rpc_url` | RPC endpoint to fork from (required; empty/non-HTTP(S)/hostless rejected) |
 | `:block` | Block to fork at — integer, `"0x…"` hex, or a tag (`"latest"`, `"finalized"`, `"safe"`, `"pending"`, `"earliest"`) |
+| `:from` | Sender address (0x hex or 20-byte binary) |
 | `:timeout_ms` | Per-RPC-request timeout (positive integer; default 30s, 5s connect). Surfaces as `{:error, {:timeout, msg}}` |
-| `:value`, `:gas_limit`, `:state_overrides` | Validated and threaded into the fork (invalid input fails fast, not silently dropped) |
+| `:value` | 0x-prefixed U256 hex quantity |
+| `:gas_limit` | Positive integer ≤ u64 |
+| `:state_overrides` | `%{address => %{balance/nonce/code/storage}}` applied on top of the forked account |
+
+Malformed options fail at the Elixir boundary with a tagged `{:error, {atom, term}}`; they never reach the NIF.
 
 Every public function has a bang (`!`) variant that raises on error.
 
@@ -62,7 +67,7 @@ end
 USDC.balance_of(contract, holder, rpc_url: url)   # => {:ok, [balance]}
 ```
 
-Generator inputs (in precedence order): `:abi_json`, `:abi_file`, `:sol`, `:sol_file`. Solidity sources support `:remappings` (Foundry-style) and `:root_contract` for import resolution.
+Generator inputs (in precedence order): `:abi_json`, `:abi_file`, `:sol`, `:sol_file`. Solidity sources support `:remappings` (Foundry-style) and `:root_contract` for import resolution. Each generated module also emits a nested `Multicall` with typed call builders and result decoders for `Onchain.Multicall.aggregate3/2`.
 
 ## Discovery
 

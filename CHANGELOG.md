@@ -6,22 +6,26 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
-### Changed
+### Added
 
-- Updated Hex lock to `bandit` 1.12.5, `tidewave` 0.9.0, and `req` 0.7.3.
-  `mix.exs` now requires `{:bandit, "~> 1.12"}` and `{:tidewave, "~> 0.9"}`.
-- Refreshed both native Cargo lockfiles within existing `Cargo.toml` bounds
-  (direct crates were already current: REVM 42.0.1, Alloy 2.4.1 / 1.6.1,
-  rustler 0.38.0). Transitive bumps include `h2` 0.4.18, `quinn-proto`
-  0.11.17, `either` 1.18.0, and `ref-cast` 1.0.27.
-- `ex_ast` stays on 0.12.10: Reach 2.8.2 still requires `~> 0.12.0`, so
-  0.13.1 is blocked until Reach widens that bound.
-
-### Security
-
-- `bandit` 1.12.5 is the patched release for GHSA-xj8g-532w-jv94 and
-  GHSA-x3gh-xhj4-3vq8. Both native lockfiles still pass `cargo audit`
-  with only the upstream `derivative` / `paste` maintenance warnings.
+- **Per-contract `Multicall` helpers from `Onchain.Contract.Generator`.** Each
+  generated module now emits a nested `Multicall` with typed call builders and
+  result decoders for view/pure functions, targeting
+  `Onchain.Multicall.aggregate3/2`.
+- **Elixir-boundary validation of the documented `Onchain.EVM` option surface.**
+  Malformed `:rpc_url`, `:block`, `:from`, `:value`, `:gas_limit`,
+  `:timeout_ms`, `:state_overrides`, and `simulate_batch/2` `calls` return a
+  tagged `{:error, {atom, term}}` without crossing the NIF.
+- **Fork block environment and state-override fidelity.** Simulations populate
+  `BlockEnv` from the forked block header (number, timestamp, basefee, gas
+  limit, coinbase, prevrandao). State overrides load the account from the fork
+  before amending, so an override no longer clobbers un-fetched code, balance,
+  or nonce.
+- **Solidity parser-frontend spike.**
+  `native/onchain_solidity/PARSER_FRONTEND_SPIKE.md` recommends `solar-parse`
+  as the successor to `solang-parser` 0.3.5. A Rust characterization test pins
+  the four observed post-0.8.24 syntax failures (transient storage and custom
+  storage layouts).
 
 ## [0.5.1] — 2026-08-22
 
@@ -38,6 +42,11 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 - **Locks refreshed to onchain 0.13.0 and descripex 0.13.0.**
 - **`ex_ast` raised to 0.13.1** via `override: true` over reach 2.8.2's
   `~> 0.12.0`, matching the rest of the family. Dev/test only, never shipped.
+
+### Security
+
+- Lock carries `bandit` 1.12.5, the patched release for GHSA-xj8g-532w-jv94
+  and GHSA-x3gh-xhj4-3vq8 (`{:bandit, "~> 1.12"}`, `{:tidewave, "~> 0.9"}`).
 
 ## [0.5.0] — 2026-08-17
 

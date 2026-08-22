@@ -15,8 +15,8 @@ EVM simulation, Solidity parsing, trace, and codegen via two Rust crates
 (`native/onchain_evm` = revm, `native/onchain_solidity` = Alloy + solang-parser).
 All modules live under the `Onchain.*` namespace; `otp_app: :onchain_evm`.
 
-Requires a Rust toolchain (NIFs compile on `mix compile`). `{:onchain_evm, "~> 0.2"}`
-on top of `{:onchain, "~> 0.8"}`.
+Requires a Rust toolchain (NIFs compile on `mix compile`). `{:onchain_evm, "~> 0.5"}`
+on top of `{:onchain, "~> 0.12"}`.
 
 ## Modules at a glance
 
@@ -48,19 +48,20 @@ Onchain.EVM.simulate_batch(calls, rpc_url: url)
 
 | Option | Notes |
 |--------|-------|
-| `:rpc_url` | **Required.** Validated — empty / whitespace / non-HTTP(S) / hostless URLs are rejected with `{:error, {:invalid_rpc_url, reason}}` (`reason` ∈ `:missing`, `:empty`, `:not_http`, `:no_host`, …). |
+| `:rpc_url` | **Required.** Empty / whitespace / non-HTTP(S) / hostless URLs are rejected with `{:error, {:invalid_rpc_url, reason}}` (`reason` ∈ `:missing`, `:empty`, `{:not_a_string, term}`, `{:invalid_scheme, url}`, `{:missing_host, url}`). |
 | `:block` | Integer, `"0x…"` hex, or tag string `"latest"` / `"finalized"` / `"safe"` / `"pending"` / `"earliest"`. Resolved natively by Alloy. |
 | `:timeout_ms` | Positive integer; per-RPC-request budget (default 30 000ms; connect timeout fixed at 5s). A request that exceeds it aborts instead of blocking the dirty-IO scheduler. |
-| `:from` | Sender address. |
-| `:value` | Wei as binary string — validated, not silently dropped. |
-| `:gas_limit` | Validated. |
-| `:state_overrides` | `%{address => %{balance/nonce/code/storage}}` applied before simulation. |
+| `:from` | Sender address (0x hex or 20-byte binary). |
+| `:value` | 0x-prefixed U256 hex quantity — validated, not silently dropped. |
+| `:gas_limit` | Positive integer ≤ u64. |
+| `:state_overrides` | `%{address => %{balance/nonce/code/storage}}` applied on top of the forked account. |
 
 **Error shape (`evm_error()`):** a union of `validation_error()` (Elixir-side input
-checks: `{:invalid_rpc_url, _}`, `{:invalid_block, _}`, `{:invalid_value, _}`,
+checks: `{:invalid_rpc_url, _}`, `{:invalid_address, _}`, `{:invalid_data, _}`,
+`{:invalid_calls, _}`, `{:invalid_block, _}`, `{:invalid_value, _}`,
 `{:invalid_gas_limit, _}`, `{:invalid_state_overrides, _}`, `{:invalid_timeout_ms, _}`)
 and `nif_error()` (`{:evm_error, msg}`, `{:evm_revert, msg}`, `{:fork_error, msg}`,
-`{:timeout, msg}`).
+`{:timeout, msg}`). Malformed options never cross the NIF.
 
 **Transport-error classification (Task 49):** the Rust NIF recovers the underlying
 `reqwest::Error` from the error source chain and classifies precisely — a per-request
@@ -109,7 +110,8 @@ USDC.symbol!(contract_addr, rpc_url: url)              # bang variant
 `:sol`, `:sol_file`. Solidity sources also take `:remappings` and `:root_contract`
 for import resolution. Generated modules expose one function per ABI entry (snake_cased,
 overloads disambiguated), bang twins, enum-constant functions (`status_pending/0`),
-and `from_raw/1` for struct/array decoding.
+`from_raw/1` for struct/array decoding, and a nested `Multicall` with typed
+`aggregate3/2` call builders and result decoders for view/pure functions.
 
 ## Discovery
 
