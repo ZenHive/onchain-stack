@@ -849,7 +849,7 @@
       "id": 53,
       "phase": 3,
       "bundle": "standalone",
-      "status": "in_progress",
+      "status": "pending",
       "title": "Adopt `rustler_precompiled` for both native crates — artifacts cross-built locally with cargo-zigbuild",
       "scores": {
         "d": 6,

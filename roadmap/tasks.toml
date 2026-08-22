@@ -632,7 +632,7 @@ shipped_in = "904dfd817e8277a4c85f42b21d530d67e2f9eeb3"
 id = 53
 phase = 3
 bundle = "standalone"
-status = "in_progress"
+status = "pending"
 title = "Adopt `rustler_precompiled` for both native crates — artifacts cross-built locally with cargo-zigbuild"
 scores = { d = 6, b = 8, u = 8 }
 acceptance_criteria = [
