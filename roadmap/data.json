@@ -702,13 +702,13 @@
       "phase": 3,
       "bundle": "standalone",
       "status": "pending",
-      "title": "Add `cargo clippy` to `mix ci` — there is no GitHub Actions to add it to",
+      "title": "Gate the Rust half: run `cargo test` and `cargo clippy` from `mix ci`",
       "scores": {
-        "d": 3,
-        "b": 6,
+        "d": 4,
+        "b": 8,
         "u": 6
       },
-      "eff": 2.0,
+      "eff": 1.75,
       "dep_layer": 0,
       "unlocks": 0,
       "markers": [],
@@ -717,21 +717,25 @@
       "module": "Both native crates",
       "model": "cursor-grok-4.6-high",
       "acceptance_criteria": [
-        "`mix precommit.full` (alias `mix ci`) runs clippy over both crates and fails the gate on a lint, in the same way the Elixir analyzers already do",
+        "`mix precommit.full` (alias `mix ci`) runs `cargo test` over both crates and fails the gate on a failing Rust test — today all 21 of them are ungated and a Rust-only regression lands green",
+        "`mix ci` also runs clippy over both crates and fails the gate on a lint, in the same way the Elixir analyzers already do",
         "Both crates are clippy-clean at the chosen lint level — a gate that is added while already red is not added",
         "A lint that would catch a genuinely fallible `.expect()` / `.unwrap()` creeping into either crate is enabled, since that is the residual concern left by superseded Task 31",
-        "The check degrades with a clear message when the clippy component is not installed, rather than failing as if the code were bad",
+        "Each check degrades with a clear message when its toolchain component is absent, rather than failing as if the code were bad",
+        "The added wall-clock cost of both steps is measured and written into the task, warm and cold — `cargo test` builds the test profile, which is a second full build of revm + alloy on a cold cache",
         "mix ci passes"
       ],
       "out_of_scope": [
-        "Re-introducing GitHub Actions — if prebuilt artifacts need CI back, that decision belongs to Task 53"
+        "Re-introducing GitHub Actions — if prebuilt artifacts need CI back, that decision belongs to Task 53",
+        "Adding either step to `mix check.dispatch` — harness worktrees start with no `target/`, so a cold Rust build there would be paid on every dispatch. The dispatch hint stays static-only and the reviewer runs focused tests",
+        "Writing new Rust tests — this task gates the ones Tasks 28 and 29 already added"
       ],
       "touches": [
         "mix.exs",
         "native/onchain_evm/src/lib.rs",
         "native/onchain_solidity/src/lib.rs"
       ],
-      "body": "Rewritten 2026-08-22: the original task said \"add cargo clippy to CI\", and this repo has no CI. There is no `.github/` directory; the workflows were removed family-wide on 2026-08-22 and `CLAUDE.md` states that `mix ci` is the only gate there is. Adding clippy therefore means adding it to `mix precommit.full`, not to a workflow file.\n\nBoth crates are analyzed by nothing today, while the Elixir half runs credo, dialyzer, doctor, ex_dna, reach, sobelow and a coverage threshold. Roughly 2,200 lines of Rust — the half that can abort the VM — is the unlinted part.\n\nThe lint selection matters more than the fact of running clippy: superseded Task 31 established that the existing `.expect()` calls are infallible by construction, so the value here is catching the *next* one that is not, which is what a `clippy::unwrap_used` / `expect_used` style lint does mechanically and a per-task reviewer does not.\n",
+      "body": "Rewritten 2026-08-22: the original task said \"add cargo clippy to CI\", and this repo has no CI. There is no `.github/` directory; the workflows were removed family-wide on 2026-08-22 and `CLAUDE.md` states that `mix ci` is the only gate there is. Adding clippy therefore means adding it to `mix precommit.full`, not to a workflow file.\n\nBoth crates are analyzed by nothing today, while the Elixir half runs credo, dialyzer, doctor, ex_dna, reach, sobelow and a coverage threshold. Roughly 2,200 lines of Rust — the half that can abort the VM — is the unlinted part.\n\nThe lint selection matters more than the fact of running clippy: superseded Task 31 established that the existing `.expect()` calls are infallible by construction, so the value here is catching the *next* one that is not, which is what a `clippy::unwrap_used` / `expect_used` style lint does mechanically and a per-task reviewer does not.\n\n**Widened 2026-08-22 from clippy-only to clippy + `cargo test`, on the operator's call.** Tasks 28 and 29 added 21 crate-level tests (14 in `onchain_evm`, 7 in `onchain_solidity`) and `mix ci` runs none of them — it runs `mix test.json` for the Elixir half only. The orchestrator had to invoke both cargo suites by hand to check the integrated base after those two landed, which is precisely the manual whole-surface sweep that is supposed to be encoded as a gate instead. Same alias, same file, same reviewer as the clippy change, so this is one task rather than a sibling.\n\nNote the honest cost: `cargo test` compiles the test profile, whereas Rustler builds release, so a cold run is a second full build of revm + alloy — minutes, then cached. Measure it and write the number down rather than asserting it is fine.\n\n",
       "created_at": "2026-08-22",
       "scored_at": "2026-08-22",
       "cross_repo": []
