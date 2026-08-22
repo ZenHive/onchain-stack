@@ -8,6 +8,15 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ### Added
 
+- **Independent EVM semantics verification against official `ethereum/tests`.**
+  A test-only harness replays official Istanbul and Frontier vectors
+  (CALL/CREATE/revert, SSTORE/LOG/gas, and a top-level create transaction)
+  through revm, with KEVM/Kontrol on a pinned image as the independent oracle.
+  Each vector's assertion set is derived from the fixture rather than written
+  per case, so a vector cannot silently be checked on fewer keys than the
+  oracle checks; negative controls confirm that corrupted output, post-state,
+  and storage are each rejected. Nothing here ships in the package.
+
 - **Precompiled NIF artifacts via `rustler_precompiled`.** Both native crates
   ship prebuilt for five targets (`aarch64`/`x86_64-apple-darwin`,
   `x86_64`/`aarch64-unknown-linux-gnu`, `x86_64-unknown-linux-musl`), so a
@@ -47,6 +56,12 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ### Changed
 
+- **Per-call tokio runtime construction was measured and left alone.** Against
+  an archive node at fork block 20,000,000, constructing the `current_thread`
+  runtime costs a median 959 ns while the simulate calls it serves take
+  2.7 s (cheap) to 4.1 s (expensive) — under 0.00004 % of wall time. Sharing a
+  runtime would also serialize `block_on` callers. Recorded in
+  `native/onchain_evm/RUNTIME_SPIKE.md` with a regression tripwire.
 - **Solidity source parsing migrated from `solang-parser` 0.3.5 to
   `solar-parse` 0.2.0.** `Onchain.Solidity.parse_sol/1` and
   `Onchain.Contract.Generator` now accept Solidity 0.8.27+ forms that previously
