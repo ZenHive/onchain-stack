@@ -42,6 +42,10 @@
 //!
 //! [revm]: https://docs.rs/revm
 
+// `cargo clippy --all-targets` lints #[cfg(test)] modules too, including
+// semantics_verification (gated at its `mod` declaration, not in-file).
+#![cfg_attr(test, allow(clippy::unwrap_used))]
+
 use rustler::{Encoder, Env, NifResult, Term};
 use std::collections::HashMap;
 use std::time::Duration;

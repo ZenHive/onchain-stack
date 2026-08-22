@@ -34,6 +34,9 @@
 //! [alloy-json-abi]: https://docs.rs/alloy-json-abi
 //! [solar-parse]: https://docs.rs/solar-parse
 
+// `cargo clippy --all-targets` lints #[cfg(test)] modules too.
+#![cfg_attr(test, allow(clippy::unwrap_used))]
+
 use alloy_json_abi::{
     Constructor, Error as AbiError, Event, EventParam, Function, JsonAbi, Param, StateMutability,
 };
@@ -1120,6 +1123,7 @@ fn encode_sol_param<'a>(
 /// Returns (canonical_type, components) where:
 /// - If it's a struct: ("tuple", [fields...]) or ("tuple[]", [fields...])
 /// - If it's a primitive: (type_string, [])
+///
 /// The `owner` parameter provides contract context for resolving unqualified type names.
 fn resolve_type_info(ty: &str, owner: &str, registry: &TypeRegistry) -> (String, Vec<SolField>) {
     let (base_ty, suffix) = split_array_suffix(ty);

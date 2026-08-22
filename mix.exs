@@ -173,6 +173,8 @@ defmodule OnchainEvm.MixProject do
         "sobelow --skip --exit low",
         "deps.audit.gated",
         "test.json --cover --cover-threshold 85 --summary-only --exclude integration",
+        &cargo_test/1,
+        &cargo_clippy/1,
         "dialyzer",
         "agents.check"
       ],
@@ -222,6 +224,14 @@ defmodule OnchainEvm.MixProject do
       ignore_warnings: ".dialyzer_ignore.exs"
     ]
   end
+
+  # Rust crate gate. Lives in `Onchain.Cargo` so the skip/fail paths are
+  # unit-testable; these captures are the `precommit.full` steps.
+  @spec cargo_test([String.t()]) :: :ok
+  defp cargo_test(_args), do: Onchain.Cargo.run(:test)
+
+  @spec cargo_clippy([String.t()]) :: :ok
+  defp cargo_clippy(_args), do: Onchain.Cargo.run(:clippy)
 
   # Both gates below shell out to scripts that live OUTSIDE this repo, on the
   # developer host: the AGENTS.md renderer needs the claude-marketplace

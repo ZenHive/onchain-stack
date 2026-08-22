@@ -15,3 +15,9 @@ serde_json = "1"
 hex = "0.4"
 solar-parse = "0.2.0"
 tiny-keccak = { version = "2", features = ["keccak"] }
+
+[lints.clippy]
+# Production has zero unwrap() and nine infallible expect()s (Task 31).
+# Denying expect_used would only add allows; unwrap_used catches the next
+# fallible one. Test code is exempted at the crate root via cfg(test).
+unwrap_used = "deny"

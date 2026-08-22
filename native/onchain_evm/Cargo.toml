@@ -23,3 +23,9 @@ hex = "0.4"
 
 [dev-dependencies]
 revm = { version = "42", features = ["optional_balance_check"] }
+
+[lints.clippy]
+# Production has zero unwrap() and nine infallible expect()s (Task 31).
+# Denying expect_used would only add allows; unwrap_used catches the next
+# fallible one. Test code is exempted at the crate root via cfg(test).
+unwrap_used = "deny"
