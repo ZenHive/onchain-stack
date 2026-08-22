@@ -1,4 +1,4 @@
-//! Solidity and ABI parsing for Elixir, backed by [alloy-json-abi] and [solang-parser].
+//! Solidity and ABI parsing for Elixir, backed by [alloy-json-abi] and [solar-parse].
 //!
 //! This crate is the native half of `Onchain.Solidity` and the compile-time
 //! engine behind `Onchain.Contract.Generator`. It turns either a JSON ABI or
@@ -12,7 +12,7 @@
 //! | NIF | Input | Purpose |
 //! |-----|-------|---------|
 //! | `parse_abi_json` | JSON ABI | Parse a compiled ABI via `alloy-json-abi` |
-//! | `parse_sol` | Solidity source | Parse source via `solang-parser`, no compiler needed |
+//! | `parse_sol` | Solidity source | Parse source via `solar-parse`, no compiler needed |
 //!
 //! Selectors and topic hashes are computed here with `tiny-keccak` over the
 //! canonical signature, so the Elixir side never has to re-derive them.
@@ -21,9 +21,9 @@
 //!
 //! `parse_sol` reads a parse tree; it does not type-check, resolve inheritance,
 //! or evaluate constant expressions. Type and expression rendering falls back to
-//! a debug rendering for shapes that are not modelled (see `type_to_string` and
-//! the expression helpers), and syntax `solang-parser` does not know is returned
-//! as a `:parse_error`. Recursion in type rendering is bounded by
+//! a stable placeholder for shapes that are not modelled (see `type_to_string`
+//! and the expression helpers), and syntax `solar-parse` does not know is
+//! returned as a `:parse_error`. Recursion in type rendering is bounded by
 //! `MAX_TYPE_RECURSION_DEPTH`; NatSpec is attached by proximity, bounded by
 //! `MAX_NATSPEC_DISTANCE_BYTES`.
 //!
@@ -32,13 +32,17 @@
 //! source declares.
 //!
 //! [alloy-json-abi]: https://docs.rs/alloy-json-abi
-//! [solang-parser]: https://docs.rs/solang-parser
+//! [solar-parse]: https://docs.rs/solar-parse
 
 use alloy_json_abi::{
     Constructor, Error as AbiError, Event, EventParam, Function, JsonAbi, Param, StateMutability,
 };
 use rustler::{Encoder, Env, NifResult, Term};
-use solang_parser::pt;
+use solar_parse::{
+    ast::{self, Arena},
+    interface::{source_map::FileName, ColorChoice, Session},
+    Parser,
+};
 use std::collections::{HashMap, HashSet};
 use tiny_keccak::{Hasher, Keccak};
 
@@ -83,6 +87,77 @@ mod atoms {
 /// Maximum byte distance between a doc comment's target offset and a function's
 /// start offset for the comment to be associated with that function.
 const MAX_NATSPEC_DISTANCE_BYTES: usize = 100;
+
+// --- Owned source-tree extracted from Solar (private; never crosses the NIF) ---
+
+struct ParsedUnit {
+    items: Vec<ParsedItem>,
+}
+
+enum ParsedItem {
+    Contract(ParsedContract),
+    Function(ParsedFunction),
+    Variable(ParsedVariable),
+    Struct(ParsedStruct),
+    Enum(ParsedEnum),
+    Event(ParsedEvent),
+    Error(ParsedError),
+    Import(String),
+}
+
+struct ParsedContract {
+    name: String,
+    items: Vec<ParsedItem>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ParsedFnKind {
+    Function,
+    Constructor,
+}
+
+struct ParsedFunction {
+    kind: ParsedFnKind,
+    name: String,
+    span_start: usize,
+    params: Vec<ParsedParam>,
+    returns: Vec<ParsedParam>,
+    mutability: &'static str,
+}
+
+struct ParsedParam {
+    name: String,
+    ty: String,
+    indexed: bool,
+}
+
+struct ParsedVariable {
+    name: String,
+    ty: String,
+    value: String,
+    is_constant: bool,
+}
+
+struct ParsedStruct {
+    name: String,
+    fields: Vec<SolField>,
+}
+
+struct ParsedEnum {
+    name: String,
+    variants: Vec<String>,
+}
+
+struct ParsedEvent {
+    name: String,
+    fields: Vec<ParsedParam>,
+    anonymous: bool,
+}
+
+struct ParsedError {
+    name: String,
+    fields: Vec<ParsedParam>,
+}
 
 // --- NIF functions ---
 
@@ -140,14 +215,238 @@ fn parse_sol_source<'a>(
     encode_sol_source(env, &tree, root_contract, &registry, &mut doc_comments)
 }
 
-fn parse_source_unit(source: &str) -> Result<pt::SourceUnit, String> {
-    match solang_parser::parse(source, 0) {
-        Ok((tree, _comments)) => Ok(tree),
-        Err(diags) => {
-            let msgs: Vec<String> = diags.iter().map(|d| format!("{:?}", d)).collect();
-            Err(msgs.join("; "))
-        }
+fn parse_source_unit(source: &str) -> Result<ParsedUnit, String> {
+    let sess = Session::builder()
+        .with_buffer_emitter(ColorChoice::Never)
+        .single_threaded()
+        .build();
+
+    let extracted = sess.enter_sequential(|| -> Result<ParsedUnit, ()> {
+        let arena = Arena::new();
+        let mut parser = Parser::from_source_code(
+            &sess,
+            &arena,
+            FileName::Custom("<input>".into()),
+            source.to_string(),
+        )
+        .map_err(|_| ())?;
+
+        let unit = parser.parse_file().map_err(|err| {
+            err.emit();
+        })?;
+
+        Ok(extract_parsed_unit(&sess, &unit))
+    });
+
+    match sess.emitted_errors() {
+        Some(Err(diags)) => Err(diags.to_string()),
+        _ => extracted.map_err(|_| "parse error".to_string()),
     }
+}
+
+fn extract_parsed_unit(sess: &Session, unit: &ast::SourceUnit<'_>) -> ParsedUnit {
+    ParsedUnit {
+        items: extract_items(sess, unit.items.iter()),
+    }
+}
+
+fn extract_items<'a, 'ast: 'a>(
+    sess: &Session,
+    items: impl IntoIterator<Item = &'a ast::Item<'ast>>,
+) -> Vec<ParsedItem> {
+    items
+        .into_iter()
+        .filter_map(|item| extract_item(sess, item))
+        .collect()
+}
+
+fn extract_item<'ast>(sess: &Session, item: &ast::Item<'ast>) -> Option<ParsedItem> {
+    match &item.kind {
+        ast::ItemKind::Contract(contract) => Some(ParsedItem::Contract(ParsedContract {
+            name: contract.name.to_string(),
+            items: extract_items(sess, contract.body.iter()),
+        })),
+        ast::ItemKind::Function(function) => {
+            extract_function(sess, function).map(ParsedItem::Function)
+        }
+        ast::ItemKind::Variable(variable) => Some(ParsedItem::Variable(extract_variable(variable))),
+        ast::ItemKind::Struct(struct_def) => Some(ParsedItem::Struct(extract_struct(struct_def))),
+        ast::ItemKind::Enum(enum_def) => Some(ParsedItem::Enum(extract_enum(enum_def))),
+        ast::ItemKind::Event(event_def) => Some(ParsedItem::Event(extract_event(event_def))),
+        ast::ItemKind::Error(error_def) => Some(ParsedItem::Error(extract_error(error_def))),
+        ast::ItemKind::Import(import) => {
+            Some(ParsedItem::Import(import.path.value.as_str().to_string()))
+        }
+        _ => None,
+    }
+}
+
+fn extract_function<'ast>(
+    sess: &Session,
+    function: &ast::ItemFunction<'ast>,
+) -> Option<ParsedFunction> {
+    let kind = match function.kind {
+        ast::FunctionKind::Function => ParsedFnKind::Function,
+        ast::FunctionKind::Constructor => ParsedFnKind::Constructor,
+        _ => return None,
+    };
+
+    Some(ParsedFunction {
+        kind,
+        name: function
+            .header
+            .name
+            .map(|ident| ident.to_string())
+            .unwrap_or_default(),
+        span_start: span_local_start(sess, function.header.span),
+        params: extract_params(&function.header.parameters),
+        returns: function
+            .header
+            .returns
+            .as_ref()
+            .map(extract_params)
+            .unwrap_or_default(),
+        mutability: sol_function_mutability(&function.header),
+    })
+}
+
+fn extract_variable<'ast>(variable: &ast::VariableDefinition<'ast>) -> ParsedVariable {
+    ParsedVariable {
+        name: variable
+            .name
+            .map(|ident| ident.to_string())
+            .unwrap_or_default(),
+        ty: type_to_string(&variable.ty),
+        value: variable
+            .initializer
+            .as_deref()
+            .map(expr_to_value_string)
+            .unwrap_or_default(),
+        is_constant: matches!(
+            variable.mutability,
+            Some(ast::VarMut::Constant | ast::VarMut::Immutable)
+        ),
+    }
+}
+
+fn extract_struct<'ast>(struct_def: &ast::ItemStruct<'ast>) -> ParsedStruct {
+    ParsedStruct {
+        name: struct_def.name.to_string(),
+        fields: struct_def
+            .fields
+            .iter()
+            .map(|field| SolField {
+                name: field
+                    .name
+                    .map(|ident| ident.to_string())
+                    .unwrap_or_default(),
+                ty: type_to_string(&field.ty),
+            })
+            .collect(),
+    }
+}
+
+fn extract_enum<'ast>(enum_def: &ast::ItemEnum<'ast>) -> ParsedEnum {
+    ParsedEnum {
+        name: enum_def.name.to_string(),
+        variants: enum_def
+            .variants
+            .iter()
+            .map(|ident| ident.to_string())
+            .collect(),
+    }
+}
+
+fn extract_event<'ast>(event_def: &ast::ItemEvent<'ast>) -> ParsedEvent {
+    ParsedEvent {
+        name: event_def.name.to_string(),
+        fields: extract_params(&event_def.parameters),
+        anonymous: event_def.anonymous,
+    }
+}
+
+fn extract_error<'ast>(error_def: &ast::ItemError<'ast>) -> ParsedError {
+    ParsedError {
+        name: error_def.name.to_string(),
+        fields: extract_params(&error_def.parameters),
+    }
+}
+
+fn extract_params<'ast>(params: &ast::ParameterList<'ast>) -> Vec<ParsedParam> {
+    params
+        .vars
+        .iter()
+        .map(|param| ParsedParam {
+            name: param
+                .name
+                .map(|ident| ident.to_string())
+                .unwrap_or_default(),
+            ty: type_to_string(&param.ty),
+            indexed: param.indexed,
+        })
+        .collect()
+}
+
+fn span_local_start(sess: &Session, span: ast::Span) -> usize {
+    sess.source_map()
+        .span_to_range(span)
+        .map(|range| range.start)
+        .unwrap_or_else(|_| span.to_range().start)
+}
+
+fn type_to_string(ty: &ast::Type<'_>) -> String {
+    match &ty.kind {
+        ast::TypeKind::Elementary(elem) => elem.to_abi_str().into_owned(),
+        ast::TypeKind::Array(arr) => {
+            let base = type_to_string(&arr.element);
+            match arr.size.as_deref() {
+                Some(size) => format!("{}[{}]", base, expr_to_value_string(size)),
+                None => format!("{}[]", base),
+            }
+        }
+        ast::TypeKind::Custom(path) => path_to_string(path),
+        ast::TypeKind::Mapping(_) => "mapping".to_string(),
+        ast::TypeKind::Function(_) => "function".to_string(),
+    }
+}
+
+fn path_to_string(path: &ast::PathSlice) -> String {
+    path.segments()
+        .iter()
+        .map(|ident| ident.to_string())
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+fn expr_to_value_string(expr: &ast::Expr<'_>) -> String {
+    match &expr.kind {
+        ast::ExprKind::Lit(lit, _) => lit.symbol.as_str().to_string(),
+        ast::ExprKind::Ident(ident) => ident.to_string(),
+        ast::ExprKind::Type(ty) => type_to_string(ty),
+        ast::ExprKind::Member(inner, member) => {
+            format!("{}.{}", expr_to_value_string(inner), member)
+        }
+        _ => "<expr>".to_string(),
+    }
+}
+
+fn sol_function_mutability(header: &ast::FunctionHeader<'_>) -> &'static str {
+    match header.state_mutability.as_ref().map(|m| m.data) {
+        Some(ast::StateMutability::Pure) => "pure",
+        Some(ast::StateMutability::View) => "view",
+        Some(ast::StateMutability::Payable) => "payable",
+        Some(ast::StateMutability::NonPayable) | None => "nonpayable",
+    }
+}
+
+fn collect_imports(tree: &ParsedUnit) -> Vec<String> {
+    tree.items
+        .iter()
+        .filter_map(|item| match item {
+            ParsedItem::Import(path) => Some(path.clone()),
+            _ => None,
+        })
+        .collect()
 }
 
 // --- Type registry ---
@@ -196,72 +495,50 @@ struct NatSpecComment {
     returns: Vec<(String, String)>,
 }
 
-fn build_type_registry(tree: &pt::SourceUnit) -> TypeRegistry {
+fn build_type_registry(tree: &ParsedUnit) -> TypeRegistry {
     let mut pending_structs: Vec<PendingStruct> = Vec::new();
     let mut pending_enums: Vec<PendingEnum> = Vec::new();
     let mut contract_lookup: HashSet<String> = HashSet::new();
 
-    for part in &tree.0 {
-        match part {
-            pt::SourceUnitPart::ContractDefinition(contract) => {
-                let owner_name = contract
-                    .name
-                    .as_ref()
-                    .map(|id| id.name.clone())
-                    .unwrap_or_default();
-
-                if !owner_name.is_empty() {
-                    contract_lookup.insert(owner_name.clone());
+    for item in &tree.items {
+        match item {
+            ParsedItem::Contract(contract) => {
+                if !contract.name.is_empty() {
+                    contract_lookup.insert(contract.name.clone());
                 }
 
-                for contract_part in &contract.parts {
-                    match contract_part {
-                        pt::ContractPart::StructDefinition(struct_def) => {
-                            register_contract_struct(
-                                &mut pending_structs,
-                                struct_def,
-                                &owner_name,
-                                &contract.ty,
-                            );
+                for contract_item in &contract.items {
+                    match contract_item {
+                        ParsedItem::Struct(struct_def) => {
+                            pending_structs.push(PendingStruct {
+                                canonical_name: qualify_user_type(&contract.name, &struct_def.name),
+                                short_name: struct_def.name.clone(),
+                                fields: struct_def.fields.clone(),
+                            });
                         }
-                        pt::ContractPart::EnumDefinition(enum_def) => {
-                            register_contract_enum(
-                                &mut pending_enums,
-                                enum_def,
-                                &owner_name,
-                                &contract.ty,
-                            );
+                        ParsedItem::Enum(enum_def) => {
+                            pending_enums.push(PendingEnum {
+                                canonical_name: qualify_user_type(&contract.name, &enum_def.name),
+                                short_name: enum_def.name.clone(),
+                                variants: enum_def.variants.clone(),
+                            });
                         }
                         _ => {}
                     }
                 }
             }
-            pt::SourceUnitPart::StructDefinition(struct_def) => {
+            ParsedItem::Struct(struct_def) => {
                 pending_structs.push(PendingStruct {
-                    canonical_name: struct_def
-                        .name
-                        .as_ref()
-                        .map(|id| id.name.clone())
-                        .unwrap_or_default(),
-                    short_name: struct_def
-                        .name
-                        .as_ref()
-                        .map(|id| id.name.clone())
-                        .unwrap_or_default(),
-                    fields: collect_struct_fields(struct_def),
+                    canonical_name: struct_def.name.clone(),
+                    short_name: struct_def.name.clone(),
+                    fields: struct_def.fields.clone(),
                 });
             }
-            pt::SourceUnitPart::EnumDefinition(enum_def) => {
-                let name = enum_def
-                    .name
-                    .as_ref()
-                    .map(|id| id.name.clone())
-                    .unwrap_or_default();
-
+            ParsedItem::Enum(enum_def) => {
                 pending_enums.push(PendingEnum {
-                    canonical_name: name.clone(),
-                    short_name: name,
-                    variants: collect_enum_variants(enum_def),
+                    canonical_name: enum_def.name.clone(),
+                    short_name: enum_def.name.clone(),
+                    variants: enum_def.variants.clone(),
                 });
             }
             _ => {}
@@ -345,49 +622,7 @@ fn finalize_type_registry(
     }
 }
 
-fn register_contract_struct(
-    pending_structs: &mut Vec<PendingStruct>,
-    struct_def: &pt::StructDefinition,
-    owner_name: &str,
-    contract_ty: &pt::ContractTy,
-) {
-    let short_name = struct_def
-        .name
-        .as_ref()
-        .map(|id| id.name.clone())
-        .unwrap_or_default();
-
-    let canonical_name = qualify_user_type(owner_name, contract_ty, &short_name);
-
-    pending_structs.push(PendingStruct {
-        canonical_name,
-        short_name,
-        fields: collect_struct_fields(struct_def),
-    });
-}
-
-fn register_contract_enum(
-    pending_enums: &mut Vec<PendingEnum>,
-    enum_def: &pt::EnumDefinition,
-    owner_name: &str,
-    contract_ty: &pt::ContractTy,
-) {
-    let short_name = enum_def
-        .name
-        .as_ref()
-        .map(|id| id.name.clone())
-        .unwrap_or_default();
-
-    let canonical_name = qualify_user_type(owner_name, contract_ty, &short_name);
-
-    pending_enums.push(PendingEnum {
-        canonical_name,
-        short_name,
-        variants: collect_enum_variants(enum_def),
-    });
-}
-
-fn qualify_user_type(owner_name: &str, _contract_ty: &pt::ContractTy, short_name: &str) -> String {
+fn qualify_user_type(owner_name: &str, short_name: &str) -> String {
     if !owner_name.is_empty() {
         format!("{}.{}", owner_name, short_name)
     } else {
@@ -429,34 +664,11 @@ fn resolve_enum(base_ty: &str, owner: &str, registry: &TypeRegistry) -> bool {
     registry.enum_lookup.contains(base_ty)
 }
 
-fn collect_struct_fields(struct_def: &pt::StructDefinition) -> Vec<SolField> {
-    struct_def
-        .fields
-        .iter()
-        .map(|field| SolField {
-            name: field
-                .name
-                .as_ref()
-                .map(|id| id.name.clone())
-                .unwrap_or_default(),
-            ty: expr_to_type_string(&field.ty),
-        })
-        .collect()
-}
-
-fn collect_enum_variants(enum_def: &pt::EnumDefinition) -> Vec<String> {
-    enum_def
-        .values
-        .iter()
-        .map(|value| value.as_ref().map(|id| id.name.clone()).unwrap_or_default())
-        .collect()
-}
-
 // --- Solidity source encoding helpers ---
 
 fn encode_sol_source<'a>(
     env: Env<'a>,
-    tree: &pt::SourceUnit,
+    tree: &ParsedUnit,
     root_contract: Option<&str>,
     registry: &TypeRegistry,
     doc_comments: &mut Vec<(usize, NatSpecComment)>,
@@ -480,19 +692,13 @@ fn encode_sol_source<'a>(
     let mut sol_constructor: Term<'a> = rustler::types::atom::nil().encode(env);
     let mut root_found = root_contract.is_none();
 
-    for part in &tree.0 {
-        match part {
-            pt::SourceUnitPart::ContractDefinition(contract) => {
-                let contract_name = contract
-                    .name
-                    .as_ref()
-                    .map(|id| id.name.as_str())
-                    .unwrap_or("");
-
-                for contract_part in &contract.parts {
-                    if let pt::ContractPart::VariableDefinition(var) = contract_part {
+    for item in &tree.items {
+        match item {
+            ParsedItem::Contract(contract) => {
+                for contract_item in &contract.items {
+                    if let ParsedItem::Variable(var) = contract_item {
                         if let Some(constant) =
-                            encode_sol_constant(env, var, contract_name, registry)
+                            encode_sol_constant(env, var, &contract.name, registry)
                         {
                             sol_constants.push(constant);
                         }
@@ -500,7 +706,7 @@ fn encode_sol_source<'a>(
                 }
 
                 let is_target = match root_contract {
-                    Some(target) => contract_name == target,
+                    Some(target) => contract.name == target,
                     None => true,
                 };
 
@@ -510,47 +716,42 @@ fn encode_sol_source<'a>(
 
                 root_found = true;
 
-                for contract_part in &contract.parts {
-                    match contract_part {
-                        pt::ContractPart::FunctionDefinition(function_def) => {
-                            match &function_def.ty {
-                                pt::FunctionTy::Constructor => {
-                                    sol_constructor = encode_sol_constructor(
-                                        env,
-                                        function_def,
-                                        contract_name,
-                                        registry,
-                                    );
-                                }
-                                pt::FunctionTy::Function => {
-                                    let natspec = take_natspec_for_offset(
-                                        doc_comments,
-                                        function_def.loc.start(),
-                                    );
-                                    sol_functions.push(encode_sol_function(
-                                        env,
-                                        function_def,
-                                        natspec.as_ref(),
-                                        contract_name,
-                                        registry,
-                                    ));
-                                }
-                                _ => {}
+                for contract_item in &contract.items {
+                    match contract_item {
+                        ParsedItem::Function(function_def) => match function_def.kind {
+                            ParsedFnKind::Constructor => {
+                                sol_constructor = encode_sol_constructor(
+                                    env,
+                                    function_def,
+                                    &contract.name,
+                                    registry,
+                                );
                             }
-                        }
-                        pt::ContractPart::EventDefinition(event_def) => {
+                            ParsedFnKind::Function => {
+                                let natspec =
+                                    take_natspec_for_offset(doc_comments, function_def.span_start);
+                                sol_functions.push(encode_sol_function(
+                                    env,
+                                    function_def,
+                                    natspec.as_ref(),
+                                    &contract.name,
+                                    registry,
+                                ));
+                            }
+                        },
+                        ParsedItem::Event(event_def) => {
                             sol_events.push(encode_sol_event(
                                 env,
                                 event_def,
-                                contract_name,
+                                &contract.name,
                                 registry,
                             ));
                         }
-                        pt::ContractPart::ErrorDefinition(error_def) => {
+                        ParsedItem::Error(error_def) => {
                             sol_errors.push(encode_sol_error(
                                 env,
                                 error_def,
-                                contract_name,
+                                &contract.name,
                                 registry,
                             ));
                         }
@@ -558,27 +759,27 @@ fn encode_sol_source<'a>(
                     }
                 }
             }
-            pt::SourceUnitPart::VariableDefinition(var) => {
+            ParsedItem::Variable(var) => {
                 if let Some(constant) = encode_sol_constant(env, var, "", registry) {
                     sol_constants.push(constant);
                 }
             }
-            pt::SourceUnitPart::FunctionDefinition(function_def) if root_contract.is_none() => {
-                if let pt::FunctionTy::Function = &function_def.ty {
-                    let natspec = take_natspec_for_offset(doc_comments, function_def.loc.start());
-                    sol_functions.push(encode_sol_function(
-                        env,
-                        function_def,
-                        natspec.as_ref(),
-                        "",
-                        registry,
-                    ));
-                }
+            ParsedItem::Function(function_def)
+                if root_contract.is_none() && function_def.kind == ParsedFnKind::Function =>
+            {
+                let natspec = take_natspec_for_offset(doc_comments, function_def.span_start);
+                sol_functions.push(encode_sol_function(
+                    env,
+                    function_def,
+                    natspec.as_ref(),
+                    "",
+                    registry,
+                ));
             }
-            pt::SourceUnitPart::EventDefinition(event_def) if root_contract.is_none() => {
+            ParsedItem::Event(event_def) if root_contract.is_none() => {
                 sol_events.push(encode_sol_event(env, event_def, "", registry));
             }
-            pt::SourceUnitPart::ErrorDefinition(error_def) if root_contract.is_none() => {
+            ParsedItem::Error(error_def) if root_contract.is_none() => {
                 sol_errors.push(encode_sol_error(env, error_def, "", registry));
             }
             _ => {}
@@ -667,88 +868,62 @@ fn encode_sol_enum<'a>(env: Env<'a>, enum_def: &SolEnum) -> Term<'a> {
 
 fn encode_sol_constant<'a>(
     env: Env<'a>,
-    v: &pt::VariableDefinition,
+    v: &ParsedVariable,
     owner: &str,
     registry: &TypeRegistry,
 ) -> Option<Term<'a>> {
-    // Only include constant/immutable variables
-    let is_constant = v.attrs.iter().any(|a| {
-        matches!(
-            a,
-            pt::VariableAttribute::Constant(_) | pt::VariableAttribute::Immutable(_)
-        )
-    });
-    if !is_constant {
+    if !v.is_constant {
         return None;
     }
 
-    let name_str = v.name.as_ref().map(|id| id.name.as_str()).unwrap_or("");
-    let ty_str = normalize_struct_field_type(&expr_to_type_string(&v.ty), owner, registry);
-    let val_str = v
-        .initializer
-        .as_ref()
-        .map(expr_to_value_string)
-        .unwrap_or_default();
+    let ty_str = normalize_struct_field_type(&v.ty, owner, registry);
 
     let mut map = Term::map_new(env);
-    map = map_put(map, atoms::name().encode(env), name_str.encode(env));
+    map = map_put(map, atoms::name().encode(env), v.name.as_str().encode(env));
     map = map_put(map, atoms::ty().encode(env), ty_str.as_str().encode(env));
     map = map_put(
         map,
         atoms::value().encode(env),
-        val_str.as_str().encode(env),
+        v.value.as_str().encode(env),
     );
     Some(map)
 }
 
 fn encode_sol_function<'a>(
     env: Env<'a>,
-    f: &pt::FunctionDefinition,
+    f: &ParsedFunction,
     natspec: Option<&NatSpecComment>,
     owner: &str,
     registry: &TypeRegistry,
 ) -> Term<'a> {
-    let name_str = f.name.as_ref().map(|id| id.name.as_str()).unwrap_or("");
-
-    // Build inputs
     let input_types: Vec<String> = f
         .params
         .iter()
-        .map(|(_, p)| param_to_canonical_type(p, owner, registry))
+        .map(|p| type_to_canonical(&p.ty, owner, registry))
         .collect();
 
     let ins: Vec<Term<'a>> = f
         .params
         .iter()
-        .map(|(_, p)| encode_sol_param(env, p, owner, registry))
+        .map(|p| encode_sol_param(env, p, owner, registry))
         .collect();
 
-    // Build outputs
     let output_types: Vec<String> = f
         .returns
         .iter()
-        .map(|(_, p)| param_to_canonical_type(p, owner, registry))
+        .map(|p| type_to_canonical(&p.ty, owner, registry))
         .collect();
 
     let outs: Vec<Term<'a>> = f
         .returns
         .iter()
-        .map(|(_, p)| encode_sol_param(env, p, owner, registry))
+        .map(|p| encode_sol_param(env, p, owner, registry))
         .collect();
 
-    // Build signature: name(type1,type2)
-    let sig = format!("{}({})", name_str, input_types.join(","));
-
-    // Compute selector (first 4 bytes of keccak256)
+    let sig = format!("{}({})", f.name, input_types.join(","));
     let selector = compute_selector(&sig);
-
-    // Build return_type: (type1,type2)
     let ret = format!("({})", output_types.join(","));
 
-    // State mutability
-    let mutability = sol_function_mutability(f);
-
-    // NatSpec
     let natspec_term = match natspec {
         Some(ns) => {
             let mut m = Term::map_new(env);
@@ -775,7 +950,7 @@ fn encode_sol_function<'a>(
     };
 
     let mut map = Term::map_new(env);
-    map = map_put(map, atoms::name().encode(env), name_str.encode(env));
+    map = map_put(map, atoms::name().encode(env), f.name.as_str().encode(env));
     map = map_put(
         map,
         atoms::signature().encode(env),
@@ -794,7 +969,7 @@ fn encode_sol_function<'a>(
     map = map_put(
         map,
         atoms::state_mutability().encode(env),
-        mutability.encode(env),
+        f.mutability.encode(env),
     );
     map = map_put(map, atoms::inputs().encode(env), ins.encode(env));
     map = map_put(map, atoms::outputs().encode(env), outs.encode(env));
@@ -804,55 +979,46 @@ fn encode_sol_function<'a>(
 
 fn encode_sol_constructor<'a>(
     env: Env<'a>,
-    f: &pt::FunctionDefinition,
+    f: &ParsedFunction,
     owner: &str,
     registry: &TypeRegistry,
 ) -> Term<'a> {
     let ins: Vec<Term<'a>> = f
         .params
         .iter()
-        .map(|(_, p)| encode_sol_param(env, p, owner, registry))
+        .map(|p| encode_sol_param(env, p, owner, registry))
         .collect();
-
-    let mutability = sol_function_mutability(f);
 
     let mut map = Term::map_new(env);
     map = map_put(map, atoms::inputs().encode(env), ins.encode(env));
     map = map_put(
         map,
         atoms::state_mutability().encode(env),
-        mutability.encode(env),
+        f.mutability.encode(env),
     );
     map
 }
 
 fn encode_sol_event<'a>(
     env: Env<'a>,
-    e: &pt::EventDefinition,
+    e: &ParsedEvent,
     owner: &str,
     registry: &TypeRegistry,
 ) -> Term<'a> {
-    let name_str = e.name.as_ref().map(|id| id.name.as_str()).unwrap_or("");
-
     let input_types: Vec<String> = e
         .fields
         .iter()
-        .map(|p| {
-            let raw = expr_to_type_string(&p.ty);
-            type_to_canonical(&raw, owner, registry)
-        })
+        .map(|p| type_to_canonical(&p.ty, owner, registry))
         .collect();
 
-    let sig = format!("{}({})", name_str, input_types.join(","));
+    let sig = format!("{}({})", e.name, input_types.join(","));
     let topic_hash = compute_topic_hash(&sig);
 
     let ins: Vec<Term<'a>> = e
         .fields
         .iter()
         .map(|p| {
-            let pname = p.name.as_ref().map(|id| id.name.as_str()).unwrap_or("");
-            let raw_ty = expr_to_type_string(&p.ty);
-            let (canonical_ty, components) = resolve_type_info(&raw_ty, owner, registry);
+            let (canonical_ty, components) = resolve_type_info(&p.ty, owner, registry);
 
             let comps: Vec<Term<'a>> = components
                 .iter()
@@ -860,7 +1026,7 @@ fn encode_sol_event<'a>(
                 .collect();
 
             let mut m = Term::map_new(env);
-            m = map_put(m, atoms::name().encode(env), pname.encode(env));
+            m = map_put(m, atoms::name().encode(env), p.name.as_str().encode(env));
             m = map_put(
                 m,
                 atoms::ty().encode(env),
@@ -872,10 +1038,8 @@ fn encode_sol_event<'a>(
         })
         .collect();
 
-    let is_anonymous = e.anonymous;
-
     let mut map = Term::map_new(env);
-    map = map_put(map, atoms::name().encode(env), name_str.encode(env));
+    map = map_put(map, atoms::name().encode(env), e.name.as_str().encode(env));
     map = map_put(
         map,
         atoms::signature().encode(env),
@@ -886,62 +1050,34 @@ fn encode_sol_event<'a>(
         atoms::topic().encode(env),
         topic_hash.as_str().encode(env),
     );
-    map = map_put(
-        map,
-        atoms::anonymous().encode(env),
-        is_anonymous.encode(env),
-    );
+    map = map_put(map, atoms::anonymous().encode(env), e.anonymous.encode(env));
     map = map_put(map, atoms::inputs().encode(env), ins.encode(env));
     map
 }
 
 fn encode_sol_error<'a>(
     env: Env<'a>,
-    e: &pt::ErrorDefinition,
+    e: &ParsedError,
     owner: &str,
     registry: &TypeRegistry,
 ) -> Term<'a> {
-    let name_str = e.name.as_ref().map(|id| id.name.as_str()).unwrap_or("");
-
     let input_types: Vec<String> = e
         .fields
         .iter()
-        .map(|p| {
-            let raw = expr_to_type_string(&p.ty);
-            type_to_canonical(&raw, owner, registry)
-        })
+        .map(|p| type_to_canonical(&p.ty, owner, registry))
         .collect();
 
-    let sig = format!("{}({})", name_str, input_types.join(","));
+    let sig = format!("{}({})", e.name, input_types.join(","));
     let selector = compute_selector(&sig);
 
     let ins: Vec<Term<'a>> = e
         .fields
         .iter()
-        .map(|p| {
-            let pname = p.name.as_ref().map(|id| id.name.as_str()).unwrap_or("");
-            let raw_ty = expr_to_type_string(&p.ty);
-            let (canonical_ty, components) = resolve_type_info(&raw_ty, owner, registry);
-
-            let comps: Vec<Term<'a>> = components
-                .iter()
-                .map(|field| encode_sol_field(env, field, owner, registry))
-                .collect();
-
-            let mut m = Term::map_new(env);
-            m = map_put(m, atoms::name().encode(env), pname.encode(env));
-            m = map_put(
-                m,
-                atoms::ty().encode(env),
-                canonical_ty.as_str().encode(env),
-            );
-            m = map_put(m, atoms::components().encode(env), comps.encode(env));
-            m
-        })
+        .map(|p| encode_sol_param(env, p, owner, registry))
         .collect();
 
     let mut map = Term::map_new(env);
-    map = map_put(map, atoms::name().encode(env), name_str.encode(env));
+    map = map_put(map, atoms::name().encode(env), e.name.as_str().encode(env));
     map = map_put(
         map,
         atoms::signature().encode(env),
@@ -958,45 +1094,26 @@ fn encode_sol_error<'a>(
 
 fn encode_sol_param<'a>(
     env: Env<'a>,
-    p: &Option<pt::Parameter>,
+    p: &ParsedParam,
     owner: &str,
     registry: &TypeRegistry,
 ) -> Term<'a> {
-    match p {
-        Some(param) => {
-            let pname = param.name.as_ref().map(|id| id.name.as_str()).unwrap_or("");
-            let raw_ty = expr_to_type_string(&param.ty);
+    let (canonical_ty, components) = resolve_type_info(&p.ty, owner, registry);
 
-            // Check if the type references a known struct
-            let (canonical_ty, components) = resolve_type_info(&raw_ty, owner, registry);
+    let comps: Vec<Term<'a>> = components
+        .iter()
+        .map(|field| encode_sol_field(env, field, owner, registry))
+        .collect();
 
-            let comps: Vec<Term<'a>> = components
-                .iter()
-                .map(|field| encode_sol_field(env, field, owner, registry))
-                .collect();
-
-            let mut m = Term::map_new(env);
-            m = map_put(m, atoms::name().encode(env), pname.encode(env));
-            m = map_put(
-                m,
-                atoms::ty().encode(env),
-                canonical_ty.as_str().encode(env),
-            );
-            m = map_put(m, atoms::components().encode(env), comps.encode(env));
-            m
-        }
-        None => {
-            let mut m = Term::map_new(env);
-            m = map_put(m, atoms::name().encode(env), "".encode(env));
-            m = map_put(m, atoms::ty().encode(env), "".encode(env));
-            m = map_put(
-                m,
-                atoms::components().encode(env),
-                Vec::<Term<'a>>::new().encode(env),
-            );
-            m
-        }
-    }
+    let mut m = Term::map_new(env);
+    m = map_put(m, atoms::name().encode(env), p.name.as_str().encode(env));
+    m = map_put(
+        m,
+        atoms::ty().encode(env),
+        canonical_ty.as_str().encode(env),
+    );
+    m = map_put(m, atoms::components().encode(env), comps.encode(env));
+    m
 }
 
 /// Resolve a type that may reference a struct definition.
@@ -1092,21 +1209,6 @@ fn encode_sol_field<'a>(
     m
 }
 
-/// Get the canonical type for a parameter, resolving struct references to tuple types.
-fn param_to_canonical_type(
-    p: &Option<pt::Parameter>,
-    owner: &str,
-    registry: &TypeRegistry,
-) -> String {
-    match p {
-        Some(param) => {
-            let raw = expr_to_type_string(&param.ty);
-            type_to_canonical(&raw, owner, registry)
-        }
-        None => String::new(),
-    }
-}
-
 fn normalize_struct_field_type(ty: &str, owner: &str, registry: &TypeRegistry) -> String {
     let (base_ty, suffix) = split_array_suffix(ty);
 
@@ -1151,101 +1253,6 @@ fn split_array_suffix(ty: &str) -> (String, String) {
     }
 
     (base_ty, suffix)
-}
-
-// --- Type expression to string conversion ---
-
-fn expr_to_type_string(expr: &pt::Expression) -> String {
-    match expr {
-        pt::Expression::Type(_, ty) => match ty {
-            pt::Type::Address => "address".to_string(),
-            pt::Type::AddressPayable => "address".to_string(),
-            pt::Type::Bool => "bool".to_string(),
-            pt::Type::String => "string".to_string(),
-            pt::Type::Bytes(n) => format!("bytes{}", n),
-            pt::Type::DynamicBytes => "bytes".to_string(),
-            pt::Type::Int(n) => format!("int{}", n),
-            pt::Type::Uint(n) => format!("uint{}", n),
-            pt::Type::Mapping { .. } => "mapping".to_string(),
-            _ => format!("{:?}", ty),
-        },
-        pt::Expression::ArraySubscript(_, base, size) => match size {
-            Some(size_expr) => format!(
-                "{}[{}]",
-                expr_to_type_string(base),
-                expr_to_value_string(size_expr)
-            ),
-            None => format!("{}[]", expr_to_type_string(base)),
-        },
-        pt::Expression::Parenthesis(_, expr) => expr_to_type_string(expr),
-        pt::Expression::Variable(id) => {
-            // This handles custom type references (struct names, enum names)
-            id.name.clone()
-        }
-        pt::Expression::MemberAccess(_, expr, member) => {
-            format!("{}.{}", expr_to_type_string(expr), member.name)
-        }
-        _ => format!("{:?}", expr),
-    }
-}
-
-fn expr_to_value_string(expr: &pt::Expression) -> String {
-    match expr {
-        pt::Expression::NumberLiteral(_, val, _, _) => val.clone(),
-        pt::Expression::HexNumberLiteral(_, val, _) => val.clone(),
-        pt::Expression::StringLiteral(vals) => {
-            vals.iter().map(|s| s.string.clone()).collect::<String>()
-        }
-        pt::Expression::BoolLiteral(_, b) => b.to_string(),
-        _ => format!("{:?}", expr),
-    }
-}
-
-fn sol_function_mutability(f: &pt::FunctionDefinition) -> &'static str {
-    for attr in &f.attributes {
-        if let pt::FunctionAttribute::Mutability(m) = attr {
-            match m {
-                pt::Mutability::Pure(_) => return "pure",
-                pt::Mutability::View(_) => return "view",
-                pt::Mutability::Payable(_) => return "payable",
-                pt::Mutability::Constant(_) => return "view",
-            }
-        }
-    }
-    "nonpayable"
-}
-
-fn collect_imports(tree: &pt::SourceUnit) -> Vec<String> {
-    tree.0
-        .iter()
-        .filter_map(|part| match part {
-            pt::SourceUnitPart::ImportDirective(import) => Some(import_to_path_string(import)),
-            _ => None,
-        })
-        .collect()
-}
-
-fn import_to_path_string(import: &pt::Import) -> String {
-    match import {
-        pt::Import::Plain(path, _)
-        | pt::Import::GlobalSymbol(path, _, _)
-        | pt::Import::Rename(path, _, _) => import_path_to_string(path),
-    }
-}
-
-fn import_path_to_string(path: &pt::ImportPath) -> String {
-    match path {
-        pt::ImportPath::Filename(literal) => literal.string.clone(),
-        pt::ImportPath::Path(identifier_path) => identifier_path_to_string(identifier_path),
-    }
-}
-
-fn identifier_path_to_string(path: &pt::IdentifierPath) -> String {
-    path.identifiers
-        .iter()
-        .map(|identifier| identifier.name.as_str())
-        .collect::<Vec<&str>>()
-        .join(".")
 }
 
 // --- Keccak-256 via tiny-keccak ---
@@ -1638,40 +1645,39 @@ mod tests {
     use super::parse_source_unit;
 
     #[test]
-    fn solang_parser_rejects_documented_modern_solidity_syntax() {
+    fn solar_parse_accepts_documented_modern_solidity_syntax() {
         let cases = [
             (
                 "transient state variable",
                 "pragma solidity ^0.8.28; contract C { uint256 transient lock; }",
-                "unrecognised token 'lock'",
             ),
             (
                 "literal custom storage layout",
                 "pragma solidity ^0.8.29; contract C layout at 42 { uint256 value; }",
-                "unrecognised token 'layout'",
             ),
             (
                 "constant custom storage layout",
                 "pragma solidity ^0.8.31; uint256 constant BASE = 42; contract C layout at BASE { uint256 value; }",
-                "unrecognised token 'layout'",
             ),
             (
                 "erc7201 custom storage layout",
                 "pragma solidity ^0.8.35; contract C layout at erc7201(\"example.storage.C\") { uint256 value; }",
-                "unrecognised token 'layout'",
             ),
         ];
 
-        for (name, source, expected_failure) in cases {
-            let error = match parse_source_unit(source) {
-                Ok(_) => panic!("{name} unexpectedly parsed"),
-                Err(error) => error,
-            };
-
-            assert!(
-                error.contains(expected_failure),
-                "{name} returned a different error: {error}"
-            );
+        for (name, source) in cases {
+            parse_source_unit(source).unwrap_or_else(|error| {
+                panic!("{name} failed to parse: {error}");
+            });
         }
+    }
+
+    #[test]
+    fn parse_source_unit_rejects_invalid_solidity() {
+        let error = match parse_source_unit("not solidity {{{") {
+            Ok(_) => panic!("invalid source should not parse"),
+            Err(error) => error,
+        };
+        assert!(!error.is_empty(), "parse error reason must not be empty");
     }
 }

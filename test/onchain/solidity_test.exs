@@ -593,6 +593,107 @@ defmodule Onchain.SolidityTest do
                "Return type mismatch for #{json_func.name}: sol=#{sol_func.return_type}, json=#{json_func.return_type}"
       end
     end
+
+    test "source and JSON ABI agree on nested types, payable/enum/contract canonicalization, selectors, topics, and NatSpec" do
+      sol = """
+      pragma solidity ^0.8.0;
+
+      interface IToken {
+          function totalSupply() external view returns (uint256);
+      }
+
+      interface ICanonical {
+          struct Inner { uint256 x; }
+          struct Outer { Inner inner; uint256[] ys; }
+          enum Kind { A, B }
+
+          /// @notice Send value
+          /// @param to Recipient
+          /// @param kind Token kind
+          /// @return ok Success
+          function send(address payable to, Kind kind, Outer memory data, IToken token)
+              external
+              payable
+              returns (bool ok);
+
+          event Sent(address indexed to, Kind kind, Outer data);
+      }
+      """
+
+      abi_json = ~s([
+        {
+          "inputs": [
+            {"name": "to", "type": "address"},
+            {"name": "kind", "type": "uint8"},
+            {
+              "name": "data",
+              "type": "tuple",
+              "components": [
+                {"name": "inner", "type": "tuple", "components": [{"name": "x", "type": "uint256"}]},
+                {"name": "ys", "type": "uint256[]"}
+              ]
+            },
+            {"name": "token", "type": "address"}
+          ],
+          "name": "send",
+          "outputs": [{"name": "ok", "type": "bool"}],
+          "stateMutability": "payable",
+          "type": "function"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {"indexed": true, "name": "to", "type": "address"},
+            {"indexed": false, "name": "kind", "type": "uint8"},
+            {
+              "indexed": false,
+              "name": "data",
+              "type": "tuple",
+              "components": [
+                {"name": "inner", "type": "tuple", "components": [{"name": "x", "type": "uint256"}]},
+                {"name": "ys", "type": "uint256[]"}
+              ]
+            }
+          ],
+          "name": "Sent",
+          "type": "event"
+        }
+      ])
+
+      {:ok, from_sol} = Solidity.parse_sol(sol)
+      {:ok, from_json} = Solidity.parse_abi_json(abi_json)
+
+      sol_send = Enum.find(from_sol.functions, &(&1.name == "send"))
+      json_send = find_function(from_json, "send")
+
+      assert sol_send.signature == "send(address,uint8,((uint256),uint256[]),address)"
+      assert sol_send.signature == json_send.signature
+      assert sol_send.selector == json_send.selector
+      assert sol_send.return_type == "(bool)"
+      assert sol_send.return_type == json_send.return_type
+      assert sol_send.state_mutability == "payable"
+
+      assert [%{name: "to", ty: "address"}, %{name: "kind", ty: "uint8"}, data, %{name: "token", ty: "address"}] =
+               sol_send.inputs
+
+      assert data.ty == "tuple"
+      assert [%{name: "inner", ty: "tuple"}, %{name: "ys", ty: "uint256[]"}] = data.components
+      assert [%{name: "x", ty: "uint256"}] = hd(data.components).components
+      assert sol_send.inputs == json_send.inputs
+
+      assert sol_send.natspec.notice == "Send value"
+      assert sol_send.natspec.params["to"] == "Recipient"
+      assert sol_send.natspec.params["kind"] == "Token kind"
+      assert sol_send.natspec.returns["ok"] == "Success"
+
+      [sol_event] = from_sol.events
+      [json_event] = from_json.events
+      assert sol_event.signature == "Sent(address,uint8,((uint256),uint256[]))"
+      assert sol_event.signature == json_event.signature
+      assert sol_event.topic == json_event.topic
+      assert String.length(sol_event.topic) == 66
+      assert sol_event.inputs == json_event.inputs
+    end
   end
 
   describe "regression: same-named structs in different interfaces" do
@@ -621,6 +722,18 @@ defmodule Onchain.SolidityTest do
       assert [%{name: "y", ty: "address"}] = ib_data.fields
     end
 
+    test "reports when the requested root contract is absent" do
+      sol = """
+      pragma solidity ^0.8.0;
+      interface IA {
+          function getA() external view returns (uint256);
+      }
+      """
+
+      assert {:error, {:parse_error, reason}} = Solidity.__parse_sol_root__(sol, "Missing")
+      assert reason == "root contract `Missing` not found"
+    end
+
     test "root contract resolves types from its own scope correctly" do
       sol = """
       pragma solidity ^0.8.0;
@@ -646,6 +759,66 @@ defmodule Onchain.SolidityTest do
 
       # IB.Data has address → return type should be ((address))
       assert get_b.return_type == "((address))"
+    end
+  end
+
+  describe "parse_sol/1 modern Solidity syntax" do
+    test "parses the four post-0.8.22 forms that solc 0.8.36 accepts" do
+      cases = [
+        {"transient state variable", "pragma solidity ^0.8.28;\ncontract C { uint256 transient lock; }\n"},
+        {"literal custom storage layout", "pragma solidity ^0.8.29;\ncontract C layout at 42 { uint256 value; }\n"},
+        {"constant custom storage layout",
+         "pragma solidity ^0.8.31;\nuint256 constant BASE = 42;\ncontract C layout at BASE { uint256 value; }\n"},
+        {"erc7201 custom storage layout",
+         "pragma solidity ^0.8.35;\ncontract C layout at erc7201(\"example.storage.C\") { uint256 value; }\n"}
+      ]
+
+      for {name, source} <- cases do
+        assert {:ok, result} = Solidity.parse_sol(source), "#{name} failed to parse"
+        assert is_list(result.functions)
+        assert result.constructor == nil
+      end
+    end
+
+    test "retains file-level constants used by custom storage layout" do
+      sol = """
+      pragma solidity ^0.8.31;
+      uint256 constant BASE = 42;
+      contract C layout at BASE { uint256 value; }
+      """
+
+      assert {:ok, result} = Solidity.parse_sol(sol)
+      assert [%{name: "BASE", ty: "uint256", value: "42"}] = result.constants
+    end
+  end
+
+  describe "__extract_sol_imports__/1" do
+    test "returns import paths in source order without quotes" do
+      sol = """
+      pragma solidity ^0.8.0;
+      import "./Dep.sol";
+      import {Foo as Bar} from "./Lib.sol";
+      import * as Token from "@oz/Token.sol";
+      interface IRoot { function foo() external view returns (uint256); }
+      """
+
+      assert {:ok, imports} = Solidity.__extract_sol_imports__(sol)
+      assert imports == ["./Dep.sol", "./Lib.sol", "@oz/Token.sol"]
+    end
+
+    test "returns an empty list when the source has no imports" do
+      sol = """
+      pragma solidity ^0.8.0;
+      interface IEmpty {}
+      """
+
+      assert {:ok, []} = Solidity.__extract_sol_imports__(sol)
+    end
+
+    test "returns parse_error for invalid Solidity" do
+      assert {:error, {:parse_error, reason}} = Solidity.__extract_sol_imports__("not solidity {{{")
+      assert is_binary(reason)
+      assert reason != ""
     end
   end
 

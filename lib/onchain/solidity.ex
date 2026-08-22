@@ -1,6 +1,6 @@
 defmodule Onchain.Solidity do
   @moduledoc """
-  Solidity ABI parser powered by Alloy and solang-parser via Rustler NIF.
+  Solidity ABI parser powered by Alloy and solar-parse via Rustler NIF.
 
   Supports three input modes:
 

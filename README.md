@@ -4,7 +4,7 @@ Rust NIFs for Elixir: local EVM simulation via [revm](https://github.com/blueall
 
 ## Installation
 
-Requires a Rust toolchain for NIF compilation.
+Requires Rust 1.95+ for NIF compilation.
 
 ```elixir
 def deps do

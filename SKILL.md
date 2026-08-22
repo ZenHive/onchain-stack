@@ -12,10 +12,10 @@ description: >-
 # onchain_evm
 
 EVM simulation, Solidity parsing, trace, and codegen via two Rust crates
-(`native/onchain_evm` = revm, `native/onchain_solidity` = Alloy + solang-parser).
+(`native/onchain_evm` = revm, `native/onchain_solidity` = Alloy + solar-parse).
 All modules live under the `Onchain.*` namespace; `otp_app: :onchain_evm`.
 
-Requires a Rust toolchain (NIFs compile on `mix compile`). `{:onchain_evm, "~> 0.5"}`
+Requires a Rust 1.95+ toolchain (NIFs compile on `mix compile`). `{:onchain_evm, "~> 0.5"}`
 on top of `{:onchain, "~> 0.12"}`.
 
 ## Modules at a glance

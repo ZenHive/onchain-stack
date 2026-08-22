@@ -36,7 +36,7 @@ Self-contained so it survives into `AGENTS.md` on regen — cross-family reviewe
 
 - All modules use `Onchain.*` namespace (e.g., `Onchain.EVM`) — same as when they lived in the monolith
 - Rust NIFs via Rustler: `otp_app: :onchain_evm` (not `:onchain`)
-- Two native crates: `native/onchain_evm/` (revm) and `native/onchain_solidity/` (Alloy + solang-parser)
+- Two native crates: `native/onchain_evm/` (revm) and `native/onchain_solidity/` (Alloy + solar-parse)
 - Hex dependency: `{:onchain, "~> 0.12"}`
 - Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`
 
@@ -56,7 +56,7 @@ lib/onchain/
     generator.ex              # macro: .sol → typed Elixir module at compile time
 native/
   onchain_evm/                # Rust crate (revm, alloy)
-  onchain_solidity/           # Rust crate (alloy-json-abi, solang-parser)
+  onchain_solidity/           # Rust crate (alloy-json-abi, solar-parse)
 priv/
   abis/
     chainlink_aggregator.json
