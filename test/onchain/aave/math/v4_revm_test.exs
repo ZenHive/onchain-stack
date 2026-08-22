@@ -4,7 +4,8 @@ defmodule Onchain.Aave.Math.V4RevmTest do
 
   V4 does not expose a standalone deployed WadRayMath contract in the address book.
   The live public math call site available from `V4_SCOPING.md` is the external
-  LiquidationLogic library.
+  LiquidationLogic library. Pinned-wrapper coverage for the rest of the V4 math
+  surface lives in `Onchain.Aave.Math.RevmOracleTest`.
   """
 
   use ExUnit.Case, async: false

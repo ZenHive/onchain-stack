@@ -1,0 +1,35 @@
+{
+  "solc_version": "0.8.28+commit.7893614a",
+  "optimizer": true,
+  "optimizer_runs": 44444444,
+  "evm_version": "cancun",
+  "metadata_hash": "none",
+  "via_ir": false,
+  "compiled_at": "2026-08-22",
+  "source_pin": "aave/aave-v4@2524fe4018a42750300e114f2a8c4355df62a878",
+  "source_files": {
+    "src/libraries/math/WadRayMath.sol": {
+      "sha1": "b17a947b9718948f683bfe6c653eb2af2145d89d"
+    },
+    "src/libraries/math/MathUtils.sol": {
+      "sha1": "b094495accdde134725c75e046036adceefd9324"
+    },
+    "src/libraries/math/PercentageMath.sol": {
+      "sha1": "51fe6c8d6ef642c7c39bbd9d4b37449816ceca83"
+    },
+    "src/spoke/libraries/LiquidationLogic.sol": {
+      "sha1": "2b563f34bc66baa97576e153c43a929423b53174"
+    }
+  },
+  "wrapper": {
+    "file": "v4_math_wrapper.sol",
+    "contract": "V4MathWrapper",
+    "bin_file": "v4_math_wrapper.bin",
+    "bin_kind": "runtime",
+    "bin_sha256": "3f5989ba6090609407ad15174649eee01741b393faa0619c530ef827c63d5573"
+  },
+  "notes": {
+    "compiler_settings": "Matches aave/aave-v4 foundry.toml profile.default: solc 0.8.28, evm cancun, optimizer true, optimizer_runs 44444444, bytecode_hash none. via_ir is false (default profile; hub/spoke instances use via_ir separately and are out of scope for these pure math libraries).",
+    "calculateLinearInterestAt": "The wrapper exposes a 3-arg pure variant of MathUtils.calculateLinearInterest. Upstream is `view` (reads block.timestamp); the wrapper takes `currentTimestamp` explicitly so the revm test is deterministic without env-pinning."
+  }
+}

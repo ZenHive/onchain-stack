@@ -1,37 +1,60 @@
-# Test fixtures — Aave V3 math wrapper bytecode
+# Test fixtures — Aave V3/V4 math oracle
 
-`wad_ray_wrapper.{sol,bin,json}` are consumed by `test/onchain/aave/math_revm_test.exs` to cross-validate `Onchain.Aave.Math` against the canonical Solidity bodies via revm.
+Pinned official Solidity math, compiled to exact runtime bytecode, is the
+independent oracle for `Onchain.Aave.Math` and `Onchain.Aave.Math.V4`. Elixir
+never generates expected values for bytecode ops.
 
-- `wad_ray_wrapper.sol` — wrapper source. Bodies are inlined verbatim from `aave-v3-origin@1e3d70c`.
-- `wad_ray_wrapper.bin` — deployed (runtime) bytecode. Hex string, no `0x` prefix, no trailing newline processing required by the test.
-- `wad_ray_wrapper.json` — provenance: solc version, optimizer flags, EVM version, upstream pin + file SHA1s, bytecode SHA256. The test asserts the bytecode matches this checksum at setup time — drift fails loudly.
+| File | Role |
+|------|------|
+| `wad_ray_wrapper.{sol,bin,json}` | V3 WadRayMath + MathUtils wrapper (aave-v3-origin@1e3d70c, solc 0.8.10) |
+| `v4_math_wrapper.{sol,bin,json}` | V4 WadRayMath + MathUtils + liquidation bonus wrapper (aave/aave-v4@2524fe40, solc 0.8.28) |
+| `math_oracle_vectors.json` | Domain-vector outputs from revm against those binaries |
+| `math_verification_ledger.json` | Authority, compiler settings, bytecode hashes, mutator versions, survivor review |
 
-## Regenerating
+`.json` provenance files pin solc version, optimizer flags, EVM version, upstream
+commit, source SHA1s, and bytecode SHA256. Tests hash the `.bin` at setup —
+drift fails loudly.
 
-Only needed when bumping the Aave pin, modifying the wrapper source, or updating the solc toolchain. Keep solc pinned at 0.8.10 to match Aave V3.
+## Regenerating V3
+
+Keep solc pinned at 0.8.10 to match Aave V3.
 
 ```bash
-# One-time: install svm-rs + solc 0.8.10
 cargo install svm-rs
 svm install 0.8.10
-svm use 0.8.10
 
-# Compile (run from this directory)
+SOLC="$HOME/Library/Application Support/svm/0.8.10/solc-0.8.10"
 cd test/fixtures
-solc --bin-runtime --optimize --optimize-runs 100000 --metadata-hash none wad_ray_wrapper.sol \
+"$SOLC" --bin-runtime --optimize --optimize-runs 100000 --metadata-hash none wad_ray_wrapper.sol \
   | awk '/^Binary of the runtime part:/{flag=1;next} flag{printf "%s", $0; exit}' > wad_ray_wrapper.bin
-
-# Update checksum in provenance JSON
 shasum -a 256 wad_ray_wrapper.bin
 ```
 
-Then edit `wad_ray_wrapper.json` — update `bin_sha256`, `compiled_at`, and any source SHA1s (recompute with `shasum <file>` on the upstream sources) if the Aave pin changed.
+## Regenerating V4
 
-The `awk 'printf "%s"'` form deliberately writes the bytecode without a trailing newline. Keep it that way: the test reads the file and trims whitespace before hashing, so any trailing whitespace (e.g. a stray newline added by hand-editing) will produce a hash that no longer matches the `bin_sha256` recorded by `shasum`.
+Compiler settings match `aave/aave-v4` `foundry.toml` profile.default.
+
+```bash
+svm install 0.8.28
+SOLC="$HOME/Library/Application Support/svm/0.8.28/solc-0.8.28"
+cd test/fixtures
+"$SOLC" --bin-runtime --optimize --optimize-runs 44444444 --evm-version cancun --metadata-hash none v4_math_wrapper.sol \
+  | awk '/^Binary of the runtime part:/{flag=1;next} flag{printf "%s", $0; exit}' > v4_math_wrapper.bin
+shasum -a 256 v4_math_wrapper.bin
+```
+
+Then refresh goldens (requires RPC; writes `math_oracle_vectors.json`):
+
+```bash
+ETHEREUM_API_URL=http://localhost:8545 MIX_ENV=test mix run -e 'Onchain.Aave.MathOracle.generate_goldens!(Onchain.RPCCase.rpc_url!())'
+```
+
+The `awk 'printf "%s"'` form writes bytecode without a trailing newline. The
+test hashes trimmed contents; a stray newline will fail the checksum.
 
 ## Design notes
 
-- **Runtime bytecode, not deploy:** `state_overrides["code"]` in revm injects the runtime portion (what lives at an address after deployment), so we strip the constructor.
-- **`--metadata-hash none`:** keeps builds reproducible across hosts. With the default ipfs hash, the bytecode would change whenever the file path or timestamp changed.
-- **`--optimize --optimize-runs 100000`:** matches Aave V3's deployment settings.
-- **EVM version `london`:** solc 0.8.10's default. Paris (the plan's original suggestion) is not available in this compiler. The pure arithmetic under test has no fork-dependent opcodes, so this is immaterial.
+- **Runtime bytecode, not deploy:** `state_overrides["code"]` injects the runtime portion.
+- **`--metadata-hash none`:** reproducible across hosts.
+- **V3 optimizer_runs 100000 / london:** Aave V3 deployment settings; solc 0.8.10 has no Paris.
+- **V4 optimizer_runs 44444444 / cancun:** Aave V4 `foundry.toml` default profile.
