@@ -271,7 +271,7 @@
       "id": 32,
       "phase": 2,
       "bundle": "bundle2_rust_safety_hardening",
-      "status": "pending",
+      "status": "done",
       "title": "Stop `parse_sol` from aborting the BEAM — bound Solidity parse depth, not just source size",
       "scores": {
         "d": 5,
@@ -305,9 +305,16 @@
         "lib/onchain/solidity.ex",
         "test/onchain/solidity_test.exs"
       ],
+      "shipped_in": "22b8432ebf3f",
       "body": "`Onchain.Solidity.parse_sol/1` can abort the whole BEAM. Reproduced 2026-08-22 on this checkout: a source with ~10k levels of nesting exits the VM with signal 10 (SIGBUS — stack overflow), no error tuple, no supervisor recovery, process gone. The threshold sits between 5k (returns `{:ok, _}`) and 10k levels, which is roughly **20-30 KB of source** — well inside the size of an ordinary contract, so the original framing of this task (\"reject oversized source files\") would not have caught it at any byte limit a real `.sol` file could live with.\n\nTwo reproductions, both fatal, which is what pins the fix:\n\n- type position: `function f(uint256[1][1]...[1] x) external pure {}` — walked by this crate's own `expr_to_type_string`, which recurses through `ArraySubscript` / `Parenthesis` / `MemberAccess` with no depth guard (`MAX_TYPE_RECURSION_DEPTH` guards `type_to_string`, a different function).\n- function body: `uint256 y = ((((...1...))));` — this crate never descends into function bodies, and it still aborts.\n\nBecause the second shape crashes, a depth guard in our own walker is **not sufficient**: the overflow happens inside solang-parser (parse and/or the recursive `Drop` of the deep tree) before our code ever sees the node. `std::panic::catch_unwind` does not catch a stack overflow, so error plumbing cannot help either. The realistic designs are a cheap pre-parse nesting scan over the source, and/or running the parse on a thread with an explicitly sized stack so an overflow is contained rather than fatal — pick one and say why.\n\nThreat model, stated honestly: `.sol` paths are operator-supplied (that is this repo's own sobelow-skip rationale), so this is not remotely triggerable today. It still matters because `Onchain.Contract.Generator` runs this at **compile time** over vendored upstream Solidity — a crash there is a SIGBUS during the build rather than a diagnostic — and because any service that ever parses submitted source inherits a hard, unrecoverable DoS. A NIF that can kill the node is a different class from a NIF that returns an error.\n",
       "created_at": "2026-08-22",
+      "done_at": "2026-08-22",
       "scored_at": "2026-08-22",
+      "implemented": "Fixed as a side effect of the solar-parse migration (Task 61), not by a dedicated guard. Measured on this checkout 2026-08-22 at depths 1k/5k/10k/50k: solar-parse enforces its own recursion limit and returns {:error, {:parse_error, \"recursion limit reached\"}} with the calling process intact. The solang-parser SIGBUS at ~10k levels no longer reproduces. Regression pinned in test/onchain/solidity_test.exs (describe \"parse_sol/1 resource bounds and error rendering\").",
+      "delivered_by": "harness-run:run-1787380785043-080fc9eb (task 61) + orchestrator regression test",
+      "verified": true,
+      "verified_by": "orchestrator empirical measurement + mix test.json",
+      "verification_ref": "22b8432ebf3f",
       "cross_repo": []
     },
     {
@@ -594,7 +601,7 @@
       "touches": [
         "native/onchain_evm/src/lib.rs"
       ],
-      "body": "Add cargo-level unit tests to the onchain_evm crate. The crate currently has exactly two (`build_tx_preserves_call_params`, `build_tx_preserves_explicit_nonce`), which leaves the parts most likely to regress silently untested.\n\nThis task was rewritten 2026-08-22: the original body named `CallParams` parsing and \"hex helpers\", entities that **no longer exist** after Task 55 bumped revm 19 -> 41/42 and alloy 0.7 -> 2.x. Parameters now arrive as a `HashMap<String, Term>` read through `get_string_param` and friends. Target the current shape.\n\nThe highest-value target is `classify_transport_error`. Task 49 replaced its string matching with a walk down the `std::error::Error` source chain to recover the underlying `reqwest::Error`, but kept display-string heuristics as a fallback for a future alloy that stops preserving the type. Nothing tests either path today, so the exact failure that fallback exists to absorb — a version bump quietly demoting `:timeout` / `:fork_error` to `:evm_error` — would land green. Construct the wrapped errors directly in the test rather than going over the network.\n",
+      "body": "Add cargo-level unit tests to the onchain_evm crate. The crate currently has four, added piecemeal by Tasks 58 and 60, which leaves the parts most likely to regress silently untested.\n\nThis task was rewritten 2026-08-22: the original body named `CallParams` parsing and \"hex helpers\", entities that **no longer exist** after Task 55 bumped revm 19 -> 41/42 and alloy 0.7 -> 2.x. Parameters now arrive as a `HashMap<String, Term>` read through `get_string_param` and friends. Target the current shape.\n\nThe highest-value target is `classify_transport_error`. Task 49 replaced its string matching with a walk down the `std::error::Error` source chain to recover the underlying `reqwest::Error`, but kept display-string heuristics as a fallback for a future alloy that stops preserving the type. Nothing tests either path today, so the exact failure that fallback exists to absorb — a version bump quietly demoting `:timeout` / `:fork_error` to `:evm_error` — would land green. Construct the wrapped errors directly in the test rather than going over the network.\n",
       "created_at": "2026-08-22",
       "started_at": "2026-08-22",
       "scored_at": "2026-08-22",
@@ -623,19 +630,19 @@
         "Function selectors and event topic hashes are asserted against known-correct values for at least one signature with tuple and array parameters, not only flat scalar ones",
         "Type canonicalization is covered for nested arrays, fixed-size arrays, tuples/structs and enums, including the `MAX_TYPE_RECURSION_DEPTH` cut-off behaviour",
         "NatSpec attachment is covered both when a doc comment is adjacent and when it is beyond `MAX_NATSPEC_DISTANCE_BYTES`",
-        "At least one test pins what happens for Solidity syntax solang-parser does not support (`transient` is a known-failing case), so the parser-coverage gap is visible in the suite rather than only in production",
+        "At least one test pins the post-0.8.24 forms that motivated the parser migration (`transient` state variables and the three custom storage-layout spellings) as *accepted*, so a future frontend change that silently regresses them fails the crate suite",
         "`cargo test` passes in native/onchain_solidity and the tests run without network access",
         "mix ci passes"
       ],
       "out_of_scope": [
         "Tests for native/onchain_evm — that is Task 28",
-        "Replacing solang-parser or widening syntax support — that is Task 59",
-        "The stack-overflow guard — that is Task 32"
+        "Replacing the parser frontend or widening syntax support — done in Task 61",
+        "The parse-depth bound and error-message rendering — closed with Tasks 32 and 44; their regression pins live in test/onchain/solidity_test.exs"
       ],
       "touches": [
         "native/onchain_solidity/src/lib.rs"
       ],
-      "body": "The onchain_solidity crate is 1562 lines and has **zero** tests. It is also the crate whose output is consumed at compile time by `Onchain.Contract.Generator`, so a wrong selector or a mis-canonicalized type does not fail loudly — it generates a module that encodes calls nobody on-chain will answer.\n\nSelector and topic derivation is the part worth pinning first: it is computed here with tiny-keccak over the canonical signature, and canonicalization of tuples and nested arrays is exactly where a signature silently drifts from what solc would produce. Assert against selectors taken from a compiled ABI, not against what the code currently returns.\n",
+      "body": "The onchain_solidity crate has almost no cargo-level tests (two, both added by the Task 61 parser migration to characterize accepted syntax). It is also the crate whose output is consumed at compile time by `Onchain.Contract.Generator`, so a wrong selector or a mis-canonicalized type does not fail loudly — it generates a module that encodes calls nobody on-chain will answer.\n\nSelector and topic derivation is the part worth pinning first: it is computed here with tiny-keccak over the canonical signature, and canonicalization of tuples and nested arrays is exactly where a signature silently drifts from what solc would produce. Assert against selectors taken from a compiled ABI, not against what the code currently returns.\n",
       "created_at": "2026-08-22",
       "scored_at": "2026-08-22",
       "cross_repo": []
@@ -718,7 +725,7 @@
       "id": 44,
       "phase": 3,
       "bundle": "standalone",
-      "status": "pending",
+      "status": "done",
       "title": "Stop leaking Rust `Debug` renderings into Elixir error and type strings",
       "scores": {
         "d": 4,
@@ -748,9 +755,16 @@
         "lib/onchain/solidity.ex",
         "test/onchain/solidity_test.exs"
       ],
+      "shipped_in": "22b8432ebf3f",
       "body": "Four `format!(\"{:?}\", ...)` fallbacks render internal solang-parser types straight into strings that cross the NIF boundary: the diagnostic list at lib.rs:147, the type fallback at :1138, and the two expression fallbacks at :1154 and :1166.\n\nReproduced 2026-08-22. Parsing a contract that uses `transient` (Solidity 0.8.24) returns:\n\n    {:error, {:parse_error, \"Diagnostic { loc: File(0, 58, 62), level: Error, ty: ParserError, message: \\\"unrecognised token 'lock', expected \\\\\\\"(\\\\\\\", ...\\\", notes: [] }\"}}\n\nThe useful part — a position and an expected-token list — is in there, wrapped in a struct dump with escaped quotes that no caller can reasonably read or match on. The type and expression fallbacks have the same shape: a caller receives a Rust enum's Debug form as if it were a Solidity type name.\n\nNote the separation: *that* `transient` fails to parse at all is a parser-coverage question and belongs to Task 59. *How* that failure is reported is this task, and it is worth fixing regardless of which parser the crate ends up on.\n",
       "created_at": "2026-08-22",
+      "done_at": "2026-08-22",
       "scored_at": "2026-08-22",
+      "implemented": "Fixed by the solar-parse migration (Task 61). All four format!(\"{:?}\", ..) sites named in the body are gone — grep for format!(\"{:?}\" in native/onchain_solidity/src/lib.rs returns nothing. Parse errors now cross the NIF boundary as rustc-style diagnostics carrying file position and an expected-token list. The stated reproduction (transient) no longer errors at all; it parses. Regression pinned in test/onchain/solidity_test.exs asserting the message locates the failure and contains no Diagnostic{...}/loc: File(...) rendering.",
+      "delivered_by": "harness-run:run-1787380785043-080fc9eb (task 61) + orchestrator regression test",
+      "verified": true,
+      "verified_by": "orchestrator empirical measurement + mix test.json",
+      "verification_ref": "22b8432ebf3f",
       "cross_repo": []
     },
     {
