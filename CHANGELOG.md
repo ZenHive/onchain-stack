@@ -8,6 +8,20 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ### Added
 
+- **Precompiled NIF artifacts via `rustler_precompiled`.** Both native crates
+  ship prebuilt for five targets (`aarch64`/`x86_64-apple-darwin`,
+  `x86_64`/`aarch64-unknown-linux-gnu`, `x86_64-unknown-linux-musl`), so a
+  consumer no longer needs a Rust toolchain. The GNU targets are built against
+  glibc 2.28 so they load on older distributions. Windows is deliberately
+  absent — `cargo-zigbuild` cannot produce `x86_64-pc-windows-msvc` — and
+  Windows consumers compile from source, as does anyone setting
+  `RUSTLER_PRECOMPILED_FORCE_BUILD_ALL=1` or `ONCHAIN_EVM_BUILD=1`. Artifacts
+  are cross-built locally by `scripts/build-precompiled.sh`; there is no CI to
+  build them. A checksum *mismatch* always fails the load, while a *missing*
+  `checksum-*.exs` fails only for a Hex-installed package — where `files:`
+  guarantees it ships — and source-builds in this repository's own checkout, so
+  the gate is green before a release exists.
+
 - **Per-contract `Multicall` helpers from `Onchain.Contract.Generator`.** Each
   generated module now emits a nested `Multicall` with typed call builders and
   result decoders for view/pure functions, targeting
