@@ -182,6 +182,9 @@ defmodule Onchain.Aave.DebtToken do
 
     case Enum.at(reserve_fields, index) do
       debt_token when is_binary(debt_token) -> {:ok, debt_token}
+      # Unreachable while @reserve_data_return types both debt-token slots as
+      # `address` — it guards the coupling to @variable_debt_token_index /
+      # @stable_debt_token_index, which a changed return signature would break.
       _ -> {:error, {:invalid_reserve_data, reserve_fields}}
     end
   end
