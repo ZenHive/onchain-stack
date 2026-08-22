@@ -3,8 +3,8 @@
 # Apple Silicon Mac. No CI. Upload the tarballs to a GitHub Release; the
 # checksum step downloads what was uploaded, so artifacts must be live first:
 #
-#   1. tag and push (v$VERSION)
-#   2. scripts/build-precompiled.sh
+#   1. scripts/build-precompiled.sh
+#   2. tag and push (v$VERSION)
 #   3. gh release create / gh release upload the .so.tar.gz artifacts
 #   4. mix rustler_precompiled.download Onchain.EVM --all --print
 #      mix rustler_precompiled.download Onchain.Solidity --all --print

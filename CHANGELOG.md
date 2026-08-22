@@ -68,9 +68,9 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 - **Per-call tokio runtime construction was measured and left alone.** Against
   an archive node at fork block 20,000,000, constructing the `current_thread`
-  runtime costs a median 959 ns while the simulate calls it serves take
-  2.7 s (cheap) to 4.1 s (expensive) — under 0.00004 % of wall time. Sharing a
-  runtime would also serialize `block_on` callers. Recorded in
+  runtime costs a median 1.0 µs while the simulate calls it serves take
+  2.906 s (cheap) to 4.079 s (expensive) — at most 0.000034% of wall time.
+  Sharing a runtime would also serialize `block_on` callers. Recorded in
   `native/onchain_evm/RUNTIME_SPIKE.md` with a regression tripwire.
 - **Solidity source parsing migrated from `solang-parser` 0.3.5 to
   `solar-parse` 0.2.0.** `Onchain.Solidity.parse_sol/1` and

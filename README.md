@@ -31,8 +31,8 @@ Windows is not a shipped target. Those consumers source-build.
 
 Order matters: the checksum step *downloads* what was uploaded, so artifacts must be live first. There is no CI. Cross-compilation is a local `cargo-zigbuild` ritual on an Apple Silicon Mac.
 
-1. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
-2. Cross-build every shipped target for both crates: `scripts/build-precompiled.sh`
+1. Cross-build every shipped target for both crates: `scripts/build-precompiled.sh`
+2. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
 3. Publish the tarballs: `gh release create vX.Y.Z artifacts/precompiled/vX.Y.Z/*.tar.gz` (or `gh release upload` onto an existing tag)
 4. Fetch them back and write checksums:
    `mix rustler_precompiled.download Onchain.EVM --all --print`

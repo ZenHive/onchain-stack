@@ -56,3 +56,4 @@ if ! grep -q 'check "account"' "$negative_log"; then
 fi
 
 echo "kevm_expected_failure=sstore_load_1_bad_storage"
+unlink "$negative_log"
