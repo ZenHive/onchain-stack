@@ -346,6 +346,31 @@ into one gun file carrying cowboy's range — and no cowboy file is written at a
 (mirego/elixir-security-advisories#8). Any other finding is real; do not add it.
 Repos that audit clean carry no ignore file and use a bare `deps.audit`.
 
+The fix for #8 is filed as **mirego/elixir-security-advisories#9** (group by
+`{ghsaId, package_name}`, one line in `Dump.dump/1`) — open and unreviewed since
+2026-08-21. Until it merges, the ignore entry stays and the mirror keeps writing
+no `packages/cowboy/` file at all.
+
+**`mix deps.audit` and `mix hex.audit` do not see the same advisories — the gate
+only runs the first.** Discovered 2026-08-22: `hex.audit` reported bandit 1.12.4
+carrying GHSA-xj8g-532w-jv94 (HIGH, HTTP/2 connection-window starvation) and
+GHSA-x3gh-xhj4-3vq8 (MEDIUM) in seven repos, while `deps.audit` — the thing
+`precommit.full` actually gates on — printed *No vulnerabilities found* and
+exited 0. Neither GHSA exists anywhere in the mirego mirror at tip 9be82ba, so
+`advisory-freshness.sh` was correct and useless in the same breath: the clone was
+provably current and provably incomplete. Freshness is not coverage.
+
+The same gap hides cowlib: `hex.audit` reports three advisories against
+cowlib 2.19.0 (EEF-CVE-2026-43966 / -43969 / -43971) and the mirror carries one
+cowlib file whose range stops at 2.16.1. **cowlib 2.19.0 is the newest release on
+Hex, so there is nothing to bump to** — this is unpatched upstream, not drift, and
+it arrives transitively through gun. Nothing to do but know it is there.
+
+Practical consequence: **run `mix hex.audit` as well when asked about security**,
+and read a `deps.audit` green as "nothing the mirego mirror knows about." Adding
+`hex.audit` to `precommit.full` would close it, at the cost of a gate that reds on
+advisories with no available fix (cowlib today) — hence not done yet.
+
 ### Propagate cartouche's `.sobelow-skips` drift check
 
 cartouche's `harness.yml` carries a step the rest of the family lacks: it runs
@@ -534,6 +559,25 @@ documenting why, while cartouche and onchain were already on sobelow 0.15. Lifte
 to `~> 0.15` / `~> 0.11.0` on 2026-08-18; the family now reports zero `possible`
 across all ten, with only `ex_ast` blocked (by `reach 2.8.2`, deliberately). If you
 do cap a dev tool at a patch line, write the reason next to it or it reads as drift.
+
+### Never run `mix ci` in more than one repo at a time
+
+All ten repos audit against **one shared mix_audit clone** at
+`~/.local/share/elixir-security-advisories-mirego`, and `advisory-freshness.sh`
+does a `git pull --rebase` in it. Run three repos' gates concurrently and their
+fetches interleave into one `FETCH_HEAD`, which fails the pull with
+
+```
+fatal: Cannot rebase onto multiple branches.
+advisory-freshness: FAIL - 'git pull --rebase' failed in ~/.local/share/...
+```
+
+and reds a repo whose code is fine (observed 2026-08-22 on zen_websocket). The
+clone repairs itself on the next serial run — no cleanup needed — but the red is
+indistinguishable from a real freshness failure, so it costs a full re-run to
+diagnose. **Serialize the gates.** Parallelism across repos is safe for
+`deps.update`, `hex.audit`, `sync-agents-md.sh --check` and everything
+`fleet-health.sh` does; only `mix ci` touches the shared clone.
 
 ### Another session may be working in the same repo — check before you stage
 
