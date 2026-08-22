@@ -763,7 +763,7 @@ scored_at = "2026-08-21"
 id = "58"
 phase = 2
 bundle = "standalone"
-status = "in_progress"
+status = "done"
 title = "Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts"
 scores = { d = 5, b = 9, u = 8 }
 acceptance_criteria = ["""Multicall3 getBlockNumber()/getCurrentBlockTimestamp() through simulate_call return the forked block's real number and timestamp, for a numeric :block pin, for block: "latest", and when :block is omitted""", "An Aave V3 supply simulated through simulate_batch against a forked mainnet archive node succeeds instead of reverting with Panic(0x11)", 'A state override of balance, nonce or storage on a contract that has not been touched yet leaves its deployed code and unspecified fields intact — balanceOf on WETH still answers after %{weth => %{"storage" => "{}"}}', "Rust or Elixir tests pin the block-environment fields and the override-preserves-code behaviour, and fail against the current implementation", "mix ci passes"]
@@ -780,9 +780,16 @@ The second defect shares a root cause with the first's blast radius: `apply_stat
 
 Fetch the forked block's header once per simulation and populate number, timestamp, basefee, gas limit, coinbase and prevrandao from it; keep honouring `:block` so a historical pin executes in that block's environment. The pre-existing SpecId limitation documented at lib.rs:556 is a separate concern and stays as it is.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1787377507109-ca2e5a83, f7fde63b86b3790cdf4d6d40f6bbba8a19279efd)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1787377507109-ca2e5a83"
 created_at = "2026-08-22"
 started_at = "2026-08-22"
 scored_at = "2026-08-22"
+done_at = "2026-08-22"
+shipped_in = "f7fde63b86b3790cdf4d6d40f6bbba8a19279efd"
 
 [[task]]
 id = "59"

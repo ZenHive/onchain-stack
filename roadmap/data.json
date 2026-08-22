@@ -1045,7 +1045,7 @@
       "id": "58",
       "phase": 2,
       "bundle": "standalone",
-      "status": "in_progress",
+      "status": "done",
       "title": "Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts",
       "scores": {
         "d": 5,
@@ -1074,10 +1074,17 @@
         "native/onchain_evm/src/lib.rs",
         "test/onchain/evm_integration_test.exs"
       ],
+      "shipped_in": "f7fde63b86b3790cdf4d6d40f6bbba8a19279efd",
       "body": "Simulation currently executes against a fork whose state is real but whose block environment is not. `Context::mainnet()` is built with revm's default `BlockEnv` at every site in `native/onchain_evm/src/lib.rs` (do_simulate_call, do_simulate_transaction, do_simulate_batch), so contracts observe `block.number == 0` and `block.timestamp == 1` regardless of the `:block` option. Measured against a mainnet archive node at head 25_808_519: Multicall3 `getBlockNumber()` returned 0 and `getCurrentBlockTimestamp()` returned 1 for `block: \"latest\"`, `block: <number>` and no block option alike.\n\nThis silently breaks every time-dependent protocol, which is most of DeFi. An Aave V3 `supply` reverts with `Panic(0x11)` (arithmetic underflow) because `MathUtils.calculateLinearInterest` computes `block.timestamp - reserve.lastUpdateTimestamp` against a 1970 clock. Reads that ignore time return correct values, so the failure looks like a caller mistake rather than a missing environment — the module's own headline use cases (\"test liquidation thresholds\", \"run what-if scenarios\") are the ones that break.\n\nThe second defect shares a root cause with the first's blast radius: `apply_state_overrides` seeds `info` from `db.cache.accounts`, which on a fresh ForkDB is empty because fork state is fetched lazily. `unwrap_or_default()` therefore yields an empty `AccountInfo`, and `insert_account_info` writes that back — replacing the account instead of amending it. Overriding any field of an account that has not yet been touched drops its deployed code: after `%{weth => %{\"storage\" => ~s({})}}`, `balanceOf` on WETH returns `\"0x\"`. Overrides must be applied on top of the account as the fork would resolve it, not on top of a default.\n\nFetch the forked block's header once per simulation and populate number, timestamp, basefee, gas limit, coinbase and prevrandao from it; keep honouring `:block` so a historical pin executes in that block's environment. The pre-existing SpecId limitation documented at lib.rs:556 is a separate concern and stays as it is.\n",
       "created_at": "2026-08-22",
       "started_at": "2026-08-22",
+      "done_at": "2026-08-22",
       "scored_at": "2026-08-22",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1787377507109-ca2e5a83, f7fde63b86b3790cdf4d6d40f6bbba8a19279efd).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1787377507109-ca2e5a83",
       "cross_repo": []
     },
     {
