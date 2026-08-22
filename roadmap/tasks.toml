@@ -725,14 +725,14 @@ scored_at = "2026-08-17"
 id = "57"
 phase = 2
 bundle = "bundle5_evm_input_validation_round2"
-status = "pending"
+status = "in_progress"
 title = "Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF"
 scores = { d = 3, b = 6, u = 6 }
 acceptance_criteria = ["Every option named in Onchain.EVM's public typespecs, plus the `calls` argument of simulate_batch/2, returns a tagged `{:error, {atom, term}}` for malformed input without invoking the NIF", "A test enumerates the documented option surface and fails when a documented option has no Elixir-layer guard, rather than asserting only the four known cases", "simulate_batch/2 returns a tagged error for a non-list `calls` and for elements that are not 2-tuples — no silent {:ok, []}, no escaping FunctionClauseError", "Each of the four premises above is either reproduced before its fix or recorded as no-longer-reproducing", "mix ci passes"]
 out_of_scope = ["Rust-side changes under native/ — panic removal is Task 31, source-size limits are Task 32", "New public functions or changes to the success-path return shapes"]
 touches = ["lib/onchain/evm/params.ex", "lib/onchain/evm.ex", "test/onchain/evm/params_test.exs", "test/onchain/evm_test.exs"]
-module = "Onchain.EVM.Params"
 assignee = "cursor"
+module = "Onchain.EVM.Params"
 model = "cursor-grok-4.6-high"
 body = """
 Close the "NIF catches what Elixir should" class as an invariant rather than patching its four known instances. Every option `Onchain.EVM` documents in its public typespecs must be validated at the Elixir layer and rejected with a tagged `{:error, {tag, term}}` tuple, so a malformed option never crosses the NIF boundary and never surfaces as a bare-string `{:evm_error, "..."}` from Rust or as a raised exception escaping the `{:ok, _} | {:error, _}` contract.
@@ -748,6 +748,7 @@ Re-confirmed 2026-08-22 against `lib/onchain/evm/params.ex`: all four premises s
 This is the second round of the same class (Bundle 1 was the first), which is the reason to ship the invariant and its enumerating test instead of four more point fixes. The deliverable that closes the class is a test that walks the documented option surface itself, so a newly documented option without an Elixir-layer guard fails the suite rather than becoming a Round 3 task.
 """
 created_at = "2026-08-21"
+started_at = "2026-08-22"
 scored_at = "2026-08-21"
 
 [[task]]
