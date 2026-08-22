@@ -573,7 +573,7 @@ acceptance_criteria = [
 id = 52
 phase = 3
 bundle = "standalone"
-status = "in_progress"
+status = "done"
 title = "Codegen-emit per-contract Multicall helper modules"
 scores = { d = 5, b = 7, u = 6 }
 acceptance_criteria = [
@@ -596,7 +596,14 @@ Extend `Onchain.Contract.Generator` so each generated contract emits typed Multi
 
 Note the boundary against local simulation: `Onchain.EVM.simulate_batch/2` also takes a list of calls, but it executes them on a local fork, whereas this is on-chain Multicall3 aggregation. Sharing an argument-encoding path between the two is fine; conflating the two return shapes is not — `simulate_batch` reports per-call `:success` flags and never raises on a revert, and that difference has to survive into whatever the generator emits.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1787377513109-6e03cdcd, 904dfd817e8277a4c85f42b21d530d67e2f9eeb3)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1787377513109-6e03cdcd"
 started_at = "2026-08-22"
+done_at = "2026-08-22"
+shipped_in = "904dfd817e8277a4c85f42b21d530d67e2f9eeb3"
 
 [[task]]
 id = 53
