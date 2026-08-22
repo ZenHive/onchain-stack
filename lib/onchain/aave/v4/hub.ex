@@ -2,11 +2,11 @@ defmodule Onchain.Aave.V4.Hub do
   @moduledoc """
   Aave V4 Hub read operations.
 
-  One module for all three Hubs (Core, Prime, Plus). Wraps the Hub-level
-  reads selected in Task 46: member Spokes, credit-line inventory and caps,
-  and the Hub rate environment / utilization. Amounts stay raw integers
-  (token units, RAY, BPS) — conversion is the caller's job given per-asset
-  decimals.
+  One module for all three Hubs (Core, Prime, Plus). Wraps Hub-level reads:
+  member Spokes, credit-line inventory and caps, the Hub rate environment /
+  utilization, IHubBase share-to-asset preview converters, and IHub bound
+  constants. Amounts stay raw integers (token units, RAY, BPS) — conversion
+  is the caller's job given per-asset decimals.
 
   ## Error Format
 
@@ -56,6 +56,18 @@ defmodule Onchain.Aave.V4.Hub do
   | `get_asset_drawn_index/3` | Current drawn index (RAY) |
   | `get_asset_id/3` | Asset id for an underlying |
   | `get_asset_underlying_and_decimals/3` | Underlying token + decimals |
+  | `preview_add_by_assets/4` | Shares added for assets (round down) |
+  | `preview_add_by_shares/4` | Assets added for shares (round up) |
+  | `preview_remove_by_assets/4` | Shares removed for assets (round up) |
+  | `preview_remove_by_shares/4` | Assets removed for shares (round down) |
+  | `preview_draw_by_assets/4` | Shares drawn for assets (round up) |
+  | `preview_draw_by_shares/4` | Assets drawn for shares (round down) |
+  | `preview_restore_by_assets/4` | Shares restored for assets (round down) |
+  | `preview_restore_by_shares/4` | Assets restored for shares (round up) |
+  | `max_allowed_underlying_decimals/2` | Inclusive max underlying decimals |
+  | `min_allowed_underlying_decimals/2` | Inclusive min underlying decimals |
+  | `max_allowed_spoke_cap/2` | SpokeConfig add/draw cap sentinel (no cap) |
+  | `max_risk_premium_threshold/2` | SpokeConfig risk-premium sentinel (no threshold) |
   """
 
   use Descripex, namespace: "/aave/v4/hub"
@@ -82,6 +94,8 @@ defmodule Onchain.Aave.V4.Hub do
   @hub_desc "Hub atom: :core, :prime, or :plus"
   @asset_id_desc "Hub asset identifier"
   @spoke_desc "Spoke address as 0x hex string or 20-byte binary"
+  @assets_desc "Asset amount in token units"
+  @shares_desc "Share amount"
 
   # --- hub_address ---
 
@@ -702,6 +716,230 @@ defmodule Onchain.Aave.V4.Hub do
          {:ok, checksummed} <- Address.checksum(underlying) do
       {:ok, {checksummed, decimals}}
     end
+  end
+
+  # --- preview_add_by_assets ---
+
+  api(:preview_add_by_assets, "Shares that would be added for the given assets. Rounds down.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      assets: [kind: :value, description: @assets_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Shares added (rounded down)"}
+  )
+
+  @spec preview_add_by_assets(hub(), non_neg_integer(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def preview_add_by_assets(hub, asset_id, assets, opts \\ [])
+      when is_integer(asset_id) and asset_id >= 0 and is_integer(assets) and assets >= 0 do
+    call_uint(hub, "previewAddByAssets(uint256,uint256)", [asset_id, assets], opts)
+  end
+
+  # --- preview_add_by_shares ---
+
+  api(:preview_add_by_shares, "Assets that would be added for the given shares. Rounds up.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      shares: [kind: :value, description: @shares_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Assets added (rounded up)"}
+  )
+
+  @spec preview_add_by_shares(hub(), non_neg_integer(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def preview_add_by_shares(hub, asset_id, shares, opts \\ [])
+      when is_integer(asset_id) and asset_id >= 0 and is_integer(shares) and shares >= 0 do
+    call_uint(hub, "previewAddByShares(uint256,uint256)", [asset_id, shares], opts)
+  end
+
+  # --- preview_remove_by_assets ---
+
+  api(:preview_remove_by_assets, "Shares that would be removed for the given assets. Rounds up.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      assets: [kind: :value, description: @assets_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Shares removed (rounded up)"}
+  )
+
+  @spec preview_remove_by_assets(hub(), non_neg_integer(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def preview_remove_by_assets(hub, asset_id, assets, opts \\ [])
+      when is_integer(asset_id) and asset_id >= 0 and is_integer(assets) and assets >= 0 do
+    call_uint(hub, "previewRemoveByAssets(uint256,uint256)", [asset_id, assets], opts)
+  end
+
+  # --- preview_remove_by_shares ---
+
+  api(:preview_remove_by_shares, "Assets that would be removed for the given shares. Rounds down.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      shares: [kind: :value, description: @shares_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Assets removed (rounded down)"}
+  )
+
+  @spec preview_remove_by_shares(hub(), non_neg_integer(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def preview_remove_by_shares(hub, asset_id, shares, opts \\ [])
+      when is_integer(asset_id) and asset_id >= 0 and is_integer(shares) and shares >= 0 do
+    call_uint(hub, "previewRemoveByShares(uint256,uint256)", [asset_id, shares], opts)
+  end
+
+  # --- preview_draw_by_assets ---
+
+  api(:preview_draw_by_assets, "Shares that would be drawn for the given assets. Rounds up.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      assets: [kind: :value, description: @assets_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Shares drawn (rounded up)"}
+  )
+
+  @spec preview_draw_by_assets(hub(), non_neg_integer(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def preview_draw_by_assets(hub, asset_id, assets, opts \\ [])
+      when is_integer(asset_id) and asset_id >= 0 and is_integer(assets) and assets >= 0 do
+    call_uint(hub, "previewDrawByAssets(uint256,uint256)", [asset_id, assets], opts)
+  end
+
+  # --- preview_draw_by_shares ---
+
+  api(:preview_draw_by_shares, "Assets that would be drawn for the given shares. Rounds down.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      shares: [kind: :value, description: @shares_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Assets drawn (rounded down)"}
+  )
+
+  @spec preview_draw_by_shares(hub(), non_neg_integer(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def preview_draw_by_shares(hub, asset_id, shares, opts \\ [])
+      when is_integer(asset_id) and asset_id >= 0 and is_integer(shares) and shares >= 0 do
+    call_uint(hub, "previewDrawByShares(uint256,uint256)", [asset_id, shares], opts)
+  end
+
+  # --- preview_restore_by_assets ---
+
+  api(:preview_restore_by_assets, "Shares that would be restored for the given assets. Rounds down.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      assets: [kind: :value, description: @assets_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Shares restored (rounded down)"}
+  )
+
+  @spec preview_restore_by_assets(hub(), non_neg_integer(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def preview_restore_by_assets(hub, asset_id, assets, opts \\ [])
+      when is_integer(asset_id) and asset_id >= 0 and is_integer(assets) and assets >= 0 do
+    call_uint(hub, "previewRestoreByAssets(uint256,uint256)", [asset_id, assets], opts)
+  end
+
+  # --- preview_restore_by_shares ---
+
+  api(:preview_restore_by_shares, "Assets that would be restored for the given shares. Rounds up.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      asset_id: [kind: :value, description: @asset_id_desc],
+      shares: [kind: :value, description: @shares_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Assets restored (rounded up)"}
+  )
+
+  @spec preview_restore_by_shares(hub(), non_neg_integer(), non_neg_integer(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def preview_restore_by_shares(hub, asset_id, shares, opts \\ [])
+      when is_integer(asset_id) and asset_id >= 0 and is_integer(shares) and shares >= 0 do
+    call_uint(hub, "previewRestoreByShares(uint256,uint256)", [asset_id, shares], opts)
+  end
+
+  # --- max_allowed_underlying_decimals ---
+
+  api(:max_allowed_underlying_decimals, "Inclusive maximum allowed underlying-asset decimals.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Max decimals (inclusive, uint8)"}
+  )
+
+  @spec max_allowed_underlying_decimals(hub(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def max_allowed_underlying_decimals(hub, opts \\ []) do
+    call_uint(hub, "MAX_ALLOWED_UNDERLYING_DECIMALS()", [], opts)
+  end
+
+  # --- min_allowed_underlying_decimals ---
+
+  api(:min_allowed_underlying_decimals, "Inclusive minimum allowed underlying-asset decimals.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Min decimals (inclusive, uint8)"}
+  )
+
+  @spec min_allowed_underlying_decimals(hub(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def min_allowed_underlying_decimals(hub, opts \\ []) do
+    call_uint(hub, "MIN_ALLOWED_UNDERLYING_DECIMALS()", [], opts)
+  end
+
+  # --- max_allowed_spoke_cap ---
+
+  api(
+    :max_allowed_spoke_cap,
+    "Maximum Spoke add/draw cap. Using this value on SpokeConfig means no cap.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{
+      type: "{:ok, non_neg_integer()} | {:error, term()}",
+      description: "Cap bound (uint40 whole assets; max means no cap)"
+    }
+  )
+
+  @spec max_allowed_spoke_cap(hub(), keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def max_allowed_spoke_cap(hub, opts \\ []) do
+    call_uint(hub, "MAX_ALLOWED_SPOKE_CAP()", [], opts)
+  end
+
+  # --- max_risk_premium_threshold ---
+
+  api(
+    :max_risk_premium_threshold,
+    "Maximum Spoke risk-premium threshold. Using this value on SpokeConfig means no threshold.",
+    params: [
+      hub: [kind: :value, description: @hub_desc],
+      opts: [kind: :value, default: [], description: @opts_desc]
+    ],
+    returns: %{
+      type: "{:ok, non_neg_integer()} | {:error, term()}",
+      description: "Threshold bound (uint24 BPS; max means no threshold)"
+    }
+  )
+
+  @spec max_risk_premium_threshold(hub(), keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def max_risk_premium_threshold(hub, opts \\ []) do
+    call_uint(hub, "MAX_RISK_PREMIUM_THRESHOLD()", [], opts)
   end
 
   @spec call_hub(atom(), String.t(), list(), String.t(), keyword()) ::

@@ -21,6 +21,22 @@ defmodule Onchain.Aave.V4.HubTest do
   @spoke_config_tuple {1_000_000, 500_000, 2_000, true, false}
   @spoke_premium_ray 7_000_000_000_000_000_000_000_000_000
   @asset_premium_ray 9_000_000_000_000_000_000_000_000_000
+  @assets 1_100
+  @shares 1_000
+  # Distinct stub values so a mixed-up selector fails the happy-path decode.
+  @add_shares_down 990
+  @add_assets_up 1_110
+  @remove_shares_up 1_111
+  @remove_assets_down 989
+  @draw_shares_up 1_112
+  @draw_assets_down 988
+  @restore_shares_down 987
+  @restore_assets_up 1_113
+  # IHub Hub.sol constants: uint8 18/6, type(uint40).max, type(uint24).max.
+  @max_underlying_decimals 18
+  @min_underlying_decimals 6
+  @max_spoke_cap 1_099_511_627_775
+  @max_risk_premium_threshold 16_777_215
 
   describe "hub_address/2" do
     test "resolves all three configured Hubs to distinct checksummed addresses" do
@@ -100,7 +116,19 @@ defmodule Onchain.Aave.V4.HubTest do
         fn -> Hub.get_asset_drawn_rate(:bogus, @asset_id) end,
         fn -> Hub.get_asset_drawn_index(:bogus, @asset_id) end,
         fn -> Hub.get_asset_id(:bogus, @usdc) end,
-        fn -> Hub.get_asset_underlying_and_decimals(:bogus, @asset_id) end
+        fn -> Hub.get_asset_underlying_and_decimals(:bogus, @asset_id) end,
+        fn -> Hub.preview_add_by_assets(:bogus, @asset_id, @assets) end,
+        fn -> Hub.preview_add_by_shares(:bogus, @asset_id, @shares) end,
+        fn -> Hub.preview_remove_by_assets(:bogus, @asset_id, @assets) end,
+        fn -> Hub.preview_remove_by_shares(:bogus, @asset_id, @shares) end,
+        fn -> Hub.preview_draw_by_assets(:bogus, @asset_id, @assets) end,
+        fn -> Hub.preview_draw_by_shares(:bogus, @asset_id, @shares) end,
+        fn -> Hub.preview_restore_by_assets(:bogus, @asset_id, @assets) end,
+        fn -> Hub.preview_restore_by_shares(:bogus, @asset_id, @shares) end,
+        fn -> Hub.max_allowed_underlying_decimals(:bogus) end,
+        fn -> Hub.min_allowed_underlying_decimals(:bogus) end,
+        fn -> Hub.max_allowed_spoke_cap(:bogus) end,
+        fn -> Hub.max_risk_premium_threshold(:bogus) end
       ]
 
       Enum.each(reads, fn read ->
@@ -111,6 +139,24 @@ defmodule Onchain.Aave.V4.HubTest do
     test "reads fail on a V3-only network" do
       assert {:error, {:unknown_contract, :v4_core_hub}} =
                Hub.get_asset_count(:core, network: :arbitrum)
+    end
+
+    test "preview converters reject negative and non-integer amounts before RPC" do
+      converters = [
+        &Hub.preview_add_by_assets(:core, @asset_id, &1),
+        &Hub.preview_add_by_shares(:core, @asset_id, &1),
+        &Hub.preview_remove_by_assets(:core, @asset_id, &1),
+        &Hub.preview_remove_by_shares(:core, @asset_id, &1),
+        &Hub.preview_draw_by_assets(:core, @asset_id, &1),
+        &Hub.preview_draw_by_shares(:core, @asset_id, &1),
+        &Hub.preview_restore_by_assets(:core, @asset_id, &1),
+        &Hub.preview_restore_by_shares(:core, @asset_id, &1)
+      ]
+
+      Enum.each(converters, fn fun ->
+        assert_raise FunctionClauseError, fn -> fun.(-1) end
+        assert_raise FunctionClauseError, fn -> fun.(1.5) end
+      end)
     end
   end
 
@@ -221,6 +267,20 @@ defmodule Onchain.Aave.V4.HubTest do
 
         assert {:ok, {underlying, 6}} = Hub.get_asset_underlying_and_decimals(hub, @asset_id, rpc_opts)
         assert underlying == Onchain.Address.checksum!(@usdc)
+
+        assert {:ok, @add_shares_down} = Hub.preview_add_by_assets(hub, @asset_id, @assets, rpc_opts)
+        assert {:ok, @add_assets_up} = Hub.preview_add_by_shares(hub, @asset_id, @shares, rpc_opts)
+        assert {:ok, @remove_shares_up} = Hub.preview_remove_by_assets(hub, @asset_id, @assets, rpc_opts)
+        assert {:ok, @remove_assets_down} = Hub.preview_remove_by_shares(hub, @asset_id, @shares, rpc_opts)
+        assert {:ok, @draw_shares_up} = Hub.preview_draw_by_assets(hub, @asset_id, @assets, rpc_opts)
+        assert {:ok, @draw_assets_down} = Hub.preview_draw_by_shares(hub, @asset_id, @shares, rpc_opts)
+        assert {:ok, @restore_shares_down} = Hub.preview_restore_by_assets(hub, @asset_id, @assets, rpc_opts)
+        assert {:ok, @restore_assets_up} = Hub.preview_restore_by_shares(hub, @asset_id, @shares, rpc_opts)
+
+        assert {:ok, @max_underlying_decimals} = Hub.max_allowed_underlying_decimals(hub, rpc_opts)
+        assert {:ok, @min_underlying_decimals} = Hub.min_allowed_underlying_decimals(hub, rpc_opts)
+        assert {:ok, @max_spoke_cap} = Hub.max_allowed_spoke_cap(hub, rpc_opts)
+        assert {:ok, @max_risk_premium_threshold} = Hub.max_risk_premium_threshold(hub, rpc_opts)
       end)
     end
 
@@ -290,7 +350,19 @@ defmodule Onchain.Aave.V4.HubTest do
       selector("getAssetDrawnRate(uint256)", [0]) => encode("(uint256)", [{50_000}]),
       selector("getAssetDrawnIndex(uint256)", [0]) => encode("(uint256)", [{1_000_000}]),
       selector("getAssetId(address)", [usdc_bin]) => encode("(uint256)", [{0}]),
-      selector("getAssetUnderlyingAndDecimals(uint256)", [0]) => encode("(address,uint8)", [{usdc_bin, 6}])
+      selector("getAssetUnderlyingAndDecimals(uint256)", [0]) => encode("(address,uint8)", [{usdc_bin, 6}]),
+      selector("previewAddByAssets(uint256,uint256)", [0, @assets]) => encode("(uint256)", [{@add_shares_down}]),
+      selector("previewAddByShares(uint256,uint256)", [0, @shares]) => encode("(uint256)", [{@add_assets_up}]),
+      selector("previewRemoveByAssets(uint256,uint256)", [0, @assets]) => encode("(uint256)", [{@remove_shares_up}]),
+      selector("previewRemoveByShares(uint256,uint256)", [0, @shares]) => encode("(uint256)", [{@remove_assets_down}]),
+      selector("previewDrawByAssets(uint256,uint256)", [0, @assets]) => encode("(uint256)", [{@draw_shares_up}]),
+      selector("previewDrawByShares(uint256,uint256)", [0, @shares]) => encode("(uint256)", [{@draw_assets_down}]),
+      selector("previewRestoreByAssets(uint256,uint256)", [0, @assets]) => encode("(uint256)", [{@restore_shares_down}]),
+      selector("previewRestoreByShares(uint256,uint256)", [0, @shares]) => encode("(uint256)", [{@restore_assets_up}]),
+      selector("MAX_ALLOWED_UNDERLYING_DECIMALS()", []) => encode("(uint256)", [{@max_underlying_decimals}]),
+      selector("MIN_ALLOWED_UNDERLYING_DECIMALS()", []) => encode("(uint256)", [{@min_underlying_decimals}]),
+      selector("MAX_ALLOWED_SPOKE_CAP()", []) => encode("(uint256)", [{@max_spoke_cap}]),
+      selector("MAX_RISK_PREMIUM_THRESHOLD()", []) => encode("(uint256)", [{@max_risk_premium_threshold}])
     }
   end
 
