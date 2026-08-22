@@ -2,8 +2,9 @@ defmodule Onchain.EVM do
   @moduledoc """
   Local EVM simulation powered by revm via Rustler NIF.
 
-  Simulates contract execution locally by forking mainnet state from any RPC
-  endpoint. Zero gas cost, zero latency compared to on-chain execution.
+  Simulates contract execution locally by forking Ethereum mainnet state from
+  a mainnet RPC endpoint. Zero gas cost, zero latency compared to on-chain
+  execution.
 
   ## Core Use Cases
 

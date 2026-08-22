@@ -21,6 +21,10 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
   limit, coinbase, prevrandao). State overrides load the account from the fork
   before amending, so an override no longer clobbers un-fetched code, balance,
   or nonce.
+- **Fork-aware EVM revision selection.** Simulations select the mainnet `SpecId`
+  active at the resolved fork block. Unknown chain ids return `:fork_error`
+  instead of silently executing under mainnet rules; an archive-node test pins
+  `TLOAD` behavior on both sides of the Cancun boundary.
 - **Solidity parser-frontend spike.**
   `native/onchain_solidity/PARSER_FRONTEND_SPIKE.md` recommends `solar-parse`
   as the successor to `solang-parser` 0.3.5. A Rust characterization test pins

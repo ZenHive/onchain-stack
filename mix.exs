@@ -170,13 +170,16 @@ defmodule OnchainEvm.MixProject do
       "agents.check": [
         &agents_check/1
       ],
+      # Keep the reviewed advisory baseline active for direct invocations and
+      # host hooks, not only for the comprehensive gate below.
+      "deps.audit": "deps.audit --ignore-file .mix_audit_ignore",
       # mix_audit discards its own sync exit status (mirego/mix_audit#61), so a
       # frozen advisory DB still reports "No vulnerabilities found" and exits 0.
       # Prove freshness first, then audit. `.mix_audit_ignore` carries the one
       # verified false positive (GHSA-w4f7-4cxr-rv3c on gun — see the file).
       "deps.audit.gated": [
         &advisory_freshness/1,
-        "deps.audit --ignore-file .mix_audit_ignore"
+        "deps.audit"
       ],
       ci: ["precommit.full"]
     ]
