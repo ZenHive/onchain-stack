@@ -173,13 +173,30 @@ enum EvmError {
     Timeout(String),
 }
 
-fn encode_error<'a>(env: Env<'a>, err: EvmError) -> Term<'a> {
+fn encode_error_tag(err: &EvmError) -> &'static str {
     match err {
-        EvmError::Revert(msg) => (atoms::error(), (atoms::evm_revert(), msg)).encode(env),
-        EvmError::ExecutionError(msg) => (atoms::error(), (atoms::evm_error(), msg)).encode(env),
-        EvmError::ForkError(msg) => (atoms::error(), (atoms::fork_error(), msg)).encode(env),
-        EvmError::Timeout(msg) => (atoms::error(), (atoms::timeout(), msg)).encode(env),
+        EvmError::Revert(_) => "evm_revert",
+        EvmError::ExecutionError(_) => "evm_error",
+        EvmError::ForkError(_) => "fork_error",
+        EvmError::Timeout(_) => "timeout",
     }
+}
+
+fn encode_error<'a>(env: Env<'a>, err: EvmError) -> Term<'a> {
+    let tag = match encode_error_tag(&err) {
+        "evm_revert" => atoms::evm_revert(),
+        "evm_error" => atoms::evm_error(),
+        "fork_error" => atoms::fork_error(),
+        "timeout" => atoms::timeout(),
+        other => unreachable!("encode_error_tag is exhaustive, got {other}"),
+    };
+    let msg = match err {
+        EvmError::Revert(msg)
+        | EvmError::ExecutionError(msg)
+        | EvmError::ForkError(msg)
+        | EvmError::Timeout(msg) => msg,
+    };
+    (atoms::error(), (tag, msg)).encode(env)
 }
 
 // Maps a transport / RPC error from `evm.transact()` to the right EvmError
@@ -376,13 +393,10 @@ type ForkDB = CacheDB<WrapDatabaseAsync<AlloyDB<alloy_provider::network::Ethereu
 
 // Resolves block_number (u64) and block_tag (string) params into a BlockId.
 // block_number takes precedence if both are present; defaults to latest.
-fn resolve_block_id<'a>(params: &HashMap<String, Term<'a>>) -> Result<BlockId, EvmError> {
-    let block_number = get_optional_u64_param(params, "block_number")?;
-    let block_tag = get_optional_string_param(params, "block_tag")?;
-
+fn parse_block_id(block_number: Option<u64>, block_tag: Option<&str>) -> Result<BlockId, EvmError> {
     match (block_number, block_tag) {
         (Some(n), _) => Ok(BlockId::number(n)),
-        (None, Some(tag)) => match tag.as_str() {
+        (None, Some(tag)) => match tag {
             "latest" => Ok(BlockId::latest()),
             "finalized" => Ok(BlockId::finalized()),
             "safe" => Ok(BlockId::safe()),
@@ -395,6 +409,12 @@ fn resolve_block_id<'a>(params: &HashMap<String, Term<'a>>) -> Result<BlockId, E
         },
         (None, None) => Ok(BlockId::latest()),
     }
+}
+
+fn resolve_block_id<'a>(params: &HashMap<String, Term<'a>>) -> Result<BlockId, EvmError> {
+    let block_number = get_optional_u64_param(params, "block_number")?;
+    let block_tag = get_optional_string_param(params, "block_tag")?;
+    parse_block_id(block_number, block_tag.as_deref())
 }
 
 fn build_fork(
@@ -474,7 +494,18 @@ fn apply_state_overrides<'a>(
         .decode()
         .map_err(|_| EvmError::ExecutionError("invalid state_overrides format".into()))?;
 
-    for (addr_hex, fields) in &overrides {
+    apply_state_overrides_map(db, &overrides)
+}
+
+fn apply_state_overrides_map<ExtDB>(
+    db: &mut CacheDB<ExtDB>,
+    overrides: &HashMap<String, HashMap<String, String>>,
+) -> Result<(), EvmError>
+where
+    ExtDB: DatabaseRef,
+    ExtDB::Error: std::error::Error + 'static,
+{
+    for (addr_hex, fields) in overrides {
         let addr = decode_hex_to_address(addr_hex)?;
 
         let mut info = db
@@ -848,5 +879,256 @@ mod tests {
             }
             other => panic!("expected ForkError, got {other:?}"),
         }
+    }
+
+    #[derive(Debug)]
+    struct WrappedError<E> {
+        message: &'static str,
+        source: E,
+    }
+
+    impl<E: std::fmt::Display> std::fmt::Display for WrappedError<E> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(self.message)
+        }
+    }
+
+    impl<E: std::error::Error + 'static> std::error::Error for WrappedError<E> {
+        fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+            Some(&self.source)
+        }
+    }
+
+    #[derive(Debug)]
+    struct DisplayError(&'static str);
+
+    impl std::fmt::Display for DisplayError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(self.0)
+        }
+    }
+
+    impl std::error::Error for DisplayError {}
+
+    fn block_on<F: std::future::Future>(fut: F) -> F::Output {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("tokio runtime")
+            .block_on(fut)
+    }
+
+    fn wrap_reqwest(err: reqwest::Error) -> WrappedError<reqwest::Error> {
+        WrappedError {
+            message: "database error",
+            source: err,
+        }
+    }
+
+    fn reqwest_timeout_error() -> reqwest::Error {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let addr = listener.local_addr().expect("addr");
+        let err = block_on(async move {
+            let client = reqwest::Client::builder()
+                .timeout(Duration::from_millis(80))
+                .build()
+                .expect("client");
+            client
+                .get(format!("http://{addr}/"))
+                .send()
+                .await
+                .expect_err("listener never accepts HTTP")
+        });
+        drop(listener);
+        assert!(
+            err.is_timeout(),
+            "timeout fixture is not a timeout: {err:?} timeout={} connect={}",
+            err.is_timeout(),
+            err.is_connect()
+        );
+        err
+    }
+
+    fn reqwest_connect_error() -> reqwest::Error {
+        let err = block_on(async {
+            let client = reqwest::Client::builder()
+                .unix_socket("/no/such/onchain_evm/connect.sock")
+                .build()
+                .expect("client");
+            client
+                .get("http://localhost/")
+                .send()
+                .await
+                .expect_err("unix socket path does not exist")
+        });
+        assert!(
+            err.is_connect(),
+            "connect fixture is not a connect failure: {err:?} timeout={} connect={}",
+            err.is_timeout(),
+            err.is_connect()
+        );
+        err
+    }
+
+    fn assert_timeout(err: EvmError) {
+        match err {
+            EvmError::Timeout(_) => {}
+            other => panic!("expected Timeout, got {other:?}"),
+        }
+    }
+
+    fn assert_fork_error(err: EvmError) {
+        match err {
+            EvmError::ForkError(_) => {}
+            other => panic!("expected ForkError, got {other:?}"),
+        }
+    }
+
+    fn assert_execution_error(err: EvmError) {
+        match err {
+            EvmError::ExecutionError(_) => {}
+            other => panic!("expected ExecutionError, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn classify_transport_error_timeout_via_source_chain() {
+        assert_timeout(classify_transport_error(wrap_reqwest(
+            reqwest_timeout_error(),
+        )));
+    }
+
+    #[test]
+    fn classify_transport_error_connect_via_source_chain() {
+        assert_fork_error(classify_transport_error(wrap_reqwest(
+            reqwest_connect_error(),
+        )));
+    }
+
+    #[test]
+    fn classify_transport_error_timeout_via_display_fallback() {
+        assert_timeout(classify_transport_error(DisplayError(
+            "operation timed out",
+        )));
+        assert_timeout(classify_transport_error(DisplayError("deadline exceeded")));
+        assert_timeout(classify_transport_error(DisplayError("request timed out")));
+    }
+
+    #[test]
+    fn classify_transport_error_fork_error_via_display_fallback() {
+        assert_fork_error(classify_transport_error(DisplayError(
+            "error sending request for url (http://127.0.0.1/)",
+        )));
+        assert_fork_error(classify_transport_error(DisplayError("connection refused")));
+        assert_fork_error(classify_transport_error(DisplayError(
+            "dns error: failed to lookup",
+        )));
+    }
+
+    #[test]
+    fn classify_transport_error_unmatched_display_is_execution_error() {
+        assert_execution_error(classify_transport_error(DisplayError("halt: OutOfGas")));
+    }
+
+    #[test]
+    fn parse_block_id_numeric_blocks() {
+        assert_eq!(parse_block_id(Some(0), None).unwrap(), BlockId::number(0));
+        assert_eq!(
+            parse_block_id(Some(19_426_587), None).unwrap(),
+            BlockId::number(19_426_587)
+        );
+        assert_eq!(
+            parse_block_id(Some(7), Some("pending")).unwrap(),
+            BlockId::number(7),
+            "numeric block wins over a tag"
+        );
+    }
+
+    #[test]
+    fn parse_block_id_supported_tags() {
+        let tags = [
+            ("latest", BlockId::latest()),
+            ("finalized", BlockId::finalized()),
+            ("safe", BlockId::safe()),
+            ("pending", BlockId::pending()),
+            ("earliest", BlockId::earliest()),
+        ];
+        for (tag, expected) in tags {
+            assert_eq!(
+                parse_block_id(None, Some(tag)).unwrap(),
+                expected,
+                "tag {tag}"
+            );
+        }
+        assert_eq!(
+            parse_block_id(None, None).unwrap(),
+            BlockId::latest(),
+            "missing tag defaults to latest"
+        );
+    }
+
+    #[test]
+    fn parse_block_id_unknown_tag() {
+        match parse_block_id(None, Some("canonical")) {
+            Err(EvmError::ExecutionError(msg)) => {
+                assert!(msg.contains("unknown block tag"), "{msg}");
+                assert!(msg.contains("canonical"), "{msg}");
+            }
+            other => panic!("expected ExecutionError, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn encode_error_maps_all_variants_to_atom_tags() {
+        assert_eq!(
+            encode_error_tag(&EvmError::Revert("revert".into())),
+            "evm_revert"
+        );
+        assert_eq!(
+            encode_error_tag(&EvmError::ExecutionError("halt".into())),
+            "evm_error"
+        );
+        assert_eq!(
+            encode_error_tag(&EvmError::ForkError("refused".into())),
+            "fork_error"
+        );
+        assert_eq!(
+            encode_error_tag(&EvmError::Timeout("deadline".into())),
+            "timeout"
+        );
+    }
+
+    #[test]
+    fn apply_state_overrides_merges_fields_on_unfetched_account() {
+        use revm::state::AccountInfo;
+        use revm_database::EmptyDB;
+
+        let addr = Address::repeat_byte(0x42);
+        let existing_code = Bytes::from(vec![0x00]);
+        let existing = AccountInfo {
+            balance: U256::from(1),
+            nonce: 9,
+            code: Some(Bytecode::new_raw(existing_code.clone())),
+            ..Default::default()
+        };
+
+        let mut fork = CacheDB::new(EmptyDB::default());
+        fork.insert_account_info(addr, existing);
+
+        let mut db = CacheDB::new(fork);
+        let mut fields = HashMap::new();
+        fields.insert("balance".to_string(), "0x63".to_string());
+        let mut overrides = HashMap::new();
+        overrides.insert(bytes_to_hex(addr.as_slice()), fields);
+
+        apply_state_overrides_map(&mut db, &overrides).expect("override");
+
+        let info = db.basic(addr).expect("basic").expect("account exists");
+        assert_eq!(info.balance, U256::from(0x63));
+        assert_eq!(
+            info.nonce, 9,
+            "nonce from the unfetched fork account must survive a balance-only override"
+        );
+        assert_eq!(info.code, Some(Bytecode::new_raw(existing_code)));
     }
 }
