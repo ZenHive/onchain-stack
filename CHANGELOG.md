@@ -4,7 +4,7 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## [Unreleased]
+## v0.4.0 — Aave V4 support (2026-08-22)
 
 ### Added — Aave V4 support (Hub-and-Spoke)
 
@@ -59,6 +59,14 @@ unit tests rather than testnet sends.
   derives its expectation from the compiled application instead of asserting a
   hardcoded module count, so a module that is added without being registered
   fails the suite rather than reaching consumers undiscoverable.
+- Widened the `descripex` requirement from `~> 0.12.0` to `~> 0.12`. The
+  three-segment cap turned every additive descripex minor into a forced
+  nine-repo release cascade while protecting nothing in-family — `mix.lock` is
+  committed, so a new descripex only ever lands through a deliberate
+  `mix deps.update` behind `mix ci`.
+- Resolved the refreshed family upstreams: onchain 0.13.0, descripex 0.13.0,
+  cartouche 0.7.1, hieroglyph 1.6.2, zen_websocket 0.7.1 and the dev/test-only
+  onchain_evm 0.5.1.
 
 ---
 

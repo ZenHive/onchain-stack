@@ -1,7 +1,7 @@
 defmodule OnchainAave.MixProject do
   use Mix.Project
 
-  @version "0.3.2"
+  @version "0.4.0"
   @source_url "https://github.com/ZenHive/onchain_aave"
 
   def project do
@@ -45,8 +45,8 @@ defmodule OnchainAave.MixProject do
       # the GHSA-w4f7-4cxr-rv3c fix rather than merely permitting it. `~> 0.11`
       # admits 0.12.0 but does not require it, so this lock would keep resolving
       # onchain 0.11.0 -> zen_websocket 0.4.2, whose looser gun bound only
-      # happens to have landed on a fixed 2.5.0. onchain 0.12.0 also narrows
-      # `descripex` to `~> 0.12.0`, matching what this package declares below.
+      # happens to have landed on a fixed 2.5.0. Two-segment, so onchain 0.13.0
+      # resolves here without a bound edit.
       {:onchain, "~> 0.12"},
       {:decimal, "~> 3.1"},
       # Two-segment on purpose: the three-segment cap turned every descripex
