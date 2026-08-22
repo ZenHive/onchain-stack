@@ -573,13 +573,9 @@ acceptance_criteria = [
 id = 52
 phase = 3
 bundle = "standalone"
-status = "pending"
+status = "in_progress"
 title = "Codegen-emit per-contract Multicall helper modules"
-module = "Onchain.Contract.Generator"
 scores = { d = 5, b = 7, u = 6 }
-assignee = "codex"
-model = "gpt-5.6-sol"
-touches = ["lib/onchain/contract/generator.ex", "test/onchain/contract/generator_test.exs", "test/onchain/contract/generator_integration_test.exs"]
 acceptance_criteria = [
   "A generated contract module exposes a way to build `Onchain.Multicall` call entries for its own functions with the same argument types the direct call wrappers take, without the caller hand-packing address/calldata tuples",
   "Decoding a batch result returns values typed the same way the single-call wrapper returns them, including struct and array returns",
@@ -591,11 +587,16 @@ out_of_scope = [
   "Changes to Onchain.Multicall itself — that lives in the core `onchain` package",
   "Routing batches through Onchain.EVM.simulate_batch/2; this is on-chain Multicall3, not local simulation"
 ]
+touches = ["lib/onchain/contract/generator.ex", "test/onchain/contract/generator_test.exs", "test/onchain/contract/generator_integration_test.exs"]
+assignee = "codex"
+module = "Onchain.Contract.Generator"
+model = "gpt-5.6-sol"
 body = """
 Extend `Onchain.Contract.Generator` so each generated contract emits typed Multicall helpers — callers using both codegen and `Onchain.Multicall` (in the core `onchain` library, confirmed present at deps/onchain/lib/onchain/multicall.ex) shouldn't have to hand-pack call tuples and lose the type safety the generator otherwise provides. Include unit and integration tests.
 
 Note the boundary against local simulation: `Onchain.EVM.simulate_batch/2` also takes a list of calls, but it executes them on a local fork, whereas this is on-chain Multicall3 aggregation. Sharing an argument-encoding path between the two is fine; conflating the two return shapes is not — `simulate_batch` reports per-call `:success` flags and never raises on a revert, and that difference has to survive into whatever the generator emits.
 """
+started_at = "2026-08-22"
 
 [[task]]
 id = 53

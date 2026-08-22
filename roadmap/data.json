@@ -780,7 +780,7 @@
       "id": 52,
       "phase": 3,
       "bundle": "standalone",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Codegen-emit per-contract Multicall helper modules",
       "scores": {
         "d": 5,
@@ -812,6 +812,7 @@
         "test/onchain/contract/generator_integration_test.exs"
       ],
       "body": "Extend `Onchain.Contract.Generator` so each generated contract emits typed Multicall helpers — callers using both codegen and `Onchain.Multicall` (in the core `onchain` library, confirmed present at deps/onchain/lib/onchain/multicall.ex) shouldn't have to hand-pack call tuples and lose the type safety the generator otherwise provides. Include unit and integration tests.\n\nNote the boundary against local simulation: `Onchain.EVM.simulate_batch/2` also takes a list of calls, but it executes them on a local fork, whereas this is on-chain Multicall3 aggregation. Sharing an argument-encoding path between the two is fine; conflating the two return shapes is not — `simulate_batch` reports per-call `:success` flags and never raises on a revert, and that difference has to survive into whatever the generator emits.\n",
+      "started_at": "2026-08-22",
       "cross_repo": []
     },
     {
