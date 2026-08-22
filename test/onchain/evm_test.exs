@@ -155,6 +155,13 @@ defmodule Onchain.EVMTest do
       assert {:error, {:invalid_block, "0x"}} =
                EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: "0x")
     end
+
+    test "rejects a hex block above u64::MAX" do
+      hex = "0x1" <> String.duplicate("0", 16)
+
+      assert {:error, {:invalid_block, ^hex}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, block: hex)
+    end
   end
 
   describe "simulate_call/3 :from validation" do
@@ -184,6 +191,22 @@ defmodule Onchain.EVMTest do
         )
 
       refute match?({:error, {:invalid_value, _}}, result)
+    end
+
+    test "returns error for empty value" do
+      assert {:error, {:invalid_value, ""}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 value: ""
+               )
+    end
+
+    test "returns error for non-hex value" do
+      assert {:error, {:invalid_value, "not-a-hex"}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 value: "not-a-hex"
+               )
     end
 
     test "returns error for negative gas_limit" do
@@ -223,6 +246,16 @@ defmodule Onchain.EVMTest do
                EVM.simulate_call(@valid_address, @valid_data,
                  rpc_url: @valid_rpc_url,
                  state_overrides: []
+               )
+    end
+
+    test "returns error for state_overrides with atom keys" do
+      overrides = %{atom_key: %{"balance" => "0x1"}}
+
+      assert {:error, {:invalid_state_overrides, ^overrides}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 state_overrides: overrides
                )
     end
   end
@@ -339,6 +372,16 @@ defmodule Onchain.EVMTest do
     test "returns error for invalid data in calls list" do
       calls = [{@valid_address, "no-prefix"}]
       assert {:error, {:invalid_data, _}} = EVM.simulate_batch(calls, rpc_url: @valid_rpc_url)
+    end
+
+    test "returns tagged error for a non-list calls argument" do
+      assert {:error, {:invalid_calls, %{}}} =
+               EVM.simulate_batch(%{}, rpc_url: @valid_rpc_url)
+    end
+
+    test "returns tagged error for a non-2-tuple call element" do
+      assert {:error, {:invalid_calls, "not-a-tuple"}} =
+               EVM.simulate_batch(["not-a-tuple"], rpc_url: @valid_rpc_url)
     end
   end
 

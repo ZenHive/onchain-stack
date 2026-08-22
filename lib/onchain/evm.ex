@@ -22,7 +22,9 @@ defmodule Onchain.EVM do
   | RPC request timeout | `{:error, {:timeout, reason}}` |
   | Invalid address input | `{:error, {:invalid_address, input}}` |
   | Invalid hex data input | `{:error, {:invalid_data, input}}` |
+  | Invalid batch calls | `{:error, {:invalid_calls, input}}` |
   | Invalid RPC URL | `{:error, {:invalid_rpc_url, reason}}` |
+  | Invalid block option | `{:error, {:invalid_block, input}}` |
   | Invalid value option | `{:error, {:invalid_value, input}}` |
   | Invalid gas_limit option | `{:error, {:invalid_gas_limit, input}}` |
   | Invalid timeout_ms option | `{:error, {:invalid_timeout_ms, input}}` |
@@ -138,6 +140,7 @@ defmodule Onchain.EVM do
           {:invalid_rpc_url, rpc_url_reason()}
           | {:invalid_address, term()}
           | {:invalid_data, term()}
+          | {:invalid_calls, term()}
           | {:invalid_block, term()}
           | {:invalid_value, term()}
           | {:invalid_gas_limit, term()}
