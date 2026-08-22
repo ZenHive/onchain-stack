@@ -4,6 +4,8 @@ defmodule Onchain.Aave.PoolTest do
 
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.Pool
+  alias Onchain.Aave.Types.UserAccountData
+  alias Onchain.RPCStub
 
   # Valid addresses for param validation tests (don't need to be real contracts)
   @valid_address "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
@@ -18,6 +20,25 @@ defmodule Onchain.Aave.PoolTest do
   @withdraw_selector <<0x69, 0x32, 0x8D, 0xEC>>
   @borrow_selector <<0xA4, 0x15, 0xBC, 0xAD>>
   @repay_selector <<0x57, 0x3A, 0xDE, 0x81>>
+
+  # Canned getUserAccountData response, in the contract's own raw units:
+  # base-currency values at 10^8, LTV/threshold in basis points (10^4),
+  # health factor at 10^18. UserAccountData.from_raw/1 scales them down, so
+  # these are the pre-image of the Decimals asserted below.
+  @collateral_raw 500_000_000_000
+  @debt_raw 100_000_000_000
+  @available_borrows_raw 200_000_000_000
+  @liquidation_threshold_raw 8_250
+  @ltv_raw 8_000
+  @health_factor_raw 1_500_000_000_000_000_000
+  @low_health_raw 900_000_000_000_000_000
+
+  # Canned eth_sendRawTransaction result for the offline write path.
+  @tx_hash "0x1111111111111111111111111111111111111111111111111111111111111111"
+
+  @account_data_response "(uint256,uint256,uint256,uint256,uint256,uint256)"
+  @multicall_response "((bool,bytes)[])"
+  @multicall_signature "aggregate3((address,bool,bytes)[])"
 
   # --- Read operations ---
 
@@ -372,6 +393,109 @@ defmodule Onchain.Aave.PoolTest do
     end
   end
 
+  # --- Read decode paths (loopback JSON-RPC stub, no live node) ---
+
+  describe "get_user_account_data/2 decode path" do
+    test "decodes the six raw uint256 values into scaled Decimal fields" do
+      {:ok, seen} = Agent.start_link(fn -> [] end)
+      url = start_stub(%{account_data_selector() => account_data_payload()}, seen)
+
+      assert {:ok, data} = Pool.get_user_account_data(@valid_address, RPCStub.rpc_opts(url))
+
+      assert Decimal.equal?(data.total_collateral_base, Decimal.new("5000"))
+      assert Decimal.equal?(data.total_debt_base, Decimal.new("1000"))
+      assert Decimal.equal?(data.available_borrows_base, Decimal.new("2000"))
+      assert Decimal.equal?(data.current_liquidation_threshold, Decimal.new("0.825"))
+      assert Decimal.equal?(data.ltv, Decimal.new("0.8"))
+      assert Decimal.equal?(data.health_factor, Decimal.new("1.5"))
+
+      assert [to] = Agent.get(seen, & &1)
+      assert String.downcase(to) == String.downcase(@pool_address)
+    end
+
+    test "propagates a JSON-RPC error instead of decoding it" do
+      url = start_error_stub(%{"code" => -32_000, "message" => "execution reverted"})
+
+      assert {:error, _reason} = Pool.get_user_account_data(@valid_address, RPCStub.rpc_opts(url))
+    end
+  end
+
+  describe "get_user_account_data!/2 decode path" do
+    test "returns the struct unwrapped on success" do
+      url = start_stub(%{account_data_selector() => account_data_payload()})
+
+      assert %UserAccountData{} = data = Pool.get_user_account_data!(@valid_address, RPCStub.rpc_opts(url))
+      assert Decimal.equal?(data.health_factor, Decimal.new("1.5"))
+    end
+
+    test "raises when the node returns an error" do
+      url = start_error_stub(%{"code" => -32_000, "message" => "execution reverted"})
+
+      assert_raise RuntimeError, ~r/get_user_account_data failed/, fn ->
+        Pool.get_user_account_data!(@valid_address, RPCStub.rpc_opts(url))
+      end
+    end
+  end
+
+  describe "get_user_account_data_many/2 decode path" do
+    test "returns one struct per user, in input order" do
+      url =
+        start_multicall_stub([{true, raw_account_data(@health_factor_raw)}, {true, raw_account_data(@low_health_raw)}])
+
+      assert {:ok, [first, second]} =
+               Pool.get_user_account_data_many([@valid_address, @valid_address_2], RPCStub.rpc_opts(url))
+
+      assert Decimal.equal?(first.health_factor, Decimal.new("1.5"))
+      assert Decimal.equal?(second.health_factor, Decimal.new("0.9"))
+    end
+
+    test "fails the whole batch loudly when one sub-call reverts" do
+      revert_data = <<0xDE, 0xAD, 0xBE, 0xEF>>
+      url = start_multicall_stub([{true, raw_account_data(@health_factor_raw)}, {false, revert_data}])
+
+      assert {:error, {:multicall_call_failed, data}} =
+               Pool.get_user_account_data_many([@valid_address, @valid_address_2], RPCStub.rpc_opts(url))
+
+      assert String.downcase(data) =~ "deadbeef"
+    end
+  end
+
+  describe "bang write wrappers" do
+    test "supply!/withdraw!/borrow!/repay! return the broadcast tx hash on success" do
+      for fun <- [
+            &Pool.supply!/4,
+            &Pool.withdraw!/4,
+            &Pool.borrow!/4,
+            &Pool.repay!/4
+          ] do
+        {:ok, seen} = Agent.start_link(fn -> [] end)
+        url = RPCStub.start(RPCStub.send_tx_handler(@tx_hash, seen))
+
+        assert @tx_hash == fun.(@valid_address, @test_amount, @valid_address_2, RPCStub.write_opts(url))
+
+        assert [raw] = Agent.get(seen, & &1)
+        assert String.starts_with?(raw, "0x02")
+      end
+    end
+
+    test "supply!/withdraw!/borrow!/repay! raise with the operation name in the message" do
+      for {fun, name} <- [
+            {fn -> Pool.supply!(@valid_address, @test_amount, @valid_address_2, []) end, "supply"},
+            {fn -> Pool.withdraw!(@valid_address, @test_amount, @valid_address_2, []) end, "withdraw"},
+            {fn -> Pool.borrow!(@valid_address, @test_amount, @valid_address_2, []) end, "borrow"},
+            {fn -> Pool.repay!(@valid_address, @test_amount, @valid_address_2, []) end, "repay"}
+          ] do
+        assert_raise RuntimeError, ~r/#{name} failed.*missing_option/, fun
+      end
+    end
+
+    test "get_user_account_data_many!/2 raises on an invalid address in the list" do
+      assert_raise RuntimeError, ~r/get_user_account_data_many failed.*invalid_address/, fn ->
+        Pool.get_user_account_data_many!([@valid_address, "not_an_address"])
+      end
+    end
+  end
+
   @doc false
   # Delegates to TraceCase and destructures to {to, calldata}.
   defp capture_signer_args(fun) do
@@ -384,5 +508,47 @@ defmodule Onchain.Aave.PoolTest do
   defp pad_left(bin) when byte_size(bin) <= 32 do
     padding_size = 32 - byte_size(bin)
     <<0::size(padding_size * 8), bin::binary>>
+  end
+
+  @doc false
+  # Starts a stub answering `eth_call` from a selector-keyed payload map.
+  defp start_stub(payloads, seen \\ nil) do
+    RPCStub.start(RPCStub.payload_handler(payloads, seen))
+  end
+
+  @doc false
+  # Starts a stub that answers every request with a JSON-RPC error object.
+  defp start_error_stub(error) do
+    RPCStub.start(fn _request -> {:error, error} end)
+  end
+
+  @doc false
+  # Starts a stub that answers the Multicall3 aggregate3 call with the given
+  # {success?, return_data} sub-results, in order.
+  defp start_multicall_stub(sub_results) do
+    payload = RPCStub.encode(@multicall_response, [{sub_results}])
+    start_stub(%{RPCStub.selector(@multicall_signature, [[]]) => payload})
+  end
+
+  @doc false
+  defp account_data_selector do
+    RPCStub.selector("getUserAccountData(address)", [<<0::160>>])
+  end
+
+  @doc false
+  defp account_data_payload do
+    RPCStub.encode(@account_data_response, [account_data_tuple(@health_factor_raw)])
+  end
+
+  @doc false
+  # Raw ABI bytes of one getUserAccountData return, for embedding as the
+  # `bytes` member of a Multicall3 sub-result.
+  defp raw_account_data(health_factor_raw) do
+    RPCStub.encode_raw(@account_data_response, [account_data_tuple(health_factor_raw)])
+  end
+
+  @doc false
+  defp account_data_tuple(health_factor_raw) do
+    {@collateral_raw, @debt_raw, @available_borrows_raw, @liquidation_threshold_raw, @ltv_raw, health_factor_raw}
   end
 end
