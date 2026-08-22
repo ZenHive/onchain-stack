@@ -423,8 +423,8 @@ status = "pending"
 title = "Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec"
 module = "native/onchain_solidity"
 scores = { d = 5, b = 9, u = 8 }
-assignee = "cursor"
-model = "cursor-grok-4.6-high"
+assignee = "codex"
+model = "gpt-5.6-sol"
 touches = ["native/onchain_solidity/src/lib.rs"]
 acceptance_criteria = [
   "Function selectors and event topic hashes are asserted against known-correct values for at least one signature with tuple and array parameters, not only flat scalar ones",

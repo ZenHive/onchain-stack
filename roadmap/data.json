@@ -623,9 +623,9 @@
       "unlocks": 0,
       "markers": [],
       "depends_on": [],
-      "assignee": "cursor",
+      "assignee": "codex",
       "module": "native/onchain_solidity",
-      "model": "cursor-grok-4.6-high",
+      "model": "gpt-5.6-sol",
       "acceptance_criteria": [
         "Function selectors and event topic hashes are asserted against known-correct values for at least one signature with tuple and array parameters, not only flat scalar ones",
         "Type canonicalization is covered for nested arrays, fixed-size arrays, tuples/structs and enums, including the `MAX_TYPE_RECURSION_DEPTH` cut-off behaviour",
