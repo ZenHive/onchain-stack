@@ -31,11 +31,14 @@
 //! underlying `reqwest::Error` (see `classify_transport_error`), so a connect
 //! refusal is retryable `:fork_error` and a deadline is `:timeout`.
 //!
-//! # Known limitations
+//! # Fork revision
 //!
-//! The EVM revision (`SpecId`) is not derived from the forked block, so a fork
-//! pinned to a historical block still executes under the configured modern
-//! revision. See the note at the `Context::mainnet()` call sites.
+//! The EVM revision (`SpecId`) is derived from the forked block: `eth_chainId`
+//! selects a hardfork schedule, and the header's block number selects the
+//! revision active at that block. Only Ethereum mainnet (chain id 1) has a
+//! schedule; any other chain id is rejected as `:fork_error` rather than
+//! silently executing under mainnet rules. Amsterdam is not yet scheduled, so
+//! blocks at or after Osaka execute as Osaka.
 //!
 //! [revm]: https://docs.rs/revm
 
@@ -48,9 +51,9 @@ use alloy_primitives::{Address, Bytes, U256};
 use alloy_provider::Provider;
 use revm::{
     bytecode::Bytecode,
-    context::{BlockEnv, TxEnv},
+    context::{BlockEnv, CfgEnv, TxEnv},
     context_interface::result::{ExecutionResult, Output},
-    primitives::TxKind,
+    primitives::{hardfork::SpecId, TxKind},
     Context, Database, DatabaseRef, ExecuteCommitEvm, ExecuteEvm, MainBuilder, MainContext,
 };
 use revm_database::{AlloyDB, CacheDB, WrapDatabaseAsync};
@@ -60,6 +63,54 @@ use revm_database::{AlloyDB, CacheDB, WrapDatabaseAsync};
 // caller-controlled via the `timeout_ms` NIF param (defaults below).
 const DEFAULT_TIMEOUT_MS: u64 = 30_000;
 const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 5_000;
+
+// Ethereum mainnet chain id (`eth_chainId`).
+const ETHEREUM_MAINNET_CHAIN_ID: u64 = 1;
+
+// Ethereum mainnet hardfork activation blocks.
+//
+// Pre-merge upgrades activate by block number (EIP-6953). Post-merge upgrades
+// activate by timestamp; the entries below are the first execution-layer block
+// of each timestamp, matching revm's `SpecId` comments and verified against
+// mainnet headers. Amsterdam has no activation block yet and is therefore
+// never selected.
+const MAINNET_HARDFORK_BLOCKS: &[(u64, SpecId)] = &[
+    (0, SpecId::FRONTIER),
+    (1_150_000, SpecId::HOMESTEAD),
+    (2_463_000, SpecId::TANGERINE),
+    (2_675_000, SpecId::SPURIOUS_DRAGON),
+    (4_370_000, SpecId::BYZANTIUM),
+    (7_280_000, SpecId::PETERSBURG),
+    (9_069_000, SpecId::ISTANBUL),
+    (12_244_000, SpecId::BERLIN),
+    (12_965_000, SpecId::LONDON),
+    (15_537_394, SpecId::MERGE),
+    (17_034_870, SpecId::SHANGHAI),
+    (19_426_587, SpecId::CANCUN),
+    (22_431_084, SpecId::PRAGUE),
+    (23_935_694, SpecId::OSAKA),
+];
+
+fn spec_id_for_fork(chain_id: u64, block_number: u64) -> Result<SpecId, EvmError> {
+    if chain_id != ETHEREUM_MAINNET_CHAIN_ID {
+        return Err(EvmError::ForkError(format!(
+            "unsupported chain id {chain_id}: hardfork schedule is known only for Ethereum mainnet (chain id {ETHEREUM_MAINNET_CHAIN_ID})"
+        )));
+    }
+
+    Ok(MAINNET_HARDFORK_BLOCKS
+        .iter()
+        .rev()
+        .find(|(activation, _)| block_number >= *activation)
+        .map(|(_, spec)| *spec)
+        .expect("FRONTIER starts at block 0"))
+}
+
+fn configure_fork_cfg(cfg: &mut CfgEnv, spec_id: SpecId, disable_nonce_check: bool) {
+    cfg.set_spec_and_mainnet_gas_params(spec_id);
+    cfg.disable_nonce_check = disable_nonce_check;
+    cfg.disable_base_fee = true;
+}
 
 mod atoms {
     rustler::atoms! {
@@ -351,7 +402,7 @@ fn build_fork(
     block_id: BlockId,
     timeout_ms: u64,
     connect_timeout_ms: u64,
-) -> Result<(ForkDB, BlockEnv), EvmError> {
+) -> Result<(ForkDB, BlockEnv, SpecId), EvmError> {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -374,11 +425,20 @@ fn build_fork(
         .connect_client(rpc_client)
         .erased();
 
-    let block = rt
-        .block_on(async { provider.get_block(block_id).await })
-        .map_err(classify_transport_error)?
-        .ok_or_else(|| EvmError::ForkError(format!("block not found: {block_id:?}")))?;
+    let (block, chain_id) = rt.block_on(async {
+        let block = provider
+            .get_block(block_id)
+            .await
+            .map_err(classify_transport_error)?
+            .ok_or_else(|| EvmError::ForkError(format!("block not found: {block_id:?}")))?;
+        let chain_id = provider
+            .get_chain_id()
+            .await
+            .map_err(classify_transport_error)?;
+        Ok::<_, EvmError>((block, chain_id))
+    })?;
     let header = &block.header.inner;
+    let spec_id = spec_id_for_fork(chain_id, header.number)?;
     let block_env = BlockEnv {
         number: U256::from(header.number),
         beneficiary: header.beneficiary,
@@ -398,7 +458,7 @@ fn build_fork(
     let wrapped_db = WrapDatabaseAsync::with_runtime(alloy_db, rt);
     let cache_db = CacheDB::new(wrapped_db);
 
-    Ok((cache_db, block_env))
+    Ok((cache_db, block_env, spec_id))
 }
 
 fn apply_state_overrides<'a>(
@@ -567,25 +627,15 @@ fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, Ev
     let timeout_ms = get_optional_u64_param(params, "timeout_ms")?.unwrap_or(DEFAULT_TIMEOUT_MS);
     let cp = extract_call_params(params)?;
 
-    let (mut db, block_env) =
+    let (mut db, block_env, spec_id) =
         build_fork(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
 
     let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
-    // KNOWN LIMITATION (applies to every Context::mainnet() site below too):
-    // revm 42 defaults to the latest hardfork spec, so a fork pinned to a
-    // historical block executes under newer EVM rules than were active then. We do
-    // not derive SpecId from the forked block because these NIFs fork an arbitrary
-    // RPC URL (any L1/L2), and a mainnet block→hardfork table would assign the
-    // wrong spec to non-mainnet chains — worse than the latest-spec default. A
-    // correct fix needs a chain-aware fork schedule keyed on chain id; deferred.
     let mut evm = Context::mainnet()
         .with_block(block_env)
         .with_db(&mut db)
-        .modify_cfg_chained(|cfg| {
-            cfg.disable_nonce_check = true;
-            cfg.disable_base_fee = true;
-        })
+        .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec_id, true))
         .build_mainnet();
 
     let result = evm.transact(tx).map_err(classify_transport_error)?;
@@ -613,7 +663,7 @@ fn do_simulate_transaction<'a>(params: &HashMap<String, Term<'a>>) -> Result<TxR
     let timeout_ms = get_optional_u64_param(params, "timeout_ms")?.unwrap_or(DEFAULT_TIMEOUT_MS);
     let cp = extract_call_params(params)?;
 
-    let (mut db, block_env) =
+    let (mut db, block_env, spec_id) =
         build_fork(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
 
@@ -621,10 +671,7 @@ fn do_simulate_transaction<'a>(params: &HashMap<String, Term<'a>>) -> Result<TxR
     let mut evm = Context::mainnet()
         .with_block(block_env)
         .with_db(&mut db)
-        .modify_cfg_chained(|cfg| {
-            cfg.disable_nonce_check = true;
-            cfg.disable_base_fee = true;
-        })
+        .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec_id, true))
         .build_mainnet();
 
     let result = evm.transact(tx).map_err(classify_transport_error)?;
@@ -661,7 +708,7 @@ fn do_simulate_batch<'a>(params: &HashMap<String, Term<'a>>) -> Result<Vec<TxRes
         return Ok(Vec::new());
     }
 
-    let (mut db, block_env) =
+    let (mut db, block_env, spec_id) =
         build_fork(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
     let base_nonce = current_nonce(&db, from)?;
@@ -689,7 +736,7 @@ fn do_simulate_batch<'a>(params: &HashMap<String, Term<'a>>) -> Result<Vec<TxRes
         let mut evm = Context::mainnet()
             .with_block(block_env.clone())
             .with_db(&mut db)
-            .modify_cfg_chained(|cfg| cfg.disable_base_fee = true)
+            .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec_id, false))
             .build_mainnet();
 
         let result = evm.transact_commit(tx).map_err(classify_transport_error)?;
@@ -747,5 +794,59 @@ mod tests {
         let tx = build_tx_with_nonce(&params, Bytes::new(), Some(TEST_NONCE)).expect("valid tx");
 
         assert_eq!(tx.nonce, TEST_NONCE);
+    }
+
+    #[test]
+    fn spec_id_follows_mainnet_hardfork_boundaries() {
+        let cases = [
+            (0, SpecId::FRONTIER),
+            (1, SpecId::FRONTIER),
+            (1_149_999, SpecId::FRONTIER),
+            (1_150_000, SpecId::HOMESTEAD),
+            (2_462_999, SpecId::HOMESTEAD),
+            (2_463_000, SpecId::TANGERINE),
+            (2_674_999, SpecId::TANGERINE),
+            (2_675_000, SpecId::SPURIOUS_DRAGON),
+            (4_369_999, SpecId::SPURIOUS_DRAGON),
+            (4_370_000, SpecId::BYZANTIUM),
+            (7_279_999, SpecId::BYZANTIUM),
+            (7_280_000, SpecId::PETERSBURG),
+            (9_068_999, SpecId::PETERSBURG),
+            (9_069_000, SpecId::ISTANBUL),
+            (12_243_999, SpecId::ISTANBUL),
+            (12_244_000, SpecId::BERLIN),
+            (12_964_999, SpecId::BERLIN),
+            (12_965_000, SpecId::LONDON),
+            (15_537_393, SpecId::LONDON),
+            (15_537_394, SpecId::MERGE),
+            (17_034_869, SpecId::MERGE),
+            (17_034_870, SpecId::SHANGHAI),
+            (19_426_586, SpecId::SHANGHAI),
+            (19_426_587, SpecId::CANCUN),
+            (22_431_083, SpecId::CANCUN),
+            (22_431_084, SpecId::PRAGUE),
+            (23_935_693, SpecId::PRAGUE),
+            (23_935_694, SpecId::OSAKA),
+            (u64::MAX, SpecId::OSAKA),
+        ];
+
+        for (block, spec) in cases {
+            assert_eq!(
+                spec_id_for_fork(ETHEREUM_MAINNET_CHAIN_ID, block).unwrap(),
+                spec,
+                "block {block}"
+            );
+        }
+    }
+
+    #[test]
+    fn spec_id_rejects_unknown_chain() {
+        match spec_id_for_fork(11_155_111, 19_426_587) {
+            Err(EvmError::ForkError(msg)) => {
+                assert!(msg.contains("11155111"), "{msg}");
+                assert!(msg.contains("mainnet"), "{msg}");
+            }
+            other => panic!("expected ForkError, got {other:?}"),
+        }
     }
 }

@@ -30,6 +30,14 @@ defmodule Onchain.EVM do
   | Invalid timeout_ms option | `{:error, {:invalid_timeout_ms, input}}` |
   | Invalid state_overrides option | `{:error, {:invalid_state_overrides, input}}` |
 
+  ## Fork revision
+
+  A `:block` pin selects both the forked state *and* the EVM revision that was
+  active at that block, via the Ethereum mainnet hardfork schedule (keyed on
+  `eth_chainId` plus the header's block number). RPC endpoints whose chain id
+  is not Ethereum mainnet (`1`) return `{:error, {:fork_error, _}}` rather than
+  silently executing under mainnet rules.
+
   ## Timeouts
 
   Each NIF call configures a `reqwest::Client` with a per-RPC-request timeout.

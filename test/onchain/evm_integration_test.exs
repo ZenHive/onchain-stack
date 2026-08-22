@@ -36,7 +36,13 @@ defmodule Onchain.EVM.IntegrationTest do
   @storage_reader_runtime "0x60005460005260206000f3"
   @create_child_runtime "0x600060006000f060005260206000f3"
   @block_env_reader_runtime "0x41600052426020524360405244606052456080524860a05260c06000f3"
+  # Cancun (Dencun) first mainnet block. TLOAD (0x5c, EIP-1153) is the opcode
+  # that differs across this boundary: halt before, zero-word return after.
+  @cancun_activation_block 19_426_587
+  @pre_cancun_block 19_426_586
+  @tload_runtime "0x60005c60005260206000f3"
 
+  @zero_word "0x0000000000000000000000000000000000000000000000000000000000000000"
   @word_42 "0x000000000000000000000000000000000000000000000000000000000000002a"
   @word_123 "0x000000000000000000000000000000000000000000000000000000000000007b"
   @created_with_nonce_1 "0x0000000000000000000000005bafcc0c93ecd8022925d7fd89da1c6250850e19"
@@ -98,6 +104,32 @@ defmodule Onchain.EVM.IntegrationTest do
     test "uses the latest block environment when requested or omitted" do
       assert_latest_block_env(rpc_url: Onchain.RPCCase.rpc_url!(), block: "latest")
       assert_latest_block_env(rpc_opts_without_block())
+    end
+
+    test "TLOAD follows the Cancun hardfork boundary" do
+      overrides = %{@override_contract => %{"code" => @tload_runtime}}
+      rpc_url = Onchain.RPCCase.rpc_url!()
+
+      assert {:ok, @zero_word} =
+               EVM.simulate_call(
+                 @override_contract,
+                 "0x",
+                 rpc_url: rpc_url,
+                 block: @cancun_activation_block,
+                 state_overrides: overrides
+               )
+
+      assert {:error, {:evm_error, msg}} =
+               EVM.simulate_call(
+                 @override_contract,
+                 "0x",
+                 rpc_url: rpc_url,
+                 block: @pre_cancun_block,
+                 state_overrides: overrides
+               )
+
+      assert msg =~ "halt"
+      assert msg =~ ~r/NotActivated|OpcodeNotFound/
     end
 
     test "populates the forked block environment fields" do

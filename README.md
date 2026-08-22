@@ -44,7 +44,7 @@ Onchain.EVM.simulate_batch(calls, rpc_url: url)
 | Option | Meaning |
 |--------|---------|
 | `:rpc_url` | RPC endpoint to fork from (required; empty/non-HTTP(S)/hostless rejected) |
-| `:block` | Block to fork at — integer, `"0x…"` hex, or a tag (`"latest"`, `"finalized"`, `"safe"`, `"pending"`, `"earliest"`) |
+| `:block` | Block to fork at — integer, `"0x…"` hex, or a tag (`"latest"`, `"finalized"`, `"safe"`, `"pending"`, `"earliest"`). Also selects the EVM revision that was active at that block on Ethereum mainnet; other chain ids are rejected |
 | `:from` | Sender address (0x hex or 20-byte binary) |
 | `:timeout_ms` | Per-RPC-request timeout (positive integer; default 30s, 5s connect). Surfaces as `{:error, {:timeout, msg}}` |
 | `:value` | 0x-prefixed U256 hex quantity |

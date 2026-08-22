@@ -49,7 +49,7 @@ Onchain.EVM.simulate_batch(calls, rpc_url: url)
 | Option | Notes |
 |--------|-------|
 | `:rpc_url` | **Required.** Empty / whitespace / non-HTTP(S) / hostless URLs are rejected with `{:error, {:invalid_rpc_url, reason}}` (`reason` ∈ `:missing`, `:empty`, `{:not_a_string, term}`, `{:invalid_scheme, url}`, `{:missing_host, url}`). |
-| `:block` | Integer, `"0x…"` hex, or tag string `"latest"` / `"finalized"` / `"safe"` / `"pending"` / `"earliest"`. Resolved natively by Alloy. |
+| `:block` | Integer, `"0x…"` hex, or tag string `"latest"` / `"finalized"` / `"safe"` / `"pending"` / `"earliest"`. Resolved natively by Alloy. Also selects the EVM revision active at that block on Ethereum mainnet; other `eth_chainId` values return `{:error, {:fork_error, _}}`. |
 | `:timeout_ms` | Positive integer; per-RPC-request budget (default 30 000ms; connect timeout fixed at 5s). A request that exceeds it aborts instead of blocking the dirty-IO scheduler. |
 | `:from` | Sender address (0x hex or 20-byte binary). |
 | `:value` | 0x-prefixed U256 hex quantity — validated, not silently dropped. |
