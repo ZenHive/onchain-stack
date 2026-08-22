@@ -868,7 +868,7 @@ shipped_in = "7e0c5abc2cfd0290c1ad0d521f284412b63a81b3"
 id = "61"
 phase = 3
 bundle = "standalone"
-status = "in_progress"
+status = "done"
 title = "Migrate Solidity source parsing from solang-parser to solar-parse"
 scores = { d = 6, b = 8, u = 7 }
 acceptance_criteria = ["The four sources in native/onchain_solidity/PARSER_FRONTEND_SPIKE.md parse successfully through Onchain.Solidity.parse_sol/1", "Existing source-parser and Generator tests pass without output-shape changes", "Tests compare source and JSON-ABI signatures, selectors, topics, canonical nested types, and NatSpec attachment", "Import extraction and root-contract selection retain their existing behavior", "The characterization tests that currently assert solang-parser rejection of those four sources are inverted to assert success (they must not keep expecting parse failure)", "The dependency lock and the supported Rust version are updated and mix ci passes"]
@@ -896,6 +896,13 @@ Solar 0.2.0 required Rust 1.95 in the spike; this host is on 1.96. Update the cr
 
 Task 29 also writes native/onchain_solidity/src/lib.rs (unit tests for the current adapter). Write-set overlap will serialize the two; if 29 lands first, keep its selector/canonicalization/NatSpec pins and rewrite only the syntax-rejection case.
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1787380785043-080fc9eb, 16977c17b7ddd9ab934ddd155f67bcbaef55db5e)."
+delivered_by = "cursor"
+verified = true
+verified_by = "codex"
+verification_ref = "harness-run:run-1787380785043-080fc9eb"
 created_at = "2026-08-22"
 started_at = "2026-08-22"
 scored_at = "2026-08-22"
+done_at = "2026-08-22"
+shipped_in = "16977c17b7ddd9ab934ddd155f67bcbaef55db5e"
