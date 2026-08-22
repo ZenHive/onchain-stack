@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.9.2] - 2026-08-22
+
+No public API or runtime behaviour changed.
+
+### Changed
+
+- Widened the `descripex` requirement from `~> 0.12.0` to `~> 0.12`. The
+  three-segment cap turned every additive descripex minor into a forced
+  nine-repo release cascade while protecting nothing in-family — `mix.lock` is
+  committed, so a new descripex only ever lands through a deliberate
+  `mix deps.update` behind `mix ci`.
+- Resolved the refreshed family upstreams: onchain 0.13.0, cartouche 0.7.1,
+  hieroglyph 1.6.2, zen_websocket 0.7.1 and descripex 0.13.0.
+- Adopted `ex_ast` 0.13.1 via `override: true`, which reach 2.8.2 would
+  otherwise cap at 0.12.10. Measured on onchain: `mix reach.check --dead-code
+  --arch --smells` produces identical output under 0.12.10 and 0.13.1.
+
+---
+
 ## [0.9.1] - 2026-08-18
 
 No public API or runtime requirement changed.
