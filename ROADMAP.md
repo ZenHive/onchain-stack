@@ -11,9 +11,9 @@
 ---
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 2 — Quality & Reliability Improvements (15 of 23 done · 1 in progress)
+**Focus phase:** 2 — Quality & Reliability Improvements (16 of 23 done · 0 in progress)
 
-**Last shipped:** Task 42 — Add module-level Rust documentation — doc comments on both native crate entry points, Task 50 — Document `simulate_batch/2` partial-failure semantics in `@moduledoc`, Task 58 — Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts on 2026-08-22
+**Last shipped:** Task 42 — Add module-level Rust documentation — doc comments on both native crate entry points, Task 50 — Document `simulate_batch/2` partial-failure semantics in `@moduledoc`, Task 57 — Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF, Task 58 — Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts on 2026-08-22
 
 **Up next:** Task 32 — Stop `parse_sol` from aborting the BEAM — bound Solidity parse depth, not just source size [D:5/B:9/U:8 → Eff:1.7] 🚀
 <!-- FOCUS:END -->
@@ -81,7 +81,7 @@ Bundles identified via code review — grouped by shared code and common goals.
 | Task 48 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Bound-check `:block` hex values against u64 max in `parse_hex_block/2` [D:2/B:4/U:3 → Eff:1.75?] 🚀 |
 | Task 54 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *Onchain.EVM* · Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
 | Task 55 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory [D:9/B:6/U:7 → Eff:0.72?] ⚠️ |
-| Task 57 | 🔄 | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM.Params* · Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF [D:3/B:6/U:6 → Eff:2.0] 🎯 |
+| Task 57 | ✅ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM.Params* · Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF [D:3/B:6/U:6 → Eff:2.0] 🎯 |
 | Task 58 | ✅ | 🎁 **standalone** · Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 | Task 60 | ⬜ | 🎁 **standalone** · *native/onchain_evm* · Derive the EVM revision from the forked block instead of always executing under one modern SpecId [D:6/B:8/U:7 → Eff:1.25] 📋 |
 <!-- TASKS:END -->

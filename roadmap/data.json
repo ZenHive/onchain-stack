@@ -1003,7 +1003,7 @@
       "id": "57",
       "phase": 2,
       "bundle": "bundle5_evm_input_validation_round2",
-      "status": "in_progress",
+      "status": "done",
       "title": "Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF",
       "scores": {
         "d": 3,
@@ -1035,10 +1035,17 @@
         "test/onchain/evm/params_test.exs",
         "test/onchain/evm_test.exs"
       ],
+      "shipped_in": "d2e4d82417b05b2f0f3a2c874a8b58cee2ba9ce0",
       "body": "Close the \"NIF catches what Elixir should\" class as an invariant rather than patching its four known instances. Every option `Onchain.EVM` documents in its public typespecs must be validated at the Elixir layer and rejected with a tagged `{:error, {tag, term}}` tuple, so a malformed option never crosses the NIF boundary and never surfaces as a bare-string `{:evm_error, \"...\"}` from Rust or as a raised exception escaping the `{:ok, _} | {:error, _}` contract.\n\nKnown instances — Tasks 45, 46, 47 and 48, superseded by this one — all discovered 2026-04-22 during onchain_aave Task 41 (first real consumer integration) — treat each as a premise to re-confirm against current code before fixing, not as established behavior:\n- `simulate_batch/2` accepts any `Enumerable`, so `%{}` returns a silent `{:ok, []}`; non-2-tuple elements raise `FunctionClauseError` out of `validate_calls/1`.\n- `maybe_put_value/2` checks only `is_binary/1`, so `\"\"` and `\"not-a-hex\"` reach Rust as an invalid-U256 error.\n- `maybe_put_state_overrides/2` does not enforce the all-strings rule its own `@type state_overrides` documents; atom keys and integer values fail in Rust.\n- `parse_hex_block/2` applies no upper bound, so a >u64 value fails as `invalid param type: block_number` in the NIF.\n\nRe-confirmed 2026-08-22 against `lib/onchain/evm/params.ex`: all four premises still reproduce, and none of the four has been quietly fixed since 2026-04-22. `validate_calls/1` still reduces over any `Enumerable` with a bare `fn {addr, data}` head; `maybe_put_value/2` still guards on `is_binary/1` alone; `maybe_put_state_overrides/2` still guards on `is_map/1` alone; `parse_hex_block/2` still calls `Integer.parse(rest, 16)` with no upper bound. Note the code lives in `Onchain.EVM.Params`, the cover-able sibling module, not in `Onchain.EVM` — the NIF shell is excluded from coverage, the validation is not.\n\nThis is the second round of the same class (Bundle 1 was the first), which is the reason to ship the invariant and its enumerating test instead of four more point fixes. The deliverable that closes the class is a test that walks the documented option surface itself, so a newly documented option without an Elixir-layer guard fails the suite rather than becoming a Round 3 task.\n",
       "created_at": "2026-08-21",
       "started_at": "2026-08-22",
+      "done_at": "2026-08-22",
       "scored_at": "2026-08-21",
+      "implemented": "Landed by cursor via merge-train; reviewer-approved (run run-1787377511004-9fda0e93, d2e4d82417b05b2f0f3a2c874a8b58cee2ba9ce0).",
+      "delivered_by": "cursor",
+      "verified": true,
+      "verified_by": "codex",
+      "verification_ref": "harness-run:run-1787377511004-9fda0e93",
       "cross_repo": []
     },
     {
