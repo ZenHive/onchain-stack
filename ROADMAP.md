@@ -15,7 +15,7 @@
 
 **Last shipped:** Task 32 — Stop `parse_sol` from aborting the BEAM — bound Solidity parse depth, not just source size, Task 42 — Add module-level Rust documentation — doc comments on both native crate entry points, Task 50 — Document `simulate_batch/2` partial-failure semantics in `@moduledoc`, Task 57 — Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF, Task 58 — Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts, Task 60 — Derive the EVM revision from the forked block instead of always executing under one modern SpecId on 2026-08-22
 
-**Up next:** Task 43 — Gate the Rust half: run `cargo test` and `cargo clippy` from `mix ci` [D:4/B:8/U:6 → Eff:1.75] 🚀
+**Up next:** Task 62 — Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex [D:4/B:9/U:8 → Eff:2.12] 🎯
 <!-- FOCUS:END -->
 
 ---
@@ -102,7 +102,7 @@ Standalone tasks: Rust unit tests, tokio runtime reuse, clippy CI, codegen exten
 | Task 44 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Stop leaking Rust `Debug` renderings into Elixir error and type strings [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 | Task 51 | ⛔ | 🎁 **standalone** · *(cross-cutting research)* · Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
 | Task 52 | ✅ | 🎁 **standalone** · *Onchain.Contract.Generator* · Codegen-emit per-contract Multicall helper modules [D:5/B:7/U:6 → Eff:1.3?] 📋 |
-| Task 53 | ⬜ | 🎁 **standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — artifacts cross-built locally with cargo-zigbuild [D:6/B:8/U:8 → Eff:1.33] 📋 |
+| Task 53 | ✅ | 🎁 **standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — artifacts cross-built locally with cargo-zigbuild [D:6/B:8/U:8 → Eff:1.33] 📋 |
 | Task 56 | 🔄 | 🎁 **standalone** · 🔒 Independent EVM semantics and exact-bytecode verification harness [D:8/B:10/U:8 → Eff:1.12] 📋 |
 | Task 59 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax [D:3/B:8/U:7 → Eff:2.5] 🎯 |
 | Task 61 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Migrate Solidity source parsing from solang-parser to solar-parse [D:6/B:8/U:7 → Eff:1.25] 📋 |

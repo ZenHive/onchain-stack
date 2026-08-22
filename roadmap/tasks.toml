@@ -648,7 +648,7 @@ shipped_in = "904dfd817e8277a4c85f42b21d530d67e2f9eeb3"
 id = 53
 phase = 3
 bundle = "standalone"
-status = "pending"
+status = "done"
 title = "Adopt `rustler_precompiled` for both native crates — artifacts cross-built locally with cargo-zigbuild"
 scores = { d = 6, b = 8, u = 8 }
 acceptance_criteria = [
@@ -712,9 +712,16 @@ Trade-offs, stated honestly: the release becomes a manual local ritual with no b
 **The retained branch `harness/run-1787383438157-8ee2346b` already carries most of this and is worth building on rather than restarting.** Two commits, 507 insertions: `lib/onchain/precompiled.ex` (shared opts, target resolution, `force_build?`), `scripts/build-precompiled.sh` (192 lines — the reviewer confirmed it really cross-built all five targets for both crates, and it already guards the silent glibc-suffix fallback), `test/onchain/precompiled_test.exs`, plus the `mix.exs` / README / `.sobelow-skips` changes. What it lacks is exactly the deadlock fix: `force_build?` consults only the target and `ONCHAIN_EVM_BUILD`, never whether a checksum file exists, so on a supported host with no release it resolves to download and 404s.
 
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1787389154412-c86952d4, 85181349de8329bb0cd8f1854be59eac95f3c533)."
+delivered_by = "cursor"
+verified = true
+verified_by = "grok"
+verification_ref = "harness-run:run-1787389154412-c86952d4"
 created_at = "2026-08-17"
 started_at = "2026-08-22"
 scored_at = "2026-08-17"
+done_at = "2026-08-22"
+shipped_in = "85181349de8329bb0cd8f1854be59eac95f3c533"
 attempts = [{ at = "2026-08-22", by = "cursor", report = "Rejected (run run-1787383438157-8ee2346b). The reviewer confirmed the build script really cross-built all five targets for both crates, but the release-backed criteria could not be met: no GitHub Release exists, every v0.5.1 artifact URL 404s, and v0.5.1 is already published on Hex so the documented tag step could not create one. The reviewer's own fixes then could not be committed, because the pre-commit hook does a fresh compile that hits the absent assets — the task deadlocked on itself. Diagnosed as a task-spec defect, not an agent failure: the release half is now Task 62 and the criteria here were rewritten so the repo must be green with no release existing." }]
 
 [[task]]
