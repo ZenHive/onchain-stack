@@ -780,7 +780,7 @@ scored_at = "2026-08-22"
 id = "59"
 phase = 3
 bundle = "standalone"
-status = "pending"
+status = "in_progress"
 title = "Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax"
 scores = { d = 3, b = 8, u = 7 }
 acceptance_criteria = ["The gap is quantified, not asserted: a list of Solidity language features shipped since solang-parser's last release that this crate cannot parse, each with a source snippet and the observed failure", "At least two actively maintained candidate frontends are evaluated against that list, plus the option of staying on solang-parser, with the cost of each stated", "The evaluation states what a migration would do to the crate's public output shape — selectors, canonical type strings, NatSpec attachment — since Onchain.Contract.Generator consumes it at compile time", "The spike ends in a written recommendation with a D/B/U-scored follow-up task if migration is recommended, or a recorded decision to stay if it is not", "Read-only: no parser swap is performed in this task"]
@@ -797,6 +797,7 @@ The consequence is already reachable, reproduced 2026-08-22 on this checkout: a 
 This is scoped as a spike rather than a migration because the answer is genuinely open: `parse_abi_json` (the compiled-ABI path) is unaffected and is already the recommended path, so the honest question is how much the source-parsing path is worth investing in versus documenting its ceiling. Candidates to weigh include the actively developed Rust Solidity frontends (solar, slang) and staying put. Decide with the feature list in hand.
 """
 created_at = "2026-08-22"
+started_at = "2026-08-22"
 scored_at = "2026-08-22"
 
 [[task]]

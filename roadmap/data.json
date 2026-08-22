@@ -1076,7 +1076,7 @@
       "id": "59",
       "phase": 3,
       "bundle": "standalone",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax",
       "scores": {
         "d": 3,
@@ -1108,6 +1108,7 @@
       ],
       "body": "`onchain_solidity` pins `solang-parser = \"0.3\"`. 0.3.5 is the latest release and it was published 2025-06-22 — over a year stale, from a project that has effectively stopped maintaining the standalone parser. `cargo outdated` reports the crate as up to date precisely because there is nothing newer to move to, so the staleness is invisible to the dependency tooling.\n\nThe consequence is already reachable, reproduced 2026-08-22 on this checkout: a contract declaring `uint256 transient lock;` (EIP-1153 transient storage, Solidity 0.8.24, shipped March 2024) fails to parse with `unrecognised token 'lock'`. The keyword does not appear anywhere in solang-parser 0.3.5's grammar. Anything written against a modern compiler is a candidate for the same failure, and the failure lands at **compile time** for consumers of `Onchain.Contract.Generator` — a `.sol` file that solc accepts simply cannot be code-generated from.\n\nThis is scoped as a spike rather than a migration because the answer is genuinely open: `parse_abi_json` (the compiled-ABI path) is unaffected and is already the recommended path, so the honest question is how much the source-parsing path is worth investing in versus documenting its ceiling. Candidates to weigh include the actively developed Rust Solidity frontends (solar, slang) and staying put. Decide with the feature list in hand.\n",
       "created_at": "2026-08-22",
+      "started_at": "2026-08-22",
       "scored_at": "2026-08-22",
       "cross_repo": []
     },
