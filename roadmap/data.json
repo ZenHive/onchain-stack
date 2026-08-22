@@ -611,7 +611,7 @@
       "id": 29,
       "phase": 3,
       "bundle": "standalone",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec",
       "scores": {
         "d": 5,
@@ -644,6 +644,7 @@
       ],
       "body": "The onchain_solidity crate has almost no cargo-level tests (two, both added by the Task 61 parser migration to characterize accepted syntax). It is also the crate whose output is consumed at compile time by `Onchain.Contract.Generator`, so a wrong selector or a mis-canonicalized type does not fail loudly — it generates a module that encodes calls nobody on-chain will answer.\n\nSelector and topic derivation is the part worth pinning first: it is computed here with tiny-keccak over the canonical signature, and canonicalization of tuples and nested arrays is exactly where a signature silently drifts from what solc would produce. Assert against selectors taken from a compiled ABI, not against what the code currently returns.\n",
       "created_at": "2026-08-22",
+      "started_at": "2026-08-22",
       "scored_at": "2026-08-22",
       "cross_repo": []
     },

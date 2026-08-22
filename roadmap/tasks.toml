@@ -419,13 +419,9 @@ scored_at = "2026-08-22"
 id = 29
 phase = 3
 bundle = "standalone"
-status = "pending"
+status = "in_progress"
 title = "Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec"
-module = "native/onchain_solidity"
 scores = { d = 5, b = 9, u = 8 }
-assignee = "codex"
-model = "gpt-5.6-sol"
-touches = ["native/onchain_solidity/src/lib.rs"]
 acceptance_criteria = [
   "Function selectors and event topic hashes are asserted against known-correct values for at least one signature with tuple and array parameters, not only flat scalar ones",
   "Type canonicalization is covered for nested arrays, fixed-size arrays, tuples/structs and enums, including the `MAX_TYPE_RECURSION_DEPTH` cut-off behaviour",
@@ -439,12 +435,17 @@ out_of_scope = [
   "Replacing the parser frontend or widening syntax support — done in Task 61",
   "The parse-depth bound and error-message rendering — closed with Tasks 32 and 44; their regression pins live in test/onchain/solidity_test.exs"
 ]
+touches = ["native/onchain_solidity/src/lib.rs"]
+assignee = "codex"
+module = "native/onchain_solidity"
+model = "gpt-5.6-sol"
 body = """
 The onchain_solidity crate has almost no cargo-level tests (two, both added by the Task 61 parser migration to characterize accepted syntax). It is also the crate whose output is consumed at compile time by `Onchain.Contract.Generator`, so a wrong selector or a mis-canonicalized type does not fail loudly — it generates a module that encodes calls nobody on-chain will answer.
 
 Selector and topic derivation is the part worth pinning first: it is computed here with tiny-keccak over the canonical signature, and canonicalization of tuples and nested arrays is exactly where a signature silently drifts from what solc would produce. Assert against selectors taken from a compiled ABI, not against what the code currently returns.
 """
 created_at = "2026-08-22"
+started_at = "2026-08-22"
 scored_at = "2026-08-22"
 
 [[task]]

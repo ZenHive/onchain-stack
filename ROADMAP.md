@@ -96,7 +96,7 @@ Standalone tasks: Rust unit tests, tokio runtime reuse, clippy CI, codegen exten
 | Task | Status | Notes |
 |------|--------|-------|
 | Task 28 | 🔄 | 🎁 **standalone** · *native/onchain_evm* · Rust unit tests for `onchain_evm` — transport-error classification, tx building, block parsing, error encoding [D:5/B:8/U:8 → Eff:1.6] 🚀 |
-| Task 29 | ⬜ | 🎁 **standalone** · *native/onchain_solidity* · Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec [D:5/B:9/U:8 → Eff:1.7] 🚀 |
+| Task 29 | 🔄 | 🎁 **standalone** · *native/onchain_solidity* · Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 | Task 33 | ⬜ | 🎁 **standalone** · *native/onchain_evm* · Spike: measure whether per-call tokio runtime creation costs anything before reusing one [D:3/B:4/U:4 → Eff:1.33] 📋 |
 | Task 43 | ⬜ | 🎁 **standalone** · *Both native crates* · Add `cargo clippy` to `mix ci` — there is no GitHub Actions to add it to [D:3/B:6/U:6 → Eff:2.0] 🎯 |
 | Task 44 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Stop leaking Rust `Debug` renderings into Elixir error and type strings [D:4/B:7/U:6 → Eff:1.62] 🚀 |
