@@ -46,6 +46,22 @@ defmodule Onchain.EVM do
   | `simulate_transaction!/3` | Same, raises on error |
   | `simulate_batch/2` | Batch calls on shared fork → list of results |
   | `simulate_batch!/2` | Same, raises on error |
+
+  ## Batch Partial Failure
+
+  `simulate_batch/2` is resilient by design: one reverting call does not abort the
+  batch. The outer `{:ok, results}` therefore signals only that the fork itself was
+  built and every call was executed — **not** that every call succeeded. A reverted
+  call appears in the list as `%{success: false, output: "0x", ...}`, in position,
+  and later calls still observe the state it left behind.
+
+  Check `:success` per element; never treat `{:ok, _}` as "all calls succeeded":
+
+      {:ok, results} = Onchain.EVM.simulate_batch(calls, rpc_url: url)
+      Enum.filter(results, & &1.success == false)
+
+  Only `simulate_call/3` and `simulate_transaction/3` surface a revert as
+  `{:error, {:evm_revert, data}}`; the batch path deliberately does not.
   """
 
   use Descripex, namespace: "/evm"

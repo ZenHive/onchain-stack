@@ -1,3 +1,39 @@
+//! Solidity and ABI parsing for Elixir, backed by [alloy-json-abi] and [solang-parser].
+//!
+//! This crate is the native half of `Onchain.Solidity` and the compile-time
+//! engine behind `Onchain.Contract.Generator`. It turns either a JSON ABI or
+//! Solidity source into an Erlang-term description of a contract: functions
+//! with canonical signatures and 4-byte selectors, events with topic hashes,
+//! custom errors, structs, enums and constants, plus any NatSpec attached to
+//! them.
+//!
+//! # Exposed NIFs
+//!
+//! | NIF | Input | Purpose |
+//! |-----|-------|---------|
+//! | `parse_abi_json` | JSON ABI | Parse a compiled ABI via `alloy-json-abi` |
+//! | `parse_sol` | Solidity source | Parse source via `solang-parser`, no compiler needed |
+//!
+//! Selectors and topic hashes are computed here with `tiny-keccak` over the
+//! canonical signature, so the Elixir side never has to re-derive them.
+//!
+//! # Source parsing is a parser, not a compiler
+//!
+//! `parse_sol` reads a parse tree; it does not type-check, resolve inheritance,
+//! or evaluate constant expressions. Type and expression rendering falls back to
+//! a debug rendering for shapes that are not modelled (see `type_to_string` and
+//! the expression helpers), and syntax `solang-parser` does not know is returned
+//! as a `:parse_error`. Recursion in type rendering is bounded by
+//! `MAX_TYPE_RECURSION_DEPTH`; NatSpec is attached by proximity, bounded by
+//! `MAX_NATSPEC_DISTANCE_BYTES`.
+//!
+//! Prefer `parse_abi_json` when a compiled ABI is available: it is the exact
+//! contract surface, whereas source parsing is a best-effort read of what the
+//! source declares.
+//!
+//! [alloy-json-abi]: https://docs.rs/alloy-json-abi
+//! [solang-parser]: https://docs.rs/solang-parser
+
 use alloy_json_abi::{
     Constructor, Error as AbiError, Event, EventParam, Function, JsonAbi, Param, StateMutability,
 };

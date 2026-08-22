@@ -11,11 +11,11 @@
 ---
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 2 — Quality & Reliability Improvements (12 of 22 done · 0 in progress)
+**Focus phase:** 2 — Quality & Reliability Improvements (14 of 23 done · 0 in progress)
 
-**Last shipped:** no recent shipments
+**Last shipped:** Task 42 — Add module-level Rust documentation — doc comments on both native crate entry points, Task 50 — Document `simulate_batch/2` partial-failure semantics in `@moduledoc` on 2026-08-22
 
-**Up next:** Task 50 — Document `simulate_batch/2` partial-failure semantics in `@moduledoc` [D:1/B:3/U:4 → Eff:3.5] 🎯
+**Up next:** Task 57 — Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF [D:3/B:6/U:6 → Eff:2.0] 🎯
 <!-- FOCUS:END -->
 
 ---
@@ -65,24 +65,25 @@ Bundles identified via code review — grouped by shared code and common goals.
 | Task 35 | ✅ | 🎁 **bundle1_evm_input_validation** · *Onchain.EVM* · Validate `rpc_url` input — reject empty/invalid strings before reaching NIF [D:4/B:8/U:8 → Eff:2.0?] 🎯 |
 | Task 36 | ✅ | 🎁 **bundle1_evm_input_validation** · *Onchain.EVM, Onchain.Trace* · Fix silent value dropping — error on invalid `value`, `gas_limit`, `state_overrides` instead of silently ignoring [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
 | Task 30 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Add RPC call timeouts — configure `reqwest::Client` with timeout to prevent indefinite blocking [D:5/B:9/U:8 → Eff:1.7?] 🚀 |
-| Task 31 | ⬜ | 🎁 **bundle2_rust_safety_hardening** · *Both native crates* · Replace `.expect()` with proper error handling — 6× in EVM encoder, 1× in Solidity `map_put` [D:5/B:9/U:7 → Eff:1.6?] 🚀 |
-| Task 32 | ⬜ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_solidity* · Add input size limits — reject oversized Solidity source files [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
+| Task 31 | ⛔ | 🎁 **bundle2_rust_safety_hardening** · *Both native crates* · Replace `.expect()` with proper error handling — 6× in EVM encoder, 1× in Solidity `map_put` [D:5/B:9/U:7 → Eff:1.6?] 🚀 |
+| Task 32 | ⬜ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_solidity* · 🔒 Stop `parse_sol` from aborting the BEAM — bound Solidity parse depth, not just source size [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 | Task 49 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Restore `{:fork_error, _}` and `{:timeout, _}` Elixir error classes from the Rust NIF [D:5/B:7/U:6 → Eff:1.3?] 📋 |
 | Task 37 | ✅ | 🎁 **bundle3_elixir_code_quality** · *All Elixir modules* · Eliminate bang-function duplication — introduce `defbang` macro to replace 11 copies of the same `case` pattern [D:4/B:6/U:7 → Eff:1.62?] 🚀 |
 | Task 38 | ✅ | 🎁 **bundle3_elixir_code_quality** · *Onchain.EVM, Onchain.Trace* · Add specific error union types — replace `{:error, term()}` with typed unions in `evm.ex` and `trace.ex` specs [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
 | Task 40 | ✅ | 🎁 **bundle3_elixir_code_quality** · *mix.exs, lib/onchain_evm/* · Remove dead Application module — delete `lib/onchain_evm/application.ex` and commented `mod:` in `mix.exs` [D:2/B:3/U:4 → Eff:1.75?] 🚀 |
 | Task 39 | ✅ | 🎁 **bundle4_documentation_specs** · *Onchain.Contract.Generator* · Add `@spec` to public Generator functions — `resolve_abi/1`, `resolve_contract_input/2`, `to_snake_case/1`, `disambiguate/1` [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
 | Task 41 | ✅ | 🎁 **bundle4_documentation_specs** · *Onchain.Contract.Generator* · Document Generator options — add `:abi_file`, `:remappings`, and `:root_contract` to moduledoc [D:2/B:4/U:5 → Eff:2.25?] 🎯 |
-| Task 42 | ⬜ | 🎁 **bundle4_documentation_specs** · *Both native crates* · Add module-level Rust documentation — doc comments on both native crate entry points [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
-| Task 50 | ⬜ | 🎁 **bundle4_documentation_specs** · *Onchain.EVM* · Document `simulate_batch/2` partial-failure semantics in `@moduledoc` [D:1/B:3/U:4 → Eff:3.5?] 🎯 |
+| Task 42 | ✅ | 🎁 **bundle4_documentation_specs** · *Both native crates* · Add module-level Rust documentation — doc comments on both native crate entry points [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
+| Task 50 | ✅ | 🎁 **bundle4_documentation_specs** · *Onchain.EVM* · Document `simulate_batch/2` partial-failure semantics in `@moduledoc` [D:1/B:3/U:4 → Eff:3.5?] 🎯 |
 | Task 45 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · `simulate_batch/2` input shape validation — reject non-list `calls` and non-2-tuple elements before `validate_calls/1` [D:2/B:6/U:5 → Eff:2.75?] 🎯 |
 | Task 46 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate `:value` option as 0x-prefixed even-length hex U256, not any binary [D:2/B:5/U:4 → Eff:2.25?] 🎯 |
 | Task 47 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate `:state_overrides` nested keys/values are strings, per `@type state_overrides` [D:2/B:5/U:4 → Eff:2.25?] 🎯 |
 | Task 48 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Bound-check `:block` hex values against u64 max in `parse_hex_block/2` [D:2/B:4/U:3 → Eff:1.75?] 🚀 |
 | Task 54 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *Onchain.EVM* · Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
 | Task 55 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory [D:9/B:6/U:7 → Eff:0.72?] ⚠️ |
-| Task 57 | ⬜ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF [D:3/B:6/U:6 → Eff:2.0] 🎯 |
+| Task 57 | ⬜ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM.Params* · Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF [D:3/B:6/U:6 → Eff:2.0] 🎯 |
 | Task 58 | ⬜ | 🎁 **standalone** · Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts [D:5/B:9/U:8 → Eff:1.7] 🚀 |
+| Task 60 | ⬜ | 🎁 **standalone** · *native/onchain_evm* · Derive the EVM revision from the forked block instead of always executing under one modern SpecId [D:6/B:8/U:7 → Eff:1.25] 📋 |
 <!-- TASKS:END -->
 
 ---
@@ -94,15 +95,16 @@ Standalone tasks: Rust unit tests, tokio runtime reuse, clippy CI, codegen exten
 <!-- TASKS:BEGIN phase=3 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 28 | ⬜ | 🎁 **standalone** · *native/onchain_evm* · Rust unit tests for `onchain_evm` crate — `CallParams` parsing, `EvmError` encoding, hex helpers, fork DB setup [D:6/B:10/U:9 → Eff:1.58?] 🚀 |
-| Task 29 | ⬜ | 🎁 **standalone** · *native/onchain_solidity* · Rust unit tests for `onchain_solidity` crate — ABI JSON parsing, type canonicalization, NatSpec extraction, import resolution [D:6/B:10/U:9 → Eff:1.58?] 🚀 |
-| Task 33 | ⬜ | 🎁 **standalone** · *native/onchain_evm* · Reuse tokio runtime — lazy-init a single `current_thread` runtime instead of creating one per EVM call [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
-| Task 43 | ⬜ | 🎁 **standalone** · *Both native crates* · Add `cargo clippy` to CI — `#![warn(clippy::all)]` on both crates [D:3/B:5/U:4 → Eff:1.5?] 🚀 |
-| Task 44 | ⬜ | 🎁 **standalone** · *native/onchain_solidity* · Fix `format!("{:?}", expr)` fallbacks — proper error types for unhandled Solidity expression types [D:4/B:6/U:5 → Eff:1.38?] 📋 |
-| Task 51 | ⬜ | 🎁 **standalone** · *(cross-cutting research)* · Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
+| Task 28 | ⬜ | 🎁 **standalone** · *native/onchain_evm* · Rust unit tests for `onchain_evm` — transport-error classification, tx building, block parsing, error encoding [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 29 | ⬜ | 🎁 **standalone** · *native/onchain_solidity* · Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec [D:5/B:9/U:8 → Eff:1.7] 🚀 |
+| Task 33 | ⬜ | 🎁 **standalone** · *native/onchain_evm* · Spike: measure whether per-call tokio runtime creation costs anything before reusing one [D:3/B:4/U:4 → Eff:1.33] 📋 |
+| Task 43 | ⬜ | 🎁 **standalone** · *Both native crates* · Add `cargo clippy` to `mix ci` — there is no GitHub Actions to add it to [D:3/B:6/U:6 → Eff:2.0] 🎯 |
+| Task 44 | ⬜ | 🎁 **standalone** · *native/onchain_solidity* · Stop leaking Rust `Debug` renderings into Elixir error and type strings [D:4/B:7/U:6 → Eff:1.62] 🚀 |
+| Task 51 | ⛔ | 🎁 **standalone** · *(cross-cutting research)* · Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
 | Task 52 | ⬜ | 🎁 **standalone** · *Onchain.Contract.Generator* · Codegen-emit per-contract Multicall helper modules [D:5/B:7/U:6 → Eff:1.3?] 📋 |
-| Task 53 | ⬜ | 🎁 **standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases [D:5/B:8/U:8 → Eff:1.6?] 🚀 |
+| Task 53 | ⬜ | 🎁 **standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases [D:6/B:8/U:8 → Eff:1.33?] 📋 |
 | Task 56 | ⬜ | 🎁 **standalone** · 🔒 Independent EVM semantics and exact-bytecode verification harness [D:8/B:10/U:8 → Eff:1.12] 📋 |
+| Task 59 | ⬜ | 🎁 **standalone** · *native/onchain_solidity* · Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax [D:3/B:8/U:7 → Eff:2.5] 🎯 |
 <!-- TASKS:END -->
 
 ---
@@ -113,13 +115,20 @@ Release when these are true:
 
 **Blockers (must close before `mix hex.publish`):**
 - [x] Credo on hex — swapped git dep for `~> 1.7` (1.7.18 shipped 2026-04-10)
-- [ ] Bundle 2 closed — Tasks 30 (RPC timeouts), 31 (`.expect()` → errors), 32 (input size limits). Public API contracts around reliability are hard to change post-release.
-- [ ] Task 53 — `rustler_precompiled` wrapping both native crates, with prebuilt artifacts published via GitHub Releases. Without this, every install requires a full Rust toolchain.
+- [x] Task 30 — RPC call timeouts, so a fork read cannot block a NIF indefinitely
+- [ ] Task 58 — the fork's block environment. A simulation currently observes `block.number == 0` and `timestamp == 1`, which breaks every time-dependent protocol; shipping that as `0.1.0` means shipping wrong answers that look like caller mistakes.
+- [ ] Task 57 — validate the documented `Onchain.EVM` option surface at the Elixir boundary. This is the shape of the public error contract, which is the part that is hard to change after publish.
+- [ ] Task 32 — `parse_sol` can abort the BEAM on nesting depth (reproduced: SIGBUS at ~10k levels, ~30 KB of source). A NIF that can kill the node is not a `0.1.0`.
+- [ ] Task 53 — `rustler_precompiled` wrapping both native crates. Without this, every install requires a full Rust toolchain. Note this needs a CI decision first: the GitHub Actions workflows were removed on 2026-08-22 and the task's cross-compile matrix presumes they come back.
+
+Revised 2026-08-22. The previous list read "Bundle 2 closed — Tasks 30, 31, 32". Task 31 turned out to be a non-issue (the `.expect()` calls are infallible by construction and rustler catches panics anyway — superseded, see its body), and Task 32's original framing (byte-size limit) would not have caught the failure that actually exists. Meanwhile the two defects a first real consumer does hit — 58 and 57, both found via `onchain_aave` integration — were not on the list at all.
 
 **Should do (but not blockers):**
 - Task 28/29 — Rust unit tests for both crates (confidence in the NIFs users are compiling against)
-- Task 42 — module-level Rust doc comments (shows up in crate docs)
-- Task 43 — `cargo clippy` in CI
+- [x] Task 42 — module-level Rust doc comments (shows up in crate docs)
+- Task 43 — `cargo clippy` in `mix ci` (there is no CI to add it to)
+- Task 44 — stop leaking Rust `Debug` renderings into Elixir error strings
+- Task 59 — decide whether the source-parsing path stays on the unmaintained solang-parser, which cannot parse Solidity 0.8.24+ syntax
 
 **Version strategy:** release as `0.1.0` to signal API-may-still-shift. Bump to `0.2.0` for any breaking change in Elixir signatures or NIF ABI. Reserve `1.0.0` for when the debug/trace + codegen surfaces feel stable across a few real downstream users (`onchain_aave`, etc.).
 

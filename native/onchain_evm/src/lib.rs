@@ -1,3 +1,44 @@
+//! Local EVM execution for Elixir, backed by [revm].
+//!
+//! This crate is the native half of `Onchain.EVM`. It forks live chain state
+//! from a JSON-RPC endpoint via alloy's `AlloyDB`, executes calls or
+//! transactions against that fork in-process, and encodes the result back as
+//! Erlang terms. Nothing is broadcast; the fork is discarded when the NIF call
+//! returns.
+//!
+//! # Exposed NIFs
+//!
+//! | NIF | Purpose |
+//! |-----|---------|
+//! | `nif_simulate_call` | Read-only `eth_call`-shaped execution -> raw output hex |
+//! | `nif_simulate_transaction` | Full transaction -> success flag, gas used, output, logs |
+//! | `nif_simulate_batch` | Several calls against one shared fork, sequentially |
+//!
+//! All three are dirty-IO NIFs: forking issues blocking RPC reads for every
+//! account and storage slot the execution touches.
+//!
+//! # Parameters and errors
+//!
+//! Parameters arrive as an Erlang map of string keys (see `get_string_param`
+//! and friends). Input validation is the Elixir layer's job — `Onchain.EVM.Params`
+//! rejects malformed options with tagged atoms before the boundary is crossed,
+//! so failures reaching this crate are execution or transport failures, not
+//! caller typos.
+//!
+//! Errors are encoded from `EvmError` into `{:error, {tag, message}}` with
+//! tags `:evm_revert`, `:evm_error`, `:fork_error` and `:timeout`. Transport
+//! failures are classified by walking the error source chain down to the
+//! underlying `reqwest::Error` (see `classify_transport_error`), so a connect
+//! refusal is retryable `:fork_error` and a deadline is `:timeout`.
+//!
+//! # Known limitations
+//!
+//! The EVM revision (`SpecId`) is not derived from the forked block, so a fork
+//! pinned to a historical block still executes under the configured modern
+//! revision. See the note at the `Context::mainnet()` call sites.
+//!
+//! [revm]: https://docs.rs/revm
+
 use rustler::{Encoder, Env, NifResult, Term};
 use std::collections::HashMap;
 use std::time::Duration;

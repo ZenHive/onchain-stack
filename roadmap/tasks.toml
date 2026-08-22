@@ -168,20 +168,59 @@ id = 31
 phase = 2
 bundle = "bundle2_rust_safety_hardening"
 title = "Replace `.expect()` with proper error handling — 6× in EVM encoder, 1× in Solidity `map_put`"
-status = "pending"
+status = "superseded"
 module = "Both native crates"
 scores = { d = 5, b = 9, u = 7 }
-body = "Replace `.expect()` panics with proper error handling — 6 occurrences in the EVM encoder and 1 in Solidity `map_put`. Hex-release blocker (see 'Path to hex.pm Release' — Bundle 2 must close before publish; public API contracts around reliability are hard to change post-release)."
+body = """
+Replace `.expect()` panics with proper error handling — 6 occurrences in the EVM encoder and 1 in Solidity `map_put`. Hex-release blocker (see 'Path to hex.pm Release' — Bundle 2 must close before publish; public API contracts around reliability are hard to change post-release).
+
+REFUTED 2026-08-22 during a backlog review. The premise does not survive contact with the code, so this is superseded rather than done — the residual concern is a lint (Task 43), not a refactor.
+
+- The sites are not panics waiting to happen. Every one is `Term::map_put` on a map built by `Term::map_new(env)` two lines above, with values that are already encoded terms. `map_put` fails only when the receiver is not a map. The code says so itself: `// map_put on a fresh map with valid encoded terms cannot fail` (native/onchain_evm/src/lib.rs, both `Encoder` impls; native/onchain_solidity/src/lib.rs `map_put` helper).
+- A panic here would not take the VM down anyway. Rustler 0.38 wraps every NIF body in `std::panic::catch_unwind` and returns `nif_panicked` to the caller (rustler-0.38.0/src/codegen_runtime.rs:33).
+- The proposed fix is a net negative: it introduces `{:error, _}` branches that are unreachable by construction, which no test can exercise, costing coverage against the 85% threshold in `mix precommit.full`.
+- The count was stale too: 7 in the encoder (lib.rs:222-248), not 6, plus 2 more in the crate's own tests.
+
+What genuinely can abort the BEAM in these crates is a Rust *stack overflow*, which `catch_unwind` does not catch — reproduced and rescoped as Task 32.
+"""
 
 [[task]]
 id = 32
 phase = 2
 bundle = "bundle2_rust_safety_hardening"
-title = "Add input size limits — reject oversized Solidity source files"
 status = "pending"
+title = "Stop `parse_sol` from aborting the BEAM — bound Solidity parse depth, not just source size"
 module = "native/onchain_solidity"
-scores = { d = 4, b = 7, u = 6 }
-body = "Reject oversized Solidity source files before parsing. Hex-release blocker (see 'Path to hex.pm Release' — Bundle 2 must close before publish)."
+scores = { d = 5, b = 9, u = 8 }
+markers = ["security"]
+assignee = "codex"
+model = "gpt-5.6-sol"
+touches = ["native/onchain_solidity/src/lib.rs", "native/onchain_solidity/Cargo.toml", "lib/onchain/solidity.ex", "test/onchain/solidity_test.exs"]
+acceptance_criteria = [
+  "A deeply nested Solidity source that currently kills the VM returns a tagged `{:error, {:parse_error, _}}` (or a dedicated depth/size tag) instead, and the calling process survives",
+  "A regression test drives the reproduction through `Onchain.Solidity.parse_sol/1` and fails against the current implementation",
+  "The guard covers nesting the crate never walks itself — the reproduction in a function body must be rejected too, not only the one in a type position",
+  "Whatever bound is chosen is documented with the real contract it was validated against, so the limit is not set below what production Solidity needs",
+  "mix ci passes"
+]
+out_of_scope = [
+  "Replacing solang-parser or widening supported Solidity syntax — that is Task 59",
+  "Changes under native/onchain_evm/"
+]
+body = """
+`Onchain.Solidity.parse_sol/1` can abort the whole BEAM. Reproduced 2026-08-22 on this checkout: a source with ~10k levels of nesting exits the VM with signal 10 (SIGBUS — stack overflow), no error tuple, no supervisor recovery, process gone. The threshold sits between 5k (returns `{:ok, _}`) and 10k levels, which is roughly **20-30 KB of source** — well inside the size of an ordinary contract, so the original framing of this task ("reject oversized source files") would not have caught it at any byte limit a real `.sol` file could live with.
+
+Two reproductions, both fatal, which is what pins the fix:
+
+- type position: `function f(uint256[1][1]...[1] x) external pure {}` — walked by this crate's own `expr_to_type_string`, which recurses through `ArraySubscript` / `Parenthesis` / `MemberAccess` with no depth guard (`MAX_TYPE_RECURSION_DEPTH` guards `type_to_string`, a different function).
+- function body: `uint256 y = ((((...1...))));` — this crate never descends into function bodies, and it still aborts.
+
+Because the second shape crashes, a depth guard in our own walker is **not sufficient**: the overflow happens inside solang-parser (parse and/or the recursive `Drop` of the deep tree) before our code ever sees the node. `std::panic::catch_unwind` does not catch a stack overflow, so error plumbing cannot help either. The realistic designs are a cheap pre-parse nesting scan over the source, and/or running the parse on a thread with an explicitly sized stack so an overflow is contained rather than fatal — pick one and say why.
+
+Threat model, stated honestly: `.sol` paths are operator-supplied (that is this repo's own sobelow-skip rationale), so this is not remotely triggerable today. It still matters because `Onchain.Contract.Generator` runs this at **compile time** over vendored upstream Solidity — a crash there is a SIGBUS during the build rather than a diagnostic — and because any service that ever parses submitted source inherits a hard, unrecoverable DoS. A NIF that can kill the node is a different class from a NIF that returns an error.
+"""
+created_at = "2026-08-22"
+scored_at = "2026-08-22"
 
 [[task]]
 id = 49
@@ -257,23 +296,29 @@ implemented = "Documented the :abi_file, :remappings, and :root_contract generat
 id = 42
 phase = 2
 bundle = "bundle4_documentation_specs"
+status = "done"
 title = "Add module-level Rust documentation — doc comments on both native crate entry points"
-status = "pending"
-module = "Both native crates"
 scores = { d = 3, b = 5, u = 5 }
+module = "Both native crates"
 body = "Add module-level Rust doc comments on both native crate entry points (native/onchain_evm and native/onchain_solidity). Shows up in crate docs. Should-do for hex.pm release (not a blocker)."
+implemented = "Added //! module-level docs to both native crate entry points. onchain_evm: fork-and-execute model, the three dirty-IO NIFs, where input validation actually happens (Onchain.EVM.Params, not Rust), the four error tags plus source-chain transport classification, and the SpecId limitation. onchain_solidity: the two NIFs, selector/topic derivation, and an explicit 'parser, not a compiler' section (no type-check/inheritance/const-eval, debug-render fallbacks, recursion and NatSpec-distance bounds, prefer parse_abi_json when a compiled ABI exists). cargo doc --no-deps clean on both. Done inline (doc-only, no dispatch)."
+delivered_by = "claude-opus-5"
+done_at = "2026-08-22"
 
 [[task]]
 id = 50
 phase = 2
 bundle = "bundle4_documentation_specs"
+status = "done"
 title = "Document `simulate_batch/2` partial-failure semantics in `@moduledoc`"
-status = "pending"
-module = "Onchain.EVM"
 scores = { d = 1, b = 3, u = 4 }
+module = "Onchain.EVM"
 body = """
 Batch partial-failure docs. Per-call reverts inside `simulate_batch` surface as `%{success: false, output: "0x"}` inside the outer `{:ok, results}`. That's the right design (batch resilience) but isn't called out in `@moduledoc`; a consumer seeing `{:ok, _}` may assume every call succeeded. Document explicitly that outer `{:ok, _}` only signals the fork itself succeeded — per-call outcomes must be checked against `:success`. Discovered 2026-04-22.
 """
+implemented = """Added a '## Batch Partial Failure' section to Onchain.EVM's @moduledoc: outer {:ok, results} means the fork built and every call executed, not that every call succeeded; reverted calls appear in position as %{success: false, output: "0x"} and later calls see their state; check :success per element. Done inline (doc-only, no dispatch)."""
+delivered_by = "claude-opus-5"
+done_at = "2026-08-22"
 
 # Bundle 5: EVM Input Validation Round 2
 
@@ -333,58 +378,170 @@ Block u64 bound. `parse_hex_block/2` calls `Integer.parse/2` with no upper bound
 id = 28
 phase = 3
 bundle = "standalone"
-title = "Rust unit tests for `onchain_evm` crate — `CallParams` parsing, `EvmError` encoding, hex helpers, fork DB setup"
 status = "pending"
+title = "Rust unit tests for `onchain_evm` — transport-error classification, tx building, block parsing, error encoding"
 module = "native/onchain_evm"
-scores = { d = 6, b = 10, u = 9 }
-body = "Rust unit tests for the onchain_evm crate: CallParams parsing, EvmError encoding, hex helpers, fork DB setup. Should-do for hex.pm release (confidence in the NIFs users are compiling against) — not a blocker."
+scores = { d = 5, b = 8, u = 8 }
+assignee = "grok"
+model = "grok-4.6"
+touches = ["native/onchain_evm/src/lib.rs"]
+acceptance_criteria = [
+  "`classify_transport_error` is covered for both the source-chain path (a wrapped `reqwest::Error` that is a timeout, and one that is a connect failure) and the display-string fallback path, so a future alloy/revm bump that stops preserving the error type fails a test instead of silently reclassifying",
+  "`parse_block_id` is covered for numeric blocks, every supported string tag, and an unknown tag",
+  "`encode_error` is covered for all four `EvmError` variants, asserting the atom tag each maps to",
+  "`apply_state_overrides` is covered for the field-merge behaviour on an account the fork has not fetched yet",
+  "`cargo test` passes in native/onchain_evm and the tests run without network access",
+  "mix ci passes"
+]
+out_of_scope = [
+  "Tests for native/onchain_solidity — that is Task 29",
+  "Elixir-side tests; this task is cargo-level only"
+]
+body = """
+Add cargo-level unit tests to the onchain_evm crate. The crate currently has exactly two (`build_tx_preserves_call_params`, `build_tx_preserves_explicit_nonce`), which leaves the parts most likely to regress silently untested.
+
+This task was rewritten 2026-08-22: the original body named `CallParams` parsing and "hex helpers", entities that **no longer exist** after Task 55 bumped revm 19 -> 41/42 and alloy 0.7 -> 2.x. Parameters now arrive as a `HashMap<String, Term>` read through `get_string_param` and friends. Target the current shape.
+
+The highest-value target is `classify_transport_error`. Task 49 replaced its string matching with a walk down the `std::error::Error` source chain to recover the underlying `reqwest::Error`, but kept display-string heuristics as a fallback for a future alloy that stops preserving the type. Nothing tests either path today, so the exact failure that fallback exists to absorb — a version bump quietly demoting `:timeout` / `:fork_error` to `:evm_error` — would land green. Construct the wrapped errors directly in the test rather than going over the network.
+"""
+created_at = "2026-08-22"
+scored_at = "2026-08-22"
 
 [[task]]
 id = 29
 phase = 3
 bundle = "standalone"
-title = "Rust unit tests for `onchain_solidity` crate — ABI JSON parsing, type canonicalization, NatSpec extraction, import resolution"
 status = "pending"
+title = "Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec"
 module = "native/onchain_solidity"
-scores = { d = 6, b = 10, u = 9 }
-body = "Rust unit tests for the onchain_solidity crate: ABI JSON parsing, type canonicalization, NatSpec extraction, import resolution. Should-do for hex.pm release — not a blocker."
+scores = { d = 5, b = 9, u = 8 }
+assignee = "cursor"
+model = "cursor-grok-4.6-high"
+touches = ["native/onchain_solidity/src/lib.rs"]
+acceptance_criteria = [
+  "Function selectors and event topic hashes are asserted against known-correct values for at least one signature with tuple and array parameters, not only flat scalar ones",
+  "Type canonicalization is covered for nested arrays, fixed-size arrays, tuples/structs and enums, including the `MAX_TYPE_RECURSION_DEPTH` cut-off behaviour",
+  "NatSpec attachment is covered both when a doc comment is adjacent and when it is beyond `MAX_NATSPEC_DISTANCE_BYTES`",
+  "At least one test pins what happens for Solidity syntax solang-parser does not support (`transient` is a known-failing case), so the parser-coverage gap is visible in the suite rather than only in production",
+  "`cargo test` passes in native/onchain_solidity and the tests run without network access",
+  "mix ci passes"
+]
+out_of_scope = [
+  "Tests for native/onchain_evm — that is Task 28",
+  "Replacing solang-parser or widening syntax support — that is Task 59",
+  "The stack-overflow guard — that is Task 32"
+]
+body = """
+The onchain_solidity crate is 1562 lines and has **zero** tests. It is also the crate whose output is consumed at compile time by `Onchain.Contract.Generator`, so a wrong selector or a mis-canonicalized type does not fail loudly — it generates a module that encodes calls nobody on-chain will answer.
+
+Selector and topic derivation is the part worth pinning first: it is computed here with tiny-keccak over the canonical signature, and canonicalization of tuples and nested arrays is exactly where a signature silently drifts from what solc would produce. Assert against selectors taken from a compiled ABI, not against what the code currently returns.
+"""
+created_at = "2026-08-22"
+scored_at = "2026-08-22"
 
 [[task]]
 id = 33
 phase = 3
 bundle = "standalone"
-title = "Reuse tokio runtime — lazy-init a single `current_thread` runtime instead of creating one per EVM call"
 status = "pending"
+title = "Spike: measure whether per-call tokio runtime creation costs anything before reusing one"
 module = "native/onchain_evm"
-scores = { d = 5, b = 8, u = 7 }
-body = "Lazy-init a single current_thread tokio runtime instead of creating one per EVM call."
+scores = { d = 3, b = 4, u = 4 }
+assignee = "grok"
+model = "grok-4.6"
+touches = ["native/onchain_evm/src/lib.rs"]
+acceptance_criteria = [
+  "A measurement reports runtime-construction time as a share of total `simulate_call` wall time against a real archive node, for a cheap call and an expensive one",
+  "The finding is written down as a number, and the task is either closed as not-worth-doing or converted into an implementation task that names the design chosen",
+  "If an implementation is proposed, it states what happens when several simulations run concurrently on dirty schedulers — a single shared `current_thread` runtime must be shown not to serialize them"
+]
+out_of_scope = [
+  "Implementing the shared runtime before the measurement exists"
+]
+body = """
+Rescoped 2026-08-22 from "lazy-init a single current_thread runtime" to a measurement spike, because the original task asserted a benefit nobody measured and proposed a design that may be a regression.
+
+`build_fork_db` builds a `tokio::runtime::Builder::new_current_thread()` per call and hands it to `WrapDatabaseAsync::with_runtime`, which takes ownership of it for the fork's lifetime. Constructing that runtime is on the order of microseconds; the fork it serves then issues dozens of JSON-RPC reads at milliseconds each for every account and storage slot the execution touches. The claim that this is worth optimizing has no number behind it, and the previous scores (b=8, u=7) were set as if it did.
+
+The proposed fix also has a hazard the original task did not mention: `with_runtime` owns the runtime, so sharing one `current_thread` runtime across NIF calls means `block_on` from several dirty-scheduler threads driving the same single-threaded reactor. That can serialize concurrent simulations — a throughput regression traded for a microsecond saving.
+
+Measure first. If runtime construction is not a visible share of wall time, close this and say so.
+"""
+created_at = "2026-08-22"
+scored_at = "2026-08-22"
 
 [[task]]
 id = 43
 phase = 3
 bundle = "standalone"
-title = "Add `cargo clippy` to CI — `#![warn(clippy::all)]` on both crates"
 status = "pending"
+title = "Add `cargo clippy` to `mix ci` — there is no GitHub Actions to add it to"
 module = "Both native crates"
-scores = { d = 3, b = 5, u = 4 }
-body = "Add cargo clippy to CI with `#![warn(clippy::all)]` on both native crates. Should-do for hex.pm release — not a blocker."
+scores = { d = 3, b = 6, u = 6 }
+assignee = "cursor"
+model = "cursor-grok-4.6-high"
+touches = ["mix.exs", "native/onchain_evm/src/lib.rs", "native/onchain_solidity/src/lib.rs"]
+acceptance_criteria = [
+  "`mix precommit.full` (alias `mix ci`) runs clippy over both crates and fails the gate on a lint, in the same way the Elixir analyzers already do",
+  "Both crates are clippy-clean at the chosen lint level — a gate that is added while already red is not added",
+  "A lint that would catch a genuinely fallible `.expect()` / `.unwrap()` creeping into either crate is enabled, since that is the residual concern left by superseded Task 31",
+  "The check degrades with a clear message when the clippy component is not installed, rather than failing as if the code were bad",
+  "mix ci passes"
+]
+out_of_scope = [
+  "Re-introducing GitHub Actions — if prebuilt artifacts need CI back, that decision belongs to Task 53"
+]
+body = """
+Rewritten 2026-08-22: the original task said "add cargo clippy to CI", and this repo has no CI. There is no `.github/` directory; the workflows were removed family-wide on 2026-08-22 and `CLAUDE.md` states that `mix ci` is the only gate there is. Adding clippy therefore means adding it to `mix precommit.full`, not to a workflow file.
+
+Both crates are analyzed by nothing today, while the Elixir half runs credo, dialyzer, doctor, ex_dna, reach, sobelow and a coverage threshold. Roughly 2,200 lines of Rust — the half that can abort the VM — is the unlinted part.
+
+The lint selection matters more than the fact of running clippy: superseded Task 31 established that the existing `.expect()` calls are infallible by construction, so the value here is catching the *next* one that is not, which is what a `clippy::unwrap_used` / `expect_used` style lint does mechanically and a per-task reviewer does not.
+"""
+created_at = "2026-08-22"
+scored_at = "2026-08-22"
 
 [[task]]
 id = 44
 phase = 3
 bundle = "standalone"
-title = "Fix `format!(\"{:?}\", expr)` fallbacks — proper error types for unhandled Solidity expression types"
 status = "pending"
+title = "Stop leaking Rust `Debug` renderings into Elixir error and type strings"
 module = "native/onchain_solidity"
-scores = { d = 4, b = 6, u = 5 }
-body = "Replace `format!(\"{:?}\", expr)` fallbacks with proper error types for unhandled Solidity expression types."
+scores = { d = 4, b = 7, u = 6 }
+assignee = "grok"
+model = "grok-4.6"
+touches = ["native/onchain_solidity/src/lib.rs", "lib/onchain/solidity.ex", "test/onchain/solidity_test.exs"]
+acceptance_criteria = [
+  "A syntax error reaches Elixir as a readable message with file position and expected-token information, not as a `Diagnostic { loc: File(0, 58, 62), level: Error, ty: ParserError, ... }` Debug dump",
+  "An unsupported type or expression yields a stable, documented placeholder or a tagged error rather than a Rust `Debug` rendering of the parse node",
+  "A test asserts the shape of a parse-error message and fails if a Debug rendering reappears",
+  "mix ci passes"
+]
+out_of_scope = [
+  "Widening which Solidity syntax is supported — that is Task 59",
+  "The stack-overflow guard — that is Task 32"
+]
+body = """
+Four `format!("{:?}", ...)` fallbacks render internal solang-parser types straight into strings that cross the NIF boundary: the diagnostic list at lib.rs:147, the type fallback at :1138, and the two expression fallbacks at :1154 and :1166.
+
+Reproduced 2026-08-22. Parsing a contract that uses `transient` (Solidity 0.8.24) returns:
+
+    {:error, {:parse_error, "Diagnostic { loc: File(0, 58, 62), level: Error, ty: ParserError, message: \\"unrecognised token 'lock', expected \\\\\\"(\\\\\\", ...\\", notes: [] }"}}
+
+The useful part — a position and an expected-token list — is in there, wrapped in a struct dump with escaped quotes that no caller can reasonably read or match on. The type and expression fallbacks have the same shape: a caller receives a Rust enum's Debug form as if it were a Solidity type name.
+
+Note the separation: *that* `transient` fails to parse at all is a parser-coverage question and belongs to Task 59. *How* that failure is reported is this task, and it is worth fixing regardless of which parser the crate ends up on.
+"""
+created_at = "2026-08-22"
+scored_at = "2026-08-22"
 
 [[task]]
 id = 51
 phase = 3
 bundle = "standalone"
 title = "Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage"
-status = "pending"
+status = "superseded"
 module = "(cross-cutting research)"
 scores = { d = 3, b = 8, u = 7 }
 body = """
@@ -394,11 +551,18 @@ Prompt for the executing session:
 
 > Invoke `/defi-skills:intent-to-transaction` to load the skill, then run `defi-skills actions --json` to enumerate the supported action surface (~50 actions across Aave, Uniswap, Lido, Compound, Balancer, Pendle, EigenLayer, Curve, MakerDAO, Rocket Pool, Fibrous, WETH).
 >
-> Map relevant actions to `onchain_evm`'s scope: simulation harness coverage — can `revm` + Alloy ABI parsing simulate the unsigned transactions defi-skills builds end-to-end (the approval transaction and the action transaction in sequence), surface revert reasons cleanly, and produce useful state-diff output? Propose a differential-test pattern: build with defi-skills → simulate with `Onchain.EVM.simulate_batch/2` → assert state changes (token balance deltas, approval allowance, log emissions). Identify any defi-skills action shape that the current `simulate_batch` API can't represent (e.g. unusual fork-DB requirements, value-bearing calls, multi-tx sequencing limits).
+> Map relevant actions to `onchain_evm`'s scope: simulation harness coverage — can `revm` + Alloy ABI parsing simulate the unsigned transactions defi-skills builds end-to-end (the approval transaction and the action transaction in sequence), surface revert reasons cleanly, and produce useful state-diff output? Propose a differential-test pattern: build with defi-skills -> simulate with `Onchain.EVM.simulate_batch/2` -> assert state changes (token balance deltas, approval allowance, log emissions). Identify any defi-skills action shape that the current `simulate_batch` API can't represent (e.g. unusual fork-DB requirements, value-bearing calls, multi-tx sequencing limits).
 >
 > For each gap or coverage opportunity, propose a ROADMAP entry with D/B/U scoring per `~/.claude/includes/task-prioritization.md`. Output: a "Proposed additions from defi-skills mining" section the user reviews before merging into the appropriate bundle or `Standalone Tasks`.
 >
 > Read-only exercise — discovery + scoring only, no `Onchain.EVM` / Rust code edits in this task itself. The skill is already installed (`pip install defi-skills`); no new deps. Companion tasks were planted in `hieroglyph`, `onchain`, and `onchain_aave` ROADMAPs the same day.
+
+CLOSED 2026-08-22 during a backlog review. This is not a task, it is a prompt for producing tasks, and it cannot be executed by the pipeline that would receive it:
+- Its deliverable is "a section lands in this ROADMAP", but agents no longer write roadmap files at all — reviewers emit `proposed_tasks` and the orchestrator files them.
+- Its acceptance criteria terminate in "the user merges accepted entries", which no implementer or reviewer can check.
+- Its real content — is there a differential-test pattern worth having between an intent builder and `simulate_batch/2` — is a 30-minute inline exploration, not an implement/review/land cycle.
+
+Task 58 has since found the concrete version of what this was fishing for: a forked simulation observes `block.number == 0` / `timestamp == 1`, which breaks every time-dependent protocol the defi-skills surface covers. Run the exploration inline if the question comes back, and file what it actually finds.
 """
 acceptance_criteria = [
   "A 'Proposed additions from defi-skills mining' section lands in this ROADMAP listing each candidate task with D/B/U scores and which defi-skills action(s) motivated it.",
@@ -409,33 +573,64 @@ acceptance_criteria = [
 id = 52
 phase = 3
 bundle = "standalone"
-title = "Codegen-emit per-contract Multicall helper modules"
 status = "pending"
+title = "Codegen-emit per-contract Multicall helper modules"
 module = "Onchain.Contract.Generator"
 scores = { d = 5, b = 7, u = 6 }
+assignee = "codex"
+model = "gpt-5.6-sol"
+touches = ["lib/onchain/contract/generator.ex", "test/onchain/contract/generator_test.exs", "test/onchain/contract/generator_integration_test.exs"]
+acceptance_criteria = [
+  "A generated contract module exposes a way to build `Onchain.Multicall` call entries for its own functions with the same argument types the direct call wrappers take, without the caller hand-packing address/calldata tuples",
+  "Decoding a batch result returns values typed the same way the single-call wrapper returns them, including struct and array returns",
+  "Unit tests cover argument encoding and result decoding for a scalar return, a struct return and an array return",
+  "An integration test runs a real batch against the archive node and asserts decoded values, and flunks rather than skips when RPC configuration is absent",
+  "mix ci passes"
+]
+out_of_scope = [
+  "Changes to Onchain.Multicall itself — that lives in the core `onchain` package",
+  "Routing batches through Onchain.EVM.simulate_batch/2; this is on-chain Multicall3, not local simulation"
+]
 body = """
-Extend `Onchain.Contract.Generator` so each generated contract emits typed Multicall helpers — callers using both codegen and `Onchain.Multicall` (in the core `onchain` library) shouldn't have to hand-pack call tuples and lose the type safety the generator otherwise provides. Include unit and integration tests.
+Extend `Onchain.Contract.Generator` so each generated contract emits typed Multicall helpers — callers using both codegen and `Onchain.Multicall` (in the core `onchain` library, confirmed present at deps/onchain/lib/onchain/multicall.ex) shouldn't have to hand-pack call tuples and lose the type safety the generator otherwise provides. Include unit and integration tests.
+
+Note the boundary against local simulation: `Onchain.EVM.simulate_batch/2` also takes a list of calls, but it executes them on a local fork, whereas this is on-chain Multicall3 aggregation. Sharing an argument-encoding path between the two is fine; conflating the two return shapes is not — `simulate_batch` reports per-call `:success` flags and never raises on a revert, and that difference has to survive into whatever the generator emits.
 """
 
 [[task]]
 id = 53
 phase = 3
 bundle = "standalone"
-title = "Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases"
 status = "pending"
+title = "Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases"
 module = "Both native crates"
-scores = { d = 5, b = 8, u = 8 }
+scores = { d = 6, b = 8, u = 8 }
+assignee = "cursor"
+model = "cursor-grok-4.6-high"
+touches = ["lib/onchain/evm.ex", "lib/onchain/solidity.ex", "mix.exs", "native/onchain_evm/Cargo.toml", "native/onchain_solidity/Cargo.toml", "README.md", ".github/"]
+acceptance_criteria = [
+  "Both NIF modules load from a prebuilt artifact when one matches the host, and fall back to building from source when it does not",
+  "The force-from-source environment variables are documented in the README and verified to actually rebuild",
+  "The checksum file is generated, committed, and validated — a tampered or missing checksum fails the load rather than silently building",
+  "The release procedure is written down: what is tagged, what produces the artifacts, and what must be true before `mix hex.publish`",
+  "mix ci passes"
+]
+out_of_scope = [
+  "Publishing to hex.pm in this task"
+]
 body = """
 Hex-release blocker (see "Path to hex.pm Release"). Without prebuilt artifacts, every consumer of `onchain_evm` needs a working Rust toolchain plus several minutes to compile `revm` + `alloy` + `solang-parser` from source.
 
-Scope:
-- Wrap both `native/onchain_evm` (revm, alloy) and `native/onchain_solidity` (alloy-json-abi, solang-parser) with `RustlerPrecompiled.use/1` instead of plain `Rustler`.
-- GitHub Actions cross-compile matrix per release: Linux x86_64-gnu, x86_64-musl, aarch64-gnu; macOS x86_64, aarch64; Windows x86_64-msvc.
-- Attach `.so`/`.dylib`/`.dll` artifacts + `checksum-Elixir.RustlerPrecompiled-*.exs` to each GitHub Release.
-- Document `RUSTLER_PRECOMPILATION_*_BUILD=1` force-from-source fallback in README.
-- CI job to validate the checksum file is regenerated on every release.
+**Read this before starting — the premise changed on 2026-08-22.** This repo has no CI: there is no `.github/` directory, the GitHub Actions workflows were removed family-wide, and `CLAUDE.md` records that `mix ci` is the only gate there is. The cross-compile matrix below therefore is not "add a job", it is **re-introducing CI to this repo for release purposes**. That is a policy decision, not an implementation detail, and it needs to be settled — and stated in the deliverable — before the matrix is written. If the answer is that CI does not come back, this task has no mechanism and should be reduced to a locally-built artifact story or closed.
 
-Trade-offs: 2× build matrix per release (two crates), more release ceremony (tag → wait for CI → publish), force-from-source fallback as support surface. Worth it once a real external consumer installs from hex.
+Scope, assuming CI is agreed:
+- Wrap both `native/onchain_evm` (revm, alloy) and `native/onchain_solidity` (alloy-json-abi, solang-parser) with `RustlerPrecompiled.use/1` instead of plain `Rustler`.
+- Cross-compile matrix per release: Linux x86_64-gnu, x86_64-musl, aarch64-gnu; macOS x86_64, aarch64; Windows x86_64-msvc.
+- Attach `.so`/`.dylib`/`.dll` artifacts + `checksum-Elixir.RustlerPrecompiled-*.exs` to each release.
+- Document the `RUSTLER_PRECOMPILATION_*_BUILD=1` force-from-source fallback in README.
+- Validate that the checksum file is regenerated on every release.
+
+Trade-offs: 2x build matrix per release (two crates), more release ceremony (tag -> wait -> publish), force-from-source fallback as support surface. Worth it once a real external consumer installs from hex.
 """
 
 [[task]]
@@ -516,7 +711,8 @@ title = "Independent EVM semantics and exact-bytecode verification harness"
 scores = { d = 8, b = 10, u = 8 }
 markers = ["security"]
 acceptance_criteria = ["Pinned official Ethereum execution vectors exercise representative fork-sensitive CALL/CREATE/storage/revert/log/gas semantics through the revm-backed executor", "A separately implemented KEVM/Kontrol oracle evaluates the same exact bytecode and initial state; status, return/revert data, logs and relevant post-state agree", "At least one deliberately corrupted storage/call/revert behavior is detected and makes the verification run fail", "A commit-bound ledger records vector provenance, fork/EVM revision, initial state, revm/KEVM/Kontrol versions, bytecode hashes, configurations and outcomes", "The harness adds no runtime public API; focused tests and the repository's canonical gate pass"]
-touches = ["native/onchain_evm/", "test/onchain/", ".github/workflows/"]
+touches = ["native/onchain_evm/", "test/onchain/"]
+depends_on = ["58"]
 assignee = "codex"
 model = "gpt-5.6-sol"
 body = """
@@ -534,8 +730,10 @@ title = "Validate the documented `Onchain.EVM` option surface at the Elixir boun
 scores = { d = 3, b = 6, u = 6 }
 acceptance_criteria = ["Every option named in Onchain.EVM's public typespecs, plus the `calls` argument of simulate_batch/2, returns a tagged `{:error, {atom, term}}` for malformed input without invoking the NIF", "A test enumerates the documented option surface and fails when a documented option has no Elixir-layer guard, rather than asserting only the four known cases", "simulate_batch/2 returns a tagged error for a non-list `calls` and for elements that are not 2-tuples — no silent {:ok, []}, no escaping FunctionClauseError", "Each of the four premises above is either reproduced before its fix or recorded as no-longer-reproducing", "mix ci passes"]
 out_of_scope = ["Rust-side changes under native/ — panic removal is Task 31, source-size limits are Task 32", "New public functions or changes to the success-path return shapes"]
-touches = ["lib/onchain/evm.ex", "test/onchain/evm_test.exs"]
-module = "Onchain.EVM"
+touches = ["lib/onchain/evm/params.ex", "lib/onchain/evm.ex", "test/onchain/evm/params_test.exs", "test/onchain/evm_test.exs"]
+module = "Onchain.EVM.Params"
+assignee = "cursor"
+model = "cursor-grok-4.6-high"
 body = """
 Close the "NIF catches what Elixir should" class as an invariant rather than patching its four known instances. Every option `Onchain.EVM` documents in its public typespecs must be validated at the Elixir layer and rejected with a tagged `{:error, {tag, term}}` tuple, so a malformed option never crosses the NIF boundary and never surfaces as a bare-string `{:evm_error, "..."}` from Rust or as a raised exception escaping the `{:ok, _} | {:error, _}` contract.
 
@@ -544,6 +742,8 @@ Known instances — Tasks 45, 46, 47 and 48, superseded by this one — all disc
 - `maybe_put_value/2` checks only `is_binary/1`, so `""` and `"not-a-hex"` reach Rust as an invalid-U256 error.
 - `maybe_put_state_overrides/2` does not enforce the all-strings rule its own `@type state_overrides` documents; atom keys and integer values fail in Rust.
 - `parse_hex_block/2` applies no upper bound, so a >u64 value fails as `invalid param type: block_number` in the NIF.
+
+Re-confirmed 2026-08-22 against `lib/onchain/evm/params.ex`: all four premises still reproduce, and none of the four has been quietly fixed since 2026-04-22. `validate_calls/1` still reduces over any `Enumerable` with a bare `fn {addr, data}` head; `maybe_put_value/2` still guards on `is_binary/1` alone; `maybe_put_state_overrides/2` still guards on `is_map/1` alone; `parse_hex_block/2` still calls `Integer.parse(rest, 16)` with no upper bound. Note the code lives in `Onchain.EVM.Params`, the cover-able sibling module, not in `Onchain.EVM` — the NIF shell is excluded from coverage, the validation is not.
 
 This is the second round of the same class (Bundle 1 was the first), which is the reason to ship the invariant and its enumerating test instead of four more point fixes. The deliverable that closes the class is a test that walks the documented option surface itself, so a newly documented option without an Elixir-layer guard fails the suite rather than becoming a Round 3 task.
 """
@@ -558,7 +758,7 @@ status = "pending"
 title = "Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts"
 scores = { d = 5, b = 9, u = 8 }
 acceptance_criteria = ["""Multicall3 getBlockNumber()/getCurrentBlockTimestamp() through simulate_call return the forked block's real number and timestamp, for a numeric :block pin, for block: "latest", and when :block is omitted""", "An Aave V3 supply simulated through simulate_batch against a forked mainnet archive node succeeds instead of reverting with Panic(0x11)", 'A state override of balance, nonce or storage on a contract that has not been touched yet leaves its deployed code and unspecified fields intact — balanceOf on WETH still answers after %{weth => %{"storage" => "{}"}}', "Rust or Elixir tests pin the block-environment fields and the override-preserves-code behaviour, and fail against the current implementation", "mix ci passes"]
-out_of_scope = ["Deriving SpecId from the forked block or a chain-aware hardfork schedule (documented limitation at native/onchain_evm/src/lib.rs:515)", "Adding block-environment override options for callers to fake number/timestamp"]
+out_of_scope = ["Deriving SpecId from the forked block or a chain-aware hardfork schedule (documented limitation at native/onchain_evm/src/lib.rs:556)", "Adding block-environment override options for callers to fake number/timestamp"]
 assignee = "codex"
 model = "gpt-5.6-sol"
 body = """
@@ -568,7 +768,56 @@ This silently breaks every time-dependent protocol, which is most of DeFi. An Aa
 
 The second defect shares a root cause with the first's blast radius: `apply_state_overrides` seeds `info` from `db.cache.accounts`, which on a fresh ForkDB is empty because fork state is fetched lazily. `unwrap_or_default()` therefore yields an empty `AccountInfo`, and `insert_account_info` writes that back — replacing the account instead of amending it. Overriding any field of an account that has not yet been touched drops its deployed code: after `%{weth => %{"storage" => ~s({})}}`, `balanceOf` on WETH returns `"0x"`. Overrides must be applied on top of the account as the fork would resolve it, not on top of a default.
 
-Fetch the forked block's header once per simulation and populate number, timestamp, basefee, gas limit, coinbase and prevrandao from it; keep honouring `:block` so a historical pin executes in that block's environment. The pre-existing SpecId limitation documented at lib.rs:515 is a separate concern and stays as it is.
+Fetch the forked block's header once per simulation and populate number, timestamp, basefee, gas limit, coinbase and prevrandao from it; keep honouring `:block` so a historical pin executes in that block's environment. The pre-existing SpecId limitation documented at lib.rs:556 is a separate concern and stays as it is.
+"""
+created_at = "2026-08-22"
+scored_at = "2026-08-22"
+
+[[task]]
+id = "59"
+phase = 3
+bundle = "standalone"
+status = "pending"
+title = "Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax"
+scores = { d = 3, b = 8, u = 7 }
+acceptance_criteria = ["The gap is quantified, not asserted: a list of Solidity language features shipped since solang-parser's last release that this crate cannot parse, each with a source snippet and the observed failure", "At least two actively maintained candidate frontends are evaluated against that list, plus the option of staying on solang-parser, with the cost of each stated", "The evaluation states what a migration would do to the crate's public output shape — selectors, canonical type strings, NatSpec attachment — since Onchain.Contract.Generator consumes it at compile time", "The spike ends in a written recommendation with a D/B/U-scored follow-up task if migration is recommended, or a recorded decision to stay if it is not", "Read-only: no parser swap is performed in this task"]
+out_of_scope = ["Performing the migration itself", "The stack-overflow guard (Task 32) and the Debug-rendering cleanup (Task 44), both of which are worth doing on whichever parser is chosen"]
+touches = ["native/onchain_solidity/Cargo.toml", "native/onchain_solidity/src/lib.rs"]
+assignee = "codex"
+module = "native/onchain_solidity"
+model = "gpt-5.6-sol"
+body = """
+`onchain_solidity` pins `solang-parser = "0.3"`. 0.3.5 is the latest release and it was published 2025-06-22 — over a year stale, from a project that has effectively stopped maintaining the standalone parser. `cargo outdated` reports the crate as up to date precisely because there is nothing newer to move to, so the staleness is invisible to the dependency tooling.
+
+The consequence is already reachable, reproduced 2026-08-22 on this checkout: a contract declaring `uint256 transient lock;` (EIP-1153 transient storage, Solidity 0.8.24, shipped March 2024) fails to parse with `unrecognised token 'lock'`. The keyword does not appear anywhere in solang-parser 0.3.5's grammar. Anything written against a modern compiler is a candidate for the same failure, and the failure lands at **compile time** for consumers of `Onchain.Contract.Generator` — a `.sol` file that solc accepts simply cannot be code-generated from.
+
+This is scoped as a spike rather than a migration because the answer is genuinely open: `parse_abi_json` (the compiled-ABI path) is unaffected and is already the recommended path, so the honest question is how much the source-parsing path is worth investing in versus documenting its ceiling. Candidates to weigh include the actively developed Rust Solidity frontends (solar, slang) and staying put. Decide with the feature list in hand.
+"""
+created_at = "2026-08-22"
+scored_at = "2026-08-22"
+
+[[task]]
+id = "60"
+phase = 2
+bundle = "standalone"
+status = "pending"
+title = "Derive the EVM revision from the forked block instead of always executing under one modern SpecId"
+scores = { d = 6, b = 8, u = 7 }
+depends_on = [58]
+acceptance_criteria = ["A simulation pinned to a pre-Cancun block executes under that block's EVM revision, demonstrated by an opcode or behaviour that differs across the fork boundary rather than by reading the configured value back", "The mapping from block number to revision is driven by a chain-aware hardfork schedule, and a chain the schedule does not know is rejected or clearly documented rather than silently treated as mainnet", "An integration test pins at least one historical block on either side of a hardfork against the archive node, and flunks rather than skips when RPC configuration is absent", "The KNOWN LIMITATION comment at native/onchain_evm/src/lib.rs:556 is removed or rewritten to describe what actually remains", "mix ci passes"]
+out_of_scope = ["Populating the block environment fields (number, timestamp, basefee, gas limit, coinbase, prevrandao) — that is Task 58, which this depends on", "Supporting chains beyond those the module already targets"]
+touches = ["native/onchain_evm/src/lib.rs", "lib/onchain/evm.ex", "test/onchain/evm_integration_test.exs"]
+assignee = "grok"
+module = "native/onchain_evm"
+model = "grok-4.6"
+body = """
+Every `Context::mainnet()` site in `native/onchain_evm/src/lib.rs` executes under revm's configured modern revision regardless of which block the fork is pinned to. The code says so itself at lib.rs:556 ("KNOWN LIMITATION ... applies to every `Context::mainnet()` site below too"), and Task 58 explicitly declares it out of scope so that the block-environment fix stays reviewable.
+
+Nothing tracked it, which is why this exists: a limitation documented only in a code comment and in another task's `out_of_scope` is invisible to the backlog, and this one is the same class as Task 58 — the fork's state is real, its execution environment is not.
+
+It matters for exactly the use case a historical `:block` pin implies. Replaying a transaction from before a hardfork under today's rules can change gas accounting, opcode availability and refund behaviour, so a simulation of a historical block can succeed where the real transaction failed, or price differently than it did. Reads that touch none of the changed semantics still return correct values, so as with Task 58 the failure looks like a caller mistake rather than a missing environment.
+
+Sequenced after Task 58 deliberately: 58 fetches the forked block's header, which is also where the block number a revision decision keys off comes from, and landing both against the same header fetch avoids two independent implementations of it.
 """
 created_at = "2026-08-22"
 scored_at = "2026-08-22"
