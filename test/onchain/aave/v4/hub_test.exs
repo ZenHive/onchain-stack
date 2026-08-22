@@ -7,6 +7,7 @@ defmodule Onchain.Aave.V4.HubTest do
   alias Onchain.Aave.V4.Hub.AssetConfig
   alias Onchain.Aave.V4.Hub.SpokeConfig
   alias Onchain.Aave.V4.Hub.SpokeData
+  alias Onchain.RPCStub
 
   @hubs [:core, :prime, :plus]
   @asset_id 0
@@ -207,14 +208,10 @@ defmodule Onchain.Aave.V4.HubTest do
   describe "Hub reads across Core, Prime, and Plus" do
     setup do
       payloads = selector_payloads()
-      {:ok, seen} = Agent.start_link(fn -> [] end)
-      url = start_rpc_stub(fn body -> handle_eth_call(body, payloads, seen) end)
+      seen = start_supervised!({Agent, fn -> [] end})
+      url = RPCStub.start(RPCStub.payload_handler(payloads, seen))
 
-      on_exit(fn ->
-        if Process.alive?(seen), do: Agent.stop(seen)
-      end)
-
-      %{rpc_opts: [rpc_url: url, timeout: 2_000, req_options: [connect_options: [protocols: [:http1]]]], seen: seen}
+      %{rpc_opts: RPCStub.rpc_opts(url), seen: seen}
     end
 
     test "every selected read succeeds on all three Hubs", %{rpc_opts: rpc_opts} do
@@ -313,157 +310,73 @@ defmodule Onchain.Aave.V4.HubTest do
     {:ok, usdc_bin} = Onchain.Address.validate(@usdc)
 
     %{
-      selector("getSpokeCount(uint256)", [0]) => encode("(uint256)", [{3}]),
-      selector("isSpokeListed(uint256,address)", [0, spoke_bin]) => encode("(bool)", [{true}]),
-      selector("getSpokeAddress(uint256,uint256)", [0, 0]) => encode("(address)", [{spoke_bin}]),
-      selector("getSpoke(uint256,address)", [0, spoke_bin]) =>
-        encode("((uint120,uint120,int200,uint120,uint40,uint40,uint24,bool,bool,uint200))", [{@spoke_data_tuple}]),
-      selector("getSpokeConfig(uint256,address)", [0, spoke_bin]) =>
-        encode("((uint40,uint40,uint24,bool,bool))", [{@spoke_config_tuple}]),
-      selector("getSpokeAddedAssets(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{800}]),
-      selector("getSpokeAddedShares(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{790}]),
-      selector("getSpokeDrawnShares(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{200}]),
-      selector("getSpokeOwed(uint256,address)", [0, spoke_bin]) => encode("(uint256,uint256)", [{100, 7}]),
-      selector("getSpokeTotalOwed(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{107}]),
-      selector("getSpokePremiumRay(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{@spoke_premium_ray}]),
-      selector("getSpokePremiumData(uint256,address)", [0, spoke_bin]) => encode("(uint256,int256)", [{15, -3}]),
-      selector("getSpokeDeficitRay(uint256,address)", [0, spoke_bin]) => encode("(uint256)", [{7}]),
-      selector("isUnderlyingListed(address)", [usdc_bin]) => encode("(bool)", [{true}]),
-      selector("getAssetCount()", []) => encode("(uint256)", [{5}]),
-      selector("getAsset(uint256)", [0]) =>
-        encode(
+      RPCStub.selector("getSpokeCount(uint256)", [0]) => RPCStub.encode("(uint256)", [{3}]),
+      RPCStub.selector("isSpokeListed(uint256,address)", [0, spoke_bin]) => RPCStub.encode("(bool)", [{true}]),
+      RPCStub.selector("getSpokeAddress(uint256,uint256)", [0, 0]) => RPCStub.encode("(address)", [{spoke_bin}]),
+      RPCStub.selector("getSpoke(uint256,address)", [0, spoke_bin]) =>
+        RPCStub.encode("((uint120,uint120,int200,uint120,uint40,uint40,uint24,bool,bool,uint200))", [
+          {@spoke_data_tuple}
+        ]),
+      RPCStub.selector("getSpokeConfig(uint256,address)", [0, spoke_bin]) =>
+        RPCStub.encode("((uint40,uint40,uint24,bool,bool))", [{@spoke_config_tuple}]),
+      RPCStub.selector("getSpokeAddedAssets(uint256,address)", [0, spoke_bin]) => RPCStub.encode("(uint256)", [{800}]),
+      RPCStub.selector("getSpokeAddedShares(uint256,address)", [0, spoke_bin]) => RPCStub.encode("(uint256)", [{790}]),
+      RPCStub.selector("getSpokeDrawnShares(uint256,address)", [0, spoke_bin]) => RPCStub.encode("(uint256)", [{200}]),
+      RPCStub.selector("getSpokeOwed(uint256,address)", [0, spoke_bin]) =>
+        RPCStub.encode("(uint256,uint256)", [{100, 7}]),
+      RPCStub.selector("getSpokeTotalOwed(uint256,address)", [0, spoke_bin]) => RPCStub.encode("(uint256)", [{107}]),
+      RPCStub.selector("getSpokePremiumRay(uint256,address)", [0, spoke_bin]) =>
+        RPCStub.encode("(uint256)", [{@spoke_premium_ray}]),
+      RPCStub.selector("getSpokePremiumData(uint256,address)", [0, spoke_bin]) =>
+        RPCStub.encode("(uint256,int256)", [{15, -3}]),
+      RPCStub.selector("getSpokeDeficitRay(uint256,address)", [0, spoke_bin]) => RPCStub.encode("(uint256)", [{7}]),
+      RPCStub.selector("isUnderlyingListed(address)", [usdc_bin]) => RPCStub.encode("(bool)", [{true}]),
+      RPCStub.selector("getAssetCount()", []) => RPCStub.encode("(uint256)", [{5}]),
+      RPCStub.selector("getAsset(uint256)", [0]) =>
+        RPCStub.encode(
           "((uint120,uint120,uint8,uint120,uint120,int200,uint120,uint120,uint16,uint120,uint96,uint40,address,address,address,address,uint200))",
           [{@asset_tuple}]
         ),
-      selector("getAssetConfig(uint256)", [0]) => encode("((address,uint16,address,address))", [{@asset_config_tuple}]),
-      selector("getAssetAccruedFees(uint256)", [0]) => encode("(uint256)", [{8}]),
-      selector("getAssetSwept(uint256)", [0]) => encode("(uint256)", [{50}]),
-      selector("getAddedAssets(uint256)", [0]) => encode("(uint256)", [{900}]),
-      selector("getAddedShares(uint256)", [0]) => encode("(uint256)", [{880}]),
-      selector("getAssetLiquidity(uint256)", [0]) => encode("(uint256)", [{1_000}]),
-      selector("getAssetOwed(uint256)", [0]) => encode("(uint256,uint256)", [{100, 7}]),
-      selector("getAssetTotalOwed(uint256)", [0]) => encode("(uint256)", [{107}]),
-      selector("getAssetPremiumRay(uint256)", [0]) => encode("(uint256)", [{@asset_premium_ray}]),
-      selector("getAssetDrawnShares(uint256)", [0]) => encode("(uint256)", [{200}]),
-      selector("getAssetPremiumData(uint256)", [0]) => encode("(uint256,int256)", [{15, -3}]),
-      selector("getAssetDeficitRay(uint256)", [0]) => encode("(uint256)", [{7}]),
-      selector("getAssetDrawnRate(uint256)", [0]) => encode("(uint256)", [{50_000}]),
-      selector("getAssetDrawnIndex(uint256)", [0]) => encode("(uint256)", [{1_000_000}]),
-      selector("getAssetId(address)", [usdc_bin]) => encode("(uint256)", [{0}]),
-      selector("getAssetUnderlyingAndDecimals(uint256)", [0]) => encode("(address,uint8)", [{usdc_bin, 6}]),
-      selector("previewAddByAssets(uint256,uint256)", [0, @assets]) => encode("(uint256)", [{@add_shares_down}]),
-      selector("previewAddByShares(uint256,uint256)", [0, @shares]) => encode("(uint256)", [{@add_assets_up}]),
-      selector("previewRemoveByAssets(uint256,uint256)", [0, @assets]) => encode("(uint256)", [{@remove_shares_up}]),
-      selector("previewRemoveByShares(uint256,uint256)", [0, @shares]) => encode("(uint256)", [{@remove_assets_down}]),
-      selector("previewDrawByAssets(uint256,uint256)", [0, @assets]) => encode("(uint256)", [{@draw_shares_up}]),
-      selector("previewDrawByShares(uint256,uint256)", [0, @shares]) => encode("(uint256)", [{@draw_assets_down}]),
-      selector("previewRestoreByAssets(uint256,uint256)", [0, @assets]) => encode("(uint256)", [{@restore_shares_down}]),
-      selector("previewRestoreByShares(uint256,uint256)", [0, @shares]) => encode("(uint256)", [{@restore_assets_up}]),
-      selector("MAX_ALLOWED_UNDERLYING_DECIMALS()", []) => encode("(uint256)", [{@max_underlying_decimals}]),
-      selector("MIN_ALLOWED_UNDERLYING_DECIMALS()", []) => encode("(uint256)", [{@min_underlying_decimals}]),
-      selector("MAX_ALLOWED_SPOKE_CAP()", []) => encode("(uint256)", [{@max_spoke_cap}]),
-      selector("MAX_RISK_PREMIUM_THRESHOLD()", []) => encode("(uint256)", [{@max_risk_premium_threshold}])
+      RPCStub.selector("getAssetConfig(uint256)", [0]) =>
+        RPCStub.encode("((address,uint16,address,address))", [{@asset_config_tuple}]),
+      RPCStub.selector("getAssetAccruedFees(uint256)", [0]) => RPCStub.encode("(uint256)", [{8}]),
+      RPCStub.selector("getAssetSwept(uint256)", [0]) => RPCStub.encode("(uint256)", [{50}]),
+      RPCStub.selector("getAddedAssets(uint256)", [0]) => RPCStub.encode("(uint256)", [{900}]),
+      RPCStub.selector("getAddedShares(uint256)", [0]) => RPCStub.encode("(uint256)", [{880}]),
+      RPCStub.selector("getAssetLiquidity(uint256)", [0]) => RPCStub.encode("(uint256)", [{1_000}]),
+      RPCStub.selector("getAssetOwed(uint256)", [0]) => RPCStub.encode("(uint256,uint256)", [{100, 7}]),
+      RPCStub.selector("getAssetTotalOwed(uint256)", [0]) => RPCStub.encode("(uint256)", [{107}]),
+      RPCStub.selector("getAssetPremiumRay(uint256)", [0]) => RPCStub.encode("(uint256)", [{@asset_premium_ray}]),
+      RPCStub.selector("getAssetDrawnShares(uint256)", [0]) => RPCStub.encode("(uint256)", [{200}]),
+      RPCStub.selector("getAssetPremiumData(uint256)", [0]) => RPCStub.encode("(uint256,int256)", [{15, -3}]),
+      RPCStub.selector("getAssetDeficitRay(uint256)", [0]) => RPCStub.encode("(uint256)", [{7}]),
+      RPCStub.selector("getAssetDrawnRate(uint256)", [0]) => RPCStub.encode("(uint256)", [{50_000}]),
+      RPCStub.selector("getAssetDrawnIndex(uint256)", [0]) => RPCStub.encode("(uint256)", [{1_000_000}]),
+      RPCStub.selector("getAssetId(address)", [usdc_bin]) => RPCStub.encode("(uint256)", [{0}]),
+      RPCStub.selector("getAssetUnderlyingAndDecimals(uint256)", [0]) =>
+        RPCStub.encode("(address,uint8)", [{usdc_bin, 6}]),
+      RPCStub.selector("previewAddByAssets(uint256,uint256)", [0, @assets]) =>
+        RPCStub.encode("(uint256)", [{@add_shares_down}]),
+      RPCStub.selector("previewAddByShares(uint256,uint256)", [0, @shares]) =>
+        RPCStub.encode("(uint256)", [{@add_assets_up}]),
+      RPCStub.selector("previewRemoveByAssets(uint256,uint256)", [0, @assets]) =>
+        RPCStub.encode("(uint256)", [{@remove_shares_up}]),
+      RPCStub.selector("previewRemoveByShares(uint256,uint256)", [0, @shares]) =>
+        RPCStub.encode("(uint256)", [{@remove_assets_down}]),
+      RPCStub.selector("previewDrawByAssets(uint256,uint256)", [0, @assets]) =>
+        RPCStub.encode("(uint256)", [{@draw_shares_up}]),
+      RPCStub.selector("previewDrawByShares(uint256,uint256)", [0, @shares]) =>
+        RPCStub.encode("(uint256)", [{@draw_assets_down}]),
+      RPCStub.selector("previewRestoreByAssets(uint256,uint256)", [0, @assets]) =>
+        RPCStub.encode("(uint256)", [{@restore_shares_down}]),
+      RPCStub.selector("previewRestoreByShares(uint256,uint256)", [0, @shares]) =>
+        RPCStub.encode("(uint256)", [{@restore_assets_up}]),
+      RPCStub.selector("MAX_ALLOWED_UNDERLYING_DECIMALS()", []) =>
+        RPCStub.encode("(uint256)", [{@max_underlying_decimals}]),
+      RPCStub.selector("MIN_ALLOWED_UNDERLYING_DECIMALS()", []) =>
+        RPCStub.encode("(uint256)", [{@min_underlying_decimals}]),
+      RPCStub.selector("MAX_ALLOWED_SPOKE_CAP()", []) => RPCStub.encode("(uint256)", [{@max_spoke_cap}]),
+      RPCStub.selector("MAX_RISK_PREMIUM_THRESHOLD()", []) => RPCStub.encode("(uint256)", [{@max_risk_premium_threshold}])
     }
   end
-
-  defp selector(signature, params) do
-    {:ok, hex} = Onchain.ABI.encode_call(signature, params)
-    String.slice(hex, 0, 10)
-  end
-
-  defp encode(types, data) do
-    "0x" <> Base.encode16(ABI.encode(types, data), case: :lower)
-  end
-
-  defp handle_eth_call(%{"method" => "eth_call", "params" => [%{"data" => data, "to" => to} | _]}, payloads, seen) do
-    Agent.update(seen, &[to | &1])
-    sel = String.slice(String.downcase(data), 0, 10)
-
-    Map.get_lazy(payloads, sel, fn ->
-      flunk("stub has no payload for selector #{sel} (data=#{data})")
-    end)
-  end
-
-  defp start_rpc_stub(handler) do
-    {:ok, listen} =
-      :gen_tcp.listen(0, [:binary, packet: :http_bin, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
-
-    {:ok, port} = :inet.port(listen)
-    parent = self()
-
-    pid =
-      spawn_link(fn ->
-        send(parent, {:stub_ready, self()})
-        stub_loop(listen, handler)
-      end)
-
-    receive do
-      {:stub_ready, ^pid} -> :ok
-    after
-      1_000 -> flunk("JSON-RPC stub failed to start")
-    end
-
-    on_exit(fn ->
-      Process.exit(pid, :kill)
-      :gen_tcp.close(listen)
-    end)
-
-    "http://127.0.0.1:#{port}"
-  end
-
-  defp stub_loop(listen, handler) do
-    case :gen_tcp.accept(listen, 5_000) do
-      {:ok, sock} ->
-        serve_one(sock, handler)
-        stub_loop(listen, handler)
-
-      {:error, :timeout} ->
-        stub_loop(listen, handler)
-
-      {:error, :closed} ->
-        :ok
-    end
-  end
-
-  defp serve_one(sock, handler) do
-    {:ok, {:http_request, :POST, _, _}} = :gen_tcp.recv(sock, 0)
-    length = recv_content_length(sock, 0)
-    :ok = :inet.setopts(sock, packet: :raw)
-    {:ok, body} = :gen_tcp.recv(sock, length)
-    decoded = Jason.decode!(body)
-    result = handler.(decoded)
-    payload = Jason.encode!(%{"jsonrpc" => "2.0", "id" => decoded["id"], "result" => result})
-
-    :ok =
-      :gen_tcp.send(sock, [
-        "HTTP/1.1 200 OK\r\n",
-        "content-type: application/json\r\n",
-        "content-length: #{byte_size(payload)}\r\n",
-        "connection: close\r\n\r\n",
-        payload
-      ])
-
-    :gen_tcp.close(sock)
-  end
-
-  defp recv_content_length(sock, acc) do
-    case :gen_tcp.recv(sock, 0) do
-      {:ok, :http_eoh} ->
-        acc
-
-      {:ok, {:http_header, _, name, _, value}} ->
-        if header_name(name) == "content-length" do
-          recv_content_length(sock, String.to_integer(header_value(value)))
-        else
-          recv_content_length(sock, acc)
-        end
-    end
-  end
-
-  defp header_name(name) when is_atom(name), do: name |> Atom.to_string() |> String.downcase()
-  defp header_name(name) when is_binary(name), do: String.downcase(name)
-  defp header_name(name) when is_list(name), do: name |> List.to_string() |> String.downcase()
-
-  defp header_value(value) when is_binary(value), do: value
-  defp header_value(value) when is_list(value), do: List.to_string(value)
 end

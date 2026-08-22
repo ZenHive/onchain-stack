@@ -3,6 +3,7 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
 
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.V4.TokenizationSpoke
+  alias Onchain.RPCStub
 
   @owner "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
   @assets 1_100
@@ -20,9 +21,6 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
   @redeem_hash <<4::256>>
   @permit_hash <<5::256>>
   @domain_hash <<6::256>>
-  @rpc_timeout_ms 2_000
-  @stub_start_timeout_ms 1_000
-  @stub_accept_timeout_ms 5_000
 
   describe "lookup/3" do
     test "resolves configured Tokenization Spokes across Core, Prime, and Plus" do
@@ -141,24 +139,10 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
       {:ok, usdc} = TokenizationSpoke.lookup(:core, :usdc)
       {:ok, prime} = TokenizationSpoke.lookup(:prime, :weth)
       payloads = calldata_payloads()
-      {:ok, seen} = Agent.start_link(fn -> [] end)
-      url = start_rpc_stub(fn body -> handle_eth_call(body, payloads, seen) end)
+      seen = start_supervised!({Agent, fn -> [] end})
+      url = RPCStub.start(fn body -> handle_eth_call(body, payloads, seen) end)
 
-      on_exit(fn ->
-        if Process.alive?(seen), do: Agent.stop(seen)
-      end)
-
-      %{
-        spoke: spoke,
-        usdc: usdc,
-        prime: prime,
-        rpc_opts: [
-          rpc_url: url,
-          timeout: @rpc_timeout_ms,
-          req_options: [connect_options: [protocols: [:http1]]]
-        ],
-        seen: seen
-      }
+      %{spoke: spoke, usdc: usdc, prime: prime, rpc_opts: RPCStub.rpc_opts(url), seen: seen}
     end
 
     test "ERC-4626 accounting reads decode from a configured Tokenization Spoke", %{
@@ -258,46 +242,42 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
     {:ok, hub_bin} = Onchain.Address.validate(Contracts.address!(:v4_core_hub))
 
     %{
-      calldata("asset()", []) => encode("(address)", [{weth_bin}]),
-      calldata("totalAssets()", []) => encode("(uint256)", [{@total_assets}]),
-      calldata("totalSupply()", []) => encode("(uint256)", [{@total_supply}]),
-      calldata("balanceOf(address)", [owner_bin]) => encode("(uint256)", [{@balance}]),
-      calldata("convertToShares(uint256)", [@assets]) => encode("(uint256)", [{@shares}]),
-      calldata("convertToAssets(uint256)", [@shares]) => encode("(uint256)", [{@assets}]),
-      calldata("previewDeposit(uint256)", [@assets]) => encode("(uint256)", [{@shares}]),
-      calldata("previewMint(uint256)", [@shares]) => encode("(uint256)", [{@assets}]),
-      calldata("previewWithdraw(uint256)", [@assets]) => encode("(uint256)", [{@shares}]),
-      calldata("previewRedeem(uint256)", [@shares]) => encode("(uint256)", [{@assets}]),
-      calldata("convertToShares(uint256)", [0]) => encode("(uint256)", [{0}]),
-      calldata("convertToAssets(uint256)", [0]) => encode("(uint256)", [{0}]),
-      calldata("previewDeposit(uint256)", [0]) => encode("(uint256)", [{0}]),
-      calldata("previewMint(uint256)", [0]) => encode("(uint256)", [{0}]),
-      calldata("previewWithdraw(uint256)", [0]) => encode("(uint256)", [{0}]),
-      calldata("previewRedeem(uint256)", [0]) => encode("(uint256)", [{0}]),
-      calldata("maxDeposit(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
-      calldata("maxMint(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
-      calldata("maxWithdraw(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
-      calldata("maxRedeem(address)", [owner_bin]) => encode("(uint256)", [{@max_amount}]),
-      calldata("hub()", []) => encode("(address)", [{hub_bin}]),
-      calldata("assetId()", []) => encode("(uint256)", [{@asset_id}]),
-      calldata("MAX_ALLOWED_SPOKE_CAP()", []) => encode("(uint256)", [{@spoke_cap}]),
-      calldata("PERMIT_NONCE_NAMESPACE()", []) => encode("(uint256)", [{@permit_ns}]),
-      calldata("DEPOSIT_TYPEHASH()", []) => encode("(bytes32)", [{@deposit_hash}]),
-      calldata("MINT_TYPEHASH()", []) => encode("(bytes32)", [{@mint_hash}]),
-      calldata("WITHDRAW_TYPEHASH()", []) => encode("(bytes32)", [{@withdraw_hash}]),
-      calldata("REDEEM_TYPEHASH()", []) => encode("(bytes32)", [{@redeem_hash}]),
-      calldata("PERMIT_TYPEHASH()", []) => encode("(bytes32)", [{@permit_hash}]),
-      calldata("DOMAIN_SEPARATOR()", []) => encode("(bytes32)", [{@domain_hash}])
+      calldata("asset()", []) => RPCStub.encode("(address)", [{weth_bin}]),
+      calldata("totalAssets()", []) => RPCStub.encode("(uint256)", [{@total_assets}]),
+      calldata("totalSupply()", []) => RPCStub.encode("(uint256)", [{@total_supply}]),
+      calldata("balanceOf(address)", [owner_bin]) => RPCStub.encode("(uint256)", [{@balance}]),
+      calldata("convertToShares(uint256)", [@assets]) => RPCStub.encode("(uint256)", [{@shares}]),
+      calldata("convertToAssets(uint256)", [@shares]) => RPCStub.encode("(uint256)", [{@assets}]),
+      calldata("previewDeposit(uint256)", [@assets]) => RPCStub.encode("(uint256)", [{@shares}]),
+      calldata("previewMint(uint256)", [@shares]) => RPCStub.encode("(uint256)", [{@assets}]),
+      calldata("previewWithdraw(uint256)", [@assets]) => RPCStub.encode("(uint256)", [{@shares}]),
+      calldata("previewRedeem(uint256)", [@shares]) => RPCStub.encode("(uint256)", [{@assets}]),
+      calldata("convertToShares(uint256)", [0]) => RPCStub.encode("(uint256)", [{0}]),
+      calldata("convertToAssets(uint256)", [0]) => RPCStub.encode("(uint256)", [{0}]),
+      calldata("previewDeposit(uint256)", [0]) => RPCStub.encode("(uint256)", [{0}]),
+      calldata("previewMint(uint256)", [0]) => RPCStub.encode("(uint256)", [{0}]),
+      calldata("previewWithdraw(uint256)", [0]) => RPCStub.encode("(uint256)", [{0}]),
+      calldata("previewRedeem(uint256)", [0]) => RPCStub.encode("(uint256)", [{0}]),
+      calldata("maxDeposit(address)", [owner_bin]) => RPCStub.encode("(uint256)", [{@max_amount}]),
+      calldata("maxMint(address)", [owner_bin]) => RPCStub.encode("(uint256)", [{@max_amount}]),
+      calldata("maxWithdraw(address)", [owner_bin]) => RPCStub.encode("(uint256)", [{@max_amount}]),
+      calldata("maxRedeem(address)", [owner_bin]) => RPCStub.encode("(uint256)", [{@max_amount}]),
+      calldata("hub()", []) => RPCStub.encode("(address)", [{hub_bin}]),
+      calldata("assetId()", []) => RPCStub.encode("(uint256)", [{@asset_id}]),
+      calldata("MAX_ALLOWED_SPOKE_CAP()", []) => RPCStub.encode("(uint256)", [{@spoke_cap}]),
+      calldata("PERMIT_NONCE_NAMESPACE()", []) => RPCStub.encode("(uint256)", [{@permit_ns}]),
+      calldata("DEPOSIT_TYPEHASH()", []) => RPCStub.encode("(bytes32)", [{@deposit_hash}]),
+      calldata("MINT_TYPEHASH()", []) => RPCStub.encode("(bytes32)", [{@mint_hash}]),
+      calldata("WITHDRAW_TYPEHASH()", []) => RPCStub.encode("(bytes32)", [{@withdraw_hash}]),
+      calldata("REDEEM_TYPEHASH()", []) => RPCStub.encode("(bytes32)", [{@redeem_hash}]),
+      calldata("PERMIT_TYPEHASH()", []) => RPCStub.encode("(bytes32)", [{@permit_hash}]),
+      calldata("DOMAIN_SEPARATOR()", []) => RPCStub.encode("(bytes32)", [{@domain_hash}])
     }
   end
 
   defp calldata(signature, params) do
     {:ok, hex} = Onchain.ABI.encode_call(signature, params)
     String.downcase(hex)
-  end
-
-  defp encode(types, data) do
-    "0x" <> Base.encode16(ABI.encode(types, data), case: :lower)
   end
 
   defp handle_eth_call(%{"method" => "eth_call", "params" => [%{"data" => data, "to" => to} | _]}, payloads, seen) do
@@ -308,87 +288,4 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
       flunk("stub has no payload for calldata #{data}")
     end)
   end
-
-  defp start_rpc_stub(handler) do
-    {:ok, listen} =
-      :gen_tcp.listen(0, [:binary, packet: :http_bin, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
-
-    {:ok, port} = :inet.port(listen)
-    parent = self()
-
-    pid =
-      spawn_link(fn ->
-        send(parent, {:stub_ready, self()})
-        stub_loop(listen, handler)
-      end)
-
-    receive do
-      {:stub_ready, ^pid} -> :ok
-    after
-      @stub_start_timeout_ms -> flunk("JSON-RPC stub failed to start")
-    end
-
-    on_exit(fn ->
-      Process.exit(pid, :kill)
-      :gen_tcp.close(listen)
-    end)
-
-    "http://127.0.0.1:#{port}"
-  end
-
-  defp stub_loop(listen, handler) do
-    case :gen_tcp.accept(listen, @stub_accept_timeout_ms) do
-      {:ok, sock} ->
-        serve_one(sock, handler)
-        stub_loop(listen, handler)
-
-      {:error, :timeout} ->
-        stub_loop(listen, handler)
-
-      {:error, :closed} ->
-        :ok
-    end
-  end
-
-  defp serve_one(sock, handler) do
-    {:ok, {:http_request, :POST, _, _}} = :gen_tcp.recv(sock, 0)
-    length = recv_content_length(sock, 0)
-    :ok = :inet.setopts(sock, packet: :raw)
-    {:ok, body} = :gen_tcp.recv(sock, length)
-    decoded = Jason.decode!(body)
-    result = handler.(decoded)
-    payload = Jason.encode!(%{"jsonrpc" => "2.0", "id" => decoded["id"], "result" => result})
-
-    :ok =
-      :gen_tcp.send(sock, [
-        "HTTP/1.1 200 OK\r\n",
-        "content-type: application/json\r\n",
-        "content-length: #{byte_size(payload)}\r\n",
-        "connection: close\r\n\r\n",
-        payload
-      ])
-
-    :gen_tcp.close(sock)
-  end
-
-  defp recv_content_length(sock, acc) do
-    case :gen_tcp.recv(sock, 0) do
-      {:ok, :http_eoh} ->
-        acc
-
-      {:ok, {:http_header, _, name, _, value}} ->
-        if header_name(name) == "content-length" do
-          recv_content_length(sock, String.to_integer(header_value(value)))
-        else
-          recv_content_length(sock, acc)
-        end
-    end
-  end
-
-  defp header_name(name) when is_atom(name), do: name |> Atom.to_string() |> String.downcase()
-  defp header_name(name) when is_binary(name), do: String.downcase(name)
-  defp header_name(name) when is_list(name), do: name |> List.to_string() |> String.downcase()
-
-  defp header_value(value) when is_binary(value), do: value
-  defp header_value(value) when is_list(value), do: List.to_string(value)
 end

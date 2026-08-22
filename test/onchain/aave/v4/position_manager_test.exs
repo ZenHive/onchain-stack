@@ -4,6 +4,7 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.V4.PositionManager
   alias Onchain.Address
+  alias Onchain.RPCStub
   alias Onchain.Signer
 
   @spoke "0x94e7A5dCbE816e498b89aB752661904E2F56c485"
@@ -26,10 +27,6 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
   @approve_withdraw_selector <<0xFF, 0xF5, 0x9F, 0x09>>
   @renounce_borrow_selector <<0x5A, 0x4B, 0x72, 0xBC>>
   @renounce_withdraw_selector <<0xEA, 0xB0, 0x73, 0xE3>>
-
-  @rpc_timeout_ms 2_000
-  @stub_ready_timeout_ms 1_000
-  @stub_accept_timeout_ms 5_000
 
   describe "input validation" do
     test "on-behalf-of writes reject an invalid spoke before RPC" do
@@ -295,7 +292,7 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
     setup do
       payloads = allowance_payloads()
       url = start_rpc_stub(fn body -> handle_rpc(body, payloads) end)
-      %{rpc_opts: rpc_opts(url)}
+      %{rpc_opts: RPCStub.rpc_opts(url)}
     end
 
     test "borrowAllowance and withdrawAllowance decode the uint256 return", %{rpc_opts: rpc_opts} do
@@ -426,102 +423,22 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
     end)
   end
 
-  defp rpc_opts(url) do
-    [rpc_url: url, timeout: @rpc_timeout_ms, req_options: [connect_options: [protocols: [:http1]]]]
-  end
-
   defp signer_opts(url) do
-    [private_key: @signer_key, nonce: 0, chain_id: 1] ++ rpc_opts(url)
+    [private_key: @signer_key, nonce: 0, chain_id: 1] ++ RPCStub.rpc_opts(url)
   end
 
+  # `allowance_payloads/0` and the ad hoc revert handlers in "Taker write
+  # reverts" speak the local {:result, _} / {:rpc_error, _} envelope tags
+  # rather than RPCStub's {:error, _}-or-raw-result contract — adapt at the
+  # boundary so the canned payloads and test bodies stay untouched.
   defp start_rpc_stub(handler) do
-    {:ok, listen} =
-      :gen_tcp.listen(0, [:binary, packet: :http_bin, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
-
-    {:ok, port} = :inet.port(listen)
-    parent = self()
-
-    pid =
-      spawn_link(fn ->
-        send(parent, {:stub_ready, self()})
-        stub_loop(listen, handler)
-      end)
-
-    receive do
-      {:stub_ready, ^pid} -> :ok
-    after
-      @stub_ready_timeout_ms -> flunk("JSON-RPC stub failed to start")
-    end
-
-    on_exit(fn ->
-      Process.exit(pid, :kill)
-      :gen_tcp.close(listen)
-    end)
-
-    "http://127.0.0.1:#{port}"
-  end
-
-  defp stub_loop(listen, handler) do
-    case :gen_tcp.accept(listen, @stub_accept_timeout_ms) do
-      {:ok, sock} ->
-        serve_one(sock, handler)
-        stub_loop(listen, handler)
-
-      {:error, :timeout} ->
-        stub_loop(listen, handler)
-
-      {:error, :closed} ->
-        :ok
-    end
-  end
-
-  defp serve_one(sock, handler) do
-    {:ok, {:http_request, :POST, _, _}} = :gen_tcp.recv(sock, 0)
-    length = recv_content_length(sock, 0)
-    :ok = :inet.setopts(sock, packet: :raw)
-    {:ok, body} = :gen_tcp.recv(sock, length)
-    decoded = Jason.decode!(body)
-
-    envelope =
-      case handler.(decoded) do
-        {:rpc_error, error} -> %{"jsonrpc" => "2.0", "id" => decoded["id"], "error" => error}
-        {:result, result} -> %{"jsonrpc" => "2.0", "id" => decoded["id"], "result" => result}
+    RPCStub.start(fn body ->
+      case handler.(body) do
+        {:rpc_error, error} -> {:error, error}
+        {:result, result} -> result
       end
-
-    payload = Jason.encode!(envelope)
-
-    :ok =
-      :gen_tcp.send(sock, [
-        "HTTP/1.1 200 OK\r\n",
-        "content-type: application/json\r\n",
-        "content-length: #{byte_size(payload)}\r\n",
-        "connection: close\r\n\r\n",
-        payload
-      ])
-
-    :gen_tcp.close(sock)
+    end)
   end
-
-  defp recv_content_length(sock, acc) do
-    case :gen_tcp.recv(sock, 0) do
-      {:ok, :http_eoh} ->
-        acc
-
-      {:ok, {:http_header, _, name, _, value}} ->
-        if header_name(name) == "content-length" do
-          recv_content_length(sock, String.to_integer(header_value(value)))
-        else
-          recv_content_length(sock, acc)
-        end
-    end
-  end
-
-  defp header_name(name) when is_atom(name), do: name |> Atom.to_string() |> String.downcase()
-  defp header_name(name) when is_binary(name), do: String.downcase(name)
-  defp header_name(name) when is_list(name), do: name |> List.to_string() |> String.downcase()
-
-  defp header_value(value) when is_binary(value), do: value
-  defp header_value(value) when is_list(value), do: List.to_string(value)
 end
 
 defmodule Onchain.Aave.V4.PositionManagerIntegrationTest do

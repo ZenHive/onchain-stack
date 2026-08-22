@@ -3,6 +3,7 @@ defmodule Onchain.Aave.V4.OracleTest do
 
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.V4.Oracle
+  alias Onchain.RPCStub
 
   @spoke Contracts.address!(:v4_main_spoke)
   @oracle Contracts.address!(:v4_main_spoke_oracle)
@@ -54,17 +55,10 @@ defmodule Onchain.Aave.V4.OracleTest do
   describe "Spoke-scoped IAaveOracle reads" do
     setup do
       payloads = call_payloads()
-      {:ok, seen} = Agent.start_link(fn -> [] end)
-      url = start_rpc_stub(fn body -> handle_eth_call(body, payloads, seen) end)
+      seen = start_supervised!({Agent, fn -> [] end})
+      url = RPCStub.start(fn body -> handle_eth_call(body, payloads, seen) end)
 
-      on_exit(fn ->
-        if Process.alive?(seen), do: Agent.stop(seen)
-      end)
-
-      %{
-        rpc_opts: [rpc_url: url, timeout: 2_000, req_options: [connect_options: [protocols: [:http1]]]],
-        seen: seen
-      }
+      %{rpc_opts: RPCStub.rpc_opts(url), seen: seen}
     end
 
     test "every Task 46-selected read succeeds", %{rpc_opts: rpc_opts} do
@@ -145,26 +139,22 @@ defmodule Onchain.Aave.V4.OracleTest do
     {:ok, feed_bin} = Onchain.Address.validate(@feed)
 
     %{
-      calldata("ORACLE()", []) => encode("(address)", [{oracle_bin}]),
-      calldata("getReservePrice(uint256)", [0]) => encode("(uint256)", [{@weth_price}]),
-      calldata("getReservesPrices(uint256[])", [[0, 1]]) => encode("(uint256[])", [{[@weth_price, @usdc_price]}]),
-      calldata("getReservesPrices(uint256[])", [[]]) => encode("(uint256[])", [{[]}]),
-      calldata("getReservesPrices(uint256[])", [[0]]) => encode("(uint256[])", [{[@weth_price]}]),
-      calldata("getReserveSource(uint256)", [0]) => encode("(address)", [{feed_bin}]),
-      calldata("decimals()", []) => encode("(uint8)", [{8}]),
-      calldata("spoke()", []) => encode("(address)", [{spoke_bin}]),
-      calldata("latestRoundData()", []) => encode("(uint80,int256,uint256,uint256,uint80)", [@round]),
-      calldata("latestAnswer()", []) => encode("(int256)", [{@weth_price}])
+      calldata("ORACLE()", []) => RPCStub.encode("(address)", [{oracle_bin}]),
+      calldata("getReservePrice(uint256)", [0]) => RPCStub.encode("(uint256)", [{@weth_price}]),
+      calldata("getReservesPrices(uint256[])", [[0, 1]]) => RPCStub.encode("(uint256[])", [{[@weth_price, @usdc_price]}]),
+      calldata("getReservesPrices(uint256[])", [[]]) => RPCStub.encode("(uint256[])", [{[]}]),
+      calldata("getReservesPrices(uint256[])", [[0]]) => RPCStub.encode("(uint256[])", [{[@weth_price]}]),
+      calldata("getReserveSource(uint256)", [0]) => RPCStub.encode("(address)", [{feed_bin}]),
+      calldata("decimals()", []) => RPCStub.encode("(uint8)", [{8}]),
+      calldata("spoke()", []) => RPCStub.encode("(address)", [{spoke_bin}]),
+      calldata("latestRoundData()", []) => RPCStub.encode("(uint80,int256,uint256,uint256,uint80)", [@round]),
+      calldata("latestAnswer()", []) => RPCStub.encode("(int256)", [{@weth_price}])
     }
   end
 
   defp calldata(signature, params) do
     {:ok, hex} = Onchain.ABI.encode_call(signature, params)
     String.downcase(hex)
-  end
-
-  defp encode(types, data) do
-    "0x" <> Base.encode16(ABI.encode(types, data), case: :lower)
   end
 
   defp handle_eth_call(%{"method" => "eth_call", "params" => [%{"data" => data, "to" => to} | _]}, payloads, seen) do
@@ -174,87 +164,4 @@ defmodule Onchain.Aave.V4.OracleTest do
       flunk("stub has no payload for data=#{data} to=#{to}")
     end)
   end
-
-  defp start_rpc_stub(handler) do
-    {:ok, listen} =
-      :gen_tcp.listen(0, [:binary, packet: :http_bin, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
-
-    {:ok, port} = :inet.port(listen)
-    parent = self()
-
-    pid =
-      spawn_link(fn ->
-        send(parent, {:stub_ready, self()})
-        stub_loop(listen, handler)
-      end)
-
-    receive do
-      {:stub_ready, ^pid} -> :ok
-    after
-      1_000 -> flunk("JSON-RPC stub failed to start")
-    end
-
-    on_exit(fn ->
-      Process.exit(pid, :kill)
-      :gen_tcp.close(listen)
-    end)
-
-    "http://127.0.0.1:#{port}"
-  end
-
-  defp stub_loop(listen, handler) do
-    case :gen_tcp.accept(listen, 5_000) do
-      {:ok, sock} ->
-        serve_one(sock, handler)
-        stub_loop(listen, handler)
-
-      {:error, :timeout} ->
-        stub_loop(listen, handler)
-
-      {:error, :closed} ->
-        :ok
-    end
-  end
-
-  defp serve_one(sock, handler) do
-    {:ok, {:http_request, :POST, _, _}} = :gen_tcp.recv(sock, 0)
-    length = recv_content_length(sock, 0)
-    :ok = :inet.setopts(sock, packet: :raw)
-    {:ok, body} = :gen_tcp.recv(sock, length)
-    decoded = Jason.decode!(body)
-    result = handler.(decoded)
-    payload = Jason.encode!(%{"jsonrpc" => "2.0", "id" => decoded["id"], "result" => result})
-
-    :ok =
-      :gen_tcp.send(sock, [
-        "HTTP/1.1 200 OK\r\n",
-        "content-type: application/json\r\n",
-        "content-length: #{byte_size(payload)}\r\n",
-        "connection: close\r\n\r\n",
-        payload
-      ])
-
-    :gen_tcp.close(sock)
-  end
-
-  defp recv_content_length(sock, acc) do
-    case :gen_tcp.recv(sock, 0) do
-      {:ok, :http_eoh} ->
-        acc
-
-      {:ok, {:http_header, _, name, _, value}} ->
-        if header_name(name) == "content-length" do
-          recv_content_length(sock, String.to_integer(header_value(value)))
-        else
-          recv_content_length(sock, acc)
-        end
-    end
-  end
-
-  defp header_name(name) when is_atom(name), do: name |> Atom.to_string() |> String.downcase()
-  defp header_name(name) when is_binary(name), do: String.downcase(name)
-  defp header_name(name) when is_list(name), do: name |> List.to_string() |> String.downcase()
-
-  defp header_value(value) when is_binary(value), do: value
-  defp header_value(value) when is_list(value), do: List.to_string(value)
 end
