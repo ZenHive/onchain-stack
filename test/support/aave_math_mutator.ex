@@ -319,8 +319,8 @@ defmodule Onchain.Aave.MathMutator do
   end
 
   @spec classify_survivor(mutant()) :: map()
-  defp classify_survivor(%{id: id, kind: kind, description: description}) do
-    {bucket, evidence} = survivor_bucket(id, kind, description)
+  defp classify_survivor(%{id: id}) do
+    {bucket, evidence} = survivor_bucket(id)
     %{bucket: bucket, evidence: evidence}
   end
 
@@ -332,28 +332,22 @@ defmodule Onchain.Aave.MathMutator do
     FunctionClauseError -> false
   end
 
-  @spec survivor_bucket(String.t(), atom(), String.t()) :: {:equivalent | :gap, String.t()}
-  defp survivor_bucket(id, _kind, _description) when id == "domain.v4.liq.exclusive_max_bonus" do
-    {:equivalent,
-     "at health == health_factor_for_max_bonus the interpolation term is exact (numerator == denominator), so < vs <= both return max_bonus"}
-  end
+  # Only mutants listed here may survive. A generic "< vs <=" classifier would
+  # rubber-stamp a missing equality vector as equivalent.
+  @equivalent_survivors %{
+    "domain.v4.liq.exclusive_max_bonus" =>
+      "at health == health_factor_for_max_bonus the interpolation term is exact (numerator == denominator), so < vs <= both return max_bonus"
+  }
 
-  defp survivor_bucket(_id, :comparison, description) do
-    if inequality_loosening?(description) do
-      {:equivalent, "tightening/loosening a strict inequality on a path that yields the same numeric result"}
-    else
-      {:gap, "survivor has no equivalent/unreachable evidence — close with a vector"}
+  @spec survivor_bucket(String.t()) :: {:equivalent | :gap, String.t()}
+  defp survivor_bucket(id) do
+    case Map.fetch(@equivalent_survivors, id) do
+      {:ok, evidence} ->
+        {:equivalent, evidence}
+
+      :error ->
+        {:gap, "survivor has no equivalent/unreachable evidence — close with a vector"}
     end
-  end
-
-  defp survivor_bucket(_id, _kind, _description) do
-    {:gap, "survivor has no equivalent/unreachable evidence — close with a vector"}
-  end
-
-  @spec inequality_loosening?(String.t()) :: boolean()
-  defp inequality_loosening?(description) do
-    String.contains?(description, "> -> >=") or String.contains?(description, ">= -> >") or
-      String.contains?(description, "< -> <=") or String.contains?(description, "<= -> <")
   end
 
   @spec apply_site(Macro.t(), non_neg_integer()) :: {Macro.t(), map()}
