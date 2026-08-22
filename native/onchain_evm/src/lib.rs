@@ -48,10 +48,10 @@ use alloy_primitives::{Address, Bytes, U256};
 use alloy_provider::Provider;
 use revm::{
     bytecode::Bytecode,
-    context::TxEnv,
+    context::{BlockEnv, TxEnv},
     context_interface::result::{ExecutionResult, Output},
     primitives::TxKind,
-    Context, DatabaseRef, ExecuteCommitEvm, ExecuteEvm, MainBuilder, MainContext,
+    Context, Database, DatabaseRef, ExecuteCommitEvm, ExecuteEvm, MainBuilder, MainContext,
 };
 use revm_database::{AlloyDB, CacheDB, WrapDatabaseAsync};
 
@@ -346,12 +346,12 @@ fn resolve_block_id<'a>(params: &HashMap<String, Term<'a>>) -> Result<BlockId, E
     }
 }
 
-fn build_fork_db(
+fn build_fork(
     rpc_url: &str,
     block_id: BlockId,
     timeout_ms: u64,
     connect_timeout_ms: u64,
-) -> Result<ForkDB, EvmError> {
+) -> Result<(ForkDB, BlockEnv), EvmError> {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -374,11 +374,31 @@ fn build_fork_db(
         .connect_client(rpc_client)
         .erased();
 
-    let alloy_db = AlloyDB::new(provider, block_id);
+    let block = rt
+        .block_on(async { provider.get_block(block_id).await })
+        .map_err(classify_transport_error)?
+        .ok_or_else(|| EvmError::ForkError(format!("block not found: {block_id:?}")))?;
+    let header = &block.header.inner;
+    let block_env = BlockEnv {
+        number: U256::from(header.number),
+        beneficiary: header.beneficiary,
+        timestamp: U256::from(header.timestamp),
+        gas_limit: header.gas_limit,
+        basefee: header.base_fee_per_gas.unwrap_or_default(),
+        prevrandao: Some(header.mix_hash),
+        ..Default::default()
+    };
+
+    let fork_block_id = if block_id.is_pending() {
+        block_id
+    } else {
+        BlockId::number(header.number)
+    };
+    let alloy_db = AlloyDB::new(provider, fork_block_id);
     let wrapped_db = WrapDatabaseAsync::with_runtime(alloy_db, rt);
     let cache_db = CacheDB::new(wrapped_db);
 
-    Ok(cache_db)
+    Ok((cache_db, block_env))
 }
 
 fn apply_state_overrides<'a>(
@@ -398,10 +418,8 @@ fn apply_state_overrides<'a>(
         let addr = decode_hex_to_address(addr_hex)?;
 
         let mut info = db
-            .cache
-            .accounts
-            .get(&addr)
-            .map(|a| a.info.clone())
+            .basic(addr)
+            .map_err(classify_transport_error)?
             .unwrap_or_default();
 
         if let Some(balance_hex) = fields.get("balance") {
@@ -549,7 +567,8 @@ fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, Ev
     let timeout_ms = get_optional_u64_param(params, "timeout_ms")?.unwrap_or(DEFAULT_TIMEOUT_MS);
     let cp = extract_call_params(params)?;
 
-    let mut db = build_fork_db(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
+    let (mut db, block_env) =
+        build_fork(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
 
     let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
@@ -561,8 +580,12 @@ fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, Ev
     // wrong spec to non-mainnet chains — worse than the latest-spec default. A
     // correct fix needs a chain-aware fork schedule keyed on chain id; deferred.
     let mut evm = Context::mainnet()
+        .with_block(block_env)
         .with_db(&mut db)
-        .modify_cfg_chained(|cfg| cfg.disable_nonce_check = true)
+        .modify_cfg_chained(|cfg| {
+            cfg.disable_nonce_check = true;
+            cfg.disable_base_fee = true;
+        })
         .build_mainnet();
 
     let result = evm.transact(tx).map_err(classify_transport_error)?;
@@ -590,13 +613,18 @@ fn do_simulate_transaction<'a>(params: &HashMap<String, Term<'a>>) -> Result<TxR
     let timeout_ms = get_optional_u64_param(params, "timeout_ms")?.unwrap_or(DEFAULT_TIMEOUT_MS);
     let cp = extract_call_params(params)?;
 
-    let mut db = build_fork_db(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
+    let (mut db, block_env) =
+        build_fork(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
 
     let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
     let mut evm = Context::mainnet()
+        .with_block(block_env)
         .with_db(&mut db)
-        .modify_cfg_chained(|cfg| cfg.disable_nonce_check = true)
+        .modify_cfg_chained(|cfg| {
+            cfg.disable_nonce_check = true;
+            cfg.disable_base_fee = true;
+        })
         .build_mainnet();
 
     let result = evm.transact(tx).map_err(classify_transport_error)?;
@@ -633,7 +661,8 @@ fn do_simulate_batch<'a>(params: &HashMap<String, Term<'a>>) -> Result<Vec<TxRes
         return Ok(Vec::new());
     }
 
-    let mut db = build_fork_db(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
+    let (mut db, block_env) =
+        build_fork(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
     apply_state_overrides(&mut db, params)?;
     let base_nonce = current_nonce(&db, from)?;
 
@@ -657,7 +686,11 @@ fn do_simulate_batch<'a>(params: &HashMap<String, Term<'a>>) -> Result<Vec<TxRes
         };
 
         let tx = build_tx_with_nonce(&cp, Bytes::from(data), Some(nonce))?;
-        let mut evm = Context::mainnet().with_db(&mut db).build_mainnet();
+        let mut evm = Context::mainnet()
+            .with_block(block_env.clone())
+            .with_db(&mut db)
+            .modify_cfg_chained(|cfg| cfg.disable_base_fee = true)
+            .build_mainnet();
 
         let result = evm.transact_commit(tx).map_err(classify_transport_error)?;
 

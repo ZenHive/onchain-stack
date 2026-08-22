@@ -3,6 +3,7 @@ defmodule Onchain.EVM.IntegrationTest do
 
   alias Onchain.ABI
   alias Onchain.EVM
+  alias Onchain.RPC
 
   @moduletag :integration
 
@@ -15,7 +16,17 @@ defmodule Onchain.EVM.IntegrationTest do
   # Uniswap V2 Router02 on mainnet
   @uniswap_v2_router "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
 
+  # Multicall3 on mainnet
+  @multicall3_address "0xcA11bde05977b3631167028862bE2a173976CA11"
+
+  # Aave V3 Pool on mainnet and a funded USDC holder at the pinned block
+  @aave_v3_pool "0x87870Bca3F3fD6335C3F4ce8392D69350B4fa4E2"
+  @usdc_holder "0x28C6c06298d514Db089934071355E5743bf21d60"
+  @supply_amount 1_000_000
+  @aave_referral_code 0
+
   @fork_block 20_000_000
+  @fork_timestamp 1_717_281_407
   @expected_usdc_total_supply_at_fork 24_251_286_965_837_135
 
   @override_contract "0x0000000000000000000000000000000000001000"
@@ -24,6 +35,7 @@ defmodule Onchain.EVM.IntegrationTest do
   @balance_reader_runtime "0x4760005260206000f3"
   @storage_reader_runtime "0x60005460005260206000f3"
   @create_child_runtime "0x600060006000f060005260206000f3"
+  @block_env_reader_runtime "0x41600052426020524360405244606052456080524860a05260c06000f3"
 
   @word_42 "0x000000000000000000000000000000000000000000000000000000000000002a"
   @word_123 "0x000000000000000000000000000000000000000000000000000000000000007b"
@@ -32,6 +44,31 @@ defmodule Onchain.EVM.IntegrationTest do
 
   defp rpc_opts do
     [rpc_url: Onchain.RPCCase.rpc_url!(), block: @fork_block]
+  end
+
+  defp rpc_opts_without_block do
+    [rpc_url: Onchain.RPCCase.rpc_url!()]
+  end
+
+  defp multicall_uint(signature, opts) do
+    {:ok, calldata} = ABI.encode_call(signature, [])
+    assert {:ok, output} = EVM.simulate_call(@multicall3_address, calldata, opts)
+    assert {:ok, [value]} = ABI.decode_response("(uint256)", output)
+    value
+  end
+
+  defp assert_latest_block_env(opts) do
+    rpc_url = Keyword.fetch!(opts, :rpc_url)
+
+    assert {:ok, before_number} = RPC.block_number(rpc_url: rpc_url)
+    simulated_number = multicall_uint("getBlockNumber()", opts)
+    assert {:ok, after_number} = RPC.block_number(rpc_url: rpc_url)
+    assert simulated_number in before_number..after_number
+
+    assert {:ok, before_block} = RPC.get_block_by_number("latest", rpc_url: rpc_url)
+    simulated_timestamp = multicall_uint("getCurrentBlockTimestamp()", opts)
+    assert {:ok, after_block} = RPC.get_block_by_number("latest", rpc_url: rpc_url)
+    assert simulated_timestamp in before_block.timestamp..after_block.timestamp
   end
 
   defp assert_plausible_gas(gas_used) do
@@ -53,6 +90,40 @@ defmodule Onchain.EVM.IntegrationTest do
   end
 
   describe "simulate_call/3" do
+    test "uses the pinned block number and timestamp" do
+      assert multicall_uint("getBlockNumber()", rpc_opts()) == @fork_block
+      assert multicall_uint("getCurrentBlockTimestamp()", rpc_opts()) == @fork_timestamp
+    end
+
+    test "uses the latest block environment when requested or omitted" do
+      assert_latest_block_env(rpc_url: Onchain.RPCCase.rpc_url!(), block: "latest")
+      assert_latest_block_env(rpc_opts_without_block())
+    end
+
+    test "populates the forked block environment fields" do
+      assert {:ok, expected_block} =
+               RPC.get_block_by_number(@fork_block, rpc_url: Onchain.RPCCase.rpc_url!())
+
+      overrides = %{@override_contract => %{"code" => @block_env_reader_runtime}}
+
+      assert {:ok, output} =
+               EVM.simulate_call(
+                 @override_contract,
+                 "0x",
+                 rpc_opts() ++ [state_overrides: overrides]
+               )
+
+      assert {:ok, [coinbase, timestamp, number, prevrandao, gas_limit, base_fee]} =
+               ABI.decode_response("(address,uint256,uint256,bytes32,uint256,uint256)", output)
+
+      assert coinbase == Onchain.Hex.decode!(expected_block.miner)
+      assert timestamp == expected_block.timestamp
+      assert number == expected_block.number
+      assert prevrandao == Onchain.Hex.decode!(expected_block.mix_hash)
+      assert gas_limit == expected_block.gas_limit
+      assert base_fee == expected_block.base_fee_per_gas
+    end
+
     test "USDC totalSupply at pinned block returns known uint256" do
       {:ok, calldata} = ABI.encode_call("totalSupply()", [])
 
@@ -86,7 +157,7 @@ defmodule Onchain.EVM.IntegrationTest do
           1,
           [usdc_address_bin(), weth_address_bin()],
           zero_address_bin(),
-          1
+          @fork_timestamp
         ])
 
       assert {:error, {:evm_revert, revert_data}} =
@@ -104,6 +175,27 @@ defmodule Onchain.EVM.IntegrationTest do
   end
 
   describe "simulate_call/3 with state overrides" do
+    test "balance, nonce, and storage overrides preserve un-fetched contract code" do
+      {:ok, calldata} = ABI.encode_call("balanceOf(address)", [zero_address_bin()])
+
+      assert {:ok, expected_output} =
+               RPC.eth_call(@weth_address, calldata,
+                 rpc_url: Onchain.RPCCase.rpc_url!(),
+                 block: @fork_block
+               )
+
+      overrides = [
+        %{"balance" => "0x2a"},
+        %{"nonce" => "1"},
+        %{"storage" => "{}"}
+      ]
+
+      Enum.each(overrides, fn fields ->
+        opts = rpc_opts() ++ [state_overrides: %{@weth_address => fields}]
+        assert {:ok, ^expected_output} = EVM.simulate_call(@weth_address, calldata, opts)
+      end)
+    end
+
     test "balance override changes simulated selfbalance" do
       overrides = %{
         @override_contract => %{"code" => @balance_reader_runtime, "balance" => "0x2a"},
@@ -178,7 +270,7 @@ defmodule Onchain.EVM.IntegrationTest do
           1,
           [usdc_address_bin(), weth_address_bin()],
           zero_address_bin(),
-          1
+          @fork_timestamp
         ])
 
       assert {:ok, %{success: false} = tx_result} =
@@ -217,6 +309,34 @@ defmodule Onchain.EVM.IntegrationTest do
   end
 
   describe "simulate_batch/2" do
+    test "Aave V3 supply uses the forked block timestamp" do
+      {:ok, approve_data} =
+        ABI.encode_call("approve(address,uint256)", [
+          Onchain.Hex.decode!(@aave_v3_pool),
+          @supply_amount
+        ])
+
+      {:ok, supply_data} =
+        ABI.encode_call("supply(address,uint256,address,uint16)", [
+          usdc_address_bin(),
+          @supply_amount,
+          Onchain.Hex.decode!(@usdc_holder),
+          @aave_referral_code
+        ])
+
+      calls = [
+        {@usdc_address, approve_data},
+        {@aave_v3_pool, supply_data}
+      ]
+
+      assert {:ok, [approve_result, supply_result]} =
+               EVM.simulate_batch(calls, rpc_opts() ++ [from: @usdc_holder])
+
+      assert approve_result.success == true
+      assert {:ok, [true]} = ABI.decode_response("(bool)", approve_result.output)
+      assert supply_result.success == true
+    end
+
     test "batch multiple calls on shared fork" do
       {:ok, total_supply_data} = ABI.encode_call("totalSupply()", [])
       {:ok, decimals_data} = ABI.encode_call("decimals()", [])
