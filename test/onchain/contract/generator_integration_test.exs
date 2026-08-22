@@ -2,6 +2,7 @@ defmodule Onchain.Contract.GeneratorIntegrationTest do
   use ExUnit.Case, async: true
 
   alias Onchain.Contract.Generator
+  alias Onchain.Multicall
 
   @moduletag :integration
 
@@ -29,6 +30,7 @@ defmodule Onchain.Contract.GeneratorIntegrationTest do
   @usdc "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
   # Vitalik's address
   @vitalik "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+  @archive_block 20_000_000
 
   describe "Chainlink generated module" do
     test "decimals returns 8 for ETH/USD feed" do
@@ -80,6 +82,46 @@ defmodule Onchain.Contract.GeneratorIntegrationTest do
       assert {:ok, [balance]} = ERC20Module.balance_of(@usdc, @vitalik, rpc_url: rpc_url)
       assert is_integer(balance)
       assert balance >= 0
+    end
+  end
+
+  describe "generated Multicall helpers" do
+    test "build and decode a real aggregate3 batch at an archive block" do
+      rpc_url = Onchain.RPCCase.rpc_url!()
+
+      assert {:ok, decimals_call} =
+               ChainlinkModule.Multicall.decimals(@chainlink_eth_usd)
+
+      assert {:ok, latest_round_data_call} =
+               ChainlinkModule.Multicall.latest_round_data(@chainlink_eth_usd)
+
+      assert {:ok, [decimals_raw, latest_round_data_raw]} =
+               Multicall.aggregate3(
+                 [decimals_call, latest_round_data_call],
+                 rpc_url: rpc_url,
+                 block: @archive_block
+               )
+
+      decimals_result = ChainlinkModule.Multicall.decode_decimals(decimals_raw)
+
+      latest_round_data_result =
+        ChainlinkModule.Multicall.decode_latest_round_data(latest_round_data_raw)
+
+      assert {:ok, [8]} = decimals_result
+      assert {:ok, [_, answer, _, _, _]} = latest_round_data_result
+      assert answer > 0
+
+      assert decimals_result ==
+               ChainlinkModule.decimals(@chainlink_eth_usd,
+                 rpc_url: rpc_url,
+                 block: @archive_block
+               )
+
+      assert latest_round_data_result ==
+               ChainlinkModule.latest_round_data(@chainlink_eth_usd,
+                 rpc_url: rpc_url,
+                 block: @archive_block
+               )
     end
   end
 end

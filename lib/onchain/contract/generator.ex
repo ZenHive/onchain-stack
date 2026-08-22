@@ -33,6 +33,8 @@ defmodule Onchain.Contract.Generator do
     encodes calldata via `Onchain.ABI.encode_call/2` and delegates to
     `Onchain.Signer.send_transaction/3`
   - **Bang variants**: `fn_name!` that raises on error
+  - **`Multicall` helpers**: typed call builders and result decoders for
+    `Onchain.Multicall.aggregate3/2`
   - **`__contract_abi__/0`**: returns the full parsed ABI map
 
   ## Address Validation
@@ -103,6 +105,7 @@ defmodule Onchain.Contract.Generator do
     dialyzer_annotations = generate_dialyzer(disambiguated)
     enum_attrs = if is_sol, do: generate_enum_fns(abi), else: []
     struct_modules = if is_sol, do: generate_struct_modules(abi, env.module), else: []
+    multicall_module = generate_multicall_module(disambiguated)
     fn_asts = Enum.flat_map(disambiguated, &generate_function(&1, is_sol))
 
     quote do
@@ -110,6 +113,7 @@ defmodule Onchain.Contract.Generator do
       unquote_splicing(dialyzer_annotations)
       unquote_splicing(enum_attrs)
       unquote_splicing(struct_modules)
+      unquote(multicall_module)
       unquote_splicing(fn_asts)
       unquote(abi_fn)
     end
@@ -310,6 +314,10 @@ defmodule Onchain.Contract.Generator do
     """
     Auto-generated contract module via `Onchain.Contract.Generator`.
 
+    Read functions also have typed call builders and result decoders in the
+    nested `Multicall` module. These helpers target on-chain
+    `Onchain.Multicall.aggregate3/2` results, not local EVM simulation results.
+
     ## Functions
 
     | Function | Solidity | Type |
@@ -458,6 +466,8 @@ defmodule Onchain.Contract.Generator do
     var_asts = Enum.map(input_vars, fn {vname, _ty} -> Macro.var(vname, nil) end)
     signature = func.signature
     return_type = func.return_type
+    output_spec = output_values_spec(func.outputs)
+    result_spec = quote(do: {:ok, unquote(output_spec)} | {:error, term()})
 
     # Build the params list for Contract.call — replace address vars with validated ones
     validated_map = Map.new(address_validations)
@@ -476,7 +486,7 @@ defmodule Onchain.Contract.Generator do
       quote do
         @doc unquote(doc)
         @spec unquote(name)(String.t() | binary(), unquote_splicing(input_spec_types(input_vars)), keyword()) ::
-                {:ok, list()} | {:error, term()}
+                unquote(result_spec)
         def unquote(name)(contract, unquote_splicing(var_asts), opts \\ []) do
           unquote(with_chain)
         end
@@ -484,7 +494,7 @@ defmodule Onchain.Contract.Generator do
       quote do
         @doc unquote(doc <> " Raises on error.")
         @spec unquote(bang_name)(String.t() | binary(), unquote_splicing(input_spec_types(input_vars)), keyword()) ::
-                list()
+                unquote(output_spec)
         def unquote(bang_name)(contract, unquote_splicing(var_asts), opts \\ []) do
           unquote(build_bang_body(name, var_asts))
         end
@@ -615,6 +625,123 @@ defmodule Onchain.Contract.Generator do
     {:with, [], validation_clauses ++ [encode_clause] ++ [[do: body]]}
   end
 
+  # --- Multicall Generation ---
+
+  @doc false
+  @spec generate_multicall_module([map()]) :: Macro.t()
+  defp generate_multicall_module(functions) do
+    helper_fns =
+      functions
+      |> Enum.filter(&(&1.state_mutability in ["view", "pure"]))
+      |> Enum.flat_map(&generate_multicall_function/1)
+
+    quote do
+      defmodule Multicall do
+        @moduledoc """
+        Typed call builders and result decoders for `Onchain.Multicall.aggregate3/2`.
+
+        Builders return raw Multicall3 entries. Decoders accept the corresponding
+        `{success, return_data}` entry returned by `aggregate3/2`.
+        """
+
+        @typedoc "An entry accepted by `Onchain.Multicall.aggregate3/2`."
+        @type call_entry :: {String.t(), boolean(), String.t()}
+
+        @typedoc "An individual raw result returned by `Onchain.Multicall.aggregate3/2`."
+        @type raw_result :: {boolean(), String.t()}
+
+        unquote_splicing(helper_fns)
+      end
+    end
+  end
+
+  @doc false
+  @spec generate_multicall_function(map()) :: [Macro.t()]
+  defp generate_multicall_function(func) do
+    name = to_identifier_atom(func.elixir_name)
+    decoder_name = to_identifier_atom("decode_" <> func.elixir_name)
+    input_vars = build_input_vars(func.inputs)
+    var_asts = Enum.map(input_vars, fn {vname, _ty} -> Macro.var(vname, nil) end)
+    contract = Macro.var(:contract, nil)
+    allow_failure = Macro.var(:allow_failure, nil)
+    address_validations = build_address_validations(func.inputs)
+    validated_map = Map.new(address_validations)
+
+    call_params =
+      Enum.map(input_vars, fn {vname, _ty} ->
+        case Map.get(validated_map, vname) do
+          nil -> Macro.var(vname, nil)
+          validated -> Macro.var(validated, nil)
+        end
+      end)
+
+    builder_body = build_multicall_with_chain(address_validations, func.signature, call_params)
+    output_spec = output_values_spec(func.outputs)
+    result_spec = quote(do: {:ok, unquote(output_spec)} | {:error, term()})
+
+    [
+      quote do
+        @doc "Builds an aggregate3 call entry for `#{unquote(func.signature)}`."
+        @spec unquote(name)(
+                String.t() | binary(),
+                unquote_splicing(input_spec_types(input_vars)),
+                boolean()
+              ) :: {:ok, call_entry()} | {:error, term()}
+        def unquote(name)(
+              unquote(contract),
+              unquote_splicing(var_asts),
+              unquote(allow_failure) \\ true
+            ) do
+          unquote(builder_body)
+        end
+      end,
+      quote do
+        @doc "Decodes an aggregate3 result for `#{unquote(func.signature)}`."
+        @spec unquote(decoder_name)(raw_result()) :: unquote(result_spec)
+        def unquote(decoder_name)({true, data_hex}) do
+          Onchain.ABI.decode_response(unquote(func.return_type), data_hex)
+        end
+
+        def unquote(decoder_name)({false, data_hex}), do: {:error, data_hex}
+      end
+    ]
+  end
+
+  @doc false
+  @spec build_multicall_with_chain([{atom(), atom()}], String.t(), [Macro.t()]) :: Macro.t()
+  defp build_multicall_with_chain(validations, signature, call_params) do
+    contract_bin = Macro.var(:contract_bin, nil)
+    calldata_hex = Macro.var(:calldata_hex, nil)
+    contract = Macro.var(:contract, nil)
+    allow_failure = Macro.var(:allow_failure, nil)
+
+    contract_clause =
+      {:<-, [], [{:ok, contract_bin}, quote(do: Onchain.Address.validate(unquote(contract)))]}
+
+    validation_clauses =
+      Enum.map(validations, fn {var_name, validated_name} ->
+        {:<-, [],
+         [
+           {:ok, Macro.var(validated_name, nil)},
+           quote(do: Onchain.Address.validate(unquote(Macro.var(var_name, nil))))
+         ]}
+      end)
+
+    encode_clause =
+      {:<-, [],
+       [
+         {:ok, calldata_hex},
+         quote(do: Onchain.ABI.encode_call(unquote(signature), unquote(call_params)))
+       ]}
+
+    body =
+      quote do
+        {:ok, {Onchain.Hex.encode(unquote(contract_bin)), unquote(allow_failure), unquote(calldata_hex)}}
+      end
+
+    {:with, [], [contract_clause] ++ validation_clauses ++ [encode_clause] ++ [[do: body]]}
+  end
+
   # --- Type Mapping ---
 
   @doc false
@@ -625,15 +752,72 @@ defmodule Onchain.Contract.Generator do
 
   @doc false
   @spec solidity_to_elixir_spec(String.t()) :: Macro.t()
-  defp solidity_to_elixir_spec("address"), do: quote(do: String.t() | binary())
-  defp solidity_to_elixir_spec("bool"), do: quote(do: boolean())
-  defp solidity_to_elixir_spec("string"), do: quote(do: String.t())
-  defp solidity_to_elixir_spec("bytes"), do: quote(do: binary())
-  defp solidity_to_elixir_spec("int" <> _), do: quote(do: integer())
-  defp solidity_to_elixir_spec("uint" <> _), do: quote(do: non_neg_integer())
-  defp solidity_to_elixir_spec("bytes" <> _), do: quote(do: binary())
-  defp solidity_to_elixir_spec("tuple"), do: quote(do: tuple())
-  defp solidity_to_elixir_spec(_), do: quote(do: term())
+  defp solidity_to_elixir_spec(type) do
+    case strip_one_array_suffix(type) do
+      {:array, element_type} ->
+        element_spec = solidity_to_elixir_spec(element_type)
+        quote(do: [unquote(element_spec)])
+
+      :scalar ->
+        solidity_scalar_to_elixir_spec(type)
+    end
+  end
+
+  @doc false
+  @spec solidity_scalar_to_elixir_spec(String.t()) :: Macro.t()
+  defp solidity_scalar_to_elixir_spec("address"), do: quote(do: String.t() | binary())
+  defp solidity_scalar_to_elixir_spec("bool"), do: quote(do: boolean())
+  defp solidity_scalar_to_elixir_spec("string"), do: quote(do: String.t())
+  defp solidity_scalar_to_elixir_spec("bytes"), do: quote(do: binary())
+  defp solidity_scalar_to_elixir_spec("int" <> _), do: quote(do: integer())
+  defp solidity_scalar_to_elixir_spec("uint" <> _), do: quote(do: non_neg_integer())
+  defp solidity_scalar_to_elixir_spec("bytes" <> _), do: quote(do: binary())
+  defp solidity_scalar_to_elixir_spec("tuple"), do: quote(do: tuple())
+  defp solidity_scalar_to_elixir_spec(_), do: quote(do: term())
+
+  @doc false
+  @spec output_values_spec([map()]) :: Macro.t()
+  defp output_values_spec([]), do: quote(do: [])
+
+  defp output_values_spec(outputs) do
+    union_spec =
+      outputs
+      |> Enum.map(&decoded_param_spec/1)
+      |> Enum.reduce(fn spec, union -> {:|, [], [union, spec]} end)
+
+    quote(do: [unquote(union_spec)])
+  end
+
+  @doc false
+  @spec decoded_param_spec(map()) :: Macro.t()
+  defp decoded_param_spec(param) do
+    case strip_one_array_suffix(param.ty) do
+      {:array, element_type} ->
+        element_spec = decoded_param_spec(%{param | ty: element_type})
+        quote(do: [unquote(element_spec)])
+
+      :scalar ->
+        decoded_scalar_spec(param)
+    end
+  end
+
+  @doc false
+  @spec decoded_scalar_spec(map()) :: Macro.t()
+  defp decoded_scalar_spec(%{ty: "tuple", components: components}) do
+    {:{}, [], Enum.map(components, &decoded_param_spec/1)}
+  end
+
+  defp decoded_scalar_spec(%{ty: "address"}), do: quote(do: binary())
+  defp decoded_scalar_spec(%{ty: type}), do: solidity_scalar_to_elixir_spec(type)
+
+  @doc false
+  @spec strip_one_array_suffix(String.t()) :: {:array, String.t()} | :scalar
+  defp strip_one_array_suffix(type) do
+    case Regex.run(~r/^(.+)\[[0-9]*\]$/, type) do
+      [_, element_type] -> {:array, element_type}
+      nil -> :scalar
+    end
+  end
 
   # --- Struct Generation (.sol only) ---
 

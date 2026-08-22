@@ -3,6 +3,9 @@ defmodule Onchain.Contract.GeneratorTest do
 
   alias Onchain.Contract.Generator
 
+  @contract_address "0x1111111111111111111111111111111111111111"
+  @user_address "0x2222222222222222222222222222222222222222"
+
   # --- Test modules defined inline ---
 
   # ABI JSON module (Chainlink aggregator)
@@ -89,6 +92,7 @@ defmodule Onchain.Contract.GeneratorTest do
           struct Item { uint256 id; address owner; }
           struct Basket { Item[] items; uint256 total; }
           function getBasket() external view returns (Basket memory);
+          function getItems() external view returns (Item[] memory);
       }
       """
   end
@@ -449,6 +453,57 @@ defmodule Onchain.Contract.GeneratorTest do
     end
   end
 
+  describe "generated Multicall helper module" do
+    test "builds aggregate3 entries with the direct wrapper argument types" do
+      assert {:ok, {@contract_address, true, calldata}} =
+               SolModule.Multicall.get_user_data(@contract_address, @user_address)
+
+      assert {:ok, user_bin} = Onchain.Address.validate(@user_address)
+
+      assert {:ok, expected_calldata} =
+               Onchain.ABI.encode_call("getUserData(address)", [user_bin])
+
+      assert calldata == expected_calldata
+
+      assert {:ok, {@contract_address, false, _calldata}} =
+               SolModule.Multicall.get_user_data(@contract_address, @user_address, false)
+    end
+
+    test "returns address validation errors while building entries" do
+      assert {:error, {:invalid_address, "invalid contract"}} =
+               SolModule.Multicall.get_user_data("invalid contract", @user_address)
+
+      assert {:error, {:invalid_address, "invalid user"}} =
+               SolModule.Multicall.get_user_data(@contract_address, "invalid user")
+    end
+
+    test "decodes a scalar result like the direct wrapper" do
+      result = raw_result("(uint8)", [8])
+
+      assert {:ok, [8]} = ChainlinkModule.Multicall.decode_decimals({true, result})
+    end
+
+    test "decodes a Solidity struct result like the direct wrapper" do
+      owner = <<3::160>>
+      result = raw_result("((uint256,address,bool))", [{42, owner, true}])
+
+      assert {:ok, [{42, ^owner, true}]} =
+               SolModule.Multicall.decode_get_user_data({true, result})
+    end
+
+    test "decodes an array result like the direct wrapper" do
+      result = raw_result("((uint256,address)[])", [[{1, <<4::160>>}, {2, <<5::160>>}]])
+
+      assert {:ok, [[{1, <<4::160>>}, {2, <<5::160>>}]]} =
+               StructArrayModule.Multicall.decode_get_items({true, result})
+    end
+
+    test "preserves failed aggregate3 entries without treating them as simulation results" do
+      assert {:error, "0xdeadbeef"} =
+               ChainlinkModule.Multicall.decode_decimals({false, "0xdeadbeef"})
+    end
+  end
+
   # --- Unit tests: resolve_abi ---
 
   describe "resolve_abi/1" do
@@ -554,5 +609,11 @@ defmodule Onchain.Contract.GeneratorTest do
                &String.ends_with?(&1, "lib/aave-v3-core/contracts/interfaces/IPoolAddressesProvider.sol")
              )
     end
+  end
+
+  defp raw_result(type, values) do
+    type
+    |> ABI.encode([List.to_tuple(values)])
+    |> Onchain.Hex.encode()
   end
 end
