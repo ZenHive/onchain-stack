@@ -23,6 +23,22 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
   GHSA-x3gh-xhj4-3vq8. Both native lockfiles still pass `cargo audit`
   with only the upstream `derivative` / `paste` maintenance warnings.
 
+## [0.5.1] — 2026-08-22
+
+### Changed
+
+- **Widened `{:descripex, "~> 0.12.0"}` → `{:descripex, "~> 0.12"}`.** The
+  three-segment cap propagated into every consumer's graph — because descripex
+  is a runtime requirement, this package's bound capped *its* consumers too,
+  regardless of what they declared — and made every descripex minor a forced
+  release here. In-family it guarded nothing: `mix.lock` is committed, so a new
+  descripex only arrives through a deliberate `mix deps.update` behind
+  `mix ci`. Widening is not a narrowing; nothing that resolved before can fail
+  to resolve now.
+- **Locks refreshed to onchain 0.13.0 and descripex 0.13.0.**
+- **`ex_ast` raised to 0.13.1** via `override: true` over reach 2.8.2's
+  `~> 0.12.0`, matching the rest of the family. Dev/test only, never shipped.
+
 ## [0.5.0] — 2026-08-17
 
 No public Elixir API changed. The native execution engine now follows REVM 42,

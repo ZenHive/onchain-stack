@@ -1,7 +1,7 @@
 defmodule OnchainEvm.MixProject do
   use Mix.Project
 
-  @version "0.5.0"
+  @version "0.5.1"
   @source_url "https://github.com/ZenHive/onchain_evm"
 
   def project do
@@ -78,7 +78,7 @@ defmodule OnchainEvm.MixProject do
 
       # Vibe analyzer stack (matches the onchain family — cartouche/onchain)
       {:ex_dna, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:ex_ast, "~> 0.12", only: [:dev, :test], runtime: false},
+      {:ex_ast, "~> 0.13", override: true, only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
       {:reach, "~> 2.7", only: [:dev, :test], runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false}
