@@ -102,7 +102,7 @@ Standalone tasks: Rust unit tests, tokio runtime reuse, clippy CI, codegen exten
 | Task 44 | ⬜ | 🎁 **standalone** · *native/onchain_solidity* · Stop leaking Rust `Debug` renderings into Elixir error and type strings [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 | Task 51 | ⛔ | 🎁 **standalone** · *(cross-cutting research)* · Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
 | Task 52 | ✅ | 🎁 **standalone** · *Onchain.Contract.Generator* · Codegen-emit per-contract Multicall helper modules [D:5/B:7/U:6 → Eff:1.3?] 📋 |
-| Task 53 | ⬜ | 🎁 **standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases [D:6/B:8/U:8 → Eff:1.33?] 📋 |
+| Task 53 | 🔶 | 🎁 **standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases [D:6/B:8/U:8 → Eff:1.33?] 📋 ⛔ Operator policy decision required: this repo deleted .github/ family-wide on 2026-08-22 and mix ci is now the only gate. rustler_precompiled needs a release artifact mechanism, so the task cannot proceed until it is settled whether CI returns for releases. If it does not, reduce to a locally-built artifact story or close. |
 | Task 56 | ⬜ | 🎁 **standalone** · 🔒 Independent EVM semantics and exact-bytecode verification harness [D:8/B:10/U:8 → Eff:1.12] 📋 |
 | Task 59 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax [D:3/B:8/U:7 → Eff:2.5] 🎯 |
 | Task 61 | 🔄 | 🎁 **standalone** · *native/onchain_solidity* · Migrate Solidity source parsing from solang-parser to solar-parse [D:6/B:8/U:7 → Eff:1.25] 📋 |

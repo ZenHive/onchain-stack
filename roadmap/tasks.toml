@@ -609,13 +609,9 @@ shipped_in = "904dfd817e8277a4c85f42b21d530d67e2f9eeb3"
 id = 53
 phase = 3
 bundle = "standalone"
-status = "pending"
+status = "blocked"
 title = "Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases"
-module = "Both native crates"
 scores = { d = 6, b = 8, u = 8 }
-assignee = "cursor"
-model = "cursor-grok-4.6-high"
-touches = ["lib/onchain/evm.ex", "lib/onchain/solidity.ex", "mix.exs", "native/onchain_evm/Cargo.toml", "native/onchain_solidity/Cargo.toml", "README.md", ".github/"]
 acceptance_criteria = [
   "Both NIF modules load from a prebuilt artifact when one matches the host, and fall back to building from source when it does not",
   "The force-from-source environment variables are documented in the README and verified to actually rebuild",
@@ -626,6 +622,11 @@ acceptance_criteria = [
 out_of_scope = [
   "Publishing to hex.pm in this task"
 ]
+touches = ["lib/onchain/evm.ex", "lib/onchain/solidity.ex", "mix.exs", "native/onchain_evm/Cargo.toml", "native/onchain_solidity/Cargo.toml", "README.md", ".github/"]
+assignee = "cursor"
+module = "Both native crates"
+model = "cursor-grok-4.6-high"
+blocked_reason = "Operator policy decision required: this repo deleted .github/ family-wide on 2026-08-22 and mix ci is now the only gate. rustler_precompiled needs a release artifact mechanism, so the task cannot proceed until it is settled whether CI returns for releases. If it does not, reduce to a locally-built artifact story or close."
 body = """
 Hex-release blocker (see "Path to hex.pm Release"). Without prebuilt artifacts, every consumer of `onchain_evm` needs a working Rust toolchain plus several minutes to compile `revm` + `alloy` + `solang-parser` from source.
 
@@ -719,7 +720,7 @@ title = "Independent EVM semantics and exact-bytecode verification harness"
 scores = { d = 8, b = 10, u = 8 }
 markers = ["security"]
 acceptance_criteria = ["Pinned official Ethereum execution vectors exercise representative fork-sensitive CALL/CREATE/storage/revert/log/gas semantics through the revm-backed executor", "A separately implemented KEVM/Kontrol oracle evaluates the same exact bytecode and initial state; status, return/revert data, logs and relevant post-state agree", "At least one deliberately corrupted storage/call/revert behavior is detected and makes the verification run fail", "A commit-bound ledger records vector provenance, fork/EVM revision, initial state, revm/KEVM/Kontrol versions, bytecode hashes, configurations and outcomes", "The harness adds no runtime public API; focused tests and the repository's canonical gate pass"]
-touches = ["native/onchain_evm/", "test/onchain/"]
+touches = ["native/onchain_evm/", "native/onchain_evm/src/lib.rs", "test/onchain/", "test/onchain/evm_test.exs", "test/onchain/evm_integration_test.exs"]
 depends_on = ["58"]
 assignee = "codex"
 model = "gpt-5.6-sol"

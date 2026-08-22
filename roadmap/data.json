@@ -826,7 +826,7 @@
       "id": 53,
       "phase": 3,
       "bundle": "standalone",
-      "status": "pending",
+      "status": "blocked",
       "title": "Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases",
       "scores": {
         "d": 6,
@@ -861,6 +861,7 @@
         ".github/"
       ],
       "body": "Hex-release blocker (see \"Path to hex.pm Release\"). Without prebuilt artifacts, every consumer of `onchain_evm` needs a working Rust toolchain plus several minutes to compile `revm` + `alloy` + `solang-parser` from source.\n\n**Read this before starting — the premise changed on 2026-08-22.** This repo has no CI: there is no `.github/` directory, the GitHub Actions workflows were removed family-wide, and `CLAUDE.md` records that `mix ci` is the only gate there is. The cross-compile matrix below therefore is not \"add a job\", it is **re-introducing CI to this repo for release purposes**. That is a policy decision, not an implementation detail, and it needs to be settled — and stated in the deliverable — before the matrix is written. If the answer is that CI does not come back, this task has no mechanism and should be reduced to a locally-built artifact story or closed.\n\nScope, assuming CI is agreed:\n- Wrap both `native/onchain_evm` (revm, alloy) and `native/onchain_solidity` (alloy-json-abi, solang-parser) with `RustlerPrecompiled.use/1` instead of plain `Rustler`.\n- Cross-compile matrix per release: Linux x86_64-gnu, x86_64-musl, aarch64-gnu; macOS x86_64, aarch64; Windows x86_64-msvc.\n- Attach `.so`/`.dylib`/`.dll` artifacts + `checksum-Elixir.RustlerPrecompiled-*.exs` to each release.\n- Document the `RUSTLER_PRECOMPILATION_*_BUILD=1` force-from-source fallback in README.\n- Validate that the checksum file is regenerated on every release.\n\nTrade-offs: 2x build matrix per release (two crates), more release ceremony (tag -> wait -> publish), force-from-source fallback as support surface. Worth it once a real external consumer installs from hex.\n",
+      "blocked_reason": "Operator policy decision required: this repo deleted .github/ family-wide on 2026-08-22 and mix ci is now the only gate. rustler_precompiled needs a release artifact mechanism, so the task cannot proceed until it is settled whether CI returns for releases. If it does not, reduce to a locally-built artifact story or close.",
       "cross_repo": []
     },
     {
@@ -992,7 +993,10 @@
       ],
       "touches": [
         "native/onchain_evm/",
-        "test/onchain/"
+        "native/onchain_evm/src/lib.rs",
+        "test/onchain/",
+        "test/onchain/evm_test.exs",
+        "test/onchain/evm_integration_test.exs"
       ],
       "body": "Establish independent semantic evidence for Onchain.EVM's revm-backed execution so future Solidity products can distinguish simulator agreement from self-confirming fixtures. Bind every comparison to exact bytecode and initial state, cover fork-sensitive EVM behavior from provider-owned Ethereum vectors, and use KEVM/Kontrol as an independently implemented execution oracle. Preserve deliberate bad-bytecode/state-effect controls and a verification ledger; a green exit code without the expected negative-control failure is invalid.\n",
       "created_at": "2026-08-17",
