@@ -999,7 +999,7 @@
       "id": "57",
       "phase": 5,
       "bundle": "v4_support",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Wrap remaining IHub preview converters and Hub bound constants",
       "scores": {
         "d": 3,
@@ -1028,6 +1028,7 @@
       ],
       "body": "Task 47 shipped Onchain.Aave.V4.Hub for member Spokes, credit-line inventory/caps, and the Hub rate environment. Two view clusters from the Task 46 IHub/IHubBase mapping were left out:\n\n- IHubBase previewAdd/Remove/Draw/Restore ByAssets and ByShares (eight functions). These are the Hub share-to-asset converters used before add/remove/draw/restore; rounding direction differs per action (documented on each function in IHubBase.sol).\n- IHub constants: MAX_ALLOWED_UNDERLYING_DECIMALS, MIN_ALLOWED_UNDERLYING_DECIMALS, MAX_ALLOWED_SPOKE_CAP, MAX_RISK_PREMIUM_THRESHOLD. MAX_ALLOWED_SPOKE_CAP / MAX_RISK_PREMIUM_THRESHOLD are the sentinel values meaning no cap / no threshold on SpokeConfig.\n\nAuthority is github.com/aave/aave-v4 src/hub/interfaces/{IHub,IHubBase}.sol. Unit tests only (Task 52 owns live/forked reads). Extend the existing Hub module and its JSON-RPC stub tests; do not open a second module.\n",
       "created_at": "2026-08-21",
+      "started_at": "2026-08-22",
       "scored_at": "2026-08-21",
       "cross_repo": []
     }
