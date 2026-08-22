@@ -28,23 +28,23 @@ you release them. The **onchain family** proper is the connected dependency casc
 
 | Repo | Path | Hex package | Local ver | Role | Native |
 |---|---|---|---|---|---|
-| descripex | `~/_DATA/code/descripex` | `descripex` | 0.11.0 | Discovery/`describe` protocol — gates the whole stack via version bounds | — |
-| zen_websocket | `~/_DATA/code/zen_websocket` | `zen_websocket` | 0.4.3 | WebSocket client substrate (feeds `onchain`) | — |
+| descripex | `~/_DATA/code/descripex` | `descripex` | 0.13.0 | Discovery/`describe` protocol — gates the whole stack via version bounds | — |
+| zen_websocket | `~/_DATA/code/zen_websocket` | `zen_websocket` | 0.7.1 | WebSocket client substrate (feeds `onchain`) | — |
 
 **Onchain family** (the connected cascade):
 
 | Repo | Path | Hex package | Local ver | Role | Native |
 |---|---|---|---|---|---|
-| hieroglyph | `~/_DATA/code/hieroglyph` | `hieroglyph` | 1.5.0 | ABI encode/decode (`ABI.*`) | yecc/leex |
-| cartouche | `~/_DATA/code/cartouche` | `cartouche` | 0.6.0 | Substrate: signing, tx encoding, raw RPC, crypto | — |
-| onchain | `~/_DATA/code/onchain` | `onchain` | 0.11.0 | Core primitives: RPC, ABI, ERC, signing | — |
-| onchain_aave | `~/_DATA/code/onchain_aave` | `onchain_aave` | 0.2.1 | Aave V3 wrappers | — |
-| onchain_evm | `~/_DATA/code/onchain_evm` | `onchain_evm` | 0.3.0 | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
-| onchain_js | `~/_DATA/code/onchain_js` | `onchain_js` | 0.2.0 | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
-| onchain_tempo | `~/_DATA/code/onchain_tempo` | `onchain_tempo` | 0.8.0 | Tempo chain primitives (0x76 tx, TIP-20) | — |
-| mpp | `~/_DATA/code/mpp` | `mpp` | 0.11.0 | Top-level consumer/app | Phoenix |
+| hieroglyph | `~/_DATA/code/hieroglyph` | `hieroglyph` | 1.6.2 | ABI encode/decode (`ABI.*`) | yecc/leex |
+| cartouche | `~/_DATA/code/cartouche` | `cartouche` | 0.7.1 | Substrate: signing, tx encoding, raw RPC, crypto | — |
+| onchain | `~/_DATA/code/onchain` | `onchain` | 0.13.0 | Core primitives: RPC, ABI, ERC, signing | — |
+| onchain_aave | `~/_DATA/code/onchain_aave` | `onchain_aave` | 0.4.0 | Aave V3 + V4 wrappers | — |
+| onchain_evm | `~/_DATA/code/onchain_evm` | `onchain_evm` | 0.5.1 | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
+| onchain_js | `~/_DATA/code/onchain_js` | `onchain_js` | 0.3.1 | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
+| onchain_tempo | `~/_DATA/code/onchain_tempo` | `onchain_tempo` | 0.9.2 | Tempo chain primitives (0x76 tx, TIP-20) | — |
+| mpp | `~/_DATA/code/mpp` | `mpp` | 0.16.0 | Top-level consumer/app | Phoenix |
 
-> Local versions are a **dated snapshot (2026-07-31)** — they drift. Treat them as
+> Local versions are a **dated snapshot (2026-08-22)** — they drift. Treat them as
 > a starting hint, never ground truth. Always re-read each repo's `mix.exs` and
 > run `mix hex.info <pkg>` before acting (Operating Rules).
 >
@@ -175,18 +175,20 @@ descripex ─┐                         (shared upstream)
                           (shared upstream)    └──→ onchain_tempo ──→ mpp
 ```
 
-Edges as of the snapshot (verify in each `mix.exs`):
+Edges as of 2026-08-22 (verify in each `mix.exs`):
 
-- hieroglyph → `descripex ~> 0.6`
-- cartouche → `hieroglyph ~> 1.5`, `descripex ~> 0.11`
-- onchain → `cartouche ~> 0.5`, `descripex ~> 0.9`, `zen_websocket ~> 0.4.2`
-- onchain_evm → `onchain ~> 0.10`, `descripex ~> 0.11`
-- onchain_tempo → `onchain ~> 0.10`, `descripex ~> 0.9`
-- onchain_aave / onchain_js → `onchain ~> 0.8`, `descripex ~> 0.9` (the `~> 0.8` bound
-  still admits 0.10, so both resolve to onchain 0.10.0 — the declared floor is just
-  stale, not blocking)
-- mpp → `onchain ~> 0.10`, `onchain_tempo ~> 0.7`, `descripex ~> 0.9`
-- onchain_aave → `{:onchain_evm, path: "../onchain_evm", only: [:dev, :test]}` (sibling path dep — **another reason repos must not move**)
+- hieroglyph → `descripex ~> 0.12`
+- cartouche → `hieroglyph ~> 1.6`, `descripex ~> 0.12`
+- onchain → `cartouche ~> 0.6`, `descripex ~> 0.12`, `zen_websocket ~> 0.7.0`
+- onchain_evm / onchain_js → `onchain ~> 0.12`, `descripex ~> 0.12`
+- onchain_tempo → `onchain ~> 0.12`, `cartouche ~> 0.6`, `descripex ~> 0.12`
+- onchain_aave → `onchain ~> 0.12`, `descripex ~> 0.12`, plus a dev/test-only
+  `onchain_evm ~> 0.5` — **a Hex dependency, not a path dep.** It was a
+  `path: "../onchain_evm"` sibling until 0.3.1, which is why the tarball was
+  unpublishable without the sibling checkout; that is fixed and does not come back.
+- mpp → `onchain ~> 0.12.0`, `cartouche ~> 0.7.0`, `onchain_tempo ~> 0.9.0`,
+  `descripex ~> 0.12` (the three-segment caps are the leaf app's, discussed below;
+  `onchain ~> 0.12.0` will not resolve onchain 0.13.0 and must be raised)
 
 `descripex` and `zen_websocket` are roots — no first-party upstream of their own —
 so a release there starts the whole cascade. Because they're consumed beyond this
@@ -219,64 +221,144 @@ in any order. `mpp` is always last (it consumes the tier above).
 
 Verify before acting — this is a snapshot (`./bin/publish-prep.sh status`).
 
-**One package awaits publish: onchain 0.13.0** (Hex has 0.12.1). It moved for
-`zen_websocket ~> 0.7.0` — 0.7.0 widens `JsonRpc.build_request/2`'s spec to
-accept positional lists, which let the whole `@dialyzer` suppression block in
-`Onchain.Subscription` go away. None of 0.7.0's breaking removals reach onchain:
-it uses only `Client.connect/send_message/close` and
-`JsonRpc.build_request/match_response`, and `connect/2`'s changed failure term
-is already absorbed by an existing generic `{:error, reason}` clause.
+**The whole family moved on 2026-08-22, upstream-first.** Published in order:
+descripex 0.13.0, zen_websocket 0.7.1, hieroglyph 1.6.2, cartouche 0.7.1,
+onchain 0.13.0, onchain_evm 0.5.1. Prepared and awaiting the human's 2FA
+publish: **onchain_tempo 0.9.2**, **onchain_js 0.3.1**, **onchain_aave 0.4.0**.
+**mpp is last and not yet prepared** — it is blocked on onchain_tempo 0.9.2
+reaching Hex (see the diamond rule below), and it must raise
+`{:onchain, "~> 0.12.0"}` to admit 0.13.0 as part of that release.
 
-The other nine sit at Hex parity: descripex 0.12.1, zen_websocket 0.7.0,
-hieroglyph 1.6.1, cartouche 0.7.0, onchain_aave 0.3.2, onchain_evm 0.5.0,
-onchain_js 0.3.0, onchain_tempo 0.9.1, mpp 0.16.0. **The five repos downstream
-of onchain cannot move until 0.13.0 is on Hex** — the cascade rule forbids
-publishing a dependent against an unpublished upstream.
+descripex 0.13.0 is additive: a new public `typeless_params/1`, plus a schema
+fold that gives params which previously shipped *no*
+`hints.params.<name>.schema` key one (`nonempty_list(T)` and `[T, ...]` fold to
+`[T]`, rejected unions decompose to `anyOf`). Nothing is renamed or removed, and
+the only downstream test that compares hints — cartouche's
+`descripex_validation_test.exs` — already strips runtime `:schema` keys.
 
-**Three-segment bounds for first-party 0.x deps are deliberate — but they are
-scoped, not universal.** descripex 0.12.0 (`short_name` atom → string) and
-zen_websocket 0.5.0/0.6.0 (narrowed runtime requirements) each shipped a
-consumer-visible break at a *minor*, and a two-segment `~> 0.11` absorbs that
-silently on the next resolution. So the cap-at-next-minor rule applies where the
-protection is worth its cost:
+Only two of the nine releases carry runtime code: **onchain_aave 0.4.0** (the
+whole Aave V4 module family — Hub, Spoke, Oracle, TokenizationSpoke,
+PositionManager — plus a `debt_token.ex` fix, hence a minor) and **mpp**
+(WebSocket session-metering accounting, Stripe stale-invoice hardening). The
+other seven are bound-widening plus an upstream lock refresh, and say so in
+their CHANGELOGs.
 
-- **Shared upstreams** (descripex, zen_websocket) — three-segment everywhere.
-  This is where the breaks actually happened. True in all ten repos **as of
-  2026-08-02**: an earlier revision of this file asserted it was already
-  universal, and it was not — cartouche still declared `descripex "~> 0.12"`,
-  the one two-segment bound on the very package whose 0.12.0 broke consumers.
-  Now `~> 0.12.0`. A claim like this is worth re-deriving from the ten
-  `mix.exs` files rather than trusting the prose.
-- **mpp**, the leaf app — three-segment (`onchain ~> 0.12.0`,
-  `onchain_tempo ~> 0.9.0`). Nothing consumes mpp, so the cap costs no one.
-- **Intra-family libs as deps** (cartouche, onchain, onchain_tempo) —
-  two-segment (`~> 0.12`, `~> 0.6`). None of the three has broken on a minor so
-  far. The tradeoff either way: an over-tight bound in a published library
-  propagates into strangers' dependency graphs and can cause diamond conflicts
-  there, while a loose one absorbs a break silently.
+**Diff the tarball, not the tag.** `mix hex.package fetch <pkg> <ver> --unpack`
+followed by `diff -rq <unpacked>/lib <repo>/lib` answers "is there unreleased
+code" definitively, in seconds, for the whole family. Tag distance does not:
+zen_websocket's `v0.7.0` tag was never created — 0.7.0 is published and the tag
+is simply owed — so a tag-based sweep read 100+ commits as "unreleased" and was
+wrong about every one of them. Tags here are created *after* a publish, by hand,
+which makes them a lagging record rather than a boundary.
 
-Do not read this as licence to loosen a bound that is already three-segment.
+### The descripex bounds were widened to two segments, family-wide (2026-08-22)
+
+All nine consumers now declare `{:descripex, "~> 0.12"}`. The three-segment
+`~> 0.12.0` is gone from the family.
+
+What the cap bought was protection against descripex's break-on-minor history
+(0.12.0 turned `short_name` in `describe/1` output from atom to string). What it
+cost was that **every descripex minor became a forced nine-repo release
+cascade**: raising a runtime bound is itself a minor under the rule below, so
+one additive upstream release mandated nine downstream publishes that changed
+nothing else. That bill came due the moment 0.13.0 shipped.
+
+Why widening is the right trade here specifically:
+
+- **In-family the cap protected nothing.** `mix.lock` is committed in all ten
+  repos, so a newer descripex can only land through a deliberate
+  `mix deps.update` with `mix ci` behind it. There is no silent-upgrade path to
+  guard against.
+- **Outside the family it does protect**, and that part is real: a stranger
+  resolving cartouche or onchain fresh inherits no lock. The answer is to retire
+  the exposure **at descripex** — a stable major, or a written "minors are
+  additive" policy — not to tax nine consumers for it indefinitely. Until that
+  happens this is accepted, known exposure, not an oversight.
+- **Widening is not a release.** `~> 0.12.0` → `~> 0.12` narrows nothing, so it
+  rides along in each repo's next release instead of forcing one. It landed as a
+  single `deps:` commit per repo, no version bumps, locks untouched.
+
+**A widened bound is inert while a *published* upstream still caps — this is
+what dictates the publish order.** `~> 0.12` admits 0.13.0, but resolution takes
+the intersection across the whole graph, so onchain could not see descripex
+0.13.0 while cartouche 0.7.0 and hieroglyph 1.6.1 *as published on Hex* still
+declared `~> 0.12.0`. Editing onchain's own `mix.exs` changed nothing;
+`mix hex.outdated` said `Update not possible` and was right. Two sessions in a
+row read a widened local bound as adoption and were wrong both times.
+
+The check is one command: **`mix hex.outdated <dep>` names every capping
+Source.** Run it before concluding a bound edit had any effect, and derive the
+publish order from the dependency graph top-down rather than from where the
+interesting code happens to sit. Descending the graph is not a stylistic
+preference here — a dependent published against an uncapped upstream simply
+re-publishes the old cap.
+
+**The near-miss worth recording:** writing `~> 0.13` instead of `~> 0.12` looks
+like the same widening and is not — `>= 0.13.0` *excludes* 0.12.1, so it forces
+adoption and re-creates exactly the nine-repo cascade the change was meant to
+end, diamond included. Two-segment means "accept the current major line", not
+"require the newest minor".
+
+### Three-segment bounds that remain
+
+Still deliberate, and for the same reason as before — a 0.x package that has
+broken on a minor earns the tighter form:
+
+- **zen_websocket** — onchain declares `~> 0.7.0`. 0.5.0 and 0.6.0 both narrowed
+  runtime requirements at a minor. One consumer, so the cap costs one bump.
+- **mpp**, the leaf app — `onchain ~> 0.12.0`, `onchain_tempo ~> 0.9.0`. Nothing
+  consumes mpp, so an over-tight bound reaches no stranger. Note the corollary,
+  though: it also protects no stranger, and the committed-lock argument above
+  applies here identically — these caps are pure cost and are the next obvious
+  widening candidates. `onchain ~> 0.12.0` must be raised as part of mpp's next
+  release regardless, since onchain 0.13.0 will not resolve under it.
+- **onchain_js** — `quickbeam ~> 0.11.0`. A 0.x *native* runtime dependency
+  whose minors change the JS engine underneath the NIF; each line is reviewed
+  before the cap moves. Third-party, so the committed-lock argument does not
+  apply the way it does in-family.
+- **Intra-family libs as deps** (cartouche, onchain, onchain_tempo) — two-segment
+  (`~> 0.12`, `~> 0.6`). None has broken on a minor so far.
+
 And note the converse case for **third-party** deps: onchain's `ex_ast ~> 0.12`
 records why three segments there were "a redundant self-cap" — reach already
 caps it. Cap what can surprise you; don't cap what someone else already pinned.
 
-Consequence of the rule where it applies: narrowing a **runtime** requirement is
-itself a minor bump in the consumer — onchain 0.11.1 → 0.12.0, onchain_aave
-0.2.2 → 0.3.0, onchain_evm 0.3.1 → 0.4.0, onchain_tempo 0.8.0 → 0.9.0 all moved
-for exactly that reason.
+Consequence of the rule where it still applies: narrowing a **runtime**
+requirement is itself a minor bump in the consumer — onchain 0.11.1 → 0.12.0,
+onchain_aave 0.2.2 → 0.3.0, onchain_evm 0.3.1 → 0.4.0, onchain_tempo 0.8.0 →
+0.9.0 all moved for exactly that reason. Widening a bound is not narrowing, and
+carries no such consequence.
 
-**The `ex_ast` cap is a choice, not a wall.** `reach 2.8.2` declares
-`ex_ast ~> 0.12.0`, so nine repos resolve 0.12.10 — but **cartouche reaches
-0.13.1 via `{:ex_ast, "~> 0.13", override: true}`**, which overrides the
-transitive requirement. An earlier revision of this file called 0.13.1
-"unreachable in all ten repos"; that was wrong. The open question is not
-*whether* the override works but whether reach still grades honestly under it:
-ex_ast 0.13.0 changed pattern-matching semantics (map patterns became subset
-matching) and reach's smell checks are built on those patterns. **Unmeasured
-so far** — the comparison to run is the same smell corpus under 0.12.10 and
-0.13.1, checking whether the finding count drops. Until that is measured, the
-nine repos stay on 0.12.x and hieroglyph 1.6.0's three-segment `~> 0.12.0` pin
-(with its reason recorded in-repo) is the family's documented default.
+**The `ex_ast` cap is measured and gone — all ten repos run 0.13.1 (2026-08-22).**
+`reach 2.8.2` declares `ex_ast ~> 0.12.0`, which holds a repo at 0.12.10 unless
+it declares `{:ex_ast, "~> 0.13", override: true, only: [:dev, :test], runtime:
+false}`. Five repos already did (descripex, zen_websocket, hieroglyph, cartouche,
+onchain_aave) and had been passing `mix ci` on 0.13.1 for weeks; the other five
+(onchain, onchain_evm, onchain_js, onchain_tempo, mpp) were still on 0.12.10
+because an earlier revision of this file recorded the override as an unmeasured
+risk — ex_ast 0.13.0 made map patterns subset-matching, and reach's smell checks
+are built on those patterns, so it "could report fewer findings".
+
+**Measured, and the answer is no difference.** `mix reach.check --dead-code
+--arch --smells` was run in onchain under 0.12.10 and again under 0.13.1:
+identical output, identical scope (`files=39`). Two things about *how* to
+measure this are worth keeping, because the obvious method proves nothing:
+
+- **Comparing finding counts across the family is circular.** Every repo gates on
+  `smells: [strict: true]`, so every repo sits at zero findings by construction.
+  Zero-versus-zero is exactly what a working detector and a blind one both look
+  like.
+- **Seeding a probe only works if the probe targets what reach actually checks.**
+  A first attempt seeded an unused private function and a `nil` flowing into
+  `String.upcase/1`, then read reach's `(none)` as suspicious. It was not: Elixir
+  1.20's own type checking catches both at compile time, and reach targets
+  cross-function and architectural smells rather than duplicating the compiler.
+  The seeded findings never belonged to reach in the first place.
+
+`ex_ast` is `only: [:dev, :test], runtime: false` in every repo, so the override
+never reaches a published tarball or a consumer's graph — the whole question was
+only ever whether *our own* gate still grades honestly, and it does. The override
+comment in each `mix.exs` now carries the measurement rather than the worry.
 
 **`mix.lock` is committed in all ten repos, libraries included.** It was
 gitignored in onchain, onchain_aave, onchain_evm and onchain_tempo under the
@@ -531,7 +613,6 @@ whole defence.
   the same module (line 384) and concluding the API had moved. Two raises, two
   messages, one grep. Worth keeping as a record: a "stale test" claim is cheap
   to state and cheap to check — run the test before writing it down.
-- **The `ex_ast` 0.13.1 measurement** described above is still unrun.
 
 ---
 
@@ -670,6 +751,14 @@ You prepare; the **human runs `mix hex.publish`** (2FA). For each repo being rel
 After the human confirms the publish, `mix hex.info <pkg>` should show the new
 version before you start the next downstream repo.
 
+**Tags come after the publish, and the human creates them.** Convention is an
+annotated `git tag -a v<ver> -m "<pkg> <ver>"`, pushed separately. Because they
+lag the release rather than gating it, a missing tag says nothing about whether
+a version shipped — zen_websocket's `v0.7.0` is the standing example. Tags owed
+as of 2026-08-22: `zen_websocket v0.7.0` and `v0.7.1`, `hieroglyph v1.6.2`,
+`cartouche v0.7.1`, `onchain v0.13.0`, `onchain_evm v0.5.1`, plus one each for
+onchain_tempo 0.9.2 / onchain_js 0.3.1 / onchain_aave 0.4.0 once published.
+
 ---
 
 ## Operating rules
@@ -678,8 +767,10 @@ version before you start the next downstream repo.
   local `mix.exs` deps ≠ published deps at the same version number. Before any
   cascade decision, read the repo's `mix.exs` *and* `mix hex.info <pkg>` /
   `mix hex.outdated` — never trust the snapshot table above.
-- **Repos do not move.** Location is irrelevant under Hex, and `onchain_aave`'s
-  `../onchain_evm` path dep would break. This home references them by absolute path.
+- **Repos do not move.** Location is irrelevant under Hex, and this home
+  references them by absolute path. No repo carries a sibling path dep any more —
+  onchain_aave's `../onchain_evm` became a Hex dependency in 0.3.1, because a
+  path dep makes the published tarball unbuildable without the sibling checkout.
 - **Per-repo CLAUDE.md wins inside its repo.** Those carry the toolchain, test
   commands (`mix test.json`), coverage tiers, and hook rules. This home governs
   only cross-repo ordering and publish-prep.
@@ -688,11 +779,12 @@ version before you start the next downstream repo.
 - **No Co-Authored-By footers.** Title-only commit messages (`<scope>: <desc>`).
 - **Publish is human-gated (2FA).** Always. Your terminal state is *publish-ready*.
 - **Local cross-stack dev without Hex round-trips:** for active multi-repo work,
-  a dev/test-only path dep (`{:dep, path: "../dep", only: [:dev, :test]}`, as
-  onchain_aave already uses for onchain_evm) lets you build against local
-  checkouts. A release build still resolves the pinned Hex version. Use it to avoid
-  publishing just to test a downstream — but the *published* `mix.exs` must pin
-  the Hex version, never a path.
+  a dev/test-only path dep (`{:dep, path: "../dep", only: [:dev, :test]}`) lets
+  you build against local checkouts. Treat it as a *temporary working state*, not
+  a committed one: onchain_aave shipped 0.3.0 that way and the tarball would not
+  build for anyone without the sibling checkout — fixed in 0.3.1 by moving to the
+  Hex dependency it declares today. The `only: [:dev, :test]` scope does not save
+  you, because `mix hex.build` still packages the declaration.
 
 ---
 
