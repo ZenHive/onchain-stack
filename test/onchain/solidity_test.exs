@@ -1035,6 +1035,57 @@ defmodule Onchain.SolidityTest do
     end
   end
 
+  describe "parse_sol/1 resource bounds and error rendering" do
+    # Regression pins for two defects that the solar-parse migration (Task 61)
+    # resolved as a side effect. Measured 2026-08-22: under solang-parser a
+    # deeply nested expression aborted the whole BEAM with SIGBUS at ~10k levels
+    # (~20 KB of source — well inside an ordinary contract), and parse errors
+    # crossed the NIF boundary as `format!("{:?}", ..)` dumps of internal parser
+    # types. Both are pinned here so a future parser swap cannot reintroduce
+    # them silently.
+    setup do
+      nested = fn depth ->
+        "contract A { function f() public pure returns (uint) { return " <>
+          String.duplicate("(", depth) <> "1" <> String.duplicate(")", depth) <> "; } }"
+      end
+
+      {:ok, nested: nested}
+    end
+
+    test "deeply nested expressions return a tagged error instead of killing the VM",
+         %{nested: nested} do
+      for depth <- [1_000, 10_000, 50_000] do
+        assert {:error, {:parse_error, message}} = Solidity.parse_sol(nested.(depth)),
+               "depth #{depth} must be rejected, not parsed or fatal"
+
+        assert is_binary(message)
+      end
+
+      # The calling process is the real assertion: a stack overflow in the NIF
+      # takes the emulator down, so reaching this line at all is the guarantee.
+      assert Process.alive?(self())
+    end
+
+    test "a rejected source still leaves the parser usable", %{nested: nested} do
+      assert {:error, {:parse_error, _}} = Solidity.parse_sol(nested.(50_000))
+      assert {:ok, %{functions: [_ | _]}} = Solidity.parse_sol("contract A { function f() public {} }")
+    end
+
+    test "syntax errors carry position and expectation, not a Rust Debug dump" do
+      assert {:error, {:parse_error, message}} =
+               Solidity.parse_sol("contract A { function f() public { let x = ; } }")
+
+      assert message =~ "expected"
+      assert message =~ "1:36", "the message must locate the failure"
+
+      refute message =~ ~r/\bDiagnostic\s*\{/,
+             "internal parser types must not be rendered into the message"
+
+      refute message =~ ~r/\bloc:\s*File\(/,
+             "internal parser types must not be rendered into the message"
+    end
+  end
+
   describe "parse_sol_file/2 single-file fallback (unit, temp fixtures)" do
     @describetag :tmp_dir
 
