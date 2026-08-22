@@ -666,7 +666,7 @@
       "id": 33,
       "phase": 3,
       "bundle": "standalone",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Spike: measure whether per-call tokio runtime creation costs anything before reusing one",
       "scores": {
         "d": 3,
@@ -694,6 +694,7 @@
       ],
       "body": "Rescoped 2026-08-22 from \"lazy-init a single current_thread runtime\" to a measurement spike, because the original task asserted a benefit nobody measured and proposed a design that may be a regression.\n\n`build_fork_db` builds a `tokio::runtime::Builder::new_current_thread()` per call and hands it to `WrapDatabaseAsync::with_runtime`, which takes ownership of it for the fork's lifetime. Constructing that runtime is on the order of microseconds; the fork it serves then issues dozens of JSON-RPC reads at milliseconds each for every account and storage slot the execution touches. The claim that this is worth optimizing has no number behind it, and the previous scores (b=8, u=7) were set as if it did.\n\nThe proposed fix also has a hazard the original task did not mention: `with_runtime` owns the runtime, so sharing one `current_thread` runtime across NIF calls means `block_on` from several dirty-scheduler threads driving the same single-threaded reactor. That can serialize concurrent simulations — a throughput regression traded for a microsecond saving.\n\nMeasure first. If runtime construction is not a visible share of wall time, close this and say so.\n",
       "created_at": "2026-08-22",
+      "started_at": "2026-08-22",
       "scored_at": "2026-08-22",
       "cross_repo": []
     },
