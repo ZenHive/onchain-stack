@@ -834,7 +834,7 @@ shipped_in = "780ec5c5c12e06db2d750c9d657176804d8d2ee8"
 id = "60"
 phase = 2
 bundle = "standalone"
-status = "in_progress"
+status = "done"
 title = "Derive the EVM revision from the forked block instead of always executing under one modern SpecId"
 scores = { d = 6, b = 8, u = 7 }
 depends_on = [58]
@@ -853,9 +853,16 @@ It matters for exactly the use case a historical `:block` pin implies. Replaying
 
 Sequenced after Task 58 deliberately: 58 fetches the forked block's header, which is also where the block number a revision decision keys off comes from, and landing both against the same header fetch avoids two independent implementations of it.
 """
+implemented = "Landed by grok via merge-train; reviewer-approved (run run-1787380744777-66203851, 7e0c5abc2cfd0290c1ad0d521f284412b63a81b3)."
+delivered_by = "grok"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1787380744777-66203851"
 created_at = "2026-08-22"
 started_at = "2026-08-22"
 scored_at = "2026-08-22"
+done_at = "2026-08-22"
+shipped_in = "7e0c5abc2cfd0290c1ad0d521f284412b63a81b3"
 
 [[task]]
 id = "61"
