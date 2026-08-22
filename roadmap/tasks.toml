@@ -625,7 +625,7 @@ shipped_in = "904dfd817e8277a4c85f42b21d530d67e2f9eeb3"
 id = 53
 phase = 3
 bundle = "standalone"
-status = "pending"
+status = "in_progress"
 title = "Adopt `rustler_precompiled` for both native crates — artifacts cross-built locally with cargo-zigbuild"
 scores = { d = 6, b = 8, u = 8 }
 acceptance_criteria = [
@@ -681,6 +681,7 @@ Verify `RUSTLER_PRECOMPILED_FORCE_BUILD_ALL=1` actually forces a source build; t
 Trade-offs, stated honestly: the release becomes a manual local ritual with no build provenance or attestation, and it is reproducible only on a machine with the Zig toolchain installed. That is the accepted cost of not running CI.
 """
 created_at = "2026-08-17"
+started_at = "2026-08-22"
 scored_at = "2026-08-17"
 
 [[task]]
