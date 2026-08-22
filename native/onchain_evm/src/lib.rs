@@ -417,16 +417,20 @@ fn resolve_block_id<'a>(params: &HashMap<String, Term<'a>>) -> Result<BlockId, E
     parse_block_id(block_number, block_tag.as_deref())
 }
 
+fn build_current_thread_runtime() -> Result<tokio::runtime::Runtime, EvmError> {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| EvmError::ForkError(format!("tokio runtime: {}", e)))
+}
+
 fn build_fork(
     rpc_url: &str,
     block_id: BlockId,
     timeout_ms: u64,
     connect_timeout_ms: u64,
 ) -> Result<(ForkDB, BlockEnv, SpecId), EvmError> {
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|e| EvmError::ForkError(format!("tokio runtime: {}", e)))?;
+    let rt = build_current_thread_runtime()?;
 
     let url: reqwest::Url = rpc_url
         .parse()
@@ -791,6 +795,45 @@ mod tests {
     const TEST_GAS_LIMIT: u64 = 42_000;
     const TEST_NONCE: u64 = 3;
     const TEST_VALUE: u64 = 7;
+
+    #[test]
+    fn current_thread_runtime_construction_is_sub_millisecond() {
+        // Task 33 spike: isolate the cost `build_fork` pays for
+        // `tokio::runtime::Builder::new_current_thread().enable_all().build()`.
+        let cold_start = std::time::Instant::now();
+        drop(build_current_thread_runtime().expect("cold runtime"));
+        let cold = cold_start.elapsed();
+
+        for _ in 0..1_000 {
+            drop(build_current_thread_runtime().expect("warmup runtime"));
+        }
+
+        const ITERS: usize = 10_000;
+        let mut samples = Vec::with_capacity(ITERS);
+        for _ in 0..ITERS {
+            let start = std::time::Instant::now();
+            let rt = build_current_thread_runtime().expect("runtime");
+            samples.push(start.elapsed());
+            drop(rt);
+        }
+
+        samples.sort();
+        let median = samples[ITERS / 2];
+        let p99 = samples[(ITERS * 99) / 100];
+        let max = samples[ITERS - 1];
+        eprintln!(
+            "tokio current_thread runtime construction n={ITERS} cold={cold:?} median={median:?} p99={p99:?} max={max:?}"
+        );
+
+        assert!(
+            median < Duration::from_millis(1),
+            "median runtime construction {median:?} is not sub-millisecond"
+        );
+        assert!(
+            cold < Duration::from_millis(5),
+            "first runtime construction {cold:?} exceeds 5ms"
+        );
+    }
 
     #[test]
     fn build_tx_preserves_call_params() {

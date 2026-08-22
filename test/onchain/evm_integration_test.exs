@@ -498,4 +498,41 @@ defmodule Onchain.EVM.IntegrationTest do
       assert match?([_], results)
     end
   end
+
+  describe "tokio runtime construction vs simulate_call wall time" do
+    # Pessimistic ceiling matching the rust test's 1 ms bound. Release-profile
+    # median construction is ~1.2 µs (native/onchain_evm/RUNTIME_SPIKE.md).
+    @construction_ceiling_us 1_000
+
+    @tag :tokio_runtime
+    test "is not a visible share of cheap or expensive archive-node calls" do
+      {:ok, cheap_data} = ABI.encode_call("totalSupply()", [])
+
+      {:ok, expensive_data} =
+        ABI.encode_call("getUserAccountData(address)", [Onchain.Hex.decode!(@usdc_holder)])
+
+      cheap = fn ->
+        assert {:ok, _} = EVM.simulate_call(@usdc_address, cheap_data, rpc_opts())
+      end
+
+      expensive = fn ->
+        assert {:ok, _} = EVM.simulate_call(@aave_v3_pool, expensive_data, rpc_opts())
+      end
+
+      cheap.()
+      expensive.()
+
+      {cheap_us, _} = :timer.tc(cheap)
+      {expensive_us, _} = :timer.tc(expensive)
+
+      cheap_share = @construction_ceiling_us / cheap_us
+      expensive_share = @construction_ceiling_us / expensive_us
+
+      assert cheap_share < 0.10,
+             "cheap share #{cheap_share} (#{cheap_us}µs wall) exceeds 10% at 1ms construction ceiling"
+
+      assert expensive_share < 0.10,
+             "expensive share #{expensive_share} (#{expensive_us}µs wall) exceeds 10% at 1ms construction ceiling"
+    end
+  end
 end
