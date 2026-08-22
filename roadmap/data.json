@@ -1024,7 +1024,7 @@
       "id": "56",
       "phase": 3,
       "bundle": "standalone",
-      "status": "in_progress",
+      "status": "done",
       "title": "Independent EVM semantics and exact-bytecode verification harness",
       "scores": {
         "d": 8,
@@ -1056,10 +1056,17 @@
         "test/onchain/evm_test.exs",
         "test/onchain/evm_integration_test.exs"
       ],
+      "shipped_in": "34b41fe367c7bc58acb4fe1c653fa30ff0472294",
       "body": "Establish independent semantic evidence for Onchain.EVM's revm-backed execution so future Solidity products can distinguish simulator agreement from self-confirming fixtures. Bind every comparison to exact bytecode and initial state, cover fork-sensitive EVM behavior from provider-owned Ethereum vectors, and use KEVM/Kontrol as an independently implemented execution oracle. Preserve deliberate bad-bytecode/state-effect controls and a verification ledger; a green exit code without the expected negative-control failure is invalid.\n",
       "created_at": "2026-08-17",
       "started_at": "2026-08-22",
+      "done_at": "2026-08-22",
       "scored_at": "2026-08-17",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1787389160672-cbfd01cd, 34b41fe367c7bc58acb4fe1c653fa30ff0472294).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1787389160672-cbfd01cd",
       "cross_repo": []
     },
     {
