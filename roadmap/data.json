@@ -1182,6 +1182,51 @@
       "created_at": "2026-08-22",
       "scored_at": "2026-08-22",
       "cross_repo": []
+    },
+    {
+      "id": "61",
+      "phase": 3,
+      "bundle": "standalone",
+      "status": "pending",
+      "title": "Migrate Solidity source parsing from solang-parser to solar-parse",
+      "scores": {
+        "d": 6,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.25,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "cursor",
+      "module": "native/onchain_solidity",
+      "model": "cursor-grok-4.6-high",
+      "acceptance_criteria": [
+        "The four sources in native/onchain_solidity/PARSER_FRONTEND_SPIKE.md parse successfully through Onchain.Solidity.parse_sol/1",
+        "Existing source-parser and Generator tests pass without output-shape changes",
+        "Tests compare source and JSON-ABI signatures, selectors, topics, canonical nested types, and NatSpec attachment",
+        "Import extraction and root-contract selection retain their existing behavior",
+        "The characterization tests that currently assert solang-parser rejection of those four sources are inverted to assert success (they must not keep expecting parse failure)",
+        "The dependency lock and the supported Rust version are updated and mix ci passes"
+      ],
+      "out_of_scope": [
+        "The stack-overflow guard (Task 32) and the Debug-rendering cleanup (Task 44) — both stay independent and are still required after the swap unless this migration measures that Solar no longer overflows on the Task 32 reproductions",
+        "Expanding NatSpec beyond the existing function-level notice/params/returns map",
+        "Changing parse_abi_json or the Alloy JSON-ABI path",
+        "Exposing Solar AST values through the Elixir API"
+      ],
+      "touches": [
+        "native/onchain_solidity/Cargo.toml",
+        "native/onchain_solidity/Cargo.lock",
+        "native/onchain_solidity/src/lib.rs",
+        "test/onchain/solidity_test.exs",
+        "test/onchain/contract/generator_test.exs"
+      ],
+      "body": "Task 59 measured solang-parser 0.3.5 against Solidity 0.8.36 and recommended solar-parse 0.2.0. The spike is native/onchain_solidity/PARSER_FRONTEND_SPIKE.md; this task is the migration it scored D:6/B:8/U:7.\n\nsolang-parser's documented ceiling is Solidity 0.8.22. Four forms that solc 0.8.36 accepts fail today (`transient` state variables; literal / constant / erc7201 custom storage layout). Those failures are parser grammar gaps, not this crate's AST adapter, and they abort `Onchain.Contract.Generator` at compile time. Task 59 already pinned the four failures as a Rust characterization test in native/onchain_solidity/src/lib.rs — invert that test; do not leave it asserting rejection.\n\nReplace the source parser with released `solar-parse`. Keep `parse_abi_json` on alloy-json-abi. The frontend is private: do not expose Solar AST values, and do not change the terms returned by `parse_sol`, `__parse_sol_root__`, or `__extract_sol_imports__`.\n\nPreserve the existing output contract:\n\n- selectors and event topics stay Keccak-256 of the canonical signature computed in this crate (`tiny-keccak`); do not substitute parser-provided semantic hashes without a separate compatibility proof\n- payable addresses and contract references become `address`; enums become `uint8`; structs expand to tuples / `tuple` parameter maps with `:components`\n- `:return_type` remains a parenthesized comma-separated tuple string accepted by `Onchain.ABI.decode_response/2`\n- NatSpec stays the existing function-level `%{notice, params, returns}` map — either keep `extract_doc_comments` or prove byte-for-byte parity before using Solar's DocComments\n- source order, root-contract filtering, import extraction, structs, enums, constants, constructor shape, mutability strings, and `{:error, {:parse_error, reason}}` stay as they are\n\nSolar 0.2.0 required Rust 1.95 in the spike; this host is on 1.96. Update the crate lock and any documented toolchain floor the new closure needs.\n\nTask 29 also writes native/onchain_solidity/src/lib.rs (unit tests for the current adapter). Write-set overlap will serialize the two; if 29 lands first, keep its selector/canonicalization/NatSpec pins and rewrite only the syntax-rejection case.\n",
+      "created_at": "2026-08-22",
+      "scored_at": "2026-08-22",
+      "cross_repo": []
     }
   ]
 }

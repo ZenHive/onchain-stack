@@ -105,6 +105,7 @@ Standalone tasks: Rust unit tests, tokio runtime reuse, clippy CI, codegen exten
 | Task 53 | ⬜ | 🎁 **standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — prebuilt artifacts via GitHub Releases [D:6/B:8/U:8 → Eff:1.33?] 📋 |
 | Task 56 | ⬜ | 🎁 **standalone** · 🔒 Independent EVM semantics and exact-bytecode verification harness [D:8/B:10/U:8 → Eff:1.12] 📋 |
 | Task 59 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax [D:3/B:8/U:7 → Eff:2.5] 🎯 |
+| Task 61 | ⬜ | 🎁 **standalone** · *native/onchain_solidity* · Migrate Solidity source parsing from solang-parser to solar-parse [D:6/B:8/U:7 → Eff:1.25] 📋 |
 <!-- TASKS:END -->
 
 ---
