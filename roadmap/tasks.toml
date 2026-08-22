@@ -761,6 +761,7 @@ acceptance_criteria = ["""Multicall3 getBlockNumber()/getCurrentBlockTimestamp()
 out_of_scope = ["Deriving SpecId from the forked block or a chain-aware hardfork schedule (documented limitation at native/onchain_evm/src/lib.rs:556)", "Adding block-environment override options for callers to fake number/timestamp"]
 assignee = "codex"
 model = "gpt-5.6-sol"
+touches = ["native/onchain_evm/src/lib.rs", "test/onchain/evm_integration_test.exs"]
 body = """
 Simulation currently executes against a fork whose state is real but whose block environment is not. `Context::mainnet()` is built with revm's default `BlockEnv` at every site in `native/onchain_evm/src/lib.rs` (do_simulate_call, do_simulate_transaction, do_simulate_batch), so contracts observe `block.number == 0` and `block.timestamp == 1` regardless of the `:block` option. Measured against a mainnet archive node at head 25_808_519: Multicall3 `getBlockNumber()` returned 0 and `getCurrentBlockTimestamp()` returned 1 for `block: "latest"`, `block: <number>` and no block option alike.
 
