@@ -1642,7 +1642,331 @@ rustler::init!("Elixir.Onchain.Solidity");
 
 #[cfg(test)]
 mod tests {
-    use super::parse_source_unit;
+    use super::{
+        build_type_registry, canonical_type, compute_selector, compute_topic_hash,
+        extract_doc_comments, parse_source_unit, take_natspec_for_offset, type_to_canonical,
+        type_to_canonical_inner, JsonAbi, ParsedEvent, ParsedFunction, ParsedItem, ParsedUnit,
+        TypeRegistry, MAX_NATSPEC_DISTANCE_BYTES, MAX_TYPE_RECURSION_DEPTH,
+    };
+
+    const COMPILED_ABI_SOURCE: &str = r#"
+        pragma solidity ^0.8.10;
+
+        contract CanonicalFixture {
+            struct Order {
+                address maker;
+                uint256[2] amounts;
+            }
+
+            event Submitted(Order order, bytes32[][2] proofs);
+
+            function submit(Order calldata order, bytes32[][2] calldata proofs) external {
+                emit Submitted(order, proofs);
+            }
+        }
+    "#;
+    const COMPILED_ABI_JSON: &str = r#"[
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "components": [
+              {"internalType": "address", "name": "maker", "type": "address"},
+              {"internalType": "uint256[2]", "name": "amounts", "type": "uint256[2]"}
+            ],
+            "indexed": false,
+            "internalType": "struct CanonicalFixture.Order",
+            "name": "order",
+            "type": "tuple"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32[][2]",
+            "name": "proofs",
+            "type": "bytes32[][2]"
+          }
+        ],
+        "name": "Submitted",
+        "type": "event"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {"internalType": "address", "name": "maker", "type": "address"},
+              {"internalType": "uint256[2]", "name": "amounts", "type": "uint256[2]"}
+            ],
+            "internalType": "struct CanonicalFixture.Order",
+            "name": "order",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32[][2]",
+            "name": "proofs",
+            "type": "bytes32[][2]"
+          }
+        ],
+        "name": "submit",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ]"#;
+    // solc 0.8.10 standard-json emitted the method identifier and embedded the
+    // event topic as PUSH32 in this fixture's bytecode.
+    const COMPILED_FUNCTION_SIGNATURE: &str = "submit((address,uint256[2]),bytes32[][2])";
+    const COMPILED_FUNCTION_SELECTOR: &str = "0xcc6dcbb9";
+    const COMPILED_EVENT_SIGNATURE: &str = "Submitted((address,uint256[2]),bytes32[][2])";
+    const COMPILED_EVENT_TOPIC: &str =
+        "0x4cb3cf49c9df3e693baf5dce395d49fe194469935f06f17c93eccef374838821";
+    const EXPECTED_MAX_TYPE_RECURSION_DEPTH: usize = 10;
+
+    fn registry_for(source: &str) -> TypeRegistry {
+        let tree = parse_source_unit(source).expect("fixture source must parse");
+        build_type_registry(&tree)
+    }
+
+    fn contract_items<'a>(tree: &'a ParsedUnit, contract_name: &str) -> &'a [ParsedItem] {
+        tree.items
+            .iter()
+            .find_map(|item| match item {
+                ParsedItem::Contract(contract) if contract.name == contract_name => {
+                    Some(contract.items.as_slice())
+                }
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("contract `{contract_name}` not found in fixture"))
+    }
+
+    fn parsed_function<'a>(
+        tree: &'a ParsedUnit,
+        contract_name: &str,
+        function_name: &str,
+    ) -> &'a ParsedFunction {
+        contract_items(tree, contract_name)
+            .iter()
+            .find_map(|item| match item {
+                ParsedItem::Function(function) if function.name == function_name => Some(function),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("function `{function_name}` not found in fixture"))
+    }
+
+    fn parsed_event<'a>(
+        tree: &'a ParsedUnit,
+        contract_name: &str,
+        event_name: &str,
+    ) -> &'a ParsedEvent {
+        contract_items(tree, contract_name)
+            .iter()
+            .find_map(|item| match item {
+                ParsedItem::Event(event) if event.name == event_name => Some(event),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("event `{event_name}` not found in fixture"))
+    }
+
+    fn source_function_signature(
+        function: &ParsedFunction,
+        owner: &str,
+        registry: &TypeRegistry,
+    ) -> String {
+        let input_types = function
+            .params
+            .iter()
+            .map(|param| type_to_canonical(&param.ty, owner, registry))
+            .collect::<Vec<_>>();
+
+        format!("{}({})", function.name, input_types.join(","))
+    }
+
+    fn source_event_signature(event: &ParsedEvent, owner: &str, registry: &TypeRegistry) -> String {
+        let input_types = event
+            .fields
+            .iter()
+            .map(|param| type_to_canonical(&param.ty, owner, registry))
+            .collect::<Vec<_>>();
+
+        format!("{}({})", event.name, input_types.join(","))
+    }
+
+    fn function_span(tree: &ParsedUnit, contract_name: &str, function_name: &str) -> usize {
+        parsed_function(tree, contract_name, function_name).span_start
+    }
+
+    fn selector_hex(function: &alloy_json_abi::Function) -> String {
+        format!("0x{}", hex::encode(function.selector().as_ref() as &[u8]))
+    }
+
+    fn topic_hex(event: &alloy_json_abi::Event) -> String {
+        format!("0x{}", hex::encode(event.selector().as_ref() as &[u8]))
+    }
+
+    #[test]
+    fn compiled_tuple_array_signatures_have_known_selectors_and_topics() {
+        let source_tree =
+            parse_source_unit(COMPILED_ABI_SOURCE).expect("compiled source fixture must parse");
+        let source_registry = build_type_registry(&source_tree);
+        let source_function = parsed_function(&source_tree, "CanonicalFixture", "submit");
+        let source_event = parsed_event(&source_tree, "CanonicalFixture", "Submitted");
+        let source_function_signature =
+            source_function_signature(source_function, "CanonicalFixture", &source_registry);
+        let source_event_signature =
+            source_event_signature(source_event, "CanonicalFixture", &source_registry);
+
+        assert_eq!(source_function_signature, COMPILED_FUNCTION_SIGNATURE);
+        assert_eq!(source_event_signature, COMPILED_EVENT_SIGNATURE);
+        assert_eq!(
+            compute_selector(&source_function_signature),
+            COMPILED_FUNCTION_SELECTOR
+        );
+        assert_eq!(
+            compute_topic_hash(&source_event_signature),
+            COMPILED_EVENT_TOPIC
+        );
+
+        let abi: JsonAbi =
+            serde_json::from_str(COMPILED_ABI_JSON).expect("solc ABI fixture must parse");
+        let function = abi
+            .functions()
+            .find(|function| function.name == "submit")
+            .expect("compiled ABI must contain submit");
+        let event = abi
+            .events()
+            .find(|event| event.name == "Submitted")
+            .expect("compiled ABI must contain Submitted");
+
+        assert_eq!(canonical_type(&function.inputs[0]), "(address,uint256[2])");
+        assert_eq!(canonical_type(&function.inputs[1]), "bytes32[][2]");
+        assert_eq!(function.signature(), COMPILED_FUNCTION_SIGNATURE);
+        assert_eq!(event.signature(), COMPILED_EVENT_SIGNATURE);
+        assert_eq!(selector_hex(function), COMPILED_FUNCTION_SELECTOR);
+        assert_eq!(topic_hex(event), COMPILED_EVENT_TOPIC);
+    }
+
+    #[test]
+    fn canonicalizes_nested_arrays_fixed_arrays_structs_and_enums() {
+        let registry = registry_for(
+            r#"
+            contract CanonicalFixture {
+                enum Status { Pending, Filled }
+
+                struct Detail {
+                    uint256[2] prices;
+                    Status status;
+                }
+
+                struct Order {
+                    Detail[][3] details;
+                    address maker;
+                }
+            }
+            "#,
+        );
+
+        assert_eq!(
+            type_to_canonical("Order[2][]", "CanonicalFixture", &registry),
+            "((uint256[2],uint8)[][3],address)[2][]"
+        );
+        assert_eq!(
+            type_to_canonical("uint8[][4]", "CanonicalFixture", &registry),
+            "uint8[][4]"
+        );
+        assert_eq!(
+            type_to_canonical("Status[5]", "CanonicalFixture", &registry),
+            "uint8[5]"
+        );
+    }
+
+    #[test]
+    fn recursive_struct_canonicalization_stops_at_the_depth_limit() {
+        let registry = registry_for(
+            r#"
+            contract RecursiveFixture {
+                struct Node { Node child; }
+            }
+            "#,
+        );
+
+        assert_eq!(MAX_TYPE_RECURSION_DEPTH, EXPECTED_MAX_TYPE_RECURSION_DEPTH);
+        assert_eq!(
+            type_to_canonical_inner(
+                "Node",
+                "RecursiveFixture",
+                &registry,
+                MAX_TYPE_RECURSION_DEPTH
+            ),
+            "(Node)"
+        );
+        assert_eq!(
+            type_to_canonical_inner(
+                "Node",
+                "RecursiveFixture",
+                &registry,
+                MAX_TYPE_RECURSION_DEPTH + 1
+            ),
+            "Node"
+        );
+
+        let mut expected = "Node".to_string();
+        for _ in 0..=MAX_TYPE_RECURSION_DEPTH {
+            expected = format!("({expected})");
+        }
+        assert_eq!(
+            type_to_canonical("Node", "RecursiveFixture", &registry),
+            expected
+        );
+    }
+
+    #[test]
+    fn adjacent_natspec_is_attached_to_the_function() {
+        let source = r#"
+            contract Docs {
+                /// @notice Process an amount.
+                /// @param amount Amount to process.
+                /// @return result Processed amount.
+                function process(uint256 amount) external pure returns (uint256 result);
+            }
+        "#;
+        let tree = parse_source_unit(source).expect("NatSpec fixture must parse");
+        let mut comments = extract_doc_comments(source);
+
+        let natspec =
+            take_natspec_for_offset(&mut comments, function_span(&tree, "Docs", "process"))
+                .expect("adjacent NatSpec must attach");
+
+        assert_eq!(natspec.notice, "Process an amount.");
+        assert_eq!(
+            natspec.params,
+            vec![("amount".to_string(), "Amount to process.".to_string())]
+        );
+        assert_eq!(
+            natspec.returns,
+            vec![("result".to_string(), "Processed amount.".to_string())]
+        );
+        assert!(comments.is_empty());
+    }
+
+    #[test]
+    fn natspec_beyond_the_distance_limit_is_not_attached() {
+        let padding_name = "x".repeat(MAX_NATSPEC_DISTANCE_BYTES);
+        let source = format!(
+            r#"
+            contract Docs {{
+                /// @notice This belongs to the intervening declaration.
+                uint256 constant {padding_name} = 1;
+                function distant() external;
+            }}
+            "#
+        );
+        let tree = parse_source_unit(&source).expect("distant NatSpec fixture must parse");
+        let mut comments = extract_doc_comments(&source);
+        let span = function_span(&tree, "Docs", "distant");
+
+        assert_eq!(comments.len(), 1);
+        assert!(span - comments[0].0 > MAX_NATSPEC_DISTANCE_BYTES);
+        assert!(take_natspec_for_offset(&mut comments, span).is_none());
+    }
 
     #[test]
     fn solar_parse_accepts_documented_modern_solidity_syntax() {
