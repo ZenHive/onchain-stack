@@ -10,12 +10,12 @@ Requires no Rust toolchain on hosts with a matching precompiled artifact (macOS 
 def deps do
   [
     {:onchain, "~> 0.12"},
-    {:onchain_evm, "~> 0.5"}
+    {:onchain_evm, "~> 0.6"}
   ]
 end
 ```
 
-Matching hosts download a NIF from the GitHub Release for this version and verify it against `checksum-Elixir.Onchain.EVM.exs` / `checksum-Elixir.Onchain.Solidity.exs`. A missing or tampered checksum fails the load; it does not fall back to a silent source build.
+Matching hosts download a NIF from the GitHub Release for this version and verify it against `checksum-Elixir.Onchain.EVM.exs` / `checksum-Elixir.Onchain.Solidity.exs`. A checksum **mismatch always fails the load**. A **missing** checksum file fails the load for a Hex-installed package — `files:` ships those files, so absence is a packaging bug — and source-builds in this repo's own checkout, which is what keeps `mix ci` green before the first v0.6.0 artifact release.
 
 To force a source build on any host:
 

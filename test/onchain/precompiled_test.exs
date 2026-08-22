@@ -63,11 +63,25 @@ defmodule Onchain.PrecompiledTest do
       assert sol[:base_url] == evm[:base_url]
     end
 
-    test "does not bypass checksum verification on a supported host" do
-      evm = Precompiled.opts("onchain_evm")
+    test "source-builds in this checkout while checksum files are absent" do
+      refute File.exists?("checksum-Elixir.Onchain.EVM.exs")
+      refute File.exists?("checksum-Elixir.Onchain.Solidity.exs")
+      assert Mix.Project.config()[:version] == "0.6.0"
+      assert Precompiled.opts("onchain_evm")[:force_build]
+      assert Precompiled.opts("onchain_solidity")[:force_build]
+    end
 
-      refute Keyword.has_key?(evm, :force_build)
-      assert evm[:targets] == Precompiled.targets()
+    test "a supported host with a present checksum does not force_build" do
+      path = Path.join(File.cwd!(), "checksum-Elixir.Onchain.EVM.exs")
+      refute File.exists?(path)
+      File.write!(path, "%{}\n")
+
+      try do
+        refute Keyword.has_key?(Precompiled.opts("onchain_evm"), :force_build)
+      after
+        File.rm!(path)
+        refute File.exists?(path)
+      end
     end
 
     test "ONCHAIN_EVM_BUILD sets the package force-build option" do
@@ -84,21 +98,26 @@ defmodule Onchain.PrecompiledTest do
     end
   end
 
-  describe "force_build?/2" do
+  describe "force_build?/4" do
     test "falls back to source for every unsupported target" do
-      assert Precompiled.force_build?("x86_64-pc-windows-msvc", nil)
-      assert Precompiled.force_build?("aarch64-unknown-linux-musl", nil)
-      assert Precompiled.force_build?(nil, nil)
+      assert Precompiled.force_build?("x86_64-pc-windows-msvc", nil, :present, :hex)
+      assert Precompiled.force_build?("aarch64-unknown-linux-musl", nil, :present, :hex)
+      assert Precompiled.force_build?(nil, nil, :present, :hex)
     end
 
-    test "downloads for supported targets" do
-      refute Precompiled.force_build?("aarch64-apple-darwin", nil)
-      refute Precompiled.force_build?("x86_64-unknown-linux-gnu", nil)
+    test "a supported host with a present checksum downloads" do
+      refute Precompiled.force_build?("aarch64-apple-darwin", nil, :present, :checkout)
+      refute Precompiled.force_build?("x86_64-unknown-linux-gnu", nil, :present, :hex)
+    end
+
+    test "a missing checksum source-builds in this checkout and fails closed on Hex" do
+      assert Precompiled.force_build?("aarch64-apple-darwin", nil, :missing, :checkout)
+      refute Precompiled.force_build?("aarch64-apple-darwin", nil, :missing, :hex)
     end
 
     test "ONCHAIN_EVM_BUILD forces supported targets to build" do
-      assert Precompiled.force_build?("aarch64-apple-darwin", "1")
-      assert Precompiled.force_build?("aarch64-apple-darwin", "true")
+      assert Precompiled.force_build?("aarch64-apple-darwin", "1", :present, :hex)
+      assert Precompiled.force_build?("aarch64-apple-darwin", "true", :present, :hex)
     end
   end
 
@@ -141,6 +160,7 @@ defmodule Onchain.PrecompiledTest do
         |> File.read!()
 
       assert source =~ ~r/get_env\("RUSTLER_PRECOMPILED_FORCE_BUILD_ALL"\) in \["1", "true"\]/
+      assert File.read!("README.md") =~ "RUSTLER_PRECOMPILED_FORCE_BUILD_ALL=1"
     end
   end
 
