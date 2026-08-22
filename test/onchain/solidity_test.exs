@@ -751,6 +751,9 @@ defmodule Onchain.SolidityTest do
       {:ok, result_a} = Solidity.__parse_sol_root__(sol, "IA")
       {:ok, result_b} = Solidity.__parse_sol_root__(sol, "IB")
 
+      assert Enum.map(result_a.functions, & &1.name) == ["getA"]
+      assert Enum.map(result_b.functions, & &1.name) == ["getB"]
+
       get_a = Enum.find(result_a.functions, &(&1.name == "getA"))
       get_b = Enum.find(result_b.functions, &(&1.name == "getB"))
 
@@ -789,6 +792,26 @@ defmodule Onchain.SolidityTest do
 
       assert {:ok, result} = Solidity.parse_sol(sol)
       assert [%{name: "BASE", ty: "uint256", value: "42"}] = result.constants
+    end
+
+    test "preserves source order, constructor shape, constants, and mutability strings" do
+      sol = """
+      pragma solidity ^0.8.31;
+      contract C {
+          uint256 constant LIMIT = 42;
+          constructor(address payable admin) payable {}
+          function second() external pure returns (uint256);
+          function first() external view returns (uint256);
+      }
+      """
+
+      assert {:ok, result} = Solidity.parse_sol(sol)
+      assert Enum.map(result.functions, & &1.name) == ["second", "first"]
+      assert Enum.map(result.functions, & &1.state_mutability) == ["pure", "view"]
+      assert [%{name: "LIMIT", ty: "uint256", value: "42"}] = result.constants
+
+      assert %{state_mutability: "payable", inputs: [admin]} = result.constructor
+      assert %{name: "admin", ty: "address", components: []} = admin
     end
   end
 
