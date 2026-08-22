@@ -466,7 +466,7 @@ shipped_in = "4bc7cc2289411c39b075ae639dad23f8795ad5cf"
 id = 33
 phase = 3
 bundle = "standalone"
-status = "pending"
+status = "done"
 title = "Spike: measure whether per-call tokio runtime creation costs anything before reusing one"
 scores = { d = 3, b = 4, u = 4 }
 acceptance_criteria = [
@@ -490,9 +490,16 @@ The proposed fix also has a hazard the original task did not mention: `with_runt
 
 Measure first. If runtime construction is not a visible share of wall time, close this and say so.
 """
+implemented = "Landed by grok via merge-train; reviewer-approved (run run-1787394202843-b9b972f8, 39416686e65645adb79e5d930e1ee5e9de5fc354)."
+delivered_by = "grok"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1787394202843-b9b972f8"
 created_at = "2026-08-22"
 started_at = "2026-08-22"
 scored_at = "2026-08-22"
+done_at = "2026-08-22"
+shipped_in = "39416686e65645adb79e5d930e1ee5e9de5fc354"
 
 [[task]]
 id = 43
