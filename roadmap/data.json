@@ -564,7 +564,7 @@
       "id": 28,
       "phase": 3,
       "bundle": "standalone",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Rust unit tests for `onchain_evm` — transport-error classification, tx building, block parsing, error encoding",
       "scores": {
         "d": 5,
@@ -596,6 +596,7 @@
       ],
       "body": "Add cargo-level unit tests to the onchain_evm crate. The crate currently has exactly two (`build_tx_preserves_call_params`, `build_tx_preserves_explicit_nonce`), which leaves the parts most likely to regress silently untested.\n\nThis task was rewritten 2026-08-22: the original body named `CallParams` parsing and \"hex helpers\", entities that **no longer exist** after Task 55 bumped revm 19 -> 41/42 and alloy 0.7 -> 2.x. Parameters now arrive as a `HashMap<String, Term>` read through `get_string_param` and friends. Target the current shape.\n\nThe highest-value target is `classify_transport_error`. Task 49 replaced its string matching with a walk down the `std::error::Error` source chain to recover the underlying `reqwest::Error`, but kept display-string heuristics as a fallback for a future alloy that stops preserving the type. Nothing tests either path today, so the exact failure that fallback exists to absorb — a version bump quietly demoting `:timeout` / `:fork_error` to `:evm_error` — would land green. Construct the wrapped errors directly in the test rather than going over the network.\n",
       "created_at": "2026-08-22",
+      "started_at": "2026-08-22",
       "scored_at": "2026-08-22",
       "cross_repo": []
     },
