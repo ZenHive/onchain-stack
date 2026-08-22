@@ -95,7 +95,7 @@ Standalone tasks: Rust unit tests, tokio runtime reuse, clippy CI, codegen exten
 <!-- TASKS:BEGIN phase=3 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 28 | 🔄 | 🎁 **standalone** · *native/onchain_evm* · Rust unit tests for `onchain_evm` — transport-error classification, tx building, block parsing, error encoding [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 28 | ✅ | 🎁 **standalone** · *native/onchain_evm* · Rust unit tests for `onchain_evm` — transport-error classification, tx building, block parsing, error encoding [D:5/B:8/U:8 → Eff:1.6] 🚀 |
 | Task 29 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 | Task 33 | ⬜ | 🎁 **standalone** · *native/onchain_evm* · Spike: measure whether per-call tokio runtime creation costs anything before reusing one [D:3/B:4/U:4 → Eff:1.33] 📋 |
 | Task 43 | ⬜ | 🎁 **standalone** · *Both native crates* · Add `cargo clippy` to `mix ci` — there is no GitHub Actions to add it to [D:3/B:6/U:6 → Eff:2.0] 🎯 |
@@ -106,6 +106,7 @@ Standalone tasks: Rust unit tests, tokio runtime reuse, clippy CI, codegen exten
 | Task 56 | ⬜ | 🎁 **standalone** · 🔒 Independent EVM semantics and exact-bytecode verification harness [D:8/B:10/U:8 → Eff:1.12] 📋 |
 | Task 59 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax [D:3/B:8/U:7 → Eff:2.5] 🎯 |
 | Task 61 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Migrate Solidity source parsing from solang-parser to solar-parse [D:6/B:8/U:7 → Eff:1.25] 📋 |
+| Task 62 | ⬜ | 🎁 **standalone** · *release* · Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex [D:4/B:9/U:8 → Eff:2.12] 🎯 |
 <!-- TASKS:END -->
 
 ---
