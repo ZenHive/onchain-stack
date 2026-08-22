@@ -79,8 +79,10 @@ Onchain.Solidity.parse_sol_file(path, opts)         # .sol file (+ imports)
 Onchain.Solidity.resolve_sol_file(path, opts)       # resolve imports w/o full parse
 ```
 
-`opts` for `.sol` parsing: `:remappings` (Foundry-style `["@oz/=lib/oz/"]`),
-plus root/import-resolution controls.
+Source parsing (`solar-parse` 0.2) accepts Solidity through 0.8.36, including
+`transient` state variables and custom storage layouts (`layout at`, `erc7201`).
+JSON ABI stays on `alloy-json-abi`. `opts` for `.sol` parsing: `:remappings`
+(Foundry-style `["@oz/=lib/oz/"]`), plus root/import-resolution controls.
 
 ## Onchain.Trace — debug/trace
 

@@ -2,14 +2,19 @@
 
 Date: 2026-08-22
 
+**Status (2026-08-22):** implemented by Task 61 (`df9fd1a`). Source parsing now
+uses `solar-parse` 0.2.0. The characterization test asserts the four sources
+below parse; it no longer records `solang-parser` rejections.
+
 ## Decision
 
 Migrate the Solidity-source path from `solang-parser` to `solar-parse`. Keep
 `parse_abi_json` on `alloy-json-abi` and preserve the existing Elixir output
 contract exactly.
 
-This spike changes no parser dependency or production behavior. The only code
-change is a characterization test for the observed `solang-parser` ceiling.
+This spike changed no parser dependency or production behavior. The only code
+change at the time was a characterization test for the observed `solang-parser`
+ceiling.
 
 ## Measured language gap
 
@@ -161,17 +166,17 @@ Replace the source parser with the released `solar-parse` frontend so
 existing `Onchain.Solidity.parsed_sol()` field and error tuple, and leave the
 Alloy JSON-ABI path unchanged.
 
-Success criteria:
+Success criteria (met by Task 61):
 
-- [ ] The four sources in this spike parse successfully through
+- [x] The four sources in this spike parse successfully through
       `Onchain.Solidity.parse_sol/1`.
-- [ ] Existing source-parser and Generator tests pass without output-shape
+- [x] Existing source-parser and Generator tests pass without output-shape
       changes.
-- [ ] Tests compare source and JSON-ABI signatures, selectors, topics,
+- [x] Tests compare source and JSON-ABI signatures, selectors, topics,
       canonical nested types, and NatSpec attachment.
-- [ ] Import extraction and root-contract selection retain their existing
+- [x] Import extraction and root-contract selection retain their existing
       behavior.
-- [ ] The dependency lock and the supported Rust version are updated and the
+- [x] The dependency lock and the supported Rust version are updated and the
       full project gate passes.
 
 ## Reproduction and sources
@@ -185,7 +190,8 @@ cargo tree --manifest-path native/onchain_solidity/target/parser-spike/Cargo.tom
 ```
 
 The isolated parser probe was scratch data and is not part of the deliverable.
-The Rust characterization test keeps the `solang-parser` failures reproducible.
+The Rust characterization test now asserts those four sources parse through
+`solar-parse`.
 
 - [`solang-parser` 0.3.5 documentation and publication date](https://docs.rs/crate/solang-parser/0.3.5)
 - [Solidity 0.8.27 transient syntax announcement](https://www.soliditylang.org/blog/2024/09/04/solidity-0.8.27-release-announcement/)

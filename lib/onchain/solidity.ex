@@ -6,8 +6,10 @@ defmodule Onchain.Solidity do
 
   - **ABI JSON** — standard `solc` output. Parses function signatures, selectors,
     parameter types, events, and errors. Use `parse_abi_json/1`.
-  - **Solidity source** — raw source strings. Recovers structs, enums, NatSpec,
-    and constants that ABI JSON discards. Use `parse_sol/1`.
+  - **Solidity source** — raw source strings via `solar-parse`. Recovers
+    structs, enums, NatSpec, and constants that ABI JSON discards, and accepts
+    Solidity through 0.8.36 (`transient` storage, custom storage layouts). Use
+    `parse_sol/1`.
   - **Resolved Solidity files** — root `.sol` files with relative imports and
     Foundry-style remappings. Use `resolve_sol_file/2` or `parse_sol_file/2`.
 

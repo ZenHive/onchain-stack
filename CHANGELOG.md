@@ -26,10 +26,22 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
   instead of silently executing under mainnet rules; an archive-node test pins
   `TLOAD` behavior on both sides of the Cancun boundary.
 - **Solidity parser-frontend spike.**
-  `native/onchain_solidity/PARSER_FRONTEND_SPIKE.md` recommends `solar-parse`
-  as the successor to `solang-parser` 0.3.5. A Rust characterization test pins
-  the four observed post-0.8.24 syntax failures (transient storage and custom
-  storage layouts).
+  `native/onchain_solidity/PARSER_FRONTEND_SPIKE.md` evaluated frontends against
+  Solidity 0.8.36 and recommended `solar-parse` as the successor to
+  `solang-parser` 0.3.5, after measuring four post-0.8.24 syntax failures
+  (transient storage and custom storage layouts). Implemented below.
+
+### Changed
+
+- **Solidity source parsing migrated from `solang-parser` 0.3.5 to
+  `solar-parse` 0.2.0.** `Onchain.Solidity.parse_sol/1` and
+  `Onchain.Contract.Generator` now accept Solidity 0.8.27+ forms that previously
+  failed at compile time (`transient` state variables; literal, constant, and
+  `erc7201` custom storage layouts). Parse errors cross the NIF as rustc-style
+  diagnostics (file position and expected tokens) rather than Debug dumps of
+  parser types. Deeply nested expressions return `{:error, {:parse_error, _}}`
+  instead of aborting the BEAM. The crate requires Rust 1.95+. JSON-ABI parsing
+  stays on `alloy-json-abi`.
 
 ## [0.5.1] — 2026-08-22
 
