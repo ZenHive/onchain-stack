@@ -97,9 +97,10 @@ and the rename did not create one. If you ever want that two-branch model, it is
 a deliberate change, not a thing to reintroduce by naming a branch `development`.
 
 The rename went through the GitHub rename API, which retargets open PRs and
-leaves redirects, so old clone URLs and links keep resolving. Workflow branch
-filters (`on: push/pull_request: branches:`) were updated in the same pass —
-if you add a workflow, target `main`.
+leaves redirects, so old clone URLs and links keep resolving. The workflow
+branch filters were updated in the same pass; the workflows themselves are
+gone since 2026-08-22 (see *There is no CI here*), so what remains to sweep on
+a rename is whatever else holds a branch name as data.
 
 **The redirects do not cover everything that names a branch.** `git push` does
 not follow them, so a push to the old name silently *recreates* it. The live
@@ -120,8 +121,9 @@ override* in `harness_settings` under the key `landing`, which
 wins. Only cartouche, which had no override row, showed the patched value. The
 registration is the default; the override is the truth. (`SettingsStore` holds
 no in-memory cache, so a write there takes effect without a restart — the
-restart was never the variable.) Same shape as `.tool-versions` vs an inline
-workflow pin: fixing the layer that loses changes nothing observable.
+restart was never the variable.) The general shape: when two layers declare the
+same thing and one of them wins, fixing the layer that loses changes nothing
+observable — so verify the effect, not the edit.
 
 ### One toolchain for all ten (aligned 2026-08-03)
 
@@ -130,37 +132,25 @@ erlang 29.0.3
 elixir 1.20.2-otp-29
 ```
 
-Every repo pins exactly that in its own `.tool-versions`, and every
-`erlef/setup-beam` step reads **that file** via `version-file:` rather than
-naming a version itself. One source of truth per repo, and the same pair in all
-ten. `fleet-health.sh` declares the canonical pair in `CANON_ERLANG` /
-`CANON_ELIXIR` and reds the sweep on any divergence — bumping the family means
-editing those two lines *and* ten `.tool-versions` files, and the TOOLCHAIN
-column is what makes a forgotten repo visible instead of silent.
+Every repo pins exactly that in its own `.tool-versions`, and with the gate now
+local (see *There is no CI here* below) that file **is** the runtime every check
+actually runs on — there is no second place a version can be declared.
+`fleet-health.sh` declares the canonical pair in `CANON_ERLANG` / `CANON_ELIXIR`
+and reds the sweep on any divergence, so bumping the family means editing those
+two lines *and* ten `.tool-versions` files; the TOOLCHAIN column is what makes a
+forgotten repo visible instead of silent.
 
-**`version-file` requires `version-type: strict` beside it** — setup-beam
-hard-errors with `you have to set version-type=strict if you're using
-version-file` and never installs a toolchain. Both keys are needed together in
-every step; the five repos converted on 2026-08-03 got `version-file` alone and
-took *both* their workflows red instantly, while the five that already used the
-mechanism carried `strict` and stayed green. The failure is loud, but it fires
-at step two, so nothing downstream in the job ever runs and the logs look
-unrelated to the toolchain.
-
-What this replaced is worth recording, because each variant looked fine on its
-own and only the cross-repo view exposed them:
+Two findings from the 2026-08-03 alignment are worth keeping, because both
+outlive the CI that exposed them:
 
 - **Four repos had no `.tool-versions` at all** (descripex, zen_websocket,
-  hieroglyph, onchain_aave) and inline-pinned `otp-version: "27"` /
-  `elixir-version: "1.18"` in CI, while local development resolved the global
-  1.20.2-otp-29. So CI graded every PR on a runtime nobody actually developed
-  on. All four carried a comment proposing exactly this fix as a "recommended
-  follow-up" — written, never done.
-- **cartouche ran a one-entry `strategy.matrix`** pinning Elixir `1.20.1` with
-  OTP `27.3`. A matrix implies multi-version coverage; with one entry it bought
-  none, and the pair was one that exists nowhere else in the family. Dissolved
-  to `version-file`; the job is now plain `Harness` (no branch protection
-  referenced the old interpolated name).
+  hieroglyph, onchain_aave) and pinned OTP 27 / Elixir 1.18 only in their
+  workflow, while local development resolved the global 1.20.2-otp-29 — so the
+  automated grade and the developer's runtime were never the same thing. All
+  four carried a comment proposing exactly this fix as a "recommended
+  follow-up" — written, never done. That failure mode is gone by construction
+  now, but a repo *without* a `.tool-versions` still runs on whatever the shell
+  happens to resolve, which is why `none` is a hard finding in the sweep.
 - **onchain_js and onchain_tempo pinned 1.18.4-otp-27 deliberately**, on the
   assumption that onchain_js's NIFs needed OTP 27. They do not:
   `quickbeam` arrives as a `zigler_precompiled` artifact and `oxc` as a
@@ -168,9 +158,11 @@ own and only the cross-repo view exposed them:
   than by OTP version — nothing Zig or Rust compiles locally at all. Both NIFs
   load and execute under OTP 29, verified by running onchain_js's integration
   tests, not merely by loading them.
-- **The three already-`version-file` repos still drifted** among themselves
-  (onchain on 1.20.1 / erlang 29.0.2, the other two on 29.0.2). Having the
-  mechanism right does not keep the values aligned; only the sweep does.
+
+A third is worth recording as a pattern rather than a fact: the three repos that
+*already* had the mechanism right still drifted among themselves (onchain on
+1.20.1 / erlang 29.0.2, the other two on 29.0.2). Having one source of truth per
+repo does not keep ten of them aligned with each other; only the sweep does.
 
 ---
 
@@ -225,15 +217,23 @@ in any order. `mpp` is always last (it consumes the tier above).
 
 ---
 
-## Current cascade state (2026-08-02)
+## Current cascade state (2026-08-22)
 
 Verify before acting — this is a snapshot (`./bin/publish-prep.sh status`).
 
-**The descripex 0.12 cascade is complete.** All ten packages are on Hex at their
-local version — descripex 0.12.0, zen_websocket 0.6.0, hieroglyph 1.6.0,
-cartouche 0.6.1, onchain 0.12.0, onchain_aave 0.3.0, onchain_evm 0.4.0,
-onchain_js 0.2.0, onchain_tempo 0.9.0, mpp 0.12.0. Nothing awaits
-`mix hex.publish`, and nothing is blocked on a first-party bound.
+**One package awaits publish: onchain 0.13.0** (Hex has 0.12.1). It moved for
+`zen_websocket ~> 0.7.0` — 0.7.0 widens `JsonRpc.build_request/2`'s spec to
+accept positional lists, which let the whole `@dialyzer` suppression block in
+`Onchain.Subscription` go away. None of 0.7.0's breaking removals reach onchain:
+it uses only `Client.connect/send_message/close` and
+`JsonRpc.build_request/match_response`, and `connect/2`'s changed failure term
+is already absorbed by an existing generic `{:error, reason}` clause.
+
+The other nine sit at Hex parity: descripex 0.12.1, zen_websocket 0.7.0,
+hieroglyph 1.6.1, cartouche 0.7.0, onchain_aave 0.3.2, onchain_evm 0.5.0,
+onchain_js 0.3.0, onchain_tempo 0.9.1, mpp 0.16.0. **The five repos downstream
+of onchain cannot move until 0.13.0 is on Hex** — the cascade rule forbids
+publishing a dependent against an unpublished upstream.
 
 **Three-segment bounds for first-party 0.x deps are deliberate — but they are
 scoped, not universal.** descripex 0.12.0 (`short_name` atom → string) and
@@ -285,25 +285,56 @@ gitignored in onchain, onchain_aave, onchain_evm and onchain_tempo under the
 banner "consumers generate their own" — true but beside the point: Mix reads
 only the *top-level* project's lock, and Hex does not ship one in the tarball,
 so a library's lock never reaches a consumer either way. The entire question is
-your own CI, and there committing wins:
+your own gate, and there committing wins:
 
 - `mix_audit` reads `mix.lock`. Without a committed lock, `deps.audit` grades
   whatever was resolved that minute — unreproducible, and with no diff to
   review. The whole `advisory-freshness.sh` gate points at that file.
-- A transitive bump shows up in a PR diff instead of landing silently.
+- A transitive bump shows up in a diff you can read instead of landing silently.
 - `git bisect` reproduces the dep set of the commit rather than today's Hex.
 
-The cost is real and worth naming: a committed lock means CI only ever exercises
-**one** resolution, so a bound that no longer holds goes unnoticed — which is
-exactly how mpp sat on `onchain ~> 0.11` after 0.12.0 shipped. The mitigation is
-a second CI job that resolves fresh (`mix deps.unlock --all && mix deps.get`)
-and tests the newest versions the bounds admit. **Not yet added anywhere** — see
-the open item below.
+The cost is real and worth naming: a committed lock means the gate only ever
+exercises **one** resolution, so a bound that no longer holds goes unnoticed —
+which is exactly how mpp sat on `onchain ~> 0.11` after 0.12.0 shipped. The
+mitigation is a second pass that resolves fresh (`mix deps.unlock --all && mix
+deps.get`) and tests the newest versions the bounds admit. **Nowhere automated,
+and now nothing will do it for you** — see the open item below.
 
-### The gates are real now — do not re-decorate them
+### There is no CI here — `mix ci` is the gate, and you run it (2026-08-22)
 
-Every repo gates on `mix ci` → `precommit.full`, and every repo's CI workflow
-invokes that alias instead of a hand-kept checklist. Four properties are easy to
+**All GitHub Actions workflows were deleted from all ten repos, and no new one
+is to be added.** This is a standing operator decision, not a gap waiting to be
+filled: do not propose a workflow, do not restore one from git history, do not
+"just add a small one" for a new check. The `elixir-ci-harness` skill that used
+to install them was removed for the same reason.
+
+What did **not** change: `mix ci` → `precommit.full` in every repo, unchanged
+and still the whole gate. It was never the workflows that graded a repo — they
+only invoked the alias. Everything the alias does, it still does, on the same
+runtime, from `.tool-versions`.
+
+What genuinely changed is **who triggers it**. Nothing runs on push any more, so:
+
+- **Run `mix ci` in the repo before you push.** Serially — see *Never run
+  `mix ci` in more than one repo at a time*. Green locally is now the only
+  green there is.
+- **`fleet-health.sh` cannot tell you a repo's gate is passing.** Its CI column
+  is gone rather than always-green: `gh run list` against a repo with no
+  workflows returns an empty list, which would have rendered as a reassuring
+  `ok`. An absent gate must not look like a passing one.
+- **Sobelow findings no longer reach GitHub code scanning.** They surface where
+  they always mattered, in the alias's own sobelow step, and the sweep's ALERTS
+  column is Dependabot-only now. Dependabot itself is unaffected — it reads the
+  dependency graph, not a workflow run.
+- **`dependabot.yml` is still present in all ten** and still opens bump PRs.
+  It is not CI, so it stayed. But nothing grades those PRs any more: treat one
+  as a *notification that a bump exists*, run the bump locally through `mix
+  deps.update` + `mix ci`, and close the PR. Merging one unverified is the one
+  way this removal can actually cost you something.
+
+### The gates are real — do not re-decorate them
+
+Every repo gates on `mix ci` → `precommit.full`. Four properties are easy to
 silently undo, so they are stated here:
 
 - **`smells: [strict: true]` in `.reach.exs`.** `reach.check --smells` raises only
@@ -320,10 +351,10 @@ silently undo, so they are stated here:
 - **`agents.check`** fails when `AGENTS.md` has drifted from `CLAUDE.md`. It
   diffs rendered output, so drift inside a transitive `@`-import is caught too.
 - **Sobelow needs `--exit low`; a bare `sobelow --skip` exits 0 with findings.**
-  Same shape as the two above: the check prints, CI stays green. This was live
-  in eight repos until 2026-08-02 — onchain_evm carried four findings through
-  `mix ci` and out to GitHub code scanning while its alias reported success.
-  Every repo now runs `sobelow --skip --exit low` (cartouche sets the equivalent
+  Same shape as the two above: the check prints, the gate stays green. This was
+  live in eight repos until 2026-08-02 — onchain_evm carried four findings
+  straight through `mix ci` while its alias reported success. Every repo now
+  runs `sobelow --skip --exit low` (cartouche sets the equivalent
   `exit: "Low"` in `.sobelow-conf`). If you ever see a sobelow step *print*
   findings and the alias still pass, the flag has been dropped.
 
@@ -371,17 +402,22 @@ and read a `deps.audit` green as "nothing the mirego mirror knows about." Adding
 `hex.audit` to `precommit.full` would close it, at the cost of a gate that reds on
 advisories with no available fix (cowlib today) — hence not done yet.
 
-### Propagate cartouche's `.sobelow-skips` drift check
+### The `.sobelow-skips` drift check was collateral of the CI removal
 
-cartouche's `harness.yml` carries a step the rest of the family lacks: it runs
-`mix sobelow --mark-skip-all` into a scratch copy and diffs it against the
-committed `.sobelow-skips`, failing with the diff inline when fingerprints have
-gone stale. That is precisely the failure that let onchain_evm ship four
-findings to GitHub code scanning while its own gate reported success. Repos
-carrying a skips file — zen_websocket, onchain, onchain_evm, hieroglyph,
-cartouche — should all have it. Note hieroglyph's and cartouche's skips files
-currently suppress nothing at all (both are at zero findings even without
-`--skip`), which is harmless but means the files are vestigial.
+cartouche's `harness.yml` carried a step the rest of the family lacked, and it
+went with the workflows on 2026-08-22: run `mix sobelow --mark-skip-all` into a
+scratch copy, diff it against the committed `.sobelow-skips`, fail with the diff
+inline when fingerprints have gone stale. It guarded a real failure — a drifted
+skip entry silently suppresses nothing while looking like it suppresses
+something, which is how onchain_evm carried four findings through a green gate.
+
+**Nothing checks this today.** The replacement belongs in `precommit.full` as a
+plain alias step, not in a workflow — the mechanism is a scratch dir, a
+`--mark-skip-all`, and a `diff`, none of which needs a runner. Owed to the five
+repos carrying a skips file: zen_websocket, onchain, onchain_evm, hieroglyph,
+cartouche. Note hieroglyph's and cartouche's suppress nothing at all (both sit
+at zero findings even without `--skip`), so those two files are vestigial and
+deleting them is the cheaper fix there.
 
 ### reach 2.8.2 aborts `--smells` on non-Elixir nodes — never hand-patch `deps/`
 
@@ -413,14 +449,26 @@ read as "not reproducible locally." Two copies, two different patch generations,
 neither visible to git. **Never edit anything under `deps/`.** To test a
 candidate fix, patch it, confirm, then `mix deps.clean <dep> && mix deps.get` to
 restore pristine *in the same session* — and carry the fix in `.reach.exs`, the
-alias, or an override in `mix.exs`, where CI can see it.
+alias, or an override in `mix.exs`, where a fresh checkout sees it.
+
+**This trap got worse when the workflows went.** Back then a pristine second
+opinion existed and contradicted the local green within minutes; now nothing
+does. A hand-patched `deps/` makes `mix ci` pass on your machine and there is no
+longer anything in the world that will disagree — until a fresh clone, or a
+consumer. `mix deps.clean <dep> && mix deps.get` before believing a green is the
+whole defence.
 
 ### Open items
 
-- **No repo tests a fresh dependency resolution.** No workflow runs
-  `deps.unlock --all`, deletes `mix.lock`, or matrixes over dep versions, so a
-  bound that has stopped holding is invisible until a consumer trips on it. Add
-  one job per repo; see the `mix.lock` rationale above.
+- **No repo tests a fresh dependency resolution.** Nothing runs
+  `deps.unlock --all` or deletes `mix.lock`, so a bound that has stopped holding
+  is invisible until a consumer trips on it — the `mix.lock` rationale above
+  names the tradeoff. With no CI this is now a periodic manual sweep, which
+  means it needs a home: the natural one is `fleet-health.sh`, which already
+  visits all ten read-only and would have to grow a write-ish mode (a scratch
+  clone, not the working tree) to do it.
+- **The `.sobelow-skips` drift check is gone and unreplaced** — see the section
+  above; it needs to become a `precommit.full` step in five repos.
 - **`--summary-only` hides both the failure identity and the retry.** Every
   repo's `precommit.full` runs `test.json --cover ... --summary-only`, and the
   emitted JSON then carries counts and coverage but **no failure entries** — so
@@ -494,22 +542,26 @@ alias, or an override in `mix.exs`, where CI can see it.
 `./bin/fleet-health.sh` answers "is anything wrong anywhere" in one table:
 git state (ahead/behind/dirty), toolchain pin, `mix hex.outdated`,
 `mix hex.audit` (retired), `mix deps.audit` (vulnerabilities), open GitHub
-issues/PRs, and open GitHub security alerts (Dependabot + code scanning). ~20s
-for all ten, four repos in parallel. `--json` for machine consumption;
-`--no-fetch` / `--no-gh` / `--no-hex` / `--no-audit` to cut scope;
-`./bin/fleet-health.sh <repo>...` to narrow.
+issues/PRs, and open Dependabot alerts. ~20s for all ten, four repos in
+parallel. `--json` for machine consumption; `--no-fetch` / `--no-gh` /
+`--no-hex` / `--no-audit` to cut scope; `./bin/fleet-health.sh <repo>...` to
+narrow.
 
-TOOLCHAIN reports the *worse* of two independent divergences, because fixing
-one without the other fixes nothing: `drift` / `none` means the repo's
-`.tool-versions` disagrees with the canonical pair or is missing, while
-`inline` means a workflow hardcodes a version — and there, correcting the pin
-would never reach CI at all. A matrix-driven pin (`${{ matrix.* }}`) is
-deliberate multi-version testing and is not counted as `inline`.
+TOOLCHAIN is `ok` / `drift` / `none` against the canonical pair. It used to
+carry a fourth state, `inline`, for a workflow hardcoding a version where
+correcting `.tool-versions` would never have reached CI; with the workflows
+gone there is only one place a version can be declared, so that state is gone
+too.
+
+**It says nothing about whether any repo's gate passes, and it cannot.** There
+is no CI column: `gh run list` against a repo with no workflows returns an empty
+list, which would render as `ok` — and an absent gate reading as a passing one
+is worse than no column. `mix ci` is run by you, in the repo, serially.
 
 It is **read-only** — no `deps.get`, no writes into any repo. That is what makes
 its own "dirty tree" column trustworthy.
 
-Three things it deliberately does *not* treat as equivalent:
+Two things it deliberately does *not* treat as equivalent:
 
 - **The advisory gate runs once, not per repo.** All ten audit against one
   shared mix_audit clone. If `advisory-freshness.sh` cannot prove that clone
@@ -517,13 +569,10 @@ Three things it deliberately does *not* treat as equivalent:
   database prints "No vulnerabilities found" and exits 0 (mirego/mix_audit#61),
   so an unverified green is not a green.
 - **A failed GitHub call reads `?`, never `0`.** Zero is what all-clear looks
-  like; a silent 404 or rate-limit must not forge it. `0*` is a third state:
-  code scanning was never enabled on that repo (currently onchain_aave), so
-  ALERTS counts Dependabot only.
-- **Dependabot alerts are hard; code-scanning `warning`s are not.** This org
-  uploads Sobelow output to code scanning, so only high/critical (or an
-  `error`-level rule) fails the sweep. onchain_evm's four SBLW warnings are
-  reported in the details block and leave the exit code at 0.
+  like; a silent 404 or rate-limit must not forge it. ALERTS is Dependabot only
+  — those alerts read the dependency graph and survived the workflow removal;
+  the Sobelow findings that used to land in code scanning now surface only in
+  `mix ci`'s own sobelow step, where the `--exit low` flag makes them fail.
 
 Outdated deps, open issues/PRs and a dirty tree never fail the sweep — they are
 normal working state. OUTDATED reads `possible/blocked`; **blocked** means
@@ -643,7 +692,7 @@ version before you start the next downstream repo.
 - **Local cross-stack dev without Hex round-trips:** for active multi-repo work,
   a dev/test-only path dep (`{:dep, path: "../dep", only: [:dev, :test]}`, as
   onchain_aave already uses for onchain_evm) lets you build against local
-  checkouts. Release/CI still resolves the pinned Hex version. Use it to avoid
+  checkouts. A release build still resolves the pinned Hex version. Use it to avoid
   publishing just to test a downstream — but the *published* `mix.exs` must pin
   the Hex version, never a path.
 
@@ -658,5 +707,8 @@ the render is effectively 1:1. Regenerate after every edit:
 ```bash
 cd ~/_DATA/code/onchain-stack
 ~/_DATA/code/claude-marketplace/scripts/sync-agents-md.sh          # write AGENTS.md
-~/_DATA/code/claude-marketplace/scripts/sync-agents-md.sh --check  # CI freshness gate
+~/_DATA/code/claude-marketplace/scripts/sync-agents-md.sh --check  # freshness gate
 ```
+
+(Inside a repo the same freshness check runs as `mix agents.check`, part of
+`precommit.full`. Here there is no alias, so run it by hand after editing.)
