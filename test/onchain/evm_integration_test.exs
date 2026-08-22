@@ -95,6 +95,16 @@ defmodule Onchain.EVM.IntegrationTest do
     Onchain.Hex.decode!(@weth_address)
   end
 
+  defp sample_wall_us(fun, n) do
+    samples = Enum.map(1..n, fn _ -> elem(:timer.tc(fun), 0) end)
+    sorted = Enum.sort(samples)
+    {Enum.at(sorted, div(n, 2)), hd(sorted), List.last(sorted)}
+  end
+
+  defp float_pct(share) do
+    :erlang.float_to_binary(share * 100, decimals: 6) <> "%"
+  end
+
   describe "simulate_call/3" do
     test "uses the pinned block number and timestamp" do
       assert multicall_uint("getBlockNumber()", rpc_opts()) == @fork_block
@@ -501,10 +511,12 @@ defmodule Onchain.EVM.IntegrationTest do
 
   describe "tokio runtime construction vs simulate_call wall time" do
     # Pessimistic ceiling matching the rust test's 1 ms bound. Release-profile
-    # median construction is ~1.2 µs (native/onchain_evm/RUNTIME_SPIKE.md).
+    # median construction is ~1 µs (native/onchain_evm/RUNTIME_SPIKE.md).
     @construction_ceiling_us 1_000
+    @wall_samples 5
 
     @tag :tokio_runtime
+    @tag timeout: 180_000
     test "is not a visible share of cheap or expensive archive-node calls" do
       {:ok, cheap_data} = ABI.encode_call("totalSupply()", [])
 
@@ -522,17 +534,23 @@ defmodule Onchain.EVM.IntegrationTest do
       cheap.()
       expensive.()
 
-      {cheap_us, _} = :timer.tc(cheap)
-      {expensive_us, _} = :timer.tc(expensive)
+      {cheap_us, cheap_min, cheap_max} = sample_wall_us(cheap, @wall_samples)
+      {expensive_us, expensive_min, expensive_max} = sample_wall_us(expensive, @wall_samples)
 
       cheap_share = @construction_ceiling_us / cheap_us
       expensive_share = @construction_ceiling_us / expensive_us
 
+      IO.puts("""
+      tokio runtime construction share (#{@construction_ceiling_us}µs ceiling):
+        cheap USDC totalSupply() n=#{@wall_samples} median=#{cheap_us}µs min=#{cheap_min}µs max=#{cheap_max}µs share=#{float_pct(cheap_share)}
+        expensive Aave getUserAccountData n=#{@wall_samples} median=#{expensive_us}µs min=#{expensive_min}µs max=#{expensive_max}µs share=#{float_pct(expensive_share)}
+      """)
+
       assert cheap_share < 0.10,
-             "cheap share #{cheap_share} (#{cheap_us}µs wall) exceeds 10% at 1ms construction ceiling"
+             "cheap share #{cheap_share} (median #{cheap_us}µs wall) exceeds 10% at 1ms construction ceiling"
 
       assert expensive_share < 0.10,
-             "expensive share #{expensive_share} (#{expensive_us}µs wall) exceeds 10% at 1ms construction ceiling"
+             "expensive share #{expensive_share} (median #{expensive_us}µs wall) exceeds 10% at 1ms construction ceiling"
     end
   end
 end
