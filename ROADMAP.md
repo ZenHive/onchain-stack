@@ -11,7 +11,7 @@
 ---
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 2 — Quality & Reliability Improvements (12 of 21 done · 0 in progress)
+**Focus phase:** 2 — Quality & Reliability Improvements (12 of 22 done · 0 in progress)
 
 **Last shipped:** no recent shipments
 
@@ -82,6 +82,7 @@ Bundles identified via code review — grouped by shared code and common goals.
 | Task 54 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *Onchain.EVM* · Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
 | Task 55 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory [D:9/B:6/U:7 → Eff:0.72?] ⚠️ |
 | Task 57 | ⬜ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF [D:3/B:6/U:6 → Eff:2.0] 🎯 |
+| Task 58 | ⬜ | 🎁 **standalone** · Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 <!-- TASKS:END -->
 
 ---

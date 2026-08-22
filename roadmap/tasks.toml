@@ -549,3 +549,26 @@ This is the second round of the same class (Bundle 1 was the first), which is th
 """
 created_at = "2026-08-21"
 scored_at = "2026-08-21"
+
+[[task]]
+id = "58"
+phase = 2
+bundle = "standalone"
+status = "pending"
+title = "Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts"
+scores = { d = 5, b = 9, u = 8 }
+acceptance_criteria = ["""Multicall3 getBlockNumber()/getCurrentBlockTimestamp() through simulate_call return the forked block's real number and timestamp, for a numeric :block pin, for block: "latest", and when :block is omitted""", "An Aave V3 supply simulated through simulate_batch against a forked mainnet archive node succeeds instead of reverting with Panic(0x11)", 'A state override of balance, nonce or storage on a contract that has not been touched yet leaves its deployed code and unspecified fields intact — balanceOf on WETH still answers after %{weth => %{"storage" => "{}"}}', "Rust or Elixir tests pin the block-environment fields and the override-preserves-code behaviour, and fail against the current implementation", "mix ci passes"]
+out_of_scope = ["Deriving SpecId from the forked block or a chain-aware hardfork schedule (documented limitation at native/onchain_evm/src/lib.rs:515)", "Adding block-environment override options for callers to fake number/timestamp"]
+assignee = "codex"
+model = "gpt-5.6-sol"
+body = """
+Simulation currently executes against a fork whose state is real but whose block environment is not. `Context::mainnet()` is built with revm's default `BlockEnv` at every site in `native/onchain_evm/src/lib.rs` (do_simulate_call, do_simulate_transaction, do_simulate_batch), so contracts observe `block.number == 0` and `block.timestamp == 1` regardless of the `:block` option. Measured against a mainnet archive node at head 25_808_519: Multicall3 `getBlockNumber()` returned 0 and `getCurrentBlockTimestamp()` returned 1 for `block: "latest"`, `block: <number>` and no block option alike.
+
+This silently breaks every time-dependent protocol, which is most of DeFi. An Aave V3 `supply` reverts with `Panic(0x11)` (arithmetic underflow) because `MathUtils.calculateLinearInterest` computes `block.timestamp - reserve.lastUpdateTimestamp` against a 1970 clock. Reads that ignore time return correct values, so the failure looks like a caller mistake rather than a missing environment — the module's own headline use cases ("test liquidation thresholds", "run what-if scenarios") are the ones that break.
+
+The second defect shares a root cause with the first's blast radius: `apply_state_overrides` seeds `info` from `db.cache.accounts`, which on a fresh ForkDB is empty because fork state is fetched lazily. `unwrap_or_default()` therefore yields an empty `AccountInfo`, and `insert_account_info` writes that back — replacing the account instead of amending it. Overriding any field of an account that has not yet been touched drops its deployed code: after `%{weth => %{"storage" => ~s({})}}`, `balanceOf` on WETH returns `"0x"`. Overrides must be applied on top of the account as the fork would resolve it, not on top of a default.
+
+Fetch the forked block's header once per simulation and populate number, timestamp, basefee, gas limit, coinbase and prevrandao from it; keep honouring `:block` so a historical pin executes in that block's environment. The pre-existing SpecId limitation documented at lib.rs:515 is a separate concern and stays as it is.
+"""
+created_at = "2026-08-22"
+scored_at = "2026-08-22"
