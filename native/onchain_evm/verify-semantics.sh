@@ -26,7 +26,8 @@ run_kevm() {
     kevm-pyk run /workspace/vector.json --target llvm --mode "$mode" --chainid 1 "$@"
 }
 
-for fixture_name in call_output_1 create_empty_contract_with_storage revert_opcode; do
+for fixture_name in call_output_1 create_empty_contract_with_storage \
+    create_empty000_create_in_initcode_transaction revert_opcode; do
   run_kevm "$fixture_dir/official/$fixture_name.json" NORMAL >/dev/null
   echo "kevm_pass=$fixture_name"
 done

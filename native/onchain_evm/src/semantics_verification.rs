@@ -7,6 +7,9 @@ use serde_json::Value;
 const BLOCK_CALL: &str = include_str!("../testdata/semantics/official/call_output_1.json");
 const BLOCK_CREATE: &str =
     include_str!("../testdata/semantics/official/create_empty_contract_with_storage.json");
+const BLOCK_CREATE_TX: &str = include_str!(
+    "../testdata/semantics/official/create_empty000_create_in_initcode_transaction.json"
+);
 const BLOCK_REVERT: &str = include_str!("../testdata/semantics/official/revert_opcode.json");
 const VM_LOG: &str = include_str!("../testdata/semantics/official/log1_non_empty_mem.json");
 const VM_SSTORE: &str = include_str!("../testdata/semantics/official/sstore_load_1.json");
@@ -16,6 +19,12 @@ const LEDGER: &str = include_str!("../testdata/semantics/verification-ledger.jso
 
 const TEST_SENDER: &str = "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b";
 const TRANSACTION_INTRINSIC_GAS: u64 = 21_000;
+
+/// KEVM GST checking for VMTESTS keeps these keys. A committed VMTest vector
+/// must declare all of them; the comparator asserts every key the fixture has,
+/// so a new vector cannot under-assert by omitting a call site.
+const VMTEST_ORACLE_KEYS: [&str; 4] = ["out", "gas", "logs", "post"];
+const BLOCKCHAIN_CHECKED_KEYS: [&str; 5] = ["status", "output", "gasUsed", "logs", "postState"];
 
 type TestDb = CacheDB<EmptyDB>;
 
@@ -48,6 +57,10 @@ fn named_case<'a>(fixture: &'a Value, name: &str) -> &'a Value {
     fixture
         .get(name)
         .unwrap_or_else(|| panic!("fixture case {name} is missing"))
+}
+
+fn canonical_hex(value: &str) -> String {
+    bytes_to_hex(&decode_hex_to_bytes(value).expect("fixture hex"))
 }
 
 fn load_pre_state(pre: &Value) -> TestDb {
@@ -269,6 +282,124 @@ fn state_mismatches(db: &TestDb, expected: &Value, compare_balances: bool) -> Ve
     mismatches
 }
 
+fn rlp_len_bytes(len: usize) -> Vec<u8> {
+    let bytes = len.to_be_bytes();
+    bytes.into_iter().skip_while(|byte| *byte == 0).collect()
+}
+
+fn rlp_header(short_offset: u8, long_offset: u8, payload_len: usize) -> Vec<u8> {
+    if payload_len <= 55 {
+        vec![short_offset + payload_len as u8]
+    } else {
+        let len_bytes = rlp_len_bytes(payload_len);
+        let mut header = vec![long_offset + len_bytes.len() as u8];
+        header.extend_from_slice(&len_bytes);
+        header
+    }
+}
+
+fn rlp_bytes(bytes: &[u8]) -> Vec<u8> {
+    if bytes.len() == 1 && bytes[0] < 0x80 {
+        return bytes.to_vec();
+    }
+    let mut encoded = rlp_header(0x80, 0xb7, bytes.len());
+    encoded.extend_from_slice(bytes);
+    encoded
+}
+
+fn rlp_list(items: &[Vec<u8>]) -> Vec<u8> {
+    let payload_len: usize = items.iter().map(Vec::len).sum();
+    let mut encoded = rlp_header(0xc0, 0xf7, payload_len);
+    for item in items {
+        encoded.extend_from_slice(item);
+    }
+    encoded
+}
+
+fn vmtest_logs_hash(logs: &[LogEntry]) -> String {
+    let encoded_logs: Vec<Vec<u8>> = logs
+        .iter()
+        .map(|log| {
+            let topics = log
+                .topics
+                .iter()
+                .map(|topic| rlp_bytes(&decode_hex_to_bytes(topic).expect("log topic")))
+                .collect::<Vec<_>>();
+            rlp_list(&[
+                rlp_bytes(&decode_hex_to_bytes(&log.address).expect("log address")),
+                rlp_list(&topics),
+                rlp_bytes(&decode_hex_to_bytes(&log.data).expect("log data")),
+            ])
+        })
+        .collect();
+    bytes_to_hex(alloy_primitives::keccak256(rlp_list(&encoded_logs)).as_slice())
+}
+
+fn declared_vmtest_keys(case: &Value) -> Vec<&'static str> {
+    VMTEST_ORACLE_KEYS
+        .into_iter()
+        .filter(|key| case.get(*key).is_some())
+        .collect()
+}
+
+fn vm_mismatches(executed: &ExecutedVector, case: &Value) -> Vec<String> {
+    let mut mismatches = Vec::new();
+
+    for key in declared_vmtest_keys(case) {
+        match key {
+            "out" => {
+                let expected = canonical_hex(string_field(case, "out"));
+                if executed.result.output != expected {
+                    mismatches.push(format!(
+                        "out: expected {expected}, got {}",
+                        executed.result.output
+                    ));
+                }
+            }
+            "gas" => {
+                let expected = parse_hex_u64(string_field(case, "gas"));
+                match executed.gas_remaining {
+                    Some(actual) if actual == expected => {}
+                    Some(actual) => {
+                        mismatches.push(format!("gas: expected {expected:#x}, got {actual:#x}"))
+                    }
+                    None => mismatches.push("gas: remaining gas was not recorded".into()),
+                }
+            }
+            "logs" => {
+                let expected = canonical_hex(string_field(case, "logs"));
+                let actual = vmtest_logs_hash(&executed.result.logs);
+                if actual != expected {
+                    mismatches.push(format!("logs: expected {expected}, got {actual}"));
+                }
+            }
+            "post" => {
+                mismatches.extend(state_mismatches(&executed.db, &case["post"], false));
+            }
+            other => panic!("unhandled VMTEST oracle key {other}"),
+        }
+    }
+
+    mismatches
+}
+
+fn assert_vm_vector(source: &str, case_name: &str) {
+    let fixture = parse_json(source);
+    let case = named_case(&fixture, case_name);
+    assert_eq!(
+        declared_vmtest_keys(case).as_slice(),
+        &VMTEST_ORACLE_KEYS,
+        "{case_name} must declare every KEVM VMTEST key so the comparator cannot under-assert"
+    );
+    let executed = execute_vm_case(case);
+    assert!(executed.result.success, "{case_name} status");
+    assert_eq!(
+        vm_mismatches(&executed, case),
+        Vec::<String>::new(),
+        "{case_name} oracle keys"
+    );
+}
+
 fn assert_blockchain_vector(source: &str, case_name: &str, success: bool, output: &str) {
     let fixture = parse_json(source);
     let case = named_case(&fixture, case_name);
@@ -296,6 +427,17 @@ fn assert_blockchain_vector(source: &str, case_name: &str, success: bool, output
     );
 }
 
+fn assert_create_transaction_vector(source: &str, case_name: &str, success: bool, output: &str) {
+    let fixture = parse_json(source);
+    let case = named_case(&fixture, case_name);
+    assert_eq!(
+        string_field(&case["blocks"][0]["transactions"][0], "to"),
+        "",
+        "{case_name} must be a top-level create transaction"
+    );
+    assert_blockchain_vector(source, case_name, success, output);
+}
+
 #[test]
 fn revm_matches_official_blockchain_vectors() {
     assert_blockchain_vector(BLOCK_CALL, "callOutput1_d0g0v0_Istanbul", true, "0x");
@@ -305,43 +447,53 @@ fn revm_matches_official_blockchain_vectors() {
         true,
         "0x",
     );
+    assert_create_transaction_vector(
+        BLOCK_CREATE_TX,
+        "CREATE_empty000CreateinInitCode_Transaction_d0g0v0_Istanbul",
+        true,
+        "0x",
+    );
     assert_blockchain_vector(BLOCK_REVERT, "RevertOpcode_d0g0v0_Istanbul", false, "0x00");
 }
 
 #[test]
 fn revm_matches_official_vm_storage_log_and_gas_vectors() {
-    let sstore_fixture = parse_json(VM_SSTORE);
-    let sstore_case = named_case(&sstore_fixture, "sstore_load_1");
-    let sstore = execute_vm_case(sstore_case);
-    assert!(sstore.result.success);
-    assert_eq!(sstore.result.output, string_field(sstore_case, "out"));
+    assert_vm_vector(VM_SSTORE, "sstore_load_1");
+    assert_vm_vector(VM_LOG, "log1_nonEmptyMem");
+}
+
+#[test]
+fn vm_assertion_set_is_derived_from_the_fixture() {
+    let fixture = parse_json(VM_LOG);
+    let case = named_case(&fixture, "log1_nonEmptyMem");
+    assert_eq!(declared_vmtest_keys(case).as_slice(), &VMTEST_ORACLE_KEYS);
+
+    let mut truncated = case.clone();
+    truncated
+        .as_object_mut()
+        .expect("vm case object")
+        .remove("out");
     assert_eq!(
-        sstore.gas_remaining,
-        Some(parse_hex_u64(string_field(sstore_case, "gas")))
-    );
-    assert_eq!(
-        state_mismatches(&sstore.db, &sstore_case["post"], false),
-        Vec::<String>::new()
+        declared_vmtest_keys(&truncated),
+        ["gas", "logs", "post"],
+        "assertion set must follow the fixture, not a per-case list"
     );
 
-    let log_fixture = parse_json(VM_LOG);
-    let log_case = named_case(&log_fixture, "log1_nonEmptyMem");
-    let logged = execute_vm_case(log_case);
-    assert!(logged.result.success);
-    assert_eq!(
-        logged.gas_remaining,
-        Some(parse_hex_u64(string_field(log_case, "gas")))
+    let executed = execute_vm_case(case);
+    let mut corrupted_out = truncated.clone();
+    corrupted_out["out"] = Value::String("0x00".into());
+    assert!(
+        vm_mismatches(&executed, &truncated)
+            .iter()
+            .all(|mismatch| !mismatch.starts_with("out:")),
+        "undeclared out must not be checked"
     );
-    assert_eq!(logged.result.logs.len(), 1);
-    assert_eq!(
-        logged.result.logs[0].address,
-        string_field(&log_case["exec"], "address")
+    assert!(
+        vm_mismatches(&executed, &corrupted_out)
+            .iter()
+            .any(|mismatch| mismatch.starts_with("out:")),
+        "declaring out must check it"
     );
-    assert_eq!(
-        logged.result.logs[0].topics,
-        vec![format!("0x{}", "00".repeat(32))]
-    );
-    assert_eq!(logged.result.logs[0].data, format!("0x{}", "ff".repeat(32)));
 }
 
 #[test]
@@ -362,6 +514,34 @@ fn corrupted_storage_control_is_rejected() {
 }
 
 #[test]
+fn corrupted_out_and_post_are_rejected() {
+    let official_fixture = parse_json(VM_LOG);
+    let official = named_case(&official_fixture, "log1_nonEmptyMem");
+    let executed = execute_vm_case(official);
+
+    let mut bad_out = official.clone();
+    bad_out["out"] = Value::String("0x00".into());
+    let out_mismatches = vm_mismatches(&executed, &bad_out);
+    assert!(
+        out_mismatches
+            .iter()
+            .any(|mismatch| mismatch.contains("out: expected 0x00, got 0x")),
+        "corrupted out must fail: {out_mismatches:?}"
+    );
+
+    let mut bad_post = official.clone();
+    bad_post["post"]["0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6"]["nonce"] =
+        Value::String("0x01".into());
+    let post_mismatches = vm_mismatches(&executed, &bad_post);
+    assert!(
+        post_mismatches
+            .iter()
+            .any(|mismatch| mismatch.contains("nonce expected 1, got 0")),
+        "corrupted post must fail: {post_mismatches:?}"
+    );
+}
+
+#[test]
 fn ledger_pins_fixtures_bytecode_and_tool_versions() {
     let ledger = parse_json(LEDGER);
     assert_eq!(ledger["schema"], 1);
@@ -374,6 +554,7 @@ fn ledger_pins_fixtures_bytecode_and_tool_versions() {
         let source = match id {
             "call-output-1" => BLOCK_CALL,
             "create-empty-contract-with-storage" => BLOCK_CREATE,
+            "create-empty000-create-in-initcode-transaction" => BLOCK_CREATE_TX,
             "revert-opcode" => BLOCK_REVERT,
             "log1-non-empty-mem" => VM_LOG,
             "sstore-load-1" => VM_SSTORE,
@@ -394,6 +575,28 @@ fn ledger_pins_fixtures_bytecode_and_tool_versions() {
         assert_eq!(entry["revm"], "pass", "{id} revm outcome");
         assert_eq!(entry["kevm"], "pass", "{id} KEVM outcome");
         assert!(!string_field(entry, "configuration").is_empty());
+
+        let checked: Vec<&str> = entry["checked_keys"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{id} checked_keys"))
+            .iter()
+            .map(|key| key.as_str().expect("checked key string"))
+            .collect();
+        match string_field(entry, "oracle_mode") {
+            "VMTESTS" => {
+                assert_eq!(checked, VMTEST_ORACLE_KEYS, "{id} VMTEST key set");
+                assert_eq!(
+                    checked,
+                    declared_vmtest_keys(case),
+                    "{id} ledger keys must match the fixture-derived set"
+                );
+            }
+            "NORMAL" => {
+                assert_eq!(checked, BLOCKCHAIN_CHECKED_KEYS, "{id} blockchain key set");
+            }
+            other => panic!("{id} unknown oracle_mode {other}"),
+        }
+
         assert_eq!(
             bytes_to_hex(
                 alloy_primitives::keccak256(
