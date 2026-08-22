@@ -60,7 +60,11 @@ defmodule OnchainEvm.MixProject do
       # break-on-minor history that earned the cap (0.12.0 turned `short_name`
       # from atom to string) is being retired at descripex, not paid for here.
       {:descripex, "~> 0.12"},
-      {:rustler, "~> 0.38", runtime: false},
+      {:rustler_precompiled, "~> 0.9.0"},
+      # Optional so Hex consumers with a matching artifact don't need a Rust
+      # toolchain. Required when `force_build` is set (Windows, unmatched
+      # targets, `RUSTLER_PRECOMPILED_FORCE_BUILD_ALL=1`, `ONCHAIN_EVM_BUILD=1`).
+      {:rustler, "~> 0.38", optional: true, runtime: false},
 
       # Dev/test tooling
       {:tidewave, "~> 0.9", only: :dev},
@@ -93,10 +97,15 @@ defmodule OnchainEvm.MixProject do
     [
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
-      # Rust NIFs compile from source on the consumer — the `native/` crate
-      # sources MUST ship (src + Cargo.toml + Cargo.lock per crate). All of
-      # `priv/` is test fixtures + build artifacts (.so / PLTs / vendored
-      # Solidity) — nothing in `lib/` reads it at runtime, so it is excluded.
+      # Matching hosts load a GitHub-Release artifact. Unmatched hosts
+      # (Windows, or `RUSTLER_PRECOMPILED_FORCE_BUILD_ALL=1`) still compile
+      # from source, so the `native/` crate sources MUST ship. `checksum-*.exs`
+      # is generated after upload by `mix rustler_precompiled.download` — if it
+      # is missing from the package, every consumer silently loses checksum
+      # verification. `native/.cargo` carries the musl rustflags the source
+      # build needs. All of `priv/` is test fixtures + build artifacts
+      # (.so / PLTs / vendored Solidity) — nothing in `lib/` reads it at
+      # runtime, so it is excluded.
       files: ~w(
           lib
           native/onchain_evm/src
@@ -105,6 +114,8 @@ defmodule OnchainEvm.MixProject do
           native/onchain_solidity/src
           native/onchain_solidity/Cargo.toml
           native/onchain_solidity/Cargo.lock
+          native/.cargo
+          checksum-*.exs
           .formatter.exs
           mix.exs
           README.md

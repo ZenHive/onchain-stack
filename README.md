@@ -4,7 +4,7 @@ Rust NIFs for Elixir: local EVM simulation via [revm](https://github.com/blueall
 
 ## Installation
 
-Requires Rust 1.95+ for NIF compilation.
+Requires no Rust toolchain on hosts with a matching precompiled artifact (macOS and Linux; see below). Windows, unmatched targets, and `RUSTLER_PRECOMPILED_FORCE_BUILD_ALL=1` still compile from source and need Rust 1.95+.
 
 ```elixir
 def deps do
@@ -14,6 +14,35 @@ def deps do
   ]
 end
 ```
+
+Matching hosts download a NIF from the GitHub Release for this version and verify it against `checksum-Elixir.Onchain.EVM.exs` / `checksum-Elixir.Onchain.Solidity.exs`. A missing or tampered checksum fails the load; it does not fall back to a silent source build.
+
+To force a source build on any host:
+
+```bash
+RUSTLER_PRECOMPILED_FORCE_BUILD_ALL=1 mix compile
+```
+
+That env var is rustler_precompiled's own (`"1"` or `"true"`). The package-specific equivalent is `ONCHAIN_EVM_BUILD=1`, or `config :rustler_precompiled, :force_build, onchain_evm: true`. Source builds need `{:rustler, "~> 0.38"}` in the consumer's deps — it is an optional dependency of this package.
+
+Windows is not a shipped target. Those consumers source-build.
+
+## Precompiled release runbook
+
+Order matters: the checksum step *downloads* what was uploaded, so artifacts must be live first. There is no CI. Cross-compilation is a local `cargo-zigbuild` ritual on an Apple Silicon Mac.
+
+1. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
+2. Cross-build every shipped target for both crates: `scripts/build-precompiled.sh`
+3. Publish the tarballs: `gh release create vX.Y.Z artifacts/precompiled/*.tar.gz` (or `gh release upload` onto an existing tag)
+4. Fetch them back and write checksums:
+   `mix rustler_precompiled.download Onchain.EVM --all --print`
+   `mix rustler_precompiled.download Onchain.Solidity --all --print`
+5. Commit `checksum-Elixir.Onchain.EVM.exs` and `checksum-Elixir.Onchain.Solidity.exs` (both are in the Hex `files:` glob; omitting them drops checksum verification for every consumer)
+6. `mix hex.publish`
+
+Shipped targets, all reachable with `cargo-zigbuild` from one Mac: `aarch64-apple-darwin`, `x86_64-apple-darwin`, `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, `x86_64-unknown-linux-musl`. Linux GNU builds pin glibc 2.28 via a Zig target suffix (`x86_64-unknown-linux-gnu.2.28`); the script asserts the artifact's GLIBC requirement rather than trusting the suffix. Adding riscv64 / armv7 is a one-line append to `TARGETS` in the script — they are not shipped.
+
+The release is a manual local ritual with no build provenance or attestation, and it is reproducible only on a machine with the Zig toolchain installed. That is the accepted cost of not running CI.
 
 ## Modules
 

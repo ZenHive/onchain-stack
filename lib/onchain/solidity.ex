@@ -57,7 +57,7 @@ defmodule Onchain.Solidity do
   """
 
   use Descripex, namespace: "/solidity"
-  use Rustler, otp_app: :onchain_evm, crate: "onchain_solidity"
+  use RustlerPrecompiled, Onchain.Precompiled.opts("onchain_solidity", __MODULE__)
 
   import Onchain.BangHelper, only: [defbang: 2]
 

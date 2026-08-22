@@ -31,6 +31,9 @@ onchain_evm-*.tar
 # Compiled NIF binaries (rebuilt on mix compile)
 /priv/native/
 
+# Cross-built rustler_precompiled tarballs from scripts/build-precompiled.sh
+/artifacts/
+
 # Dialyzer PLT files (rebuildable, large binary blobs)
 /priv/plts/
 

@@ -76,7 +76,7 @@ defmodule Onchain.EVM do
   """
 
   use Descripex, namespace: "/evm"
-  use Rustler, otp_app: :onchain_evm, crate: "onchain_evm"
+  use RustlerPrecompiled, Onchain.Precompiled.opts("onchain_evm", __MODULE__)
 
   import Onchain.BangHelper, only: [defbang: 1]
 
