@@ -404,7 +404,11 @@ fn owner_from_canonical(name: &str) -> &str {
 }
 
 /// Context-aware struct lookup: tries owner-qualified name first, then direct.
-fn resolve_struct<'a>(base_ty: &str, owner: &str, registry: &'a TypeRegistry) -> Option<&'a SolStruct> {
+fn resolve_struct<'a>(
+    base_ty: &str,
+    owner: &str,
+    registry: &'a TypeRegistry,
+) -> Option<&'a SolStruct> {
     if !owner.is_empty() {
         let qualified = format!("{}.{}", owner, base_ty);
         if let Some(s) = registry.struct_lookup.get(&qualified) {
@@ -487,7 +491,9 @@ fn encode_sol_source<'a>(
 
                 for contract_part in &contract.parts {
                     if let pt::ContractPart::VariableDefinition(var) = contract_part {
-                        if let Some(constant) = encode_sol_constant(env, var, contract_name, registry) {
+                        if let Some(constant) =
+                            encode_sol_constant(env, var, contract_name, registry)
+                        {
                             sol_constants.push(constant);
                         }
                     }
@@ -509,8 +515,12 @@ fn encode_sol_source<'a>(
                         pt::ContractPart::FunctionDefinition(function_def) => {
                             match &function_def.ty {
                                 pt::FunctionTy::Constructor => {
-                                    sol_constructor =
-                                        encode_sol_constructor(env, function_def, contract_name, registry);
+                                    sol_constructor = encode_sol_constructor(
+                                        env,
+                                        function_def,
+                                        contract_name,
+                                        registry,
+                                    );
                                 }
                                 pt::FunctionTy::Function => {
                                     let natspec = take_natspec_for_offset(
@@ -529,10 +539,20 @@ fn encode_sol_source<'a>(
                             }
                         }
                         pt::ContractPart::EventDefinition(event_def) => {
-                            sol_events.push(encode_sol_event(env, event_def, contract_name, registry));
+                            sol_events.push(encode_sol_event(
+                                env,
+                                event_def,
+                                contract_name,
+                                registry,
+                            ));
                         }
                         pt::ContractPart::ErrorDefinition(error_def) => {
-                            sol_errors.push(encode_sol_error(env, error_def, contract_name, registry));
+                            sol_errors.push(encode_sol_error(
+                                env,
+                                error_def,
+                                contract_name,
+                                registry,
+                            ));
                         }
                         _ => {}
                     }
@@ -1044,7 +1064,12 @@ fn type_to_canonical_inner(ty: &str, owner: &str, registry: &TypeRegistry, depth
 }
 
 /// Encode a SolField as a Rustler term, recursively resolving nested struct types.
-fn encode_sol_field<'a>(env: Env<'a>, field: &SolField, owner: &str, registry: &TypeRegistry) -> Term<'a> {
+fn encode_sol_field<'a>(
+    env: Env<'a>,
+    field: &SolField,
+    owner: &str,
+    registry: &TypeRegistry,
+) -> Term<'a> {
     let (canonical_ty, components) = resolve_type_info(&field.ty, owner, registry);
 
     let comps: Vec<Term<'a>> = components
@@ -1068,7 +1093,11 @@ fn encode_sol_field<'a>(env: Env<'a>, field: &SolField, owner: &str, registry: &
 }
 
 /// Get the canonical type for a parameter, resolving struct references to tuple types.
-fn param_to_canonical_type(p: &Option<pt::Parameter>, owner: &str, registry: &TypeRegistry) -> String {
+fn param_to_canonical_type(
+    p: &Option<pt::Parameter>,
+    owner: &str,
+    registry: &TypeRegistry,
+) -> String {
     match p {
         Some(param) => {
             let raw = expr_to_type_string(&param.ty);
@@ -1106,7 +1135,10 @@ fn split_array_suffix(ty: &str) -> (String, String) {
             suffix.insert_str(0, "[]");
         } else if let Some(bracket_pos) = base_ty.rfind('[') {
             let inside = &base_ty[bracket_pos + 1..base_ty.len() - 1];
-            if base_ty.ends_with(']') && inside.chars().all(|c| c.is_ascii_digit()) && !inside.is_empty() {
+            if base_ty.ends_with(']')
+                && inside.chars().all(|c| c.is_ascii_digit())
+                && !inside.is_empty()
+            {
                 let array_suffix = &base_ty[bracket_pos..];
                 suffix.insert_str(0, array_suffix);
                 base_ty.truncate(bracket_pos);
@@ -1137,12 +1169,14 @@ fn expr_to_type_string(expr: &pt::Expression) -> String {
             pt::Type::Mapping { .. } => "mapping".to_string(),
             _ => format!("{:?}", ty),
         },
-        pt::Expression::ArraySubscript(_, base, size) => {
-            match size {
-                Some(size_expr) => format!("{}[{}]", expr_to_type_string(base), expr_to_value_string(size_expr)),
-                None => format!("{}[]", expr_to_type_string(base)),
-            }
-        }
+        pt::Expression::ArraySubscript(_, base, size) => match size {
+            Some(size_expr) => format!(
+                "{}[{}]",
+                expr_to_type_string(base),
+                expr_to_value_string(size_expr)
+            ),
+            None => format!("{}[]", expr_to_type_string(base)),
+        },
         pt::Expression::Parenthesis(_, expr) => expr_to_type_string(expr),
         pt::Expression::Variable(id) => {
             // This handles custom type references (struct names, enum names)
@@ -1169,12 +1203,14 @@ fn expr_to_value_string(expr: &pt::Expression) -> String {
 
 fn sol_function_mutability(f: &pt::FunctionDefinition) -> &'static str {
     for attr in &f.attributes {
-        if let pt::FunctionAttribute::Mutability(m) = attr { match m {
-            pt::Mutability::Pure(_) => return "pure",
-            pt::Mutability::View(_) => return "view",
-            pt::Mutability::Payable(_) => return "payable",
-            pt::Mutability::Constant(_) => return "view",
-        } }
+        if let pt::FunctionAttribute::Mutability(m) = attr {
+            match m {
+                pt::Mutability::Pure(_) => return "pure",
+                pt::Mutability::View(_) => return "view",
+                pt::Mutability::Payable(_) => return "payable",
+                pt::Mutability::Constant(_) => return "view",
+            }
+        }
     }
     "nonpayable"
 }
@@ -1596,3 +1632,46 @@ fn map_put<'a>(map: Term<'a>, key: Term<'a>, value: Term<'a>) -> Term<'a> {
 }
 
 rustler::init!("Elixir.Onchain.Solidity");
+
+#[cfg(test)]
+mod tests {
+    use super::parse_source_unit;
+
+    #[test]
+    fn solang_parser_rejects_documented_modern_solidity_syntax() {
+        let cases = [
+            (
+                "transient state variable",
+                "pragma solidity ^0.8.28; contract C { uint256 transient lock; }",
+                "unrecognised token 'lock'",
+            ),
+            (
+                "literal custom storage layout",
+                "pragma solidity ^0.8.29; contract C layout at 42 { uint256 value; }",
+                "unrecognised token 'layout'",
+            ),
+            (
+                "constant custom storage layout",
+                "pragma solidity ^0.8.31; uint256 constant BASE = 42; contract C layout at BASE { uint256 value; }",
+                "unrecognised token 'layout'",
+            ),
+            (
+                "erc7201 custom storage layout",
+                "pragma solidity ^0.8.35; contract C layout at erc7201(\"example.storage.C\") { uint256 value; }",
+                "unrecognised token 'layout'",
+            ),
+        ];
+
+        for (name, source, expected_failure) in cases {
+            let error = match parse_source_unit(source) {
+                Ok(_) => panic!("{name} unexpectedly parsed"),
+                Err(error) => error,
+            };
+
+            assert!(
+                error.contains(expected_failure),
+                "{name} returned a different error: {error}"
+            );
+        }
+    }
+}
