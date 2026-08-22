@@ -505,7 +505,7 @@ shipped_in = "39416686e65645adb79e5d930e1ee5e9de5fc354"
 id = 43
 phase = 3
 bundle = "standalone"
-status = "in_progress"
+status = "done"
 title = "Gate the Rust half: run `cargo test` and `cargo clippy` from `mix ci`"
 scores = { d = 4, b = 8, u = 6 }
 acceptance_criteria = [
@@ -544,9 +544,16 @@ Both crates are clippy-clean at default levels under `-D warnings` as of this me
 Follow the alias shape already in `mix.exs`: `precommit.full` dispatches to captured functions (`&agents_check/1`, `&advisory_freshness/1`), which is where the graceful-degradation message for an absent `cargo` or `clippy` component belongs.
 
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1787395417846-36cd403b, 32a0fabefea49b02209f31f44d7669d2c08d7e48)."
+delivered_by = "cursor"
+verified = true
+verified_by = "grok"
+verification_ref = "harness-run:run-1787395417846-36cd403b"
 created_at = "2026-08-22"
 started_at = "2026-08-22"
 scored_at = "2026-08-22"
+done_at = "2026-08-22"
+shipped_in = "32a0fabefea49b02209f31f44d7669d2c08d7e48"
 
 [[task]]
 id = 44
