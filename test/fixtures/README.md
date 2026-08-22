@@ -50,7 +50,8 @@ ETHEREUM_API_URL=http://localhost:8545 MIX_ENV=test mix run -e 'Onchain.Aave.Mat
 ```
 
 The `awk 'printf "%s"'` form writes bytecode without a trailing newline. The
-test hashes trimmed contents; a stray newline will fail the checksum.
+loader trims surrounding whitespace before hashing, while `shasum` hashes raw
+file bytes; keeping the file newline-free makes both checksum paths agree.
 
 ## Design notes
 

@@ -22,9 +22,6 @@ defmodule Onchain.Aave.MathOracle do
   @type op :: atom()
   @type vector :: %{protocol: protocol(), op: op(), args: [integer()], class: atom()}
 
-  @spec goldens_path() :: String.t()
-  def goldens_path, do: @goldens_path
-
   @spec ledger_path() :: String.t()
   def ledger_path, do: @ledger_path
 
@@ -211,11 +208,6 @@ defmodule Onchain.Aave.MathOracle do
   @spec dump_goldens!(map()) :: :ok
   def dump_goldens!(goldens) do
     File.write!(@goldens_path, Jason.encode!(goldens, pretty: true) <> "\n")
-  end
-
-  @spec write_ledger!(map()) :: :ok
-  def write_ledger!(ledger) do
-    File.write!(@ledger_path, Jason.encode!(ledger, pretty: true) <> "\n")
   end
 
   @spec generate_goldens!(String.t()) :: map()

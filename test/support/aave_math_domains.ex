@@ -101,12 +101,6 @@ defmodule Onchain.Aave.MathDomains do
     ]
   end
 
-  @spec bytecode_ops() :: [{MathOracle.protocol(), MathOracle.op()}]
-  def bytecode_ops, do: Enum.filter(public_ops(), fn {p, op} -> MathOracle.bytecode_op?(p, op) end)
-
-  @spec display_ops() :: [MathOracle.op()]
-  def display_ops, do: [:to_usd, :to_ltv, :to_health_factor, :to_ray, :to_wad]
-
   @spec vectors() :: [vector()]
   def vectors do
     last = 1_700_000_000

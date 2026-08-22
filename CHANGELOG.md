@@ -43,6 +43,16 @@ There is no stable-rate borrowing in V4, and no `UiPoolDataProvider` analog.
 V4 is Ethereum-mainnet only, so the write paths are pinned by encoded-calldata
 unit tests rather than testnet sends.
 
+### Added — mutation-grade math verification
+
+- Pinned Aave V3/V4 Solidity wrapper bytecode, compiler/source provenance, and
+  REVM-generated oracle vectors now independently check the Elixir math ports.
+- Property domains cover every public V3/V4 math operation across zero, unit,
+  boundary, overflow-adjacent, and rounding-sensitive inputs.
+- Generated and domain-specific mutations must be killed or explicitly
+  allowlisted with evidence; a deliberate rounding canary validates the
+  campaign itself.
+
 ### Changed
 
 - `OnchainAave.describe/0` registers every public module. The manifest test now

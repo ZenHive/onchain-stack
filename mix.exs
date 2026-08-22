@@ -169,11 +169,14 @@ defmodule OnchainAave.MixProject do
       "agents.check": [
         &agents_check/1
       ],
+      # Every caller uses the reviewed ignore file, including generic commit
+      # hooks that invoke `mix deps.audit` directly.
+      "deps.audit": ["deps.audit --ignore-file .mix_audit_ignore"],
       # mix_audit discards its sync exit status (mirego/mix_audit#61), so a frozen
       # advisory DB still reports green. Prove freshness first, then audit.
       "deps.audit.gated": [
         &advisory_freshness/1,
-        "deps.audit --ignore-file .mix_audit_ignore"
+        "deps.audit"
       ],
       ci: ["precommit.full"]
     ]
