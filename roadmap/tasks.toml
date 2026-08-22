@@ -505,13 +505,9 @@ shipped_in = "39416686e65645adb79e5d930e1ee5e9de5fc354"
 id = 43
 phase = 3
 bundle = "standalone"
-status = "pending"
+status = "in_progress"
 title = "Gate the Rust half: run `cargo test` and `cargo clippy` from `mix ci`"
-module = "Both native crates"
 scores = { d = 4, b = 8, u = 6 }
-assignee = "cursor"
-model = "cursor-grok-4.6-high"
-touches = ["mix.exs", "native/onchain_evm/src/lib.rs", "native/onchain_solidity/src/lib.rs"]
 acceptance_criteria = [
   "`mix precommit.full` (alias `mix ci`) runs `cargo test` over both crates and fails the gate on a failing Rust test — today all 21 of them are ungated and a Rust-only regression lands green",
   "`mix ci` also runs clippy over both crates and fails the gate on a lint, in the same way the Elixir analyzers already do",
@@ -526,6 +522,10 @@ out_of_scope = [
   "Adding either step to `mix check.dispatch` — harness worktrees start with no `target/`, so a cold Rust build there would be paid on every dispatch. The dispatch hint stays static-only and the reviewer runs focused tests",
   "Writing new Rust tests — this task gates the ones Tasks 28 and 29 already added"
 ]
+touches = ["mix.exs", "native/onchain_evm/src/lib.rs", "native/onchain_solidity/src/lib.rs"]
+assignee = "cursor"
+module = "Both native crates"
+model = "cursor-grok-4.6-high"
 body = """
 Rewritten 2026-08-22: the original task said "add cargo clippy to CI", and this repo has no CI. There is no `.github/` directory; the workflows were removed family-wide on 2026-08-22 and `CLAUDE.md` states that `mix ci` is the only gate there is. Adding clippy therefore means adding it to `mix precommit.full`, not to a workflow file.
 
@@ -545,6 +545,7 @@ Follow the alias shape already in `mix.exs`: `precommit.full` dispatches to capt
 
 """
 created_at = "2026-08-22"
+started_at = "2026-08-22"
 scored_at = "2026-08-22"
 
 [[task]]
