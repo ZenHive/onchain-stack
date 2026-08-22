@@ -780,6 +780,9 @@ fn do_simulate_batch<'a>(params: &HashMap<String, Term<'a>>) -> Result<Vec<TxRes
 }
 
 #[cfg(test)]
+mod semantics_verification;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
