@@ -57,7 +57,7 @@ defmodule Onchain.Solidity do
   """
 
   use Descripex, namespace: "/solidity"
-  use RustlerPrecompiled, Onchain.Precompiled.opts("onchain_solidity", __MODULE__)
+  use RustlerPrecompiled, Onchain.Precompiled.opts("onchain_solidity")
 
   import Onchain.BangHelper, only: [defbang: 2]
 

@@ -35,13 +35,13 @@ CRATES=(onchain_evm onchain_solidity)
 # checks the artifact rather than trusting the build to fail loudly.
 GLIBC_VERSION="${GLIBC_VERSION:-2.28}"
 NIF_VERSION="${NIF_VERSION:-2.15}"
-OUT_DIR="${OUT_DIR:-"$ROOT/artifacts/precompiled"}"
 
 VERSION="$(awk -F'"' '/^  @version / { print $2; exit }' mix.exs)"
 if [[ -z "$VERSION" ]]; then
   echo "error: could not read @version from mix.exs" >&2
   exit 1
 fi
+OUT_DIR="${OUT_DIR:-"$ROOT/artifacts/precompiled/v${VERSION}"}"
 
 usage() {
   cat <<EOF
@@ -153,6 +153,11 @@ if ! cargo zigbuild -h >/dev/null 2>&1; then
 fi
 
 mkdir -p "$OUT_DIR"
+if compgen -G "${OUT_DIR}/*.tar.gz" >/dev/null; then
+  echo "error: output directory already contains precompiled artifacts: $OUT_DIR" >&2
+  echo "use an empty OUT_DIR so a release upload cannot include stale targets" >&2
+  exit 1
+fi
 export RUSTLER_NIF_VERSION="$NIF_VERSION"
 
 for target in "${TARGETS[@]}"; do
@@ -178,7 +183,8 @@ for crate in "${CRATES[@]}"; do
     staging="$(mktemp -d)"
     cp "$built" "${staging}/${final}"
     tar -C "$staging" -czf "${OUT_DIR}/$(artifact_name "$crate" "$target")" "$final"
-    rm -rf "$staging"
+    unlink "${staging}/${final}"
+    rmdir "$staging"
     echo "    wrote ${OUT_DIR}/$(artifact_name "$crate" "$target")"
   done
 done

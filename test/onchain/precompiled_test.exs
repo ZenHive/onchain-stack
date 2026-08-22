@@ -1,5 +1,5 @@
 defmodule Onchain.PrecompiledTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Onchain.Precompiled
 
@@ -44,11 +44,11 @@ defmodule Onchain.PrecompiledTest do
     end
   end
 
-  describe "opts/2" do
+  describe "opts/1" do
     test "points both crates at the GitHub Release for this package version" do
       version = Mix.Project.config()[:version]
-      evm = Precompiled.opts("onchain_evm", Onchain.EVM)
-      sol = Precompiled.opts("onchain_solidity", Onchain.Solidity)
+      evm = Precompiled.opts("onchain_evm")
+      sol = Precompiled.opts("onchain_solidity")
 
       assert evm[:otp_app] == :onchain_evm
       assert evm[:crate] == "onchain_evm"
@@ -63,44 +63,42 @@ defmodule Onchain.PrecompiledTest do
       assert sol[:base_url] == evm[:base_url]
     end
 
-    test "force_build is set while checksum files are absent" do
-      refute File.exists?(Precompiled.checksum_path(Onchain.EVM))
-      refute File.exists?(Precompiled.checksum_path(Onchain.Solidity))
-      assert Keyword.get(Precompiled.opts("onchain_evm", Onchain.EVM), :force_build) == true
+    test "does not bypass checksum verification on a supported host" do
+      evm = Precompiled.opts("onchain_evm")
+
+      refute Keyword.has_key?(evm, :force_build)
+      assert evm[:targets] == Precompiled.targets()
+    end
+
+    test "ONCHAIN_EVM_BUILD sets the package force-build option" do
+      previous = System.get_env("ONCHAIN_EVM_BUILD")
+      System.put_env("ONCHAIN_EVM_BUILD", "1")
+
+      try do
+        assert Precompiled.opts("onchain_evm")[:force_build]
+      after
+        if previous,
+          do: System.put_env("ONCHAIN_EVM_BUILD", previous),
+          else: System.delete_env("ONCHAIN_EVM_BUILD")
+      end
     end
   end
 
-  describe "force_build?/3" do
-    test "is true when the checksum file is missing" do
-      dummy = :onchain_precompiled_dummy_missing
-      refute File.exists?(Precompiled.checksum_path(dummy))
-      assert Precompiled.force_build?(dummy, {:unix, :darwin}, nil)
+  describe "force_build?/2" do
+    test "falls back to source for every unsupported target" do
+      assert Precompiled.force_build?("x86_64-pc-windows-msvc", nil)
+      assert Precompiled.force_build?("aarch64-unknown-linux-musl", nil)
+      assert Precompiled.force_build?(nil, nil)
     end
 
-    test "is true on Windows even with a checksum file present" do
-      dummy = :onchain_precompiled_dummy_win
-      path = Precompiled.checksum_path(dummy)
-      File.write!(path, "%{}\n")
-
-      try do
-        assert Precompiled.force_build?(dummy, {:win32, :nt}, nil)
-      after
-        File.rm(path)
-      end
+    test "downloads for supported targets" do
+      refute Precompiled.force_build?("aarch64-apple-darwin", nil)
+      refute Precompiled.force_build?("x86_64-unknown-linux-gnu", nil)
     end
 
-    test "is true when ONCHAIN_EVM_BUILD is 1 or true" do
-      dummy = :onchain_precompiled_dummy_env
-      path = Precompiled.checksum_path(dummy)
-      File.write!(path, "%{}\n")
-
-      try do
-        assert Precompiled.force_build?(dummy, {:unix, :darwin}, "1")
-        assert Precompiled.force_build?(dummy, {:unix, :darwin}, "true")
-        refute Precompiled.force_build?(dummy, {:unix, :darwin}, nil)
-      after
-        File.rm(path)
-      end
+    test "ONCHAIN_EVM_BUILD forces supported targets to build" do
+      assert Precompiled.force_build?("aarch64-apple-darwin", "1")
+      assert Precompiled.force_build?("aarch64-apple-darwin", "true")
     end
   end
 
@@ -169,13 +167,8 @@ defmodule Onchain.PrecompiledTest do
 
       assert parsed.functions != []
 
-      case Onchain.EVM.nif_simulate_call(%{}) do
-        {:error, _} ->
-          :ok
-
-        other ->
-          flunk("expected a NIF error tuple, got: #{inspect(other)}")
-      end
+      assert {:error, {:evm_error, "missing param: rpc_url"}} =
+               Onchain.EVM.nif_simulate_call(%{})
     end
   end
 end

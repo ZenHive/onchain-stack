@@ -33,7 +33,7 @@ Order matters: the checksum step *downloads* what was uploaded, so artifacts mus
 
 1. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
 2. Cross-build every shipped target for both crates: `scripts/build-precompiled.sh`
-3. Publish the tarballs: `gh release create vX.Y.Z artifacts/precompiled/*.tar.gz` (or `gh release upload` onto an existing tag)
+3. Publish the tarballs: `gh release create vX.Y.Z artifacts/precompiled/vX.Y.Z/*.tar.gz` (or `gh release upload` onto an existing tag)
 4. Fetch them back and write checksums:
    `mix rustler_precompiled.download Onchain.EVM --all --print`
    `mix rustler_precompiled.download Onchain.Solidity --all --print`

@@ -17,7 +17,7 @@ defmodule Onchain.Precompiled do
 
   @nif_versions ~w(2.15)
 
-  @doc "Shipped rustc triples. Must match `scripts/build-precompiled.sh`."
+  @doc "Shipped Rust target triples. Must match `scripts/build-precompiled.sh`."
   @spec targets() :: [String.t()]
   def targets, do: @targets
 
@@ -29,49 +29,27 @@ defmodule Onchain.Precompiled do
   Keyword options for `use RustlerPrecompiled`.
 
   Omits `:force_build` when the host should download, so the library's
-  application-env `put_new` still applies. Sets it `true` when a source
-  build is required: `ONCHAIN_EVM_BUILD=1`, a missing checksum file (this
-  repo before the first release upload), or a Windows host.
+  application-env `put_new` still applies. Sets it to `true` for an
+  unsupported host or when `ONCHAIN_EVM_BUILD=1` requests a source build.
   """
-  @spec opts(String.t(), module()) :: keyword()
-  def opts(crate, module) when is_binary(crate) and is_atom(module) do
+  @spec opts(String.t()) :: keyword()
+  def opts(crate) when is_binary(crate) do
     version = Mix.Project.config()[:version]
 
     maybe_force_build(
-      [
-        otp_app: :onchain_evm,
-        crate: crate,
-        base_url: "https://github.com/ZenHive/onchain_evm/releases/download/v#{version}",
-        version: version,
-        targets: @targets,
-        nif_versions: @nif_versions
-      ],
-      module
+      otp_app: :onchain_evm,
+      crate: crate,
+      base_url: "https://github.com/ZenHive/onchain_evm/releases/download/v#{version}",
+      version: version,
+      targets: @targets,
+      nif_versions: @nif_versions
     )
   end
 
-  @doc """
-  Whether this host should compile the NIF from source.
-
-  The 3-arity form is for tests. `RUSTLER_PRECOMPILED_FORCE_BUILD_ALL=1`
-  is handled by rustler_precompiled itself and is not duplicated here.
-  """
-  @spec force_build?(module()) :: boolean()
-  def force_build?(module) when is_atom(module) do
-    force_build?(module, :os.type(), System.get_env("ONCHAIN_EVM_BUILD"))
-  end
-
-  @spec force_build?(module(), {:unix | :win32, atom()}, String.t() | nil) :: boolean()
   @doc false
-  def force_build?(module, os_type, env) when is_atom(module) do
-    env in ["1", "true"] or not File.exists?(checksum_path(module)) or
-      match?({:win32, _}, os_type)
-  end
-
-  @doc "Path of the checksum file rustler_precompiled reads from the project root."
-  @spec checksum_path(module()) :: String.t()
-  def checksum_path(module) when is_atom(module) do
-    Path.join(File.cwd!(), "checksum-#{module}.exs")
+  @spec force_build?(String.t() | nil, String.t() | nil) :: boolean()
+  def force_build?(target, env) do
+    env in ["1", "true"] or target not in @targets
   end
 
   @doc "Artifact filename rustler_precompiled downloads for a crate/target."
@@ -81,8 +59,26 @@ defmodule Onchain.Precompiled do
     "lib#{crate}-v#{version}-nif-#{nif}-#{target}.so.tar.gz"
   end
 
-  @spec maybe_force_build(keyword(), module()) :: keyword()
-  defp maybe_force_build(opts, module) do
-    if force_build?(module), do: Keyword.put(opts, :force_build, true), else: opts
+  @spec current_target() :: String.t() | nil
+  defp current_target do
+    nif_version = :nif_version |> :erlang.system_info() |> List.to_string()
+
+    with {:ok, _compatible} <-
+           RustlerPrecompiled.find_compatible_nif_version(nif_version, @nif_versions),
+         {:ok, nif_target} <- RustlerPrecompiled.target(),
+         ["nif", _nif_version, target] <- String.split(nif_target, "-", parts: 3) do
+      target
+    else
+      _error -> nil
+    end
+  end
+
+  @spec maybe_force_build(keyword()) :: keyword()
+  defp maybe_force_build(opts) do
+    if force_build?(current_target(), System.get_env("ONCHAIN_EVM_BUILD")) do
+      Keyword.put(opts, :force_build, true)
+    else
+      opts
+    end
   end
 end
