@@ -1334,7 +1334,7 @@
       "id": 62,
       "phase": 3,
       "bundle": "standalone",
-      "status": "pending",
+      "status": "done",
       "title": "Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex",
       "scores": {
         "d": 4,
@@ -1368,9 +1368,13 @@
         "checksum-Elixir.Onchain.Solidity.exs",
         "CHANGELOG.md"
       ],
+      "shipped_in": "e271bd1",
       "body": "Operator-gated by construction — this is the half of the original Task 53 that no dispatched agent can perform. It needs push access to the ZenHive org to cut a Release, and it ends in `mix hex.publish`, which is irreversible: a published Hex version can never be replaced, only retired.\n\n**Ordering is not a preference, it is a dependency chain.** The checksum step *downloads* what was uploaded, so the artifacts must be live before checksums can be generated, and the checksums must be committed before publishing or every consumer silently loses verification:\n\n1. Confirm Task 53 is landed and `@version` reads `0.6.0`\n2. `scripts/build-precompiled.sh`\n3. `git tag v0.6.0 && git push origin v0.6.0`\n4. `gh release create v0.6.0` and upload all ten `.so.tar.gz` assets\n5. `mix rustler_precompiled.download Onchain.EVM --all --print`, same for `Onchain.Solidity`\n6. commit both `checksum-Elixir.*.exs`\n7. `mix hex.publish`\n\n**Why the version is 0.6.0 and not 0.5.2:** v0.5.1 is already tagged and published on Hex, so it cannot host new code. The first attempt at Task 53 failed partly on this — its `:base_url` pointed at a v0.5.1 release that could never be created.\n\nStep 4 is the first genuinely public, hard-to-undo action in this repo's history, and step 7 cannot be undone at all. Do not let an agent run either.\n",
       "created_at": "2026-08-22",
+      "done_at": "2026-08-23",
       "scored_at": "2026-08-22",
+      "implemented": "Release v0.6.0 cut end to end: build-precompiled.sh produced all ten artifacts, tag v0.6.0 points at e271bd1, GitHub Release ZenHive/onchain_evm carries the ten assets, both checksum-Elixir.*.exs were downloaded from the live release and committed, and mix ci is green with them present. Hex 0.6.0 published (db81646d). Verification round-trip: all ten uploaded assets re-downloaded byte-identical to the local tarballs; GNU targets sit exactly at GLIBC_2.28, musl carries zero GLIBC symbols. Corrupting one checksum entry fails the load with 'the integrity check failed'; deleting deps/onchain_evm/checksum-Elixir.Onchain.EVM.exs in a Hex-installed scratch project fails compilation with 'the precompiled NIF file does not exist in the checksum file' even with cargo on PATH, so there is no silent source-build fallback. The scratch project resolved {:onchain_evm, \"~> 0.6\"} and, with an empty NIF cache and cargo/rustc stripped from PATH, downloaded both .so archives from the Release and ran Onchain.Solidity.parse_abi_json/1 and parse_sol/1 successfully; the EVM NIF loaded and reached its Rust fork path (a live fork call was not possible - the archive node on blockwatch-one is refusing connections).",
+      "delivered_by": "orchestrator (operator ran steps 4 and 7)",
       "cross_repo": []
     },
     {

@@ -1023,7 +1023,7 @@ shipped_in = "16977c17b7ddd9ab934ddd155f67bcbaef55db5e"
 id = 62
 phase = 3
 bundle = "standalone"
-status = "pending"
+status = "done"
 title = "Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex"
 scores = { d = 4, b = 9, u = 8 }
 depends_on = [53]
@@ -1049,8 +1049,12 @@ Operator-gated by construction — this is the half of the original Task 53 that
 
 Step 4 is the first genuinely public, hard-to-undo action in this repo's history, and step 7 cannot be undone at all. Do not let an agent run either.
 """
+implemented = """Release v0.6.0 cut end to end: build-precompiled.sh produced all ten artifacts, tag v0.6.0 points at e271bd1, GitHub Release ZenHive/onchain_evm carries the ten assets, both checksum-Elixir.*.exs were downloaded from the live release and committed, and mix ci is green with them present. Hex 0.6.0 published (db81646d). Verification round-trip: all ten uploaded assets re-downloaded byte-identical to the local tarballs; GNU targets sit exactly at GLIBC_2.28, musl carries zero GLIBC symbols. Corrupting one checksum entry fails the load with 'the integrity check failed'; deleting deps/onchain_evm/checksum-Elixir.Onchain.EVM.exs in a Hex-installed scratch project fails compilation with 'the precompiled NIF file does not exist in the checksum file' even with cargo on PATH, so there is no silent source-build fallback. The scratch project resolved {:onchain_evm, "~> 0.6"} and, with an empty NIF cache and cargo/rustc stripped from PATH, downloaded both .so archives from the Release and ran Onchain.Solidity.parse_abi_json/1 and parse_sol/1 successfully; the EVM NIF loaded and reached its Rust fork path (a live fork call was not possible - the archive node on blockwatch-one is refusing connections)."""
+delivered_by = "orchestrator (operator ran steps 4 and 7)"
 created_at = "2026-08-22"
 scored_at = "2026-08-22"
+done_at = "2026-08-23"
+shipped_in = "e271bd1"
 
 [[task]]
 id = "63"

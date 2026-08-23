@@ -4,7 +4,7 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## [Unreleased]
+## [0.6.0] — 2026-08-23
 
 ### Added
 
@@ -40,8 +40,9 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
   are cross-built locally by `scripts/build-precompiled.sh`; there is no CI to
   build them. A checksum *mismatch* always fails the load, while a *missing*
   `checksum-*.exs` fails only for a Hex-installed package — where `files:`
-  guarantees it ships — and source-builds in this repository's own checkout, so
-  the gate is green before a release exists.
+  guarantees it ships — and source-builds in this repository's own checkout.
+  Both checksum files are committed as of this release, so the download path is
+  what a consumer actually takes.
 
 - **Per-contract `Multicall` helpers from `Onchain.Contract.Generator`.** Each
   generated module now emits a nested `Multicall` with typed call builders and
