@@ -16,13 +16,20 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ### Changed
 
-- Raised the dev/test-only `onchain_evm` requirement from `~> 0.5` to
-  `~> 0.6`. 0.6 forks `BlockEnv` from the selected block and applies state
-  overrides on top of the fetched account, so V4 write simulation keeps
-  WETH code and the forked block time. The same lock refresh resolved
-  hieroglyph 1.6.2 → 1.7.0 (transitive via cartouche) and swapped `rustler`
-  for `rustler_precompiled`. This dependency is not part of the published
-  runtime requirements.
+- **`onchain_evm` 0.6 in dev/test, and the fork-simulation surface is now
+  pinned by tests.** 0.6 populates the fork's `BlockEnv` from the forked block
+  header and loads an account before amending it, so a `"storage"` override no
+  longer drops the account's deployed code. Both were required for Aave's write
+  paths to execute locally: `supply`, `borrow` and `repay` all run
+  `MathUtils.calculateLinearInterest` against `block.timestamp`, which
+  underflowed on a fork left at a 1970 clock. `simulation_integration_test.exs`
+  pins the three claims the README makes — header-derived block environment,
+  code-preserving storage overrides, and a full approve → supply →
+  `getUserAccountData` batch whose collateral equals the Aave oracle's price for
+  the deposit at the same block. The same lock refresh resolved hieroglyph
+  1.6.2 → 1.7.0 (transitive via cartouche) and swapped `rustler` for
+  `rustler_precompiled`. This dependency is not part of the published runtime
+  requirements.
 
 ---
 

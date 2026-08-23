@@ -45,9 +45,10 @@ OnchainAave.describe(:pool, :supply)      # Full function details
 
 ## Local simulation against forked state
 
-Every read in this library also runs inside a local EVM, forked from any RPC
-endpoint, via [onchain_evm](https://hex.pm/packages/onchain_evm) (revm through a
-Rustler NIF). Add it yourself — `onchain_aave` does not pull it in at runtime:
+Every call in this library — reads *and* writes — also runs inside a local EVM
+forked from any RPC endpoint, via
+[onchain_evm](https://hex.pm/packages/onchain_evm) (revm through a Rustler NIF).
+Add it yourself; `onchain_aave` does not pull it in at runtime:
 
 ```elixir
 {:onchain_evm, "~> 0.6"}
@@ -65,51 +66,51 @@ Onchain.Aave.Types.UserAccountData.from_raw(raw)
 #=> %UserAccountData{total_collateral_base: #Decimal<…>, health_factor: #Decimal<…>, …}
 ```
 
-`simulate_batch/2` runs several calls on **one** fork, and state carries from one
-call to the next — an approval made in call 1 is visible to call 2:
+`simulate_batch/2` runs several calls on **one** fork and carries state between
+them, and `:state_overrides` seeds accounts beforehand — so a wallet holding
+nothing can approve, supply, and be scored, entirely locally. `"balance"`,
+`"nonce"` and `"code"` are hex strings; `"storage"` is a JSON string of a
+slot→value map:
 
 ```elixir
+# WETH's balanceOf mapping lives at storage slot 3
+slot = Cartouche.Hash.keccak(<<0::96>> <> user_bin <> <<3::256>>) |> Onchain.Hex.encode()
+
 {:ok, approve} = Onchain.ABI.encode_call("approve(address,uint256)", [pool_bin, amount])
-{:ok, allowance} = Onchain.ABI.encode_call("allowance(address,address)", [user_bin, pool_bin])
+{:ok, supply} = Onchain.ABI.encode_call("supply(address,uint256,address,uint16)", [weth_bin, amount, user_bin, 0])
+{:ok, query} = Onchain.ABI.encode_call("getUserAccountData(address)", [user_bin])
 
-{:ok, [_approve_result, allowance_result]} =
-  Onchain.EVM.simulate_batch([{weth, approve}, {weth, allowance}],
-    rpc_url: rpc_url, from: user)
-
-# allowance_result.output == amount
-```
-
-`:state_overrides` seeds an account before execution, so a wallet holding nothing
-can still originate a value-bearing transaction — the local equivalent of a
-faucet:
-
-```elixir
-{:ok, result} =
-  Onchain.EVM.simulate_transaction(weth, "0xd0e30db0",
+{:ok, [_approve, supply_result, account]} =
+  Onchain.EVM.simulate_batch(
+    [{weth, approve}, {pool, supply}, {pool, query}],
     rpc_url: rpc_url,
-    from: broke_address,
-    value: "0xDE0B6B3A7640000",
-    state_overrides: %{broke_address => %{"balance" => "0x8AC7230489E80000"}})
+    from: user,
+    state_overrides: %{
+      user => %{"balance" => "0x8AC7230489E80000"},
+      weth => %{"storage" => JSON.encode!(%{slot => "0x8AC7230489E80000"})}
+    }
+  )
 
-result.success   #=> true
-result.gas_used  #=> 45038
-result.logs      #=> [%{topics: ["0xe1fffcc4…" | _], …}]  WETH Deposit
+supply_result.success   #=> true
+supply_result.gas_used  #=> 184324
+supply_result.logs      #=> ReserveDataUpdated, aWETH Transfer/Mint, Supply
+
+{:ok, raw} = Onchain.ABI.decode_types("(uint256,uint256,uint256,uint256,uint256,uint256)", account.output)
+Onchain.Aave.Types.UserAccountData.from_raw(raw)
+#=> %UserAccountData{total_collateral_base: #Decimal<24262.09170529>,
+#=>                  ltv: #Decimal<0.805>, current_liquidation_threshold: #Decimal<0.83>, …}
 ```
 
-### Fork block environment and state overrides
+The fork's block environment comes from the forked block header — number,
+timestamp, basefee, gas limit, coinbase and prevrandao — so interest accrual,
+oracle staleness checks and anything else reading `block.timestamp` behave as
+they do on chain. `:state_overrides` are applied on top of the fetched account
+rather than replacing it, so the `"storage"` patch above leaves WETH's deployed
+code intact.
 
-`onchain_evm` 0.6 forks `BlockEnv` from the selected block header (number,
-timestamp, basefee, gas limit, coinbase, prevrandao) and applies
-`:state_overrides` on top of the fetched account, so a `"storage"` patch keeps
-the contract's deployed code. Aave write paths (`supply`, `borrow`, `repay`,
-liquidation) can therefore be simulated locally — they no longer underflow
-`MathUtils.calculateLinearInterest` against a 1970 clock, and a storage-only
-WETH balance override no longer turns the token into an EOA.
-
-The V4 PositionManager evidence in
-`test/onchain/aave/v4/deployed_integration_test.exs` uses that path: it supplies,
-borrows, and repays against mainnet state at a pinned block. Unknown chain ids
-are rejected rather than executed under mainnet rules.
+`test/onchain/aave/v4/deployed_integration_test.exs` runs the same path against
+V4: it supplies, borrows and repays through the PositionManager against mainnet
+state at a pinned block.
 
 ## Configuration
 
