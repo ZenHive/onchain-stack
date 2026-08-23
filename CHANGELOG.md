@@ -4,6 +4,28 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- Independent evidence for the deployed Ethereum Aave V4 wrappers, pinned to
+  mainnet block 25_800_000. Hub/Spoke/Oracle/TokenizationSpoke reads agree on
+  WETH accounting; signed PositionManager supply/borrow/repay calls mutate
+  that accounting on a local `onchain_evm` fork and decode the Taker's
+  `InsufficientBorrowAllowance` revert before approval.
+
+### Changed
+
+- Raised the dev/test-only `onchain_evm` requirement from `~> 0.5` to
+  `~> 0.6`. 0.6 forks `BlockEnv` from the selected block and applies state
+  overrides on top of the fetched account, so V4 write simulation keeps
+  WETH code and the forked block time. The same lock refresh resolved
+  hieroglyph 1.6.2 → 1.7.0 (transitive via cartouche) and swapped `rustler`
+  for `rustler_precompiled`. This dependency is not part of the published
+  runtime requirements.
+
+---
+
 ## v0.4.0 — Aave V4 support (2026-08-22)
 
 ### Added — Aave V4 support (Hub-and-Spoke)

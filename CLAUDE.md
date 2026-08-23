@@ -95,4 +95,4 @@ curl -s "https://raw.githubusercontent.com/bgd-labs/aave-address-book/main/safe.
 ## Related Packages
 
 - **onchain** — Core Ethereum primitives: `{:onchain, "~> 0.12"}`
-- **onchain_evm** — Rust NIFs + codegen: `{:onchain_evm, "~> 0.5", only: [:dev, :test]}` (hex.pm; dev/test-only, used by the revm math cross-validation suites)
+- **onchain_evm** — Rust NIFs + codegen: `{:onchain_evm, "~> 0.6", only: [:dev, :test]}` (hex.pm; dev/test-only, used by the revm math cross-validation suites and V4 fork-write evidence)

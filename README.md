@@ -96,22 +96,20 @@ result.gas_used  #=> 45038
 result.logs      #=> [%{topics: ["0xe1fffcc4…" | _], …}]  WETH Deposit
 ```
 
-### What this does not cover yet
+### Fork block environment and state overrides
 
-`onchain_evm` 0.5 leaves the block environment at its defaults — `block.number`
-is `0` and `block.timestamp` is `1`, whatever `:block` is passed. Reads that
-ignore time are unaffected, which is why the examples above hold. Aave's write
-paths are not: `supply`, `borrow`, `repay` and liquidation all run
-`MathUtils.calculateLinearInterest`, which subtracts the reserve's
-`lastUpdateTimestamp` from `block.timestamp` and reverts with `Panic(0x11)`
-(arithmetic underflow) against a 1970 clock. Simulate reads today; simulate
-write paths against a forked node (`anvil --fork-url`) until the block
-environment is wired through.
+`onchain_evm` 0.6 forks `BlockEnv` from the selected block header (number,
+timestamp, basefee, gas limit, coinbase, prevrandao) and applies
+`:state_overrides` on top of the fetched account, so a `"storage"` patch keeps
+the contract's deployed code. Aave write paths (`supply`, `borrow`, `repay`,
+liquidation) can therefore be simulated locally — they no longer underflow
+`MathUtils.calculateLinearInterest` against a 1970 clock, and a storage-only
+WETH balance override no longer turns the token into an EOA.
 
-A `"storage"` entry in `:state_overrides` replaces the whole account, dropping
-its deployed code with it — an override of `%{token => %{"storage" => …}}` turns
-that token into an EOA and every call to it returns `"0x"`. Override `"balance"`
-and `"nonce"` freely; pair `"storage"` with `"code"`.
+The V4 PositionManager evidence in
+`test/onchain/aave/v4/deployed_integration_test.exs` uses that path: it supplies,
+borrows, and repays against mainnet state at a pinned block. Unknown chain ids
+are rejected rather than executed under mainnet rules.
 
 ## Configuration
 
