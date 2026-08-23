@@ -63,25 +63,18 @@ defmodule Onchain.PrecompiledTest do
       assert sol[:base_url] == evm[:base_url]
     end
 
-    test "source-builds in this checkout while checksum files are absent" do
-      refute File.exists?("checksum-Elixir.Onchain.EVM.exs")
-      refute File.exists?("checksum-Elixir.Onchain.Solidity.exs")
-      assert Mix.Project.config()[:version] == "0.6.0"
-      assert Precompiled.opts("onchain_evm")[:force_build]
-      assert Precompiled.opts("onchain_solidity")[:force_build]
-    end
-
-    test "a supported host with a present checksum does not force_build" do
-      path = Path.join(File.cwd!(), "checksum-Elixir.Onchain.EVM.exs")
-      refute File.exists?(path)
-      File.write!(path, "%{}\n")
-
-      try do
-        refute Keyword.has_key?(Precompiled.opts("onchain_evm"), :force_build)
-      after
-        File.rm!(path)
-        refute File.exists?(path)
+    # Both checksum files are committed as of v0.6.0. `package.files` ships
+    # them, and a Hex install that lacks them fails the load rather than
+    # silently source-building — so their presence is the invariant, not the
+    # pre-release absence the earlier tests asserted. The force-build decision
+    # itself is covered exhaustively by the `force_build?/4` table below; it
+    # must not be re-derived here through real files in the repository root.
+    test "both crates ship a committed checksum file" do
+      for crate <- ["Onchain.EVM", "Onchain.Solidity"] do
+        assert File.exists?(Path.join(File.cwd!(), "checksum-Elixir.#{crate}.exs"))
       end
+
+      assert "checksum-*.exs" in Mix.Project.config()[:package][:files]
     end
 
     test "ONCHAIN_EVM_BUILD sets the package force-build option" do
