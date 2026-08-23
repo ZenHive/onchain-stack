@@ -11,9 +11,9 @@
 ---
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 2 — Quality & Reliability Improvements (18 of 23 done · 0 in progress)
+**Focus phase:** 3 — Standalone & Release (12 of 13 done · 0 in progress)
 
-**Last shipped:** Task 32 — Stop `parse_sol` from aborting the BEAM — bound Solidity parse depth, not just source size, Task 42 — Add module-level Rust documentation — doc comments on both native crate entry points, Task 50 — Document `simulate_batch/2` partial-failure semantics in `@moduledoc`, Task 57 — Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF, Task 58 — Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts, Task 60 — Derive the EVM revision from the forked block instead of always executing under one modern SpecId on 2026-08-22
+**Last shipped:** Task 62 — Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex on 2026-08-23
 
 **Up next:** none — focus phase complete or all blocked
 <!-- FOCUS:END -->
@@ -59,31 +59,7 @@ Bundles identified via code review — grouped by shared code and common goals.
 - **Bundle 5: EVM Input Validation Round 2** — discovered 2026-04-22 during `onchain_aave` Task 41 (first real consumer integration). All four fit the "NIF catches what Elixir should" pattern — validation that happens after the NIF boundary with bare-string reasons, when it should happen at the Elixir layer with tagged error atoms. (The upstream address/data helper bugs live in the `onchain` core and are tracked there as Task 55.)
 
 <!-- TASKS:BEGIN phase=2 -->
-| Task | Status | Notes |
-|------|--------|-------|
-| Task 34 | ✅ | 🎁 **bundle1_evm_input_validation** · *Onchain.EVM* · Support string block tags (`"latest"`, `"finalized"`) in EVM — consistent with `Onchain.Trace` [D:4/B:7/U:8 → Eff:1.88?] 🚀 |
-| Task 35 | ✅ | 🎁 **bundle1_evm_input_validation** · *Onchain.EVM* · Validate `rpc_url` input — reject empty/invalid strings before reaching NIF [D:4/B:8/U:8 → Eff:2.0?] 🎯 |
-| Task 36 | ✅ | 🎁 **bundle1_evm_input_validation** · *Onchain.EVM, Onchain.Trace* · Fix silent value dropping — error on invalid `value`, `gas_limit`, `state_overrides` instead of silently ignoring [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
-| Task 30 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Add RPC call timeouts — configure `reqwest::Client` with timeout to prevent indefinite blocking [D:5/B:9/U:8 → Eff:1.7?] 🚀 |
-| Task 31 | ⛔ | 🎁 **bundle2_rust_safety_hardening** · *Both native crates* · Replace `.expect()` with proper error handling — 6× in EVM encoder, 1× in Solidity `map_put` [D:5/B:9/U:7 → Eff:1.6?] 🚀 |
-| Task 32 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_solidity* · 🔒 Stop `parse_sol` from aborting the BEAM — bound Solidity parse depth, not just source size [D:5/B:9/U:8 → Eff:1.7] 🚀 |
-| Task 49 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Restore `{:fork_error, _}` and `{:timeout, _}` Elixir error classes from the Rust NIF [D:5/B:7/U:6 → Eff:1.3?] 📋 |
-| Task 37 | ✅ | 🎁 **bundle3_elixir_code_quality** · *All Elixir modules* · Eliminate bang-function duplication — introduce `defbang` macro to replace 11 copies of the same `case` pattern [D:4/B:6/U:7 → Eff:1.62?] 🚀 |
-| Task 38 | ✅ | 🎁 **bundle3_elixir_code_quality** · *Onchain.EVM, Onchain.Trace* · Add specific error union types — replace `{:error, term()}` with typed unions in `evm.ex` and `trace.ex` specs [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
-| Task 40 | ✅ | 🎁 **bundle3_elixir_code_quality** · *mix.exs, lib/onchain_evm/* · Remove dead Application module — delete `lib/onchain_evm/application.ex` and commented `mod:` in `mix.exs` [D:2/B:3/U:4 → Eff:1.75?] 🚀 |
-| Task 39 | ✅ | 🎁 **bundle4_documentation_specs** · *Onchain.Contract.Generator* · Add `@spec` to public Generator functions — `resolve_abi/1`, `resolve_contract_input/2`, `to_snake_case/1`, `disambiguate/1` [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
-| Task 41 | ✅ | 🎁 **bundle4_documentation_specs** · *Onchain.Contract.Generator* · Document Generator options — add `:abi_file`, `:remappings`, and `:root_contract` to moduledoc [D:2/B:4/U:5 → Eff:2.25?] 🎯 |
-| Task 42 | ✅ | 🎁 **bundle4_documentation_specs** · *Both native crates* · Add module-level Rust documentation — doc comments on both native crate entry points [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
-| Task 50 | ✅ | 🎁 **bundle4_documentation_specs** · *Onchain.EVM* · Document `simulate_batch/2` partial-failure semantics in `@moduledoc` [D:1/B:3/U:4 → Eff:3.5?] 🎯 |
-| Task 45 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · `simulate_batch/2` input shape validation — reject non-list `calls` and non-2-tuple elements before `validate_calls/1` [D:2/B:6/U:5 → Eff:2.75?] 🎯 |
-| Task 46 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate `:value` option as 0x-prefixed even-length hex U256, not any binary [D:2/B:5/U:4 → Eff:2.25?] 🎯 |
-| Task 47 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Validate `:state_overrides` nested keys/values are strings, per `@type state_overrides` [D:2/B:5/U:4 → Eff:2.25?] 🎯 |
-| Task 48 | ⛔ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM* · Bound-check `:block` hex values against u64 max in `parse_hex_block/2` [D:2/B:4/U:3 → Eff:1.75?] 🚀 |
-| Task 54 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *Onchain.EVM* · Behavioral golden tests for EVM fork+execute — safety net before the revm/alloy major bump [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
-| Task 55 | ✅ | 🎁 **bundle2_rust_safety_hardening** · *native/onchain_evm* · Bump revm 19→41 + alloy 0.7→2.1 in native/onchain_evm — clears lru low-severity advisory [D:9/B:6/U:7 → Eff:0.72?] ⚠️ |
-| Task 57 | ✅ | 🎁 **bundle5_evm_input_validation_round2** · *Onchain.EVM.Params* · Validate the documented `Onchain.EVM` option surface at the Elixir boundary, not in the NIF [D:3/B:6/U:6 → Eff:2.0] 🎯 |
-| Task 58 | ✅ | 🎁 **standalone** · Populate the fork's block environment and stop state overrides from clobbering un-fetched accounts [D:5/B:9/U:8 → Eff:1.7] 🚀 |
-| Task 60 | ✅ | 🎁 **standalone** · *native/onchain_evm* · Derive the EVM revision from the forked block instead of always executing under one modern SpecId [D:6/B:8/U:7 → Eff:1.25] 📋 |
+> 23 tasks. See [CHANGELOG.md](CHANGELOG.md#phase-2-quality-reliability-improvements).
 <!-- TASKS:END -->
 
 ---
@@ -93,21 +69,7 @@ Bundles identified via code review — grouped by shared code and common goals.
 Standalone tasks: Rust unit tests, tokio runtime reuse, clippy CI, codegen extensions, and hex-release prep.
 
 <!-- TASKS:BEGIN phase=3 -->
-| Task | Status | Notes |
-|------|--------|-------|
-| Task 28 | ✅ | 🎁 **standalone** · *native/onchain_evm* · Rust unit tests for `onchain_evm` — transport-error classification, tx building, block parsing, error encoding [D:5/B:8/U:8 → Eff:1.6] 🚀 |
-| Task 29 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec [D:5/B:9/U:8 → Eff:1.7] 🚀 |
-| Task 33 | ✅ | 🎁 **standalone** · *native/onchain_evm* · Spike: measure whether per-call tokio runtime creation costs anything before reusing one [D:3/B:4/U:4 → Eff:1.33] 📋 |
-| Task 43 | ✅ | 🎁 **standalone** · *Both native crates* · Gate the Rust half: run `cargo test` and `cargo clippy` from `mix ci` [D:4/B:8/U:6 → Eff:1.75] 🚀 |
-| Task 44 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Stop leaking Rust `Debug` renderings into Elixir error and type strings [D:4/B:7/U:6 → Eff:1.62] 🚀 |
-| Task 51 | ⛔ | 🎁 **standalone** · *(cross-cutting research)* · Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
-| Task 52 | ✅ | 🎁 **standalone** · *Onchain.Contract.Generator* · Codegen-emit per-contract Multicall helper modules [D:5/B:7/U:6 → Eff:1.3?] 📋 |
-| Task 53 | ✅ | 🎁 **standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — artifacts cross-built locally with cargo-zigbuild [D:6/B:8/U:8 → Eff:1.33] 📋 |
-| Task 56 | ✅ | 🎁 **standalone** · 🔒 Independent EVM semantics and exact-bytecode verification harness [D:8/B:10/U:8 → Eff:1.12] 📋 |
-| Task 59 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax [D:3/B:8/U:7 → Eff:2.5] 🎯 |
-| Task 61 | ✅ | 🎁 **standalone** · *native/onchain_solidity* · Migrate Solidity source parsing from solang-parser to solar-parse [D:6/B:8/U:7 → Eff:1.25] 📋 |
-| Task 62 | ✅ | 🎁 **standalone** · *release* · Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex [D:4/B:9/U:8 → Eff:2.12] 🎯 |
-| Task 63 | ✅ | 🎁 **standalone** · Close the assertion gap in the semantics harness: every vector asserted against every key the oracle checks [D:5/B:8/U:6 → Eff:1.4] 📋 |
+> 13 tasks. See [CHANGELOG.md](CHANGELOG.md#phase-3-standalone-release).
 <!-- TASKS:END -->
 
 ---
