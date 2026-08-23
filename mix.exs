@@ -133,6 +133,25 @@ defmodule OnchainTempo.MixProject do
       ],
       # Comprehensive gate — the harness reviewer's `check_command` and `mix ci`
       # target. Coverage floor is 90 against a 95.4% baseline.
+      # Harness reviewer target — `harness_dev.projects` registers this repo with
+      # `check_command: "mix check.dispatch"`, and until 2026-08-23 the alias did
+      # not exist, so every reviewer booked a failed check against a task that was
+      # fine. It is `precommit.full` minus four steps a reviewer worktree cannot
+      # or should not run: `agents.check` (harness appends an ephemeral preamble
+      # to AGENTS.md in the worktree, so the render never matches),
+      # `deps.audit.gated` (all ten family repos share one advisory clone and
+      # concurrent worktrees interleave its fetch), the cold-PLT dialyzer, and the
+      # coverage pass. Same shape as hieroglyph's and onchain_evm's.
+      "check.dispatch": [
+        "compile --warnings-as-errors",
+        "format --check-formatted",
+        "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
+        "doctor --raise",
+        "ex_dna --max-clones 0",
+        "reach.check --arch --smells",
+        "sobelow --skip --exit low",
+        "cmd env MIX_ENV=test mix test.json --exclude integration"
+      ],
       "precommit.full": [
         "compile --warnings-as-errors",
         "format --check-formatted",
