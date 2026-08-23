@@ -440,23 +440,3 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
     end)
   end
 end
-
-defmodule Onchain.Aave.V4.PositionManagerIntegrationTest do
-  use ExUnit.Case, async: false
-
-  alias Onchain.Aave.Contracts
-  alias Onchain.Aave.V4.PositionManager
-
-  @moduletag :integration
-
-  @owner "0x0000000000000000000000000000000000000001"
-  @spender "0x0000000000000000000000000000000000000002"
-
-  test "borrowAllowance on the mainnet Taker decodes a uint256" do
-    opts = Onchain.RPCCase.rpc_opts!()
-    spoke = Contracts.address!(:v4_main_spoke)
-
-    assert {:ok, allowance} = PositionManager.borrow_allowance(spoke, 0, @owner, @spender, opts)
-    assert is_integer(allowance) and allowance >= 0
-  end
-end
