@@ -1,6 +1,6 @@
 # Onchain Aave Roadmap
 
-**Vision:** Aave V3 protocol wrappers for Elixir — read positions, execute actions, monitor health.
+**Vision:** Protocol-correct Aave V3 and V4 wrappers for Elixir — read positions, execute actions, and verify behavior against deployed contracts.
 
 **Core dependency:** [onchain](../onchain) provides RPC, ABI, signing, address utilities.
 
@@ -14,23 +14,34 @@
 
 ## Status
 
-All foundational V3 tasks are complete. This package provides full Aave V3 read + write coverage across mainnet and 6 chains. A small cleanup backlog (Tasks 36–39) was captured during the v0.1.0 staged-review pass. A follow-on **Math Validation** backlog (Tasks 40–43) was added 2026-04-20 to expand `Aave.Math` with WadRayMath + MathUtils and cross-validate both against Solidity (via `onchain_evm`) and against Aave's frontend math (`@aave/math-utils` via `onchain_js`). Task 40 landed 2026-04-21 (integer-native port of WadRayMath + MathUtils; source pinned to `aave-v3-origin@1e3d70c`); Task 41 landed 2026-04-22 (revm cross-validation harness with zero-tolerance equality across deterministic + StreamData property vectors for all 8 Layer-2 functions). Task 42 (V4 math revm harness, reusing Task 41's shape) is now the active path. The **Aave V4 Support** phase opened 2026-04-20 after V4 went live on Ethereum mainnet on 2026-03-30 with the Hub-and-Spoke architecture; Task 44 scoping completed 2026-04-20 (see [V4_SCOPING.md](V4_SCOPING.md)) and produced implementation Tasks 45–52.
+The V3 core, math-validation suite, V4 wrapper modules, and read-path multicall work are shipped. The current correctness gate is independent deployed-state evidence for the V4 read and PositionManager write surfaces. The active v0.5 milestone then closes the remaining V3 position-management and reserve-read gaps without claiming complete protocol coverage prematurely.
+
+---
+
+## Milestones
+
+<!-- MILESTONES:BEGIN -->
+### v0_5 — Live-evidenced V3/V4 surface
+
+- **target_version:** 0.5.0
+- **status:** 🔄 active
+- **hypothesis:** Tests whether onchain_aave can express core V3 position-management and V4 Hub-and-Spoke flows with reproducible evidence against deployed Aave contracts.
+- **pinned tasks:** 0/5 done
+<!-- MILESTONES:END -->
 
 ---
 
 ## 🎯 Current Focus
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 3 — Math Validation (4 of 6 done · 0 in progress)
+**Focus phase:** 5 — Aave V4 Support (9 of 10 done · 0 in progress)
 
-**Last shipped:** Task 56 — Mutation-grade Aave V3/V4 math differential suite on 2026-08-22
+**Last shipped:** Task 57 — Wrap remaining IHub preview converters and Hub bound constants on 2026-08-22
 
-**Up next:** Task 54 — Mine defi-skills:intent-to-transaction action surface for onchain_aave coverage gaps [D:3/B:8/U:7 → Eff:2.5] 🎯
+**Up next:** Task 52 — Prove V4 reads and PositionManager writes against deployed mainnet state [D:6/B:9/U:9 → Eff:1.5] 🚀
 <!-- FOCUS:END -->
 
-**V3 Math Validation** — before shipping V4 support, cross-validate `Aave.Math` against Solidity source-of-truth (revm) and Aave's frontend math (JS). V3 revm validation is now complete; the harness is ready for V4 re-use.
-
-**Active path:** Task 42 (V4 revm cross-validation) — primary path is direct calls against V4's deployed math contracts on mainnet, with Task 41's `state_overrides["code"]` wrapper-injection shape available as a secondary path for variants we want to exercise before mainnet exposure. JS validation (Task 43) stays 🔶 gated until off-chain aggregation helpers exist.
+**Active path:** Task 52 proves the shipped V4 wrappers against pinned deployed state, including stateful PositionManager success and authorization-error paths.
 
 ---
 
@@ -50,29 +61,24 @@ All foundational V3 tasks are complete. This package provides full Aave V3 read 
 
 ---
 
-## Math Validation
+## Math Validation ✅
 
-Added 2026-04-20 after surveying Aave's math references. Two oracles at two different layers:
+Completed protocol-level differential validation against Aave Solidity executed through revm. Consumer-specific off-chain aggregation validation will belong to the task that introduces such a consumer rather than remaining as a conditional blocker.
+
+The validation work used two authorities at different layers:
 
 - **revm via `onchain_evm`** — canonical for *protocol-level* math (WadRayMath, interest accrual). Validates our Elixir port against actual on-chain Solidity bytecode. Version-agnostic (V2/V3/V4).
-- **`@aave/math-utils` via `onchain_js`** (QuickBEAM) — canonical for *off-chain aggregation* (`formatUserSummaryAndIncentives`, estimated APY over time, weighted averages across reserves). Validates that our Elixir matches what Aave's frontend shows users. V2/V3 only (no V4 JS lib as of 2026-04-20 — re-check before acting on Task 43).
+- **`@aave/math-utils` via `onchain_js`** (QuickBEAM) — authority for off-chain aggregation behavior when matching Aave's frontend is part of a future consumer contract.
 
 They cover different failure modes: revm catches drift from the contracts, JS catches drift from the UI. The revm NIF surface (`Onchain.EVM.simulate_call/3`, `simulate_transaction/3`, `simulate_batch/2`) already supports everything needed: mainnet/Sepolia forks at a pinned block, `state_overrides` for balance/nonce/code/storage injection per address (enables bytecode injection for pre-deployment V4), caller/gas/timeout options, and raw hex output decoded via `Onchain.ABI.decode_response/2`.
 
 <!-- TASKS:BEGIN phase=3 -->
-| Task | Status | Notes |
-|------|--------|-------|
-| Task 40 | ✅ | 🎁 **math_validation** · *Onchain.Aave.Math* · Port Aave V3 WadRayMath + MathUtils to Elixir [D:5/B:8/U:9 → Eff:1.7?] 🚀 |
-| Task 40b | 🔶 | 🎁 **math_validation** · *Onchain.Aave.Math* · Port missing WadRayMath ceil/floor variants on demand [D:3/B:4/U:3 → Eff:1.17?] 📋 ⛔ Gated until a caller from Pool/TokenMath call paths in this repo needs the floor/ceil variants. |
-| Task 41 | ✅ | 🎁 **math_validation** · *test/onchain/aave/math_revm_test.exs* · Cross-validate Aave.Math via revm against on-chain Aave V3 [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
-| Task 42 | ✅ | 🎁 **math_validation** · *Onchain.Aave.Math.V4* · V4 math cross-validation via revm (V4 live on mainnet 2026-03-30) [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
-| Task 43 | 🔶 | 🎁 **math_validation** · *Onchain.Aave.Summary* · Cross-validate aggregation helpers via @aave/math-utils (QuickBEAM) [D:4/B:6/U:4 → Eff:1.25?] 📋 ⛔ Gated until onchain_aave grows off-chain aggregation helpers; no V4 JS lib as of 2026-04-20 (re-check before acting). |
-| Task 56 | ✅ | 🎁 **math_validation** · 🔒 Mutation-grade Aave V3/V4 math differential suite [D:5/B:10/U:8 → Eff:1.8] 🚀 |
+> 6 tasks. See [CHANGELOG.md](CHANGELOG.md#phase-3-math-validation).
 <!-- TASKS:END -->
 
 ---
 
-## Cleanup Backlog (from initial-commit review)
+## Cleanup Backlog (from initial-commit review) ✅
 
 Discovered during the v0.1.0 staged-review pass. Deprioritized below Math Validation — polish, not a capability gate.
 
@@ -88,7 +94,7 @@ V4 went live on Ethereum mainnet on 2026-03-30 with a Hub-and-Spoke architecture
 
 **All V4 addresses, interface pointers, and the V3→V4 module mapping live in [V4_SCOPING.md](V4_SCOPING.md).** Tasks 45+ reference that document rather than inlining addresses.
 
-**Dependency order:** 45 (registry) and 46 (surface selection) ship first. 47–50 can run in parallel once both land. 51 depends on 45–48. 52 is gated on V4 Sepolia becoming available; until then reads can be validated against mainnet via fork but writes have no testnet.
+**Current gate:** Task 52 validates the shipped read wrappers and PositionManager writes against pinned Ethereum mainnet state. Forked-mainnet execution supplies reproducible stateful write evidence without depending on a particular testnet lifecycle.
 
 <!-- TASKS:BEGIN phase=5 -->
 | Task | Status | Notes |
@@ -101,7 +107,7 @@ V4 went live on Ethereum mainnet on 2026-03-30 with a Hub-and-Spoke architecture
 | Task 49 `[P]` | ✅ | 🎁 **v4_support** · *Onchain.Aave.V4.Oracle* · Implement Onchain.Aave.V4.Oracle wrapper (Spoke-scoped) [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
 | Task 50 `[P]` | ✅ | 🎁 **v4_support** · *Onchain.Aave.V4.TokenizationSpoke* · Implement Onchain.Aave.V4.TokenizationSpoke reads (ERC-4626 share accounting) [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
 | Task 51 | ✅ | 🎁 **v4_support** · *Onchain.Aave.V4.PositionManager* · Implement Onchain.Aave.V4.PositionManager ergonomic write wrappers (supply/borrow/repay analogs) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
-| Task 52 | 🔶 | 🎁 **v4_support** · *test/onchain/aave/v4/* · V4 integration tests (mainnet forked reads; gated on Sepolia V4 deployment for writes) [D:4/B:6/U:5 → Eff:1.38?] 📋 ⛔ Write tests gated until Aave deploys V4 on a testnet — none exists as of 2026-04-20. |
+| Task 52 | ⬜ | 🎁 **v4_support** · 🚀 **v0_5** · *test/onchain/aave/v4/* · 🔒 Prove V4 reads and PositionManager writes against deployed mainnet state [D:6/B:9/U:9 → Eff:1.5] 🚀 |
 | Task 57 | ✅ | 🎁 **v4_support** · *Onchain.Aave.V4.Hub* · Wrap remaining IHub preview converters and Hub bound constants [D:3/B:4/U:5 → Eff:1.5] 🚀 |
 <!-- TASKS:END -->
 
@@ -115,17 +121,19 @@ Consumer patterns observed on-chain that the current V3 write surface doesn't co
 | Task | Status | Notes |
 |------|--------|-------|
 | Task 53 | ✅ | 🎁 **v3_write_gaps** · *Onchain.Aave.DebtToken* · Onchain.Aave.DebtToken — wrap approveDelegation + borrowAllowance on variable/stable debt tokens [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
-| Task 54 | ⬜ | 🎁 **v3_write_gaps** · *(cross-cutting research)* · Mine defi-skills:intent-to-transaction action surface for onchain_aave coverage gaps [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
+| Task 54 | ✅ | 🎁 **v3_write_gaps** · *(cross-cutting research)* · Mine defi-skills:intent-to-transaction action surface for onchain_aave coverage gaps [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
+| Task 58 | ⬜ | 🎁 **v3_write_gaps** · 🚀 **v0_5** · *Onchain.Aave.Pool* · Onchain.Aave.Pool — eMode: setUserEMode, getUserEMode, category config, and enumeration via getEModes [D:5/B:8/U:7 → Eff:1.5] 🚀 |
+| Task 59 | ⬜ | 🎁 **v3_write_gaps** · 🚀 **v0_5** · *Onchain.Aave.Pool* · Retire stable-rate APIs and resolve variable debt tokens through the dedicated Pool getter [D:4/B:8/U:7 → Eff:1.88] 🚀 |
+| Task 60 | ⬜ | 🎁 **v3_write_gaps** · 🚀 **v0_5** · *Onchain.Aave.Pool* · Onchain.Aave.Pool — setUserUseReserveAsCollateral and repayWithATokens [D:4/B:7/U:7 → Eff:1.75] 🚀 |
+| Task 61 | ⬜ | 🎁 **v3_write_gaps** · 🚀 **v0_5** · *Onchain.Aave.Pool* · Expose typed direct reserve data and normalized index reads [D:4/B:5/U:5 → Eff:1.25] 📋 |
 <!-- TASKS:END -->
 
 ---
 
-## Read-Path Multicall Adoption
+## Read-Path Multicall Adoption ✅
 
 <!-- TASKS:BEGIN phase=7 -->
-| Task | Status | Notes |
-|------|--------|-------|
-| Task 55 | ✅ | 🎁 **multicall** · *Onchain.Aave.** · Adopt Onchain.Multicall in Aave batch read paths [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
+> 1 task. See [CHANGELOG.md](CHANGELOG.md#phase-7-read-path-multicall-adoption).
 <!-- TASKS:END -->
 
 ---

@@ -1,10 +1,17 @@
 schema_version = 2
 project = "onchain_aave"
 default_branch = "main"
-vision = "Aave V3 protocol wrappers for Elixir — read positions, execute actions, monitor health. Built on the onchain core library (RPC, ABI, signing, address utilities). Part of the five-package onchain family."
+vision = "Protocol-correct Aave V3 and V4 wrappers for Elixir — read positions, execute actions, and verify behavior against deployed contracts. Built on the onchain core library as part of the seven-repository onchain family."
 
 [focus]
-phase = 3
+phase = 5
+
+[milestones.v0_5]
+name = "Live-evidenced V3/V4 surface"
+order = 1
+status = "active"
+target_version = "0.5.0"
+description = "Tests whether onchain_aave can express core V3 position-management and V4 Hub-and-Spoke flows with reproducible evidence against deployed Aave contracts."
 
 # ----------------------------------------------------------------------------
 # Phases
@@ -23,7 +30,7 @@ status = "done"
 [phases.3]
 name = "Math Validation"
 order = 3
-status = "in_progress"
+status = "done"
 
 [phases.4]
 name = "Cleanup Backlog"
@@ -33,7 +40,7 @@ status = "done"
 [phases.5]
 name = "Aave V4 Support"
 order = 5
-status = "pending"
+status = "in_progress"
 
 [phases.6]
 name = "V3 Write Surface Gaps"
@@ -43,7 +50,7 @@ status = "pending"
 [phases.7]
 name = "Read-Path Multicall Adoption"
 order = 7
-status = "pending"
+status = "done"
 
 # ----------------------------------------------------------------------------
 # Bundles
@@ -77,7 +84,7 @@ description = "Aave V4 Hub-and-Spoke support: address registry, read-surface sel
 [bundles.v3_write_gaps]
 phase = 6
 order = 1
-description = "V3 write-surface gaps observed on-chain: credit-delegation debt-token wrapper, defi-skills action-surface mining."
+description = "Close observed V3 position-management and reserve-read gaps, while removing protocol capabilities that deployed Aave no longer supports."
 
 [bundles.multicall]
 phase = 7
@@ -225,11 +232,10 @@ shipped_in = "f5f8599"
 id = "40b"
 phase = 3
 bundle = "math_validation"
-status = "blocked"
+status = "superseded"
 title = "Port missing WadRayMath ceil/floor variants on demand"
 scores = { d = 3, b = 4, u = 3 }
 module = "Onchain.Aave.Math"
-blocked_reason = "Gated until a caller from Pool/TokenMath call paths in this repo needs the floor/ceil variants."
 depends_on = [40]
 created_at = "2026-04-20"
 body = """
@@ -277,11 +283,10 @@ shipped_in = "f23d0384f6524b90dffda104cb9e802001c91f9e"
 id = 43
 phase = 3
 bundle = "math_validation"
-status = "blocked"
+status = "superseded"
 title = "Cross-validate aggregation helpers via @aave/math-utils (QuickBEAM)"
 scores = { d = 4, b = 6, u = 4 }
 module = "Onchain.Aave.Summary"
-blocked_reason = "Gated until onchain_aave grows off-chain aggregation helpers; no V4 JS lib as of 2026-04-20 (re-check before acting)."
 created_at = "2026-04-20"
 body = """
 When onchain_aave grows off-chain aggregation helpers (e.g. Onchain.Aave.Summary.format_user_summary/2, projected APY, weighted reserve averages — anything Aave's UI computes off-chain), validate them against @aave/math-utils via onchain_js (QuickBEAM). Load the npm bundle, call formatUserSummaryAndIncentives and friends with identical inputs, compare to Elixir output within a documented tolerance (BigNumber→Decimal conversion may introduce sub-wei noise). Gated because the helpers don't exist yet. V2/V3 only today; re-check V4 JS availability before acting.
@@ -561,15 +566,27 @@ shipped_in = "b1157c34eb3f0a7e86da749cff4defbea7e96032"
 id = 52
 phase = 5
 bundle = "v4_support"
-status = "blocked"
-title = "V4 integration tests (mainnet forked reads; gated on Sepolia V4 deployment for writes)"
-scores = { d = 4, b = 6, u = 5 }
+status = "pending"
+title = "Prove V4 reads and PositionManager writes against deployed mainnet state"
+scores = { d = 6, b = 9, u = 9 }
+milestone = "v0_5"
+markers = ["security"]
+depends_on = [47, 48, 49, 50, 51, 57]
+acceptance_criteria = ["Pinned-block integration tests exercise representative Hub, Spoke, Oracle, and TokenizationSpoke reads against the deployed Ethereum contracts and assert domain values or cross-contract relationships, not only successful decoding", "A pinned-mainnet-fork scenario executes PositionManager Giver supply and repay writes and asserts the corresponding Hub/Spoke accounting changes", "A pinned-mainnet-fork scenario proves the Taker authorization boundary: borrow or withdraw without allowance returns the deployed Insufficient*Allowance error, then succeeds after the matching allowance is granted, with resulting position state asserted", "Every live/fork test fails loudly with the required ETHEREUM_API_URL setup when the archive RPC is unavailable; no missing-environment skip path exists", "The integration test modules record the pinned block, deployed contract addresses, observed success semantics, and observed relevant error semantics", "mix ci passes, and mix test.json --quiet --include integration passes with the archive RPC available"]
+touches = ["test/onchain/aave/v4/", "test/support/", "README.md"]
+assignee = "codex"
 module = "test/onchain/aave/v4/"
-blocked_reason = "Write tests gated until Aave deploys V4 on a testnet — none exists as of 2026-04-20."
-depends_on = [47, 48, 49, 50]
+model = "gpt-5.6-sol"
 created_at = "2026-04-20"
+scored_at = "2026-08-23"
 body = """
-Full read-path tests against a mainnet-forked RPC for Hubs, Spokes, Oracles, Tokenization Spokes. Writes stay gated until Aave deploys V4 on a testnet — none exists as of 2026-04-20. When a V4 testnet appears, add Sepolia-style write integration tests mirroring pool_write_integration_test.exs.
+Close the independent-evidence gap for the shipped V4 wrappers. The current suite primarily proves calldata and decoding against stubs; one live PositionManager allowance read exists, but no state-changing V4 wrapper is exercised end to end.
+
+Use the deployed Ethereum V4 contracts as the semantic authority. Pin all live and forked calls to a named block so configuration changes cannot turn exact-value assertions into noise. Reads must cover the Hub/Spoke accounting relationships selected by Tasks 47–50 and 57. Writes must exercise both sides of PositionManager: Giver accounting for supply/repay and Taker allowance enforcement for borrow/withdraw.
+
+The former Sepolia blocker is obsolete. Aave launched a public Tenderly-based V4 testnet on 2025-11-19, and V4 is now deployed on Ethereum mainnet. More importantly, onchain_evm can execute stateful writes against pinned mainnet state; test/onchain/aave/simulation_integration_test.exs proves that mechanism against Aave V3. A testnet lifecycle is therefore not an authority or availability dependency for this task.
+
+AUTHORITY: live deployed traffic plus Aave-owned V4 source, deployment documentation, and interfaces. Stubs and captured payloads remain regression fixtures only; they do not grade deployed semantics.
 """
 
 # ============================================================================
@@ -603,12 +620,9 @@ shipped_in = "8451b5853fcb77c753a06948db03a94a0280222c"
 id = 54
 phase = 6
 bundle = "v3_write_gaps"
-status = "pending"
+status = "done"
 title = "Mine defi-skills:intent-to-transaction action surface for onchain_aave coverage gaps"
 scores = { d = 3, b = 8, u = 7 }
-assignee = "human"
-module = "(cross-cutting research)"
-created_at = "2026-04-30"
 acceptance_criteria = [
   "A 'Proposed additions from defi-skills mining' section lands in this roadmap listing each candidate task with D/B/U scores, the corresponding defi-skills action(s), and a coverage-status note (already-covered / partial / gap)",
   "User merges accepted entries into V3 Write Surface Gaps",
@@ -616,11 +630,17 @@ acceptance_criteria = [
 out_of_scope = [
   "Any Onchain.Aave.* code edits — read-only discovery + scoring only",
 ]
+assignee = "human"
+module = "(cross-cutting research)"
 body = """
 Planted 2026-04-30 from a cartouche session surveying cross-repo applicability of the defi-skills skill. Self-contained discovery exercise — execute from a fresh onchain_aave Claude Code session so this repo's CLAUDE.md, hooks, and Aave V3 fixtures are loaded.
 
 Prompt for the executing session: Invoke /defi-skills:intent-to-transaction to load the skill, then run `defi-skills actions --json` to enumerate the supported action surface (~50 actions across Aave, Uniswap, Lido, Compound, Balancer, Pendle, EigenLayer, Curve, MakerDAO, Rocket Pool, Fibrous, WETH). Map relevant actions to onchain_aave's scope: direct parity with defi-skills' 7 aave_* actions — aave_supply, aave_withdraw, aave_borrow, aave_repay, aave_set_collateral, aave_repay_with_atokens, aave_claim_rewards. For each, check whether Onchain.Aave.* already covers it (read calldata-construction details from the action's JSON spec, compare against Onchain.Aave.Pool / sibling modules); flag any gap as a candidate roadmap entry. Also note V3 Pool functions exposed by defi-skills we don't model yet (interest-rate-mode toggling, eMode category selection, repay-with-permit). For each gap, propose a roadmap entry with D/B/U scoring. Read-only — discovery + scoring only, no code edits. The skill is already installed (pip install defi-skills); no new deps. Companion tasks were planted in hieroglyph, onchain, and onchain_evm ROADMAPs the same day.
 """
+implemented = "Mined the defi-skills 0.3.0 action surface (53 actions, 7 aave_v3) via four parallel subagents, each verifying signatures against the deployed mainnet Pool and aave-dao/aave-v3-origin rather than against defi-skills. Coverage: withdraw/borrow/repay covered; supply covered except the caller-side approve pre-step; set_collateral, repay_with_atokens and claim_rewards are gaps. Findings that removed work: swapBorrowRateMode is gone from IPool since v3.2 (live call reverts), and the deployed UiPoolDataProvider.getEModes returns the six-field v3.3 EModeCategory while aave-v3-origin/main declares eight — decoding against the source branch buffer-overruns. Accepted candidates merged into V3 Write Surface Gaps as tasks 58 (eMode), 59 (direct reserve reads, debt-token resolution by getter, retirement of the dead stable-rate paths) and 60 (setUserUseReserveAsCollateral, repayWithATokens). Declined: supply-with-approval orchestration (caller policy, would need a per-token USDT reset constant), the bitmap and packed-config reads (UiPoolDataProvider decodes them already), flashLoan (caller must deploy a receiver), governance functions. Held: a Rewards module (all sampled mainnet distributions are expired) and liquidationCall. Deferred cross-repo: supplyWithPermit/repayWithPermit, blocked on ERC-2612 signing absent from onchain core."
+delivered_by = "claude-opus-5 + 4 subagents (3x sonnet, 1x opus)"
+created_at = "2026-04-30"
+done_at = "2026-08-23"
 
 # ============================================================================
 # Phase 7 — Read-Path Multicall Adoption
@@ -701,3 +721,112 @@ started_at = "2026-08-22"
 scored_at = "2026-08-21"
 done_at = "2026-08-22"
 shipped_in = "e19b95db4ec758d3c525041aaba99867109ed545"
+
+[[task]]
+id = "58"
+phase = 6
+bundle = "v3_write_gaps"
+status = "pending"
+title = "Onchain.Aave.Pool — eMode: setUserEMode, getUserEMode, category config, and enumeration via getEModes"
+scores = { d = 5, b = 8, u = 7 }
+milestone = "v0_5"
+acceptance_criteria = ["Pool.set_user_e_mode/2 (plus a ! variant) encodes setUserEMode(uint8) and sends through the module's existing signed-write path", "Pool.get_user_e_mode/2 returns the user's active category id from a pinned-block live archive read", "Pool.get_e_mode_category_collateral_config/2 returns ltv, liquidation threshold and liquidation bonus as Decimal ratios via Math.to_ltv/1", 'UiPoolDataProvider.get_e_modes/2 decodes the deployed Emode[] wrapper as {uint8 id, seven-field EModeCategory}; a pinned-block integration test asserts category 1 id, ltv 0.93, liquidation threshold 0.95, bonus 1.01, label "ETH correlated", and ltvzeroBitmap', "A decode regression test includes a category whose ltvzeroBitmap is non-zero, proving that neither the wrapper id nor the deployed seventh field can be silently discarded", "%Onchain.Aave.Types.EModeCategory{} includes the category id and every deployed inner field, with a doctest matching sibling type conventions", "A pinned-mainnet-fork test changes a user's eMode through setUserEMode, reads the changed category back, and pins the relevant deployed error for an invalid category", "mix ci passes"]
+out_of_scope = ["swapBorrowRateMode — removed from IPool in v3.2, reverts on the deployed contract", "getEModeCategoryData(uint8) legacy struct and the four category bitmap getters", "setUserEModeOnBehalfOf and the v3.5 position-manager delegation surface", "Any Aave V4 eMode equivalent"]
+touches = ["lib/onchain/aave/pool.ex", "lib/onchain/aave/ui_pool_data_provider.ex", "lib/onchain/aave/types/e_mode_category.ex", "test/onchain/aave/pool_test.exs", "test/onchain/aave/pool_integration_test.exs", "test/onchain/aave/ui_pool_data_provider_integration_test.exs"]
+assignee = "codex"
+module = "Onchain.Aave.Pool"
+model = "gpt-5.6-sol"
+body = """
+eMode is one of the remaining user-facing position controls missing from `Onchain.Aave.Pool`. Without it a caller cannot switch a position into a configured efficiency category, so the package cannot express the borrowing-power configuration used by correlated-asset positions.
+
+Add the write `setUserEMode(uint8)` and the reads `getUserEMode(address)` and `getEModeCategoryCollateralConfig(uint8)` to `Pool`, following the existing `send_pool_tx` / `Contract.call` patterns in that module. Add category enumeration through `UiPoolDataProvider.getEModes(address)`, which returns every category in one call and is the better shape than looping `getEModeCategoryData(uint8)` per id. Introduce an `EModeCategory` struct in `lib/onchain/aave/types/` alongside the existing types, converting ltv / liquidation threshold / bonus through `Onchain.Aave.Math.to_ltv/1` so they read like every other ratio in this library.
+
+DECODE HAZARD — verified against the deployed mainnet UiPoolDataProvider at 0x56b7A1012765C285afAC8b8F25C69Bf10ccfE978 on 2026-08-23. `getEModes` returns `Emode[]`: every array entry wraps `uint8 id` plus a SEVEN-field EModeCategory `(uint16 ltv, uint16 liquidationThreshold, uint16 liquidationBonus, uint128 collateralBitmap, string label, uint128 borrowableBitmap, uint128 ltvzeroBitmap)`. A six-field decoder can silently discard the final word, while current aave-v3-origin source declares an additional `isolated` field not present in this deployed helper. Pin the deployed seven-field contract at a fixed block and keep the wrapper id load-bearing.
+
+BLOCK FLOOR — independently re-verified 2026-08-23 against the local archive node. `getEModes` returns EMPTY calldata below block 24033627 (the helper's deployment); the repo's existing integration tests pin 21000000, where this call yields zero bytes. Pin the eMode tests at a block at or above 24033627 and make an empty return a hard failure, never an empty category list. At block 25800000 the call returns 48 categories: id 1 is (9300, 9500, 10100, 2952790659, "ETH correlated", 1, 0), and the only categories with a non-zero ltvzeroBitmap are id 3 ("rsETH__ETH_wstETH_ETHx") and id 42 ("rsETH__USDC_USDT"), both 68719476736 — use one of those two for the regression test rather than searching for a candidate.
+
+Related: `getEModeCategoryData(uint8)` still exists and still returns the legacy struct with a dead always-zero `priceSource`; prefer `getEModeCategoryCollateralConfig(uint8)` for the live ltv/lt/bonus and treat the legacy getter as out of scope. `swapBorrowRateMode(address,uint256)` was removed from IPool with the v3.2 stable-rate deprecation and reverts on the deployed mainnet Pool — do not model it (verified live 2026-08-23; training data still carries it).
+"""
+created_at = "2026-08-23"
+scored_at = "2026-08-23"
+
+[[task]]
+id = "59"
+phase = 6
+bundle = "v3_write_gaps"
+status = "pending"
+title = "Retire stable-rate APIs and resolve variable debt tokens through the dedicated Pool getter"
+scores = { d = 4, b = 8, u = 7 }
+milestone = "v0_5"
+acceptance_criteria = ["Pool.get_reserve_variable_debt_token/2 decodes getReserveVariableDebtToken(address); a pinned-block integration test asserts the deployed mainnet WETH variable debt-token address", "DebtToken.debt_token_address/3 resolves :variable through Pool.get_reserve_variable_debt_token/2, with no getReserveData tuple decode or positional debt-token indexing left in DebtToken", "Pool.borrow/4, Pool.repay/4, and DebtToken.debt_token_address/3 reject :stable locally as {:error, {:unsupported_interest_rate_mode, :stable}} before any RPC or signing call; bang variants raise with the same tagged reason", "A pinned-mainnet-fork scenario establishes a borrowable position and records the deployed protocol rejection for interest-rate mode 1, independently confirming the local public-API rejection", "Public docs and types expose only the variable mode, and CHANGELOG records the :stable removal as a breaking change with its protocol-level reason", "Existing variable-mode unit, live-read, and write integration behavior remains green", "mix ci passes"]
+out_of_scope = ["The typed getReserveData surface and normalized reserve-index reads — tracked separately", "getConfiguration / getUserConfiguration packed bitmaps", "Any Aave V4 module"]
+touches = ["lib/onchain/aave/pool.ex", "lib/onchain/aave/debt_token.ex", "test/onchain/aave/pool_test.exs", "test/onchain/aave/pool_integration_test.exs", "test/onchain/aave/pool_write_integration_test.exs", "test/onchain/aave/debt_token_test.exs", "test/onchain/aave/debt_token_integration_test.exs", "CHANGELOG.md"]
+assignee = "cursor"
+module = "Onchain.Aave.Pool"
+model = "cursor-grok-4.6-high"
+body = """
+Remove a public capability that deployed Aave no longer supports and eliminate the fragile tuple-position dependency used to select debt tokens. Aave's current ValidationLogic accepts only `DataTypes.InterestRateMode.VARIABLE`; the deployed Pool still returns a vestigial stable-debt-token address, but that address does not make stable borrowing a supported operation.
+
+The public contract is explicit: `:variable` remains supported and `:stable` returns `{:error, {:unsupported_interest_rate_mode, :stable}}` before RPC or signing. Apply that behavior consistently to Pool borrow/repay and DebtToken address resolution, including bang variants and documentation. This is a deliberate breaking correction, not a reviewer-selected policy.
+
+`DebtToken.debt_token_address/3` currently decodes the full 15-field `getReserveData(address)` response and selects a positional slot. Replace that dependency with the deployed `getReserveVariableDebtToken(address)` getter exposed through Pool, preserving the independently observed mainnet address.
+
+AUTHORITY: the deployed Ethereum Pool at 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 plus aave-dao/aave-v3-origin IPool and ValidationLogic. Prove one live variable-token success and the relevant mode-1 protocol rejection on a pinned fork before encoding the local behavior.
+"""
+created_at = "2026-08-23"
+scored_at = "2026-08-23"
+
+[[task]]
+id = "60"
+phase = 6
+bundle = "v3_write_gaps"
+status = "pending"
+title = "Onchain.Aave.Pool — setUserUseReserveAsCollateral and repayWithATokens"
+scores = { d = 4, b = 7, u = 7 }
+milestone = "v0_5"
+acceptance_criteria = ["Pool.set_user_use_reserve_as_collateral/3 and its ! variant encode setUserUseReserveAsCollateral(address,bool) and send through the module's existing signed-write path", "Pool.repay_with_atokens/3 and its ! variant encode repayWithATokens(address,uint256,uint256) with rate mode fixed internally at 2 and no on_behalf_of argument", "Unit tests assert encoded calldata against selectors 0x5a3b74b9 and 0x2dad97d4, not merely that a call was attempted", "A pinned-mainnet-fork scenario supplies collateral, toggles its collateral usage, and asserts the resulting user configuration; disabling collateral when it would violate the position constraints pins the deployed error semantics", "A pinned-mainnet-fork scenario establishes variable debt and an aToken balance, repays through repayWithATokens, and asserts both debt and aToken balance changes; a no-debt call pins the relevant deployed error", "Both functions carry Descripex api() blocks and moduledoc table entries matching the module's conventions", "mix ci passes"]
+out_of_scope = ["setUserUseReserveAsCollateralOnBehalfOf and the v3.5 position-manager delegation surface", "repayWithPermit — blocked on ERC-2612 permit signing, which onchain core does not yet provide", "liquidationCall", "Any Aave V4 module"]
+touches = ["lib/onchain/aave/pool.ex", "test/onchain/aave/pool_test.exs", "test/onchain/aave/pool_write_integration_test.exs"]
+assignee = "grok"
+module = "Onchain.Aave.Pool"
+model = "grok-4.6"
+body = """
+Add two Aave V3 Pool writes that close distinct position-management gaps. Both reuse the module's signed-write boundary, while their acceptance depends on real state transitions rather than calldata alone.
+
+`setUserUseReserveAsCollateral(address asset, bool useAsCollateral)` — selector 0x5a3b74b9, confirmed against the deployed mainnet Pool. This is how a caller stops an asset from backing debt without withdrawing it. Today the library can supply an asset but cannot un-collateralize it, so a user isolating risk across positions has no path through this package at all.
+
+`repayWithATokens(address asset, uint256 amount, uint256 interestRateMode) returns (uint256)` — selector 0x2dad97d4. It takes no `onBehalfOf` and repays for `msg.sender`. Fix the internal mode at the only deployed supported value, `2`; do not expose a rate-mode option.
+
+The `type(uint256).max` convention works transparently for full repayment: Elixir's arbitrary-precision integers pass 2^256 - 1 straight through and the Pool contract interprets it, so no client-side special-casing is needed — document it in the parameter docs the way `withdraw/4` already does.
+
+AUTHORITY: signatures from the deployed mainnet Pool (0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) and aave-dao/aave-v3-origin `src/contracts/interfaces/IPool.sol`. https://aave.com/docs is stale in places — it still documents functions absent from current IPool. Probe the deployed contract rather than asserting from memory.
+"""
+created_at = "2026-08-23"
+scored_at = "2026-08-23"
+
+[[task]]
+id = "61"
+phase = 6
+bundle = "v3_write_gaps"
+status = "pending"
+title = "Expose typed direct reserve data and normalized index reads"
+scores = { d = 4, b = 5, u = 5 }
+milestone = "v0_5"
+depends_on = [59]
+acceptance_criteria = ["Pool.get_reserve_data/2 returns %Onchain.Aave.Types.ReserveData{} whose 15 fields and numeric widths match the deployed getReserveData(address) ABI at a pinned Ethereum block", "ReserveData preserves configuration, liquidity and debt indices/rates, timestamp, reserve id, token addresses, accruedToTreasury, unbacked, and isolationModeTotalDebt; docs explicitly identify currentStableBorrowRate, stableDebtTokenAddress, interestRateStrategyAddress, unbacked, and isolationModeTotalDebt as deployed compatibility fields with deprecated semantics", "Pool exposes get_reserve_a_token/2, get_reserve_normalized_income/2, and get_reserve_normalized_variable_debt/2, while reusing Task 59's get_reserve_variable_debt_token/2 rather than duplicating it", "Pinned-block live integration tests assert every helper against the deployed mainnet Pool and cross-check returned token addresses against the corresponding contracts", "A pinned-block integration test reconstructs an aToken balance from scaledBalanceOf times getReserveNormalizedIncome via Math.ray_mul/2 and matches balanceOf for the same account and block", "A corresponding variable-debt reconstruction matches the variable debt token balanceOf at the same pinned block", "mix ci passes"]
+out_of_scope = ["getConfiguration / getUserConfiguration packed bitmaps — UiPoolDataProvider already returns these decoded", "getReservesCount, getReserveAddressById, flash-loan premium constants, and registry introspection getters", "Removing compatibility fields from the deployed getReserveData decode", "Any Aave V4 module"]
+touches = ["lib/onchain/aave/pool.ex", "lib/onchain/aave/types/reserve_data.ex", "test/onchain/aave/pool_test.exs", "test/onchain/aave/pool_integration_test.exs"]
+assignee = "cursor"
+module = "Onchain.Aave.Pool"
+model = "cursor-grok-4.6-high"
+body = """
+Expose the deployed Pool reserve data needed to reconcile scaled balances and inspect reserve state without routing through the broader UI data provider. This task follows Task 59 so the variable-debt-token getter already has one owner and is reused here.
+
+getReserveData(address) returns a 15-field compatibility struct: configuration; liquidity index; current liquidity rate; variable borrow index; current variable borrow rate; current stable borrow rate; last-update timestamp; reserve id; aToken, stable-debt-token, variable-debt-token, and interest-rate-strategy addresses; accrued-to-treasury; unbacked; and isolation-mode total debt. Preserve the deployed layout exactly, while documenting which fields remain only for compatibility and no longer represent supported stable-rate or bridge behavior.
+
+Add the direct aToken and normalized income/debt index reads needed by consumers of scaled reserve/user balances. Prove the semantic relationship at one pinned block by reconstructing both aToken and variable-debt balances and comparing them with the token contracts' own balanceOf results.
+
+AUTHORITY: the deployed Ethereum Pool at 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 and Aave-owned IPool/DataTypes source. Live pinned-block results establish deployed layout and balance semantics; existing UiPoolDataProvider decoding is reference material only.
+"""
+created_at = "2026-08-23"
+scored_at = "2026-08-23"
