@@ -50,7 +50,7 @@ endpoint, via [onchain_evm](https://hex.pm/packages/onchain_evm) (revm through a
 Rustler NIF). Add it yourself — `onchain_aave` does not pull it in at runtime:
 
 ```elixir
-{:onchain_evm, "~> 0.5"}
+{:onchain_evm, "~> 0.6"}
 ```
 
 Read Aave state at fork state, with no transaction and no gas:
