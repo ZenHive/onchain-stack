@@ -25,7 +25,9 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
   Each vector's assertion set is derived from the fixture rather than written
   per case, so a vector cannot silently be checked on fewer keys than the
   oracle checks; negative controls confirm that corrupted output, post-state,
-  and storage are each rejected. Nothing here ships in the package.
+  and storage are each rejected. The fixtures, the verification ledger and
+  the pinned Kontrol runner stay out of the package; the `#[cfg(test)]`
+  Rust module ships with `native/*/src` but compiles into nothing.
 
 - **Precompiled NIF artifacts via `rustler_precompiled`.** Both native crates
   ship prebuilt for five targets (`aarch64`/`x86_64-apple-darwin`,
