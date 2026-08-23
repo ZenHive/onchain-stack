@@ -253,6 +253,32 @@ is simply owed — so a tag-based sweep read 100+ commits as "unreleased" and wa
 wrong about every one of them. Tags here are created *after* a publish, by hand,
 which makes them a lagging record rather than a boundary.
 
+### Next round: hieroglyph 1.7.0 is out; cartouche's release is being prepared
+
+**hieroglyph 1.7.0 shipped 2026-08-22, one day after the cascade above closed at
+1.6.2.** Requirements are unchanged (`descripex ~> 0.12`, `ex_sha3 ~> 0.1.4`,
+`jason ~> 1.4`), so cartouche's `~> 1.6` admits it without a `mix.exs` edit — a
+`mix deps.update hieroglyph` is the whole adoption. It carries two real encoder
+fixes, and **neither is reachable from this family**, which is what makes this a
+ride-along rather than a cascade:
+
+- A static `T[k]` argument occupied one head slot instead of `k`, so
+  `ABI.encode("(bytes,address[3])", …)` wrote tail offset `0x40` where Solidity
+  writes `0x80`. Round-trip-invisible — the decoder discards `tail_position` and
+  consumes the tail sequentially — so only an external reader ever saw it.
+  Checked: **no ABI signature anywhere in the family uses a fixed-size array.**
+  The one `uint256[3]` in the ten repos' `lib/` is a comment
+  (`onchain/lib/onchain/log.ex:54`).
+- Anonymous events were undecodable — `do_decode_event/4` unconditionally
+  reserved a `topics[0]` slot. Checked: nothing here decodes them. The
+  `anonymous` hits are a struct field in onchain_evm's `solidity.ex`, an
+  unrelated `:anonymous` atom for return-less selectors in cartouche's
+  `sleuth.ex`, and a type comment in `receipt.ex`.
+
+A cartouche release is in preparation in a parallel session and will carry the
+hieroglyph 1.7.0 lock bump. **Do not start a round to chase 1.7.0** — when
+cartouche ships, onchain and the four siblings pick both up in one pass.
+
 ### The descripex bounds were widened to two segments, family-wide (2026-08-22)
 
 All nine consumers now declare `{:descripex, "~> 0.12"}`. The three-segment
@@ -483,6 +509,33 @@ Practical consequence: **run `mix hex.audit` as well when asked about security**
 and read a `deps.audit` green as "nothing the mirego mirror knows about." Adding
 `hex.audit` to `precommit.full` would close it, at the cost of a gate that reds on
 advisories with no available fix (cowlib today) — hence not done yet.
+
+### Harness runs `mix check.dispatch`, not `mix ci` — verify the alias exists
+
+`harness_dev.projects` registers every family repo with
+`check_command: "mix check.dispatch"`. **An alias that is registered but not
+defined does not fail loudly** — the reviewer simply books a failed check against
+a task where nothing is wrong, and the task's author sees a red gate with no
+finding attached to it. hieroglyph carried that gap until 1.7.0; onchain,
+onchain_tempo and onchain_js carried it until 2026-08-23. All are defined now.
+mpp defines it as `["precommit.full"]`, which is the same defect one level down —
+see the exclusions below for why that cannot pass in a reviewer worktree.
+
+The alias is `precommit.full` minus four steps a reviewer worktree cannot or
+should not run:
+
+- **`agents.check`** — harness writes an *ephemeral* `AGENTS.md` into the
+  worktree for Codex (`harness/lib/harness/agent_adapter/rules_injection.ex`),
+  so the rendered-output comparison can never match.
+- **`deps.audit.gated`** — all ten repos audit against one shared advisory
+  clone, and concurrent worktrees interleave its `git pull --rebase` into
+  `fatal: Cannot rebase onto multiple branches`. Same hazard as *Never run
+  `mix ci` in more than one repo at a time*, except harness creates the
+  concurrency for you.
+- **the cold-PLT dialyzer** and **the coverage pass** — minutes per review for
+  signal `mix ci` already produces before the branch lands.
+
+`mix ci` keeps all four. The reviewer gate is deliberately the cheaper one.
 
 ### The `.sobelow-skips` drift check was collateral of the CI removal
 
