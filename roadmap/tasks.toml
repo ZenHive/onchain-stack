@@ -566,10 +566,10 @@ shipped_in = "b1157c34eb3f0a7e86da749cff4defbea7e96032"
 id = 52
 phase = 5
 bundle = "v4_support"
-status = "pending"
+milestone = "v0_5"
+status = "done"
 title = "Prove V4 reads and PositionManager writes against deployed mainnet state"
 scores = { d = 6, b = 9, u = 9 }
-milestone = "v0_5"
 markers = ["security"]
 depends_on = [47, 48, 49, 50, 51, 57]
 acceptance_criteria = ["Pinned-block integration tests exercise representative Hub, Spoke, Oracle, and TokenizationSpoke reads against the deployed Ethereum contracts and assert domain values or cross-contract relationships, not only successful decoding", "A pinned-mainnet-fork scenario executes PositionManager Giver supply and repay writes and asserts the corresponding Hub/Spoke accounting changes", "A pinned-mainnet-fork scenario proves the Taker authorization boundary: borrow or withdraw without allowance returns the deployed Insufficient*Allowance error, then succeeds after the matching allowance is granted, with resulting position state asserted", "Every live/fork test fails loudly with the required ETHEREUM_API_URL setup when the archive RPC is unavailable; no missing-environment skip path exists", "The integration test modules record the pinned block, deployed contract addresses, observed success semantics, and observed relevant error semantics", "mix ci passes, and mix test.json --quiet --include integration passes with the archive RPC available"]
@@ -577,8 +577,6 @@ touches = ["test/onchain/aave/v4/", "test/support/", "README.md"]
 assignee = "codex"
 module = "test/onchain/aave/v4/"
 model = "gpt-5.6-sol"
-created_at = "2026-04-20"
-scored_at = "2026-08-23"
 body = """
 Close the independent-evidence gap for the shipped V4 wrappers. The current suite primarily proves calldata and decoding against stubs; one live PositionManager allowance read exists, but no state-changing V4 wrapper is exercised end to end.
 
@@ -588,6 +586,15 @@ The former Sepolia blocker is obsolete. Aave launched a public Tenderly-based V4
 
 AUTHORITY: live deployed traffic plus Aave-owned V4 source, deployment documentation, and interfaces. Stubs and captured payloads remain regression fixtures only; they do not grade deployed semantics.
 """
+implemented = "Pinned-block (25800000) live reads assert Hub/Spoke/Oracle/TokenizationSpoke WETH accounting relationships, and a signed-wrapper mainnet fork covers Giver supply/repay Hub/Spoke deltas plus the Taker InsufficientBorrowAllowance(0, 1e18) boundary followed by approve+borrow with position state asserted. test/onchain/aave/v4/deployed_integration_test.exs; no skip path (RPCCase.rpc_url! flunks). Reviewer additionally bumped onchain_evm to 0.6 in cffc83e — 0.5.1 clobbers unfetched WETH code under fetch-before-amend overrides."
+delivered_by = "codex/gpt-5.6-sol (harness run-1787481036522-9e92c0d9)"
+verified = true
+verified_by = "harness cross-family reviewer"
+verification_ref = "harness-run:run-1787481036522-9e92c0d9"
+created_at = "2026-04-20"
+scored_at = "2026-08-23"
+done_at = "2026-08-23"
+shipped_in = "0ddc613"
 
 # ============================================================================
 # Phase 6 — V3 Write Surface Gaps
@@ -827,6 +834,30 @@ getReserveData(address) returns a 15-field compatibility struct: configuration; 
 Add the direct aToken and normalized income/debt index reads needed by consumers of scaled reserve/user balances. Prove the semantic relationship at one pinned block by reconstructing both aToken and variable-debt balances and comparing them with the token contracts' own balanceOf results.
 
 AUTHORITY: the deployed Ethereum Pool at 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 and Aave-owned IPool/DataTypes source. Live pinned-block results establish deployed layout and balance semantics; existing UiPoolDataProvider decoding is reference material only.
+"""
+created_at = "2026-08-23"
+scored_at = "2026-08-23"
+
+[[task]]
+id = "62"
+phase = 6
+bundle = "v3_write_gaps"
+status = "pending"
+title = "Make the integration gate settle: bound math_revm runtime so --include integration terminates"
+scores = { d = 4, b = 7, u = 8 }
+acceptance_criteria = ["mix test.json --include integration terminates on a healthy archive node and reports a summary, with the wall-clock ceiling stated in the test module or CLAUDE.md", "An unreachable or mid-run-dropped archive RPC fails the affected math_revm test loudly within a bounded time instead of hanging; no test retains timeout: :infinity", "The revm cross-validation still fails on a real divergence — a deliberately wrong expected value in one deterministic vector makes that test red", "The chosen coverage/runtime tradeoff is recorded in the test module's moduledoc, including how to run the exhaustive variant", "mix ci passes"]
+out_of_scope = ["Funding the Sepolia key or fixing the four sepolia_send tests that fail with rpc -32003", "Changing Onchain.Aave.Math itself or its Solidity wrapper bytecode", "Reworking harness' progress-stall reflex"]
+files_to_modify = ["test/onchain/aave/math_revm_test.exs"]
+assignee = "grok"
+model = "grok-4.6"
+body = """
+`mix test.json --include integration` does not terminate under any practical time cap, which makes the repo's own live gate unusable for dispatched agents and for CI.
+
+Evidence, all from 2026-08-23: harness run-1787478012579-900e9275 was killed by the progress-stall reflex while idle-waiting on this suite, and its transcript shows the agent had its own module green and was blocked solely on the gate. The reviewer of run-1787481036522-9e92c0d9 recorded `Did not finish in 17m (0% CPU, ~27MB RSS, DirtyIo NIF ESTABLISHED to 127.0.0.1:8545)`, plus SIGALRM 142 at 90s on `--only math_revm` and at 120s on `--only integration --exclude math_revm`, and fell back to running the suite file-by-file. A local full run of test/onchain/aave/math_revm_test.exs alone took 3055 seconds.
+
+Two compounding causes: the math_revm modules set `timeout: :infinity`, and `Onchain.EVM` calls run on a DirtyIo scheduler, so ExUnit cannot interrupt a stalled archive fetch — a flapping node turns into an unbounded hang rather than a failure. Independently, every property does `max_runs` live fork calls, so the wall-clock cost is inherently large even when the node is healthy.
+
+Give the suite a bounded, interruptible runtime without giving up the cross-validation guarantee that makes `Onchain.Aave.Math` trustworthy. Decide and document the coverage/runtime tradeoff explicitly rather than silently shrinking the property space: options include a finite per-test timeout, a smaller default `max_runs` with an opt-in exhaustive mode, reusing one fork across vectors instead of one per call, or separating the revm cross-validation into its own tag that the ordinary integration gate does not pull in. Whatever is chosen, `--include integration` must terminate and a dead or flapping RPC must surface as a loud failure, never as a hang.
 """
 created_at = "2026-08-23"
 scored_at = "2026-08-23"

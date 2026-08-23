@@ -26,7 +26,7 @@ The V3 core, math-validation suite, V4 wrapper modules, and read-path multicall 
 - **target_version:** 0.5.0
 - **status:** 🔄 active
 - **hypothesis:** Tests whether onchain_aave can express core V3 position-management and V4 Hub-and-Spoke flows with reproducible evidence against deployed Aave contracts.
-- **pinned tasks:** 0/5 done
+- **pinned tasks:** 1/5 done
 <!-- MILESTONES:END -->
 
 ---
@@ -34,11 +34,11 @@ The V3 core, math-validation suite, V4 wrapper modules, and read-path multicall 
 ## 🎯 Current Focus
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 5 — Aave V4 Support (9 of 10 done · 0 in progress)
+**Focus phase:** 5 — Aave V4 Support (10 of 10 done · 0 in progress)
 
-**Last shipped:** Task 57 — Wrap remaining IHub preview converters and Hub bound constants on 2026-08-22
+**Last shipped:** Task 52 — Prove V4 reads and PositionManager writes against deployed mainnet state on 2026-08-23
 
-**Up next:** Task 52 — Prove V4 reads and PositionManager writes against deployed mainnet state [D:6/B:9/U:9 → Eff:1.5] 🚀
+**Up next:** Task 59 — Retire stable-rate APIs and resolve variable debt tokens through the dedicated Pool getter [D:4/B:8/U:7 → Eff:1.88] 🚀
 <!-- FOCUS:END -->
 
 **Active path:** Task 52 proves the shipped V4 wrappers against pinned deployed state, including stateful PositionManager success and authorization-error paths.
@@ -107,7 +107,7 @@ V4 went live on Ethereum mainnet on 2026-03-30 with a Hub-and-Spoke architecture
 | Task 49 `[P]` | ✅ | 🎁 **v4_support** · *Onchain.Aave.V4.Oracle* · Implement Onchain.Aave.V4.Oracle wrapper (Spoke-scoped) [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
 | Task 50 `[P]` | ✅ | 🎁 **v4_support** · *Onchain.Aave.V4.TokenizationSpoke* · Implement Onchain.Aave.V4.TokenizationSpoke reads (ERC-4626 share accounting) [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
 | Task 51 | ✅ | 🎁 **v4_support** · *Onchain.Aave.V4.PositionManager* · Implement Onchain.Aave.V4.PositionManager ergonomic write wrappers (supply/borrow/repay analogs) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
-| Task 52 | ⬜ | 🎁 **v4_support** · 🚀 **v0_5** · *test/onchain/aave/v4/* · 🔒 Prove V4 reads and PositionManager writes against deployed mainnet state [D:6/B:9/U:9 → Eff:1.5] 🚀 |
+| Task 52 | ✅ | 🎁 **v4_support** · 🚀 **v0_5** · *test/onchain/aave/v4/* · 🔒 Prove V4 reads and PositionManager writes against deployed mainnet state [D:6/B:9/U:9 → Eff:1.5] 🚀 |
 | Task 57 | ✅ | 🎁 **v4_support** · *Onchain.Aave.V4.Hub* · Wrap remaining IHub preview converters and Hub bound constants [D:3/B:4/U:5 → Eff:1.5] 🚀 |
 <!-- TASKS:END -->
 
@@ -126,6 +126,7 @@ Consumer patterns observed on-chain that the current V3 write surface doesn't co
 | Task 59 | ⬜ | 🎁 **v3_write_gaps** · 🚀 **v0_5** · *Onchain.Aave.Pool* · Retire stable-rate APIs and resolve variable debt tokens through the dedicated Pool getter [D:4/B:8/U:7 → Eff:1.88] 🚀 |
 | Task 60 | ⬜ | 🎁 **v3_write_gaps** · 🚀 **v0_5** · *Onchain.Aave.Pool* · Onchain.Aave.Pool — setUserUseReserveAsCollateral and repayWithATokens [D:4/B:7/U:7 → Eff:1.75] 🚀 |
 | Task 61 | ⬜ | 🎁 **v3_write_gaps** · 🚀 **v0_5** · *Onchain.Aave.Pool* · Expose typed direct reserve data and normalized index reads [D:4/B:5/U:5 → Eff:1.25] 📋 |
+| Task 62 | ⬜ | 🎁 **v3_write_gaps** · Make the integration gate settle: bound math_revm runtime so --include integration terminates [D:4/B:7/U:8 → Eff:1.88] 🚀 |
 <!-- TASKS:END -->
 
 ---
