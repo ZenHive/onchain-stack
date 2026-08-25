@@ -14,6 +14,7 @@ EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Eli
 @~/.claude/includes/harness-workflow.md
 @~/.claude/includes/onchain-workspace.md
 @~/.claude/includes/ethereum-rpc.md
+@~/.claude/includes/node-portability.md
 
 ## Delegation roster
 
@@ -39,6 +40,28 @@ Self-contained so it survives into `AGENTS.md` on regen — cross-family reviewe
 - Two native crates: `native/onchain_evm/` (revm) and `native/onchain_solidity/` (Alloy + solar-parse)
 - Hex dependency: `{:onchain, "~> 0.12"}`
 - Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`
+
+## Node Portability
+
+The family-wide law is `node-portability.md` (`@`-imported above). This repo owns the
+family's **best existing example of rule 3** — reuse it rather than inventing a new
+pattern:
+
+- **`Onchain.Trace.available?/1` is the capability probe.** One cheap `debug_traceCall`
+  against the zero address, returning a boolean, so a consumer can branch instead of
+  failing deep in a pipeline. Any new surface that depends on a namespace a hosted plan
+  may gate gets a probe of the same shape — not a bare call that explodes at runtime.
+- **`Onchain.Trace`'s moduledoc is the wording to copy:** it names the clients that serve
+  `debug_*` (reth, geth, Erigon, Nethermind — any full node with debug APIs enabled) and
+  states plainly that the module is *not* a core dependency. Name the clients and the
+  consumer-visible error; don't write "requires a compatible node."
+- **The integration tests already flunk with setup instructions** naming the Alchemy
+  Growth plan (`test/onchain/trace_integration_test.exs`) — that is the house pattern for
+  a credentialed suite: a real result or its real refusal, never a skip.
+- **Forked simulation has a *different* requirement from tracing.** A fork pulls state via
+  standard `eth_getStorageAt`/`eth_getCode`/`eth_getBalance`, so it needs no `debug_*` —
+  but forking a historical block needs an **archive** node. Don't collapse the two into
+  one "needs a good node" caveat; they fail differently and on different endpoints.
 
 ## Module Layout
 

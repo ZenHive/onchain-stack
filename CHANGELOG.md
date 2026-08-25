@@ -4,6 +4,22 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## Unreleased
+
+### Documentation
+
+- **`README.md` § "Node compatibility"** — separates the two node requirements
+  that were previously conflated: `Onchain.Trace` needs the `debug_*` namespace
+  (gated behind a paid tier on most hosted plans), while forked simulation needs
+  only standard state reads but at the fork block, so a historical fork needs an
+  archive node. Points consumers at `Onchain.Trace.available?/1` to probe rather
+  than guess.
+
+  Companion change outside the package: `CLAUDE.md` gains a **Node Portability**
+  section (and imports the shared `node-portability.md` include), so the rule that
+  our archive node is a privileged environment rather than the reference one is
+  ambient for every agent working in this checkout, not folklore.
+
 ## [0.6.0] — 2026-08-23
 
 ### Added

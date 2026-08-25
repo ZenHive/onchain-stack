@@ -44,6 +44,32 @@ Shipped targets, all reachable with `cargo-zigbuild` from one Mac: `aarch64-appl
 
 The release is a manual local ritual with no build provenance or attestation, and it is reproducible only on a machine with the Zig toolchain installed. That is the accepted cost of not running CI.
 
+## Node compatibility
+
+Most of this package doesn't touch a node at all: `Onchain.Solidity` (parsing) and the
+codegen path are local, and `Onchain.EVM` executes bytecode in an in-process revm.
+
+Two surfaces do reach out, with different requirements:
+
+| Surface | Requirement | Symptom without it |
+| --- | --- | --- |
+| `Onchain.Trace` — the whole module | the `debug_*` namespace, which hosted plans commonly gate behind a paid tier (this package's integration tests are documented against Alchemy's Growth plan; a self-hosted reth/geth/Erigon/Nethermind serves it once debug APIs are enabled) | `-32601 Method not found`, or a plan-specific "not available" error |
+| Forked simulation (`Onchain.EVM` with a fork URL) | standard `eth_getStorageAt` / `eth_getCode` / `eth_getBalance` — **but at the fork block**, so forking a historical block needs an **archive** node | `-32001 Unable to complete request` when the fork block has been pruned |
+
+Don't guess which one you have — probe it:
+
+```elixir
+if Onchain.Trace.available?(rpc_url: url) do
+  Onchain.Trace.call(tx, rpc_url: url)
+else
+  # fall back, or tell the user their endpoint doesn't serve debug_*
+end
+```
+
+`Trace.available?/1` issues one cheap `debug_traceCall` against the zero address and
+returns a boolean, so a consumer can degrade gracefully instead of failing deep inside a
+pipeline.
+
 ## Modules
 
 | Module | Purpose |
