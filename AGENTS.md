@@ -91,6 +91,20 @@ Authority order: **live API / observed traffic + provider-owned docs/specs/SDKs 
 - Can't reach the API → say so and `flunk`. Never a mock that ratifies a guess.
 - A green claim names the independent evaluator + durable evidence (harness run, CI URL, review artifact). Self-report is not verification.
 
+## 🚨 LIVE E2E FIRST — A RECORDING IS NEVER AN ORACLE
+
+**Standing operator preference, earned the hard way — don't relitigate it: the live end-to-end test against the real provider is THE primary test, and it gets written FIRST. Mocks, fixtures and recordings come afterwards, never instead, and never as the thing that grades correctness.**
+
+Refines the section above for the case it doesn't cover: a recording captured from **real** traffic — not a guess, and still not an oracle.
+
+*Reproducible* (same input → same output) is not *determinate* (has a settled truth value). A replay's passing is only conditionally true — conditional on an external fact it no longer checks. The live call is the determinate one: at any instant the provider has exactly one answer and you get it. **Change frequency is irrelevant** — never argue "the world only changes monthly, so replay is the stable layer."
+
+The deciding asymmetry is the *kind* of failure, not the amount: live gives **loud, bounded false-REDs** (host down, rate limit, sandbox reset); replay gives **silent, unbounded false-GREENs** — once the provider changes, every replay stays green and is a lie from then on, precisely where it was meant to warn you. False green is the worse failure mode.
+
+- A recording is a **regression detector on your own code** ("did our parsing change in this refactor?"), never a grader of external semantics.
+- **Expiry does not create truth** — a freshness window bounds staleness; an unexpired recording is still only a claim about the past.
+- Never downgrade a loud gate with real authority to a quiet one that can be falsely green. Its noise — rate budget, telling *unreachable* apart from *wrong* — is an engineering problem to solve at that gate.
+
 ## 🚨 RAISE COVERAGE BEFORE MUTATING
 
 Before any code-changing task on an existing module, its `mix test.json --cover` must be at tier — **≥80%** standard, **≥95%** critical (money, signing, crypto, low-level encoders, security-sensitive parsers; when in doubt, critical). Below tier → write the missing tests first, in this task.
@@ -268,6 +282,8 @@ One run = one supervised `Harness.Run` gen_statem: fork worktree off target `HEA
 
 Rejections put the task back in the queue for re-dispatch. Fix-and-approve is the near-absolute default for the reviewer.
 
+**🚨 "Cross-family" is routing doctrine, not a mechanical guarantee.** Harness excludes only the *identical* agent from the reviewer slate (`Harness.Agents.reviewers/1` → `reject_implementer/2`); there is **no family concept in harness code**, so a `cursor` implementer can draw a `grok` reviewer even though both run SpaceXAI weights. The orchestrator owns the separation when it matters. This is deliberate, not an oversight: measured 2026-08-23 over 1,627 harness reviews, controlling for reviewer identity leaves no per-pair signal — review intervention is a **per-reviewer** trait (median `reviewer_diff_size`: Codex 96, Cursor 4, Claude 1, Grok 0), and the most capable reviewer in the ledger finds median 0 in the same work a heavier reviewer rewrites. Don't add a family scheduler to make the code match the older wording.
+
 ### When to Dispatch vs Hand-Build
 
 **An rmap task is not automatically a harness run.** Dispatch only when the full
@@ -364,7 +380,7 @@ Failed runs retain the worktree at `result.worktree_path` for inspection. Approv
 
 **The gate before any reset-to-pending + re-dispatch:** `git branch -a | grep harness/<run-id>` and `git log --oneline origin/<target>..harness/<run-id>`. Commits present ⇒ recover, never redo.
 
-**🚨 First, confirm the run actually *didn't* land — check `origin`, not your local checkout.** Under `landing_policy: :auto` the lander pushes to `origin/<target>` and **deliberately never touches your local checkout** (it ff-pushes from a detached worktree). So after an autonomous land your local `tasks.toml` is **stale**: it still reads `in_progress` for a task the lander already marked `done --shipped-in` on origin. **Reading that stale local status as "the run didn't land" is the trap** — it triggers a wasteful reset-to-`pending` + re-dispatch that *duplicate-lands already-shipped work*. Before concluding anything from task status, `git fetch origin <target> && git rebase origin/<target>` (the existing "Sync main before committing" rule) or read ground truth directly:
+**🚨 First, confirm the run actually *didn't* land — check `origin`, not your local checkout.** Under `landing_policy: :auto` the lander pushes to `origin/<target>` from a detached worktree, then `Harness.Git.TargetSync` may fast-forward the operator's local target when that is safe (off-target → ff the branch ref; on-target + clean tree → `merge --ff-only`). It skips — witnessed, never `--force` — when the tree is dirty, the update is not a fast-forward, or the target is this running node's own source tree (self-host: path identity, not the project name). Under dogfooding that self-host skip is the common case, so after an autonomous land your local `tasks.toml` is **stale**: it still reads `in_progress` for a task the lander already marked `done --shipped-in` on origin. **Reading that stale local status as "the run didn't land" is the trap** — it triggers a wasteful reset-to-`pending` + re-dispatch that *duplicate-lands already-shipped work*. Before concluding anything from task status, `git fetch origin <target> && git rebase origin/<target>` (the existing "Sync main before committing" rule) or read ground truth directly:
 - `git log --oneline origin/<target>` — does it already show `task <id> -> done (shipped …)` and the agent-delivery commit? Then it **landed**; your local view was just behind. Do nothing but rebase.
 - `dispatch-status <run-id>` / `result_store-list_run_records run_id:<id>` — a record with `state: done, verdict: approve` means the run succeeded; cross-check landing against origin before touching the roadmap.
 
@@ -578,6 +594,69 @@ These firm up as the harness conventions for the stack settle. Fill in from the 
 - `onchain-workspace-delegation.md` — DORMANT Linear/cloud-delegation workspace (pre-harness)
 - Each repo's `CLAUDE.md` — module layout, architecture, testing specifics
 
+<!-- @-import: ~/.claude/includes/node-portability.md -->
+## Node Portability — Our Node Is Privileged, Not the Reference
+
+**We do not develop only against our own node.** These are open-source libraries other
+people run against Alchemy, Infura, pruned Geth, and self-hosted nodes of every shape.
+Our archive node (`localhost:8545`, full-history reth) is a *privileged* environment, not
+the reference one: it serves `trace_*`/`debug_*`, complete history, and client-specific
+extensions most consumer endpoints do not.
+
+Developing only against it silently encodes its capabilities as the library's
+assumptions. The failure is invisible here — it works — and lands on the consumer.
+
+### The four rules
+
+1. **Establish that a method is standard** — present in the vendored OpenRPC spec.
+   Erigon/Geth/provider extensions are not standard however reliably our node answers.
+   (Note: `Onchain.RPC.Codegen.ensure_known_method!/1` reads the *merged* OpenRPC +
+   `erigon-methods.json` map, so it does **not** enforce this distinction. Rule 1 is
+   currently a judgment call, not a compile-time gate.)
+2. **Prefer the portable construction.** If a value is reachable from a standard method,
+   read it that way — `base_fee` via the pending block header's `baseFeePerGas`, not via
+   `eth_baseFee`.
+3. **When only a non-standard method will do, say so in the `@doc`** — name who serves it
+   and the error consumers get without it — and expose a capability probe rather than
+   failing deep in a pipeline (precedent: `Onchain.Trace.available?/1`).
+4. **Verify on a second, unprivileged endpoint before claiming portability.** Green on
+   `localhost:8545` alone proves nothing. A hosted endpoint's *real refusal* is evidence;
+   our node's `{:ok, _}` is not.
+
+### The worked example (2026-08-25)
+
+cartouche 0.8.0's `base_fee/1` calls `eth_baseFee`, an **Erigon extension** absent from
+the vendored OpenRPC spec. Our reth node serves it; Alchemy mainnet answers
+`-32600 "eth_baseFee is not available on the ETH_MAINNET"`. It was caught only by
+hand-probing both endpoints. `Onchain.RPC.base_fee/1` therefore reads `baseFeePerGas`
+from the **pending** block header — portable to any EIP-1559 node, and verified
+equivalent against reth v2.5.1 in a single batch request (`eth_baseFee` == pending
+`baseFeePerGas` == 71_739_926, while `latest` was 68_871_658 — the pending header, not
+the latest one, carries `eth_baseFee`'s "next block" semantics).
+
+The inverse also exists: cartouche ships that same `eth_baseFee` wrapper while defaulting
+`:ethereum_node` to `https://mainnet.infura.io` — a consumer following cartouche's own
+README gets `-32600`.
+
+### Wording to reuse
+
+House idioms, already established in the roadmap tasks — reuse verbatim rather than
+paraphrasing:
+
+- *"a real result or its real refusal, never a skip"*
+- *"the consumer's node — not ours — as the case that matters"*
+- *"the identical green run on both endpoints is what the portability claim rests on"*
+
+### Honest limits
+
+- **No multi-endpoint test seam exists yet.** `Onchain.RPCCase.rpc_url!/0` returns a
+  single string and 17 integration files use it; the dual-endpoint `base_fee`
+  verification was done by manually re-running the whole suite with a different env var.
+  Rule 4 has no tooling today — whoever builds it should build it first.
+- **No CI in any repo** (`.github/workflows` is empty across the stack), so none of this
+  is machine-enforced beyond local `mix ci`. Real enforcement is the reviewer reading
+  `AGENTS.md`.
+
 
 # OnchainTempo
 
@@ -623,6 +702,28 @@ Onchain.Tempo.RPC                  — broadcast_async/sync, fetch_receipt, pars
 Onchain.Tempo.Transfer             — TransferWithMemo event log parsing
 Onchain.Tempo.Faucet               — Moderato testnet faucet (tempo_fundAddress) wrapper
 ```
+
+### Node Portability (constrained, not portable)
+
+The family-wide law is `node-portability.md` (`@`-imported above): our own node is a
+privileged environment and consumers run something else. **This repo is the deliberate
+exception to its rule 2** — and the exception has to be stated, not assumed:
+
+- **Tempo-specific methods are the product here, not a portability bug.**
+  `eth_sendRawTransactionSync` (`lib/onchain/tempo/rpc.ex`) and `tempo_fundAddress`
+  (`lib/onchain/tempo/faucet.ex`) are Tempo protocol extensions; a generic Ethereum
+  endpoint answers `-32601`. Wrapping them is correct. What rule 2 still demands is that
+  you don't reach for an extension where a standard method would do — check first.
+- **What varies for the consumer is *which Tempo endpoint*, not which chain.** Mainnet
+  (4217, `https://rpc.tempo.xyz`) and Moderato (42431,
+  `https://rpc.moderato.tempo.xyz`) do not serve the same surface: **the faucet is
+  Moderato-only**. A new function must say which networks serve it, in its `@doc`.
+- **`TEMPO_RPC_URL` is a real, consumer-visible override** read by
+  `Onchain.Tempo.Faucet.rpc_url/0`. It was undocumented outside the source until
+  2026-08-25; keep it in `README.md` § "Tempo Networks" if its behaviour changes.
+- **The offline surface is the majority of the package** — `Transaction`, `Builder`,
+  `TIP20`, `Transfer` need no node at all. Prefer growing that side; a new function that
+  needs a live endpoint should justify why the work can't be done offline.
 
 ### Key Design Decisions
 

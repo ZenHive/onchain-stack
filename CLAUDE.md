@@ -10,6 +10,7 @@
 @~/.claude/includes/critical-rules.md
 @~/.claude/includes/harness-workflow.md
 @~/.claude/includes/onchain-workspace.md
+@~/.claude/includes/node-portability.md
 
 # OnchainTempo
 
@@ -55,6 +56,28 @@ Onchain.Tempo.RPC                  — broadcast_async/sync, fetch_receipt, pars
 Onchain.Tempo.Transfer             — TransferWithMemo event log parsing
 Onchain.Tempo.Faucet               — Moderato testnet faucet (tempo_fundAddress) wrapper
 ```
+
+### Node Portability (constrained, not portable)
+
+The family-wide law is `node-portability.md` (`@`-imported above): our own node is a
+privileged environment and consumers run something else. **This repo is the deliberate
+exception to its rule 2** — and the exception has to be stated, not assumed:
+
+- **Tempo-specific methods are the product here, not a portability bug.**
+  `eth_sendRawTransactionSync` (`lib/onchain/tempo/rpc.ex`) and `tempo_fundAddress`
+  (`lib/onchain/tempo/faucet.ex`) are Tempo protocol extensions; a generic Ethereum
+  endpoint answers `-32601`. Wrapping them is correct. What rule 2 still demands is that
+  you don't reach for an extension where a standard method would do — check first.
+- **What varies for the consumer is *which Tempo endpoint*, not which chain.** Mainnet
+  (4217, `https://rpc.tempo.xyz`) and Moderato (42431,
+  `https://rpc.moderato.tempo.xyz`) do not serve the same surface: **the faucet is
+  Moderato-only**. A new function must say which networks serve it, in its `@doc`.
+- **`TEMPO_RPC_URL` is a real, consumer-visible override** read by
+  `Onchain.Tempo.Faucet.rpc_url/0`. It was undocumented outside the source until
+  2026-08-25; keep it in `README.md` § "Tempo Networks" if its behaviour changes.
+- **The offline surface is the majority of the package** — `Transaction`, `Builder`,
+  `TIP20`, `Transfer` need no node at all. Prefer growing that side; a new function that
+  needs a live endpoint should justify why the work can't be done offline.
 
 ### Key Design Decisions
 

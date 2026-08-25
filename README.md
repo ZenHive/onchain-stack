@@ -108,6 +108,28 @@ OnchainTempo.describe(:transaction, :deserialize) # Full details
 | Mainnet | `4217` | `https://rpc.tempo.xyz` |
 | Moderato (testnet) | `42431` | `https://rpc.moderato.tempo.xyz` |
 
+### Which endpoint serves what
+
+This package is **Tempo-specific by design** — it is not portable to an arbitrary
+Ethereum provider, and that is the point rather than an oversight. Type-`0x76`
+transactions, TIP-20 encoding, and the synchronous broadcast path are Tempo protocol
+features; a generic Ethereum endpoint has no notion of them. What you can swap is *which
+Tempo-compatible endpoint* you point at — your own node, or a provider serving the Tempo
+chain — not the chain itself.
+
+| Surface | Works against | Notes |
+|---|---|---|
+| `Onchain.Tempo.Transaction`, `.Builder`, `.TIP20`, `.Transfer` | **no node at all** | Pure encode/decode/sign — offline, no RPC |
+| `Onchain.Tempo.RPC.broadcast_async/3`, `fetch_receipt/3` | any Tempo endpoint (mainnet or Moderato) | Standard `eth_sendRawTransaction` / `eth_getTransactionReceipt` shapes |
+| `Onchain.Tempo.RPC.broadcast_sync/3` | any Tempo endpoint | Uses `eth_sendRawTransactionSync`, a **Tempo extension** — a generic Ethereum node answers `-32601 Method not found` |
+| `Onchain.Tempo.Faucet` | **Moderato only** | Wraps `tempo_fundAddress`, which mainnet does not expose |
+
+Every RPC function takes an `rpc_url` so you can target either network per call. The
+faucet additionally reads a **`TEMPO_RPC_URL` environment variable** as its default,
+falling back to `https://rpc.moderato.tempo.xyz` — set it to point the faucet at a
+different Moderato endpoint without threading a URL through every call
+(`Onchain.Tempo.Faucet.rpc_url/0` returns the resolved value).
+
 ## License
 
 MIT

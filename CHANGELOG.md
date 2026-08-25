@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- **`README.md` § "Which endpoint serves what"** — states that this package is
+  Tempo-specific by design rather than portable to an arbitrary Ethereum provider,
+  and tabulates which surfaces need no node at all, which work on any Tempo
+  endpoint, which use the `eth_sendRawTransactionSync` Tempo extension, and which
+  are Moderato-only (the faucet). Documents the previously source-only
+  **`TEMPO_RPC_URL`** environment variable read by `Onchain.Tempo.Faucet.rpc_url/0`.
+
+  Companion change outside the package: `CLAUDE.md` gains a **Node Portability**
+  section (and imports the shared `node-portability.md` include), so the rule that
+  our archive node is a privileged environment rather than the reference one is
+  ambient for every agent working in this checkout, not folklore.
+
 ## [0.9.2] - 2026-08-22
 
 No public API or runtime behaviour changed.
