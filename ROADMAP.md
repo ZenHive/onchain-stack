@@ -139,6 +139,20 @@ Consumer patterns observed on-chain that the current V3 write surface doesn't co
 
 ---
 
+## Event & Revert Decoding
+
+Decode what the deployed protocol says back. hieroglyph ≥ 1.5 carries the full ABI event/error surface (`decode_event/4`, `encode_event_topics/2`, built-in `Error(string)`/`Panic(uint256)` recognition, strict decode mode); onchain core carries `Onchain.Log.decode_event/2` and `RPC.eth_get_logs`. This phase turns those into Aave-level capabilities: Pool event logs with topic filters, structured revert reasons on write failures, and strict decoding of RPC responses (the last blocked on onchain task 88 exposing decode options).
+
+<!-- TASKS:BEGIN phase=8 -->
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 63 | ⬜ | 🎁 **event_error_decoding** · *Onchain.Aave.Events* · Decode deployed Aave V3 Pool events from logs with topic-filter fetch [D:5/B:8/U:7 → Eff:1.5] 🚀 |
+| Task 64 | ⬜ | 🎁 **event_error_decoding** · Surface decoded revert reasons on Aave write and call failures [D:4/B:7/U:7 → Eff:1.75] 🚀 |
+| Task 65 | 🔶 | 🎁 **event_error_decoding** · Adopt strict ABI decoding across Aave response decode paths [D:3/B:6/U:5 → Eff:1.83] 🚀 ⛔ onchain task 88 must land first: Onchain.ABI.decode_response/2 and Onchain.Contract.call accept no decode options today, so strict mode is unreachable from this repo |
+<!-- TASKS:END -->
+
+---
+
 ## Future Directions
 
 Potential expansions — not yet scoped or scored:

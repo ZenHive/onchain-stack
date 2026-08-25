@@ -41,6 +41,11 @@
       "name": "Read-Path Multicall Adoption",
       "order": 7,
       "status": "done"
+    },
+    "8": {
+      "name": "Event & Revert Decoding",
+      "order": 8,
+      "status": "pending"
     }
   },
   "bundles": {
@@ -58,6 +63,11 @@
       "phase": 1,
       "order": 1,
       "description": "Aave V3 read surface: contract registry, math conversions, pool/oracle/ui-data reads, response type structs, multi-chain addresses."
+    },
+    "event_error_decoding": {
+      "phase": 8,
+      "order": 1,
+      "description": "Decode what the deployed protocol says back: Pool event logs with topic filters, structured revert reasons on write failures, and strict ABI decoding of responses."
     },
     "math_validation": {
       "phase": 3,
@@ -1311,6 +1321,142 @@
       "created_at": "2026-08-23",
       "scored_at": "2026-08-23",
       "cross_repo": []
+    },
+    {
+      "id": "63",
+      "phase": 8,
+      "bundle": "event_error_decoding",
+      "status": "pending",
+      "title": "Decode deployed Aave V3 Pool events from logs with topic-filter fetch",
+      "scores": {
+        "d": 5,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.5,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "codex",
+      "module": "Onchain.Aave.Events",
+      "model": "gpt-5.6-sol",
+      "acceptance_criteria": [
+        "An events module decodes the deployed V3 Pool's protocol events — at minimum Supply, Withdraw, Borrow, Repay, LiquidationCall, FlashLoan and ReserveDataUpdated — from raw log maps into named-field maps, with event signatures and indexed layouts taken from Aave-owned IPool source, not from a third-party client",
+        "A pinned-block integration test fetches real mainnet Pool logs via Onchain.RPC.eth_get_logs against the archive node and decodes them, asserting known field values of at least one historical Supply and one LiquidationCall log; missing RPC env vars flunk with exact export instructions",
+        "Topic-filter construction produces eth_getLogs topics for an event with optional indexed-argument filters, and the integration test round-trips one filter: build it, fetch live, and every returned log decodes as that event",
+        "Indexed reference-type parameters surface as their topic hash and the behavior is documented",
+        "Unit tests pin decoding against log fixtures recorded from the live observations",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "Aave V4 Hub/Spoke event decoding",
+        "Streaming/subscription (eth_subscribe) support and any indexer or backfill machinery",
+        "aToken/debt-token ERC-20 Transfer logs — Onchain.Transfer already owns token transfer decoding"
+      ],
+      "touches": [
+        "lib/onchain/aave/events.ex",
+        "test/onchain/aave/events_test.exs",
+        "test/onchain/aave/events_integration_test.exs",
+        "CLAUDE.md",
+        "CHANGELOG.md"
+      ],
+      "body": "onchain_aave has no event surface: nothing reads or decodes the logs the protocol emits, so a consumer can execute a supply or borrow through this library but cannot observe its effect — or anyone else's activity — from the chain. Add log decoding for the deployed V3 Pool's event set plus topic-filter construction for eth_getLogs.\n\nThe in-family precedent is Onchain.Transfer: it fetches with Onchain.RPC.eth_get_logs and decodes per-event with Onchain.Log.decode_event/2 against signature strings with indexed markers (verified by reading onchain core, 2026-08-25). For building topic filters with indexed-argument values, hieroglyph provides ABI.encode_event_topics/2 — hieroglyph is already in the dependency tree transitively; if it is used directly, declare it as a direct dependency rather than reaching through onchain's tree undeclared.\n\nAUTHORITY: the deployed Ethereum Pool at 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 and Aave-owned aave-v3-origin IPool event definitions. Establish each event's signature and indexed layout from that source and prove decoding against real mainnet logs at pinned blocks before deriving fixtures; third-party ABIs and explorers are reference material only.\n\nDispatch trigger: public API addition with live external-system evidence against the archive node.\n",
+      "created_at": "2026-08-25",
+      "scored_at": "2026-08-25",
+      "cross_repo": []
+    },
+    {
+      "id": "64",
+      "phase": 8,
+      "bundle": "event_error_decoding",
+      "status": "pending",
+      "title": "Surface decoded revert reasons on Aave write and call failures",
+      "scores": {
+        "d": 4,
+        "b": 7,
+        "u": 7
+      },
+      "eff": 1.75,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "cursor",
+      "model": "cursor-grok-4.6-high",
+      "acceptance_criteria": [
+        "A revert blob returned by the library's call/estimate/send paths decodes through hieroglyph's built-in Error(string)/Panic(uint256) recognition and, where the deployed protocol emits custom errors, through Aave-owned error definitions; the decoded reason appears in the returned error tuple",
+        "Which revert style the deployed V3 Pool and the V4 deployment actually emit is established live and recorded — a pinned-fork failing write (e.g. borrow exceeding collateral capacity) pins the raw blob and its decoded form for each protocol generation",
+        "V3 numeric error-code strings map to their Aave-owned Errors.sol names in the surfaced reason, with the mapping generated from or verified against aave-v3-origin source rather than transcribed from memory",
+        "Existing error-tuple shapes remain matchable by current consumers, or the shape change is recorded in CHANGELOG as a breaking change with the migration",
+        "The hand-defined allowance-error decode in the V4 position manager routes through the same shared decode path instead of a module-local table",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "Retry or error-classification policy on top of decoded reasons",
+        "Event/log decoding — its own task",
+        "onchain core changes — its decode_error surface is consumed as-is"
+      ],
+      "touches": [
+        "lib/onchain/aave/pool.ex",
+        "lib/onchain/aave/debt_token.ex",
+        "lib/onchain/aave/faucet.ex",
+        "lib/onchain/aave/v4/position_manager.ex",
+        "test/onchain/aave/pool_test.exs",
+        "test/onchain/aave/v4/position_manager_test.exs",
+        "CHANGELOG.md"
+      ],
+      "body": "Today exactly one call site decodes a revert: the V4 position manager matches its two hand-defined allowance errors (lib/onchain/aave/v4/position_manager.ex:284). Every other write and simulated call returns the revert payload as an opaque rpc_error blob, so a consumer learns \"execution reverted\" but not why — on a money path that is the difference between a diagnosable rejection and a dead end.\n\nhieroglyph decodes the two Solidity built-ins Error(string) and Panic(uint256) with no definitions supplied (since 1.5.0), and accepts error definitions for custom errors. Aave V3 validation historically reverts with numeric string codes defined in Errors.sol (\"51\" and the like) — premise unverified for the currently deployed Pool: establish live which style each protocol generation actually emits before encoding any mapping. Route all Aave write/call revert paths through one shared decode step that yields a structured reason.\n\nAUTHORITY: the deployed contracts — pinned-fork failing writes provide the live error evidence — and Aave-owned aave-v3-origin / V4 sources for error definitions and code-to-name mappings.\n\nDispatch trigger: money-path error surface with live external-system evidence.\n",
+      "created_at": "2026-08-25",
+      "scored_at": "2026-08-25",
+      "cross_repo": []
+    },
+    {
+      "id": "65",
+      "phase": 8,
+      "bundle": "event_error_decoding",
+      "status": "blocked",
+      "title": "Adopt strict ABI decoding across Aave response decode paths",
+      "scores": {
+        "d": 3,
+        "b": 6,
+        "u": 5
+      },
+      "eff": 1.83,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "human",
+      "acceptance_criteria": [
+        "The uniform-strict vs opt-in decision is made and recorded in the affected moduledocs, and the chosen behavior is implemented across the library's response decode paths",
+        "A hand-built non-canonical response (trailing bytes, dirty padding) surfaces as a tagged decode error from a representative read function, asserted by unit test",
+        "Live pinned-block integration reads across the V3 and V4 surfaces stay green under strict decoding, confirming deployed protocol responses are canonical — or the finding that they are not is recorded and the approach revised",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "Changing onchain core's decode surface — onchain task 88 owns that",
+        "Event and revert decoding — their own tasks"
+      ],
+      "touches": [
+        "lib/onchain/aave/pool.ex",
+        "lib/onchain/aave/oracle.ex",
+        "lib/onchain/aave/ui_pool_data_provider.ex",
+        "lib/onchain/aave/debt_token.ex",
+        "CHANGELOG.md"
+      ],
+      "body": "Blocked on onchain core exposing decode options: Onchain.ABI.decode_response/2 and Onchain.Contract.call currently accept none (verified by reading onchain core, 2026-08-25), so hieroglyph's strict mode cannot be reached from this repo. Once onchain task 88 lands, turn it on for this library's own decodes.\n\nEvery byte this package decodes comes from an RPC endpoint the consumer configured but does not control, and responses from deployed Aave contracts are canonical ABI — a payload that fails strict decoding is corrupt or hostile, and today it decodes permissively and silently. Verify the canonicality premise against live pinned-block reads across the V3 and V4 surfaces before committing to uniform strict; record the outcome either way.\n\nRouting is left open on purpose: the change is small but its cost depends on how core task 88 shapes the options surface. Decide assignee/model when this unblocks.\n",
+      "created_at": "2026-08-25",
+      "scored_at": "2026-08-25",
+      "blocked_reason": "onchain task 88 must land first: Onchain.ABI.decode_response/2 and Onchain.Contract.call accept no decode options today, so strict mode is unreachable from this repo",
+      "cross_repo": [
+        {
+          "repo": "onchain",
+          "task_id": 88,
+          "linear_id": null,
+          "relation": "related"
+        }
+      ]
     }
   ]
 }
