@@ -33,6 +33,18 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+### Documentation
+
+- **`README.md` § "Node compatibility"** — every call here is a plain `eth_call`
+  against a deployed Aave contract, so it runs on any mainstream endpoint; the one
+  requirement worth planning for is that reading reserve state at a past block is a
+  historical read and needs an archive node.
+
+  Companion change outside the package: `CLAUDE.md` gains a **Node Portability**
+  section (and imports the shared `node-portability.md` include), so the rule that
+  our archive node is a privileged environment rather than the reference one is
+  ambient for every agent working in this checkout, not folklore.
+
 ## v0.4.0 — Aave V4 support (2026-08-22)
 
 ### Added — Aave V4 support (Hub-and-Spoke)

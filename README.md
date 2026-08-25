@@ -15,6 +15,22 @@ end
 `onchain` (`~> 0.12`) arrives transitively — declare it directly only if you
 call it yourself, and then with a bound that admits `~> 0.12`.
 
+## Node compatibility
+
+Every call in this package is a plain `eth_call` against a deployed Aave V3 contract, so
+it runs on **any** mainstream Ethereum JSON-RPC endpoint — Alchemy, Infura, QuickNode, a
+self-hosted Geth/reth/Erigon. No `debug_*`/`trace_*` namespace, no client-specific
+extensions, no WebSocket.
+
+One requirement is worth planning for: reading reserve state, rates, or user positions
+**at a past block** is a historical-state read, which needs an **archive** node or a
+hosted plan that retains history. Without it the endpoint answers `-32001 Unable to
+complete request` (or a "missing trie node" error, depending on client) rather than
+returning stale data. Current-block reads — the default — have no such requirement.
+
+The chain you point at must actually have Aave V3 deployed; see `Onchain.Aave.Types` for
+the addresses this package knows about.
+
 ## Modules
 
 | Module | Purpose |

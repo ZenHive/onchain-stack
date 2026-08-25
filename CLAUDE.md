@@ -14,6 +14,7 @@ Aave V3 and V4 protocol wrappers for Elixir. Depends on `onchain` core for RPC, 
 @~/.claude/includes/harness-workflow.md
 @~/.claude/includes/onchain-workspace.md
 @~/.claude/includes/ethereum-rpc.md
+@~/.claude/includes/node-portability.md
 
 ## Toolchain & check commands (read before judging a build)
 
@@ -38,6 +39,24 @@ Cross-family harness reviewers read **AGENTS.md** (auto-generated from this file
 - Pure Elixir, no native deps
 - All dependencies resolve from hex.pm — no path or git deps, so the package is publishable as-is: `{:onchain, "~> 0.12"}`
 - Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`
+
+## Node Portability
+
+The family-wide law is `node-portability.md` (`@`-imported above). This package is the
+easy case and should stay that way:
+
+- **Everything here is `eth_call` against a deployed contract**, routed through
+  `Onchain.RPC` / `Onchain.Contract`. No `debug_*`/`trace_*`, no client extensions, no
+  WebSocket. A new module that needs any of those is a design smell — check whether the
+  value is reachable from a standard call first.
+- **Historical reserve state is the one archive dependency.** Reading rates, reserve data,
+  or user positions at a past block requires an archive node; a pruned or plan-limited
+  endpoint answers `-32001`. Say so in the `@doc` of any function that takes a block
+  parameter, and don't let an integration test that only ever runs against our archive
+  node stand as evidence the function is portable.
+- **Contract addresses are chain-specific.** Portability here also means "does this chain
+  have Aave V3 at this address" — see `Onchain.Aave.Types` and the address-verification
+  section below.
 
 ## Module Layout
 
