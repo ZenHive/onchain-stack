@@ -1,0 +1,27 @@
+{
+  "observed_at": "2026-08-26T14:36:00Z",
+  "rpc_url": "https://rpc.moderato.tempo.xyz",
+  "chain_id": "0xa5bf",
+  "success": {
+    "method": "eth_sendRawTransactionSync",
+    "tx_hash": "0x63f75666ebc54a44a442534c0d86c3687607c5a2dfdd9ea95f860e3a458bbee5",
+    "from": "0x582f32e8696e90ca66c0e2f24cfc9bbc721adbc4",
+    "type": "0x76",
+    "status": 1,
+    "local_keccak_matches_tx_hash": true,
+    "recovered_sender_matches_from": true,
+    "calls": [
+      {
+        "to": "0x20c0000000000000000000000000000000000000",
+        "value": "0x0"
+      }
+    ]
+  },
+  "error": {
+    "malformed_0x76ff": {
+      "method": "eth_sendRawTransaction",
+      "code": -32602,
+      "message": "failed to decode signed transaction"
+    }
+  }
+}

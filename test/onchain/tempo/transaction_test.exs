@@ -630,5 +630,54 @@ defmodule Onchain.Tempo.TransactionTest do
       assert head["to"] == String.downcase(@token_hex)
       assert req["to"] == String.downcase(@other_token_hex)
     end
+
+    test "simulate_request/1 errors when the parsed call list is empty" do
+      tx = %{cosigned_transfer([]) | calls: []}
+      assert {:error, "Cannot simulate a transaction with no calls"} = Transaction.simulate_request(tx)
+    end
+
+    test "simulate_request/1 treats a non-binary gas field as zero" do
+      tx = cosigned_transfer([])
+      fields = List.replace_at(tx.fields, 3, [])
+      {:ok, req} = Transaction.simulate_request(%{tx | fields: fields})
+      assert req["gas"] == "0x0"
+    end
+
+    test "sender/1 reports recovery failure for a 65-byte signature off the curve" do
+      tx = cosigned_transfer([])
+      bad_sig = <<0::unsigned-big-size(256), 0::unsigned-big-size(256), 27>>
+      tx = %{tx | fields: Enum.drop(tx.fields, -1) ++ [bad_sig]}
+      assert {:error, msg} = Transaction.sender(tx)
+      assert msg =~ "Failed to recover sender"
+    end
+  end
+
+  test "validate_call_scope rejects a call whose input is shorter than a selector" do
+    hex = build_tempo_tx(calls: [build_call(@token_hex, <<1, 2, 3>>)])
+    {:ok, tx} = Transaction.deserialize(hex)
+    assert {:error, "disallowed call pattern" <> _} = Transaction.validate_call_scope(tx)
+  end
+
+  test "find_payment_call ignores a non-address currency and a non-binary memo" do
+    calldata = transfer_calldata(@recipient_hex, 1_000_000)
+    hex = build_tempo_tx(calls: [build_call(@token_hex, calldata)])
+    {:ok, tx} = Transaction.deserialize(hex)
+
+    assert {:error, "No matching transfer call found in transaction"} =
+             Transaction.find_payment_call(tx, "not-an-address", amount: "1000000", recipient: @recipient_hex)
+
+    memo = "0x" <> String.duplicate("cd", 32)
+    memo_calldata = transfer_with_memo_calldata(@recipient_hex, 1_000_000, memo)
+    {:ok, memo_tx} = Transaction.deserialize(build_tempo_tx(calls: [build_call(@token_hex, memo_calldata)]))
+    bare = String.duplicate("cd", 32)
+
+    assert {:ok, match} =
+             Transaction.find_payment_call(memo_tx, @token_hex,
+               amount: "1000000",
+               recipient: @recipient_hex,
+               memo: bare
+             )
+
+    assert match.memo == memo
   end
 end

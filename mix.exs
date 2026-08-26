@@ -71,6 +71,7 @@ defmodule OnchainTempo.MixProject do
       {:tidewave, "~> 0.5", only: :dev},
       {:bandit, "~> 1.0", only: :dev},
       {:ex_unit_json, "~> 0.4", only: [:dev, :test], runtime: false},
+      {:stream_data, "~> 1.2", only: [:dev, :test]},
       {:dialyzer_json, "~> 0.1", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.0", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

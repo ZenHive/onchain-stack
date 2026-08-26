@@ -130,6 +130,16 @@ falling back to `https://rpc.moderato.tempo.xyz` — set it to point the faucet 
 different Moderato endpoint without threading a URL through every call
 (`Onchain.Tempo.Faucet.rpc_url/0` returns the resolved value).
 
+## 0x76 verification
+
+Signing and canonical encoding are checked against the provider-owned
+[Tempo transaction spec](https://tempo.xyz/developers/docs/protocol/transactions/spec-tempo-transaction)
+and the current `ox` TypeScript SDK (`TxEnvelopeTempo`), plus live Moderato
+broadcast success and a relevant decode error. Evidence lives in
+`priv/verification/0x76/` (ledger, ox vectors, live observation). Unit tests
+under `test/onchain/tempo/verification/` rerun the properties, differential
+checks and mutation campaign; live checks are the `:integration` suite.
+
 ## License
 
 MIT
