@@ -12,7 +12,8 @@ weekly by veAERO voters; an epoch is one week and flips **Thursday 00:00 UTC**.
 
 > **Status: scaffold.** The address registry and captured ABIs are in place and
 > verified against live Base state. The binding, read, analytics and write
-> layers are scoped in `roadmap/tasks.toml` and not yet implemented.
+> layers are scoped in [`ROADMAP.md`](ROADMAP.md) (canonical source
+> `roadmap/tasks.toml`, managed by `rmap`) and not yet implemented.
 
 ## Installation
 
