@@ -14,6 +14,8 @@ weekly by veAERO voters; an epoch is one week and flips **Thursday 00:00 UTC**.
 > verified against live Base state. The binding, read, analytics and write
 > layers are scoped in [`ROADMAP.md`](ROADMAP.md) (canonical source
 > `roadmap/tasks.toml`, managed by `rmap`) and not yet implemented.
+> Dated protocol notes (official Sugar SDK sibling, tokenized stocks, B20
+> multiplier) live in [`docs/protocol-context.md`](docs/protocol-context.md).
 
 ## Installation
 

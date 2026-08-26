@@ -205,6 +205,10 @@ lib/mix/tasks/                    # fixture + golden generators (outside the lay
 priv/abis/                        # Sourcify-captured deployed ABIs + provenance
 ```
 
+## Protocol context
+
+A dated snapshot of protocol facts the task bodies do not repeat — official Python Sugar SDK (unsigned calldata, agent CLI), Coinbase tokenized stocks as ordinary B20 pool tokens, and the B20-multiplier / 24/5 Chainlink TRV denominator trap — lives in [`docs/protocol-context.md`](docs/protocol-context.md). Re-fetch before treating addresses or SDK versions as current.
+
 ## Future Directions
 
 Potential expansions — not yet scoped or scored:
@@ -212,5 +216,6 @@ Potential expansions — not yet scoped or scored:
 - **Simulation-backed write tests.** Blocked upstream: `onchain_evm`'s revm binding rejects any chain id but 1, so no Base fork test can run. If an OP-Stack `spec_id` mapping or a caller-supplied `:spec_id` option lands upstream, the calldata-golden substitute in phase 8 can be replaced by real execution, and mutation testing becomes meaningful.
 - **Historical and epoch-indexed analytics** — APR series across epochs, which needs archive reads and a block-parameter surface on every binding.
 - **TWAP pricing** from a CL pool's `observe()`, giving a manipulation-resistant alternative to single-block spot prices.
-- **Velodrome on Optimism.** Same Sugar contract family, different addresses. Out of scope here by design, but the types and math layers would transfer nearly unchanged.
+- **Velodrome on Optimism.** Same Sugar contract family, different addresses. Out of scope here by design, but the types and math layers would transfer nearly unchanged. Official 2026 Aero merge (Aerodrome + Velodrome) is the same item when addresses unify — recapture ABIs, do not rewrite types.
 - **Upstreaming the multi-endpoint test seam** into `onchain` core, where all seventeen integration files currently share a single-endpoint helper.
+- **B20 share-equivalent helpers / sugar-sdk compatibility suite.** Not v0.1. File via `rmap new` when a consumer needs them; the invariants are already in `docs/protocol-context.md`.
