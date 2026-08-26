@@ -281,3 +281,26 @@ started_at = "2026-08-26"
 scored_at = "2026-08-17"
 done_at = "2026-08-26"
 shipped_in = "6dc15935efe3bca8ea9de7135d32787382a81ff1"
+
+[[task]]
+id = 13
+phase = 3
+bundle = "verification"
+status = "pending"
+title = "Verify optional 0x76 key_authorization across encode, sign, and recover"
+scores = { d = 5, b = 7, u = 4 }
+markers = ["security"]
+acceptance_criteria = ["key_authorization is encoded in its specification position for both the 0x76 sender payload and the 0x78 fee-payer preimage, and the fee-payer preimage path no longer discards the has_key_auth flag", "Differential vectors from the current official Tempo SDK (exact version recorded) match on unsigned bytes, sign payload, serialized bytes, cosigned bytes and recovered sender/fee-payer identities, for transactions both with and without key_authorization", "Property tests cover key_authorization presence and absence, boundary-sized and malformed values, and canonical RLP quantity encoding of the surrounding fields", "A deliberate negative control - a wrong key_authorization insertion index, and a dropped key_authorization in the 0x78 preimage - is injected and makes the verification run fail; the run is invalid if the canary is not caught", "A mutation campaign targets the key_authorization slot, its insertion index and the fee-payer preimage flag; every survivor is classified as equivalent, unreachable, redundant or a genuine gap, with the reachability assumption named", "A live Moderato success and a relevant live error are recorded as evidence; absent endpoint access the run fails loudly with the exact setup needed, never a silent skip", "priv/verification/0x76/ledger.json is extended with the SDK/spec version, artifact commit, tool versions, mutation totals and survivor review for this surface", "Existing Task 12 vectors for transactions without key_authorization still match byte-for-byte, Onchain.Tempo.Transaction stays at or above 95% coverage, and mix ci passes"]
+out_of_scope = ["Verification of transaction types other than 0x76 and its 0x78 fee-payer preimage", "Changing the wire layout of transactions that carry no key_authorization"]
+touches = ["lib/onchain/tempo/transaction.ex", "test/support/tempo_verification/", "test/onchain/tempo/verification/", "priv/verification/0x76/"]
+assignee = "codex"
+model = "gpt-5.6-sol"
+body = """
+Task 12 built a mutation-graded verification stack for 0x76, but it covers only the 13 named fields plus the sender signature. The optional key_authorization slot is unverified and partly unimplemented: Onchain.Tempo.Transaction.split_base_fields/1 computes has_key_auth (transaction.ex:391) and build_fee_payer_preimage_fields/4 then discards it as _has_key_auth (transaction.ex:396), while the verification oracle's spec_order/0 carries no key_authorization slot at all (test/support/tempo_verification/spec_encoder.ex:10-24). The module's own spec list does include it (transaction.ex:11). Verified by reading those lines on 4d648ce.
+
+Close the gap on the authorization side of the signing domain: give key_authorization its spec position in both the 0x76 sender payload and the 0x78 fee-payer preimage, and hold that position against an oracle independent of our own field layout. The provider-owned authority is the current official Tempo SDK/specification plus live Moderato behavior; the local encoder is never its own oracle, and a fixture generated from our field indexes is not independent evidence. Observe the SDK and the chain before fixing any expected bytes.
+
+Then challenge the result the way Task 12 challenged the base surface — properties over presence and absence, differential vectors, a deliberate canary, and a mutation campaign whose survivors are each classified with evidence.
+"""
+created_at = "2026-08-26"
+scored_at = "2026-08-26"
