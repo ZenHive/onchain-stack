@@ -17,7 +17,7 @@ This document is self-contained on purpose: it must be readable by **any** agent
 
 ---
 
-## The family (10 managed repos — all Hex packages)
+## The family (11 managed repos — all Hex packages)
 
 Two tiers. The **shared upstreams** (descripex, zen_websocket) are first-party and
 sit at the top of the cascade, but they're consumed *beyond* this family too — a
@@ -39,6 +39,7 @@ you release them. The **onchain family** proper is the connected dependency casc
 | cartouche | `~/_DATA/code/cartouche` | `cartouche` | 0.7.1 | Substrate: signing, tx encoding, raw RPC, crypto | — |
 | onchain | `~/_DATA/code/onchain` | `onchain` | 0.13.0 | Core primitives: RPC, ABI, ERC, signing | — |
 | onchain_aave | `~/_DATA/code/onchain_aave` | `onchain_aave` | 0.4.0 | Aave V3 + V4 wrappers | — |
+| onchain_aerodrome | `~/_DATA/code/onchain_aerodrome` | `onchain_aerodrome` | 0.1.0 | Aerodrome Finance (Base) bindings, Sugar-backed reads + analytics | — |
 | onchain_evm | `~/_DATA/code/onchain_evm` | `onchain_evm` | 0.5.1 | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
 | onchain_js | `~/_DATA/code/onchain_js` | `onchain_js` | 0.3.1 | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
 | onchain_tempo | `~/_DATA/code/onchain_tempo` | `onchain_tempo` | 0.9.2 | Tempo chain primitives (0x76 tx, TIP-20) | — |
@@ -56,7 +57,7 @@ you release them. The **onchain family** proper is the connected dependency casc
 
 ### Every repo's default branch is `main` (aligned 2026-08-02)
 
-All ten, plus this coordination home. **Do not assume — but the answer is now
+All eleven, plus this coordination home. **Do not assume — but the answer is now
 uniformly `main`, so stop re-deriving it.** Before 2026-08-02 the family was
 split 7 `development` / 3 `main`, which is what made every agent guess wrong
 about a third of the time.
@@ -170,9 +171,10 @@ repo does not keep ten of them aligned with each other; only the sweep does.
 descripex ─┐                         (shared upstream)
            ↓
        hieroglyph ──→ cartouche ──→ onchain ──┬──→ onchain_aave
-                                       ↑       ├──→ onchain_evm
-                       zen_websocket ──┘       ├──→ onchain_js
-                          (shared upstream)    └──→ onchain_tempo ──→ mpp
+                                       ↑       ├──→ onchain_aerodrome
+                       zen_websocket ──┘       ├──→ onchain_evm
+                          (shared upstream)    ├──→ onchain_js
+                                               └──→ onchain_tempo ──→ mpp
 ```
 
 Edges as of 2026-08-22 (verify in each `mix.exs`):
@@ -180,6 +182,9 @@ Edges as of 2026-08-22 (verify in each `mix.exs`):
 - hieroglyph → `descripex ~> 0.12`
 - cartouche → `hieroglyph ~> 1.6`, `descripex ~> 0.12`
 - onchain → `cartouche ~> 0.6`, `descripex ~> 0.12`, `zen_websocket ~> 0.7.0`
+- onchain_aerodrome → `onchain ~> 0.13`, `descripex ~> 0.13`, plus a dev/test-only
+  `onchain_evm ~> 0.6` — ABI parsing and codegen only, never simulation (revm
+  rejects non-mainnet chain ids, so Base forks are impossible today)
 - onchain_evm / onchain_js → `onchain ~> 0.12`, `descripex ~> 0.12`
 - onchain_tempo → `onchain ~> 0.12`, `cartouche ~> 0.6`, `descripex ~> 0.12`
 - onchain_aave → `onchain ~> 0.12`, `descripex ~> 0.12`, plus a dev/test-only
@@ -207,13 +212,13 @@ Canonical order when the whole stack moves:
 
 ```
 descripex ─┐
-zen_websocket ─┴→ hieroglyph → cartouche → onchain → {onchain_aave, onchain_evm, onchain_js, onchain_tempo} → mpp
+zen_websocket ─┴→ hieroglyph → cartouche → onchain → {onchain_aave, onchain_aerodrome, onchain_evm, onchain_js, onchain_tempo} → mpp
 ```
 
 (`zen_websocket` feeds `onchain` directly, not hieroglyph — it just shares the
-"publish the upstream before the dependent" rule.) The four mid-tier siblings
-(aave/evm/js/tempo) are mutually independent — once `onchain` ships they can publish
-in any order. `mpp` is always last (it consumes the tier above).
+"publish the upstream before the dependent" rule.) The five mid-tier siblings
+(aave/aerodrome/evm/js/tempo) are mutually independent — once `onchain` ships they
+can publish in any order. `mpp` is always last (it consumes the tier above).
 
 ---
 
