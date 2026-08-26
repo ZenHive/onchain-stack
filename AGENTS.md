@@ -780,7 +780,7 @@ The **deployed ABI is the only authority.** Sugar's own `readme.md` in `velodrom
 
 - **Drive `offset` to `count()`.** `LpSugar.count()` answered **35,156** on 2026-08-26 (it only grows). An external spec claimed "~2,500 pools"; that is off by 14× and every downstream sizing assumption built on it is wrong.
 - Hard per-call caps compiled into the contracts: `MAX_LPS = 500`, `MAX_POSITIONS = 200`, `MAX_TOKENS = 2000`. `limit: 500` is verified working against the public Base RPC — so the real shape is ~71 sequential pages.
-- **Multicall3 does not help the page loop.** One `all(500, …)` is already near the `eth_call` gas cap. `Onchain.Multicall.aggregate3/2` is for *per-pool enrichment*, not for parallelising pagination.
+- **Multicall3 does not help the page loop.** One `all(500, …)` already returns ~1.1 MB and dominates the `eth_call` budget. `Onchain.Multicall.aggregate3/2` is for *per-pool enrichment*, not for parallelising pagination.
 - Batching, multicall and retries are **already provided by `onchain` core** — `Onchain.Multicall.aggregate3/2` and `call_many/2`, `Onchain.RPC.batch/2` (JSON-RPC array batch), a per-call `retry: [max_retries:, backoff_ms:]` option, and Req pool/retry config via `config :onchain, :req_options`. Do not reimplement them here.
 
 ## 🚨 APR denominators — fee and emission APRs are never summed
@@ -833,7 +833,7 @@ Layer order in `.reach.exs` matters — reach's `*` crosses name segments, so sp
 The family-wide law is `node-portability.md` (`@`-imported above). This package's specifics:
 
 - **Everything is `eth_call` against a deployed contract**, routed through `Onchain.RPC` / `Onchain.Contract` / `Onchain.Multicall`. No `debug_*`/`trace_*`, no client extensions, no WebSocket.
-- **`eth_call` gas limit is the real portability constraint here, not archive depth.** `LpSugar.all(500, offset, 0)` is a heavy call; endpoints with a tight per-call gas cap will fail it even though they are otherwise healthy. Document the requirement rather than silently lowering `limit`.
+- **`eth_call` weight, not archive depth, is the portability question here.** `LpSugar.all(500, offset, 0)` is heavy (~1.1 MB response), but verified 2026-08-26 on **both** the public `https://mainnet.base.org` and an Alchemy Base endpoint — identical results, so `limit: 500` is not a privileged-endpoint assumption. An endpoint with a tighter per-call gas or response cap can still refuse it; document that requirement rather than silently lowering `limit`.
 - **Archive is needed only for historical/epoch queries** — anything taking a block parameter. Say so in that function's `@doc`. An integration test that only ever runs against our archive node is not evidence of portability.
 - **Base only.** Contract addresses here are Base-specific; the Velodrome sibling on Optimism has different addresses and is out of scope.
 
