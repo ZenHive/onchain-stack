@@ -64,12 +64,12 @@ order = 7
 status = "pending"
 
 [phases.8]
-name = "Write Surface"
+name = "Evidence & Release"
 order = 8
 status = "pending"
 
 [phases.9]
-name = "Evidence & Release"
+name = "Write Surface"
 order = 9
 status = "pending"
 
@@ -113,12 +113,12 @@ order = 1
 description = "The ergonomic Sugar.* consumer surface, re-proving the pagination invariant at the layer where a naive rewrite would reintroduce it."
 
 [bundles.write]
-phase = 8
+phase = 9
 order = 1
 description = "Router/Gauge/NFPM/Voter calldata builders with signing opt-in, graded by an independent encoder and real deployed reverts."
 
 [bundles.evidence_release]
-phase = 9
+phase = 8
 order = 1
 description = "ABI drift detection, live end-to-end proof across two endpoints, and the 0.1.0 hex release checklist."
 
@@ -136,7 +136,7 @@ title = "Close the reach layer-gate holes so analytics-never-touches-the-network
 scores = { d = 5, b = 9, u = 8 }
 acceptance_criteria = ["deps in .reach.exs uses mode: :allowlist with an explicit allowed: entry per declared layer (types -> [], base -> [], bindings -> [:types, :base], analytics -> [:types, :base], read -> [:types, :base, :bindings, :analytics], write -> everything below); the forbidden list is gone", "mix reach.check --arch FAILS on a deliberately introduced Onchain.RPC.eth_call/3 call inside an Onchain.Aerodrome.Analytics.* module, and the captured failure output is pasted into the task write-up before the probe is reverted", "mix reach.check --arch FAILS on a deliberately introduced alias plus call of Onchain.Aerodrome.Bindings.* inside an Onchain.Aerodrome.Analytics.* module (legal today, must not be)", "mix reach.check --arch PASSES for a Bindings.* module that uses a Types.* struct, which the current {:bindings, :types} rule wrongly forbids", "calls: [forbidden: ...] names at minimum Onchain.RPC.*, Onchain.Contract.*, Onchain.Multicall.*, Req.* and :httpc.* as unreachable from Onchain.Aerodrome.Analytics.* and Onchain.Aerodrome.Math*", "A .reach.exs comment records that Mix.Tasks.* is intentionally outside the layer graph because the fixture generators must reach the network", "CLAUDE.md's layer-contract section is corrected to describe what the gate actually enforces, its dependency table stops presenting Onchain.Solidity and Onchain.Contract.Generator as runtime-available (they live in onchain_evm, dev/test only), and AGENTS.md is regenerated so mix agents.check passes", "mix ci passes"]
 out_of_scope = ["Writing any Analytics.* or Math.* module — the probes are temporary and reverted", "Adding anything to a smells ignore list; smell findings are fixed, never ignored", "Effects-policy tuning beyond recording the finding (see body)"]
-touches = [".reach.exs", "CLAUDE.md", "AGENTS.md", "test/onchain/aerodrome/layer_gate_test.exs"]
+touches = [".reach.exs", "CLAUDE.md", "AGENTS.md"]
 files_to_modify = [".reach.exs", "CLAUDE.md"]
 assignee = "codex"
 module = "Onchain.Aerodrome"
@@ -236,7 +236,7 @@ milestone = "v0_1"
 title = "Golden-fixture capture harness: pinned-block eth_call fixtures and an offline loader"
 scores = { d = 4, b = 7, u = 8 }
 depends_on = [3]
-acceptance_criteria = ["test/fixtures/aerodrome/manifest.json records block_number, chain_id 8453, captured_at and rpc_endpoint", "Every fixture's eth_call was made with an EXPLICIT block parameter equal to manifest.block_number, never latest, proven by a test asserting every fixture file's recorded block matches the manifest", "mix aerodrome.capture_fixtures --block N re-captures all fixtures; running it twice at the same block produces byte-identical files (idempotency test)", "Fixtures exist for every Sugar read function across lp_sugar, rewards_sugar, ve_sugar, relay_sugar and token_sugar, at minimum: all (two or more normal pages), count, forSwaps, positions, positionsByFactory, positionsUnstakedConcentrated, tokens from both lp_sugar and token_sugar, almEstimateAmounts, epochsLatest, epochsByAddress, rewards, rewardsByAddress, forRoot, VeSugar all/byAccount/byId, RelaySugar all/registries, and TokenSugar safe_balance_of/safe_decimals/safe_symbol", "One fixture is an all(500, offset, non_zero_filter) call that demonstrably returns fewer than 500 rows — the proof artifact task 8's pagination test consumes", "The offline decode suite loads fixtures and decodes with ZERO network calls and is NOT tagged :integration, so it runs in the default mix test.json and in mix ci", "The capture Mix task lives under lib/mix/tasks/ so it resolves to no declared reach layer and may reach the network without tripping the task-1 gate", "mix ci passes"]
+acceptance_criteria = ["test/fixtures/aerodrome/manifest.json records block_number, chain_id 8453, captured_at and rpc_endpoint", "Every fixture's eth_call was made with an EXPLICIT block parameter equal to manifest.block_number, never latest, proven by a test asserting every fixture file's recorded block matches the manifest", "mix aerodrome.capture_fixtures --block N re-captures all fixtures; running it twice at the same block produces byte-identical files (idempotency test)", "Fixtures exist for every Sugar read function across lp_sugar, rewards_sugar, ve_sugar, relay_sugar and token_sugar, at minimum: all (two or more normal pages), count, forSwaps, positions, positionsByFactory, positionsUnstakedConcentrated, tokens from both lp_sugar and token_sugar, almEstimateAmounts, epochsLatest, epochsByAddress, rewards, rewardsByAddress, forRoot, VeSugar all/byAccount/byId, RelaySugar all/registries, and TokenSugar safe_balance_of/safe_decimals/safe_symbol", "One fixture is an all(500, offset, non_zero_filter) call that demonstrably returns fewer than 500 rows — the proof artifact task 8's pagination test consumes. A second short-page proof fixture captures positions (or positionsByFactory) returning fewer rows than its limit at an offset with more pools remaining past it, because the position reads walk the pool index space rather than the returned-row space and their mid-enumeration short pages need the same committed evidence", "The offline decode suite loads fixtures and decodes with ZERO network calls and is NOT tagged :integration, so it runs in the default mix test.json and in mix ci", "The capture Mix task lives under lib/mix/tasks/ so it resolves to no declared reach layer and may reach the network without tripping the task-1 gate", "mix ci passes"]
 out_of_scope = ["The per-contract Bindings.* modules, which consume these fixtures", "Tick-math and liquidity goldens, which tasks 13 and 14 generate with their own manifest", "Auto-remediation on drift — the detector in task 32 reports, a human re-captures"]
 touches = ["lib/mix/tasks/aerodrome.capture_fixtures.ex", "test/fixtures/aerodrome/manifest.json", "test/support/aerodrome_fixtures.ex", "test/onchain/aerodrome/fixtures_test.exs"]
 assignee = "cursor"
@@ -293,9 +293,9 @@ title = "Types.Lp, .Position, .Swap and .Token — the pool and token structs, w
 scores = { d = 5, b = 8, u = 8 }
 depends_on = [3, 4]
 markers = ["parallel"]
-acceptance_criteria = ["Types.Lp defstruct carries all 31 fields from lp_sugar.json's all output components in ABI order, and from_raw/1 maps a positional decode result one to one", "Types.Position carries all 18 fields from lp_sugar.json's positions output; Types.Swap carries the 6 fields from forSwaps; Types.Token carries the 6 fields from tokens", "Each struct has a drift test that reads the ABI JSON DIRECTLY in the test (not via Bindings.Abi, since the layer contract forbids types depending on bindings) and asserts the struct's field list matches the ABI components in count and order — a Sugar re-capture that adds, removes or reorders a field must fail this test rather than silently mis-decode downstream", "A test asserts Types.Token's field list matches the tokens output of BOTH lp_sugar.json and token_sugar.json, proving the shared-type decision rather than assuming it", "Types.Lp's moduledoc documents the type discriminator as the load-bearing field it is: -1 is v2 stable, 0 is v2 volatile, any positive value is a Slipstream tick spacing", "Types.Position's moduledoc explains why locker, unlocks_at and alm are zero or nil for a non-locked, non-ALM position rather than leaving them unexplained", "Money fields are integers with no float anywhere; every from_raw/1 has an @spec", "Every struct decodes correctly against the task-4 fixtures", "mix ci passes"]
+acceptance_criteria = ["Types.Lp defstruct carries every field of lp_sugar.json's all output components in ABI order — the expected field list is derived from the ABI JSON inside the drift test, never transcribed as a hardcoded count — and from_raw/1 maps a positional decode result one to one", "Types.Position, Types.Swap and Types.Token carry every field of their respective lp_sugar.json outputs (positions, forSwaps, tokens), each verified by the same derive-the-field-list-from-the-ABI drift test rather than a transcribed count", "Each struct has a drift test that reads the ABI JSON DIRECTLY in the test (not via Bindings.Abi, since the layer contract forbids types depending on bindings) and asserts the struct's field list matches the ABI components in count and order — a Sugar re-capture that adds, removes or reorders a field must fail this test rather than silently mis-decode downstream", "A test asserts Types.Token's field list matches the tokens output of BOTH lp_sugar.json and token_sugar.json, proving the shared-type decision rather than assuming it", "Types.Lp's moduledoc documents the type discriminator as the load-bearing field it is: -1 is v2 stable, 0 is v2 volatile, any positive value is a Slipstream tick spacing", "Types.Position's moduledoc explains why locker, unlocks_at and alm are zero or nil for a non-locked, non-ALM position rather than leaving them unexplained", "Money fields are integers with no float anywhere; every from_raw/1 has an @spec", "Every struct decodes correctly against the task-4 fixtures", "mix ci passes"]
 out_of_scope = ["APR, valuation or any analytics logic", "Any RPC call", "The veAERO structs, which are task 7"]
-touches = ["lib/onchain/aerodrome/types/lp.ex", "lib/onchain/aerodrome/types/position.ex", "lib/onchain/aerodrome/types/swap.ex", "lib/onchain/aerodrome/types/token.ex", "test/onchain/aerodrome/types/"]
+touches = ["lib/onchain/aerodrome/types/lp.ex", "lib/onchain/aerodrome/types/position.ex", "lib/onchain/aerodrome/types/swap.ex", "lib/onchain/aerodrome/types/token.ex", "test/onchain/aerodrome/types/lp_test.exs", "test/onchain/aerodrome/types/position_test.exs", "test/onchain/aerodrome/types/swap_test.exs", "test/onchain/aerodrome/types/token_test.exs"]
 assignee = "cursor"
 module = "Onchain.Aerodrome.Types.Lp"
 model = "cursor-grok-4.6-high"
@@ -304,7 +304,7 @@ Define the four structs the pool and token read surface decodes into. They are o
 
 Do not reorder fields for readability. Under positional decode, order is the contract.
 
-The drift test is what replaces decode_structs entirely (see task 3's decision). It is the thing that actually protects against a Sugar redeploy quietly reordering Lp's 31 fields, and it must read the JSON itself rather than going through Bindings.Abi, because a Types.* module and its test must not depend on the bindings layer.
+The drift test is what replaces decode_structs entirely (see task 3's decision). It is the thing that actually protects against a Sugar redeploy quietly reordering Lp's fields, and it must read the JSON itself rather than going through Bindings.Abi, because a Types.* module and its test must not depend on the bindings layer.
 
 Types.Token is shared across two ABIs. Confirm the shapes are byte-identical with a test; if a future capture makes them diverge, that test is where it surfaces.
 
@@ -323,16 +323,16 @@ title = "Types.VeNFT, .Vote, .Relay, .LpEpoch and .Reward — the veAERO structs
 scores = { d = 5, b = 8, u = 8 }
 depends_on = [3, 4]
 markers = ["parallel"]
-acceptance_criteria = ["Types.VeNFT carries all 14 fields from ve_sugar.json's byId output, with votes decoded as a list of Types.Vote", "Types.Vote is the {lp, weight} nested shape, defined ONCE and reused by both VeNFT and Relay; a test asserts no duplicate field-shape definition exists between the two modules", "Types.Relay carries all 16 fields from relay_sugar.json's all(address) output — note this corrects a common miscount: 6 is RelaySugar's FUNCTION count, not this struct's field count — with votes as [Types.Vote] and account_venfts as its own small nested type", "Types.LpEpoch carries ts, lp, votes, emissions, bribes and fees, with bribes and fees decoded as lists of a shared {token, amount} nested type that is explicitly NOT conflated with Types.Reward", "Types.Reward carries the 6 flat fields venft_id, lp, amount, token, fee and bribe", "Each struct has a drift test reading the ABI JSON directly in the test (not via Bindings.Abi) asserting field count and order against the captured components", "Every struct decodes correctly against the task-4 fixtures, including the nested tuple arrays", "mix ci passes"]
+acceptance_criteria = ["Types.VeNFT carries every field of ve_sugar.json's byId output components, with votes decoded as a list of Types.Vote", "Types.Vote is the {lp, weight} nested shape, defined ONCE and reused by both VeNFT and Relay; a test asserts no duplicate field-shape definition exists between the two modules", "Types.Relay carries every field of relay_sugar.json's all(address) output components — the field list is derived from the ABI JSON inside the drift test, never transcribed: hand-counted totals for this struct have already been wrong more than once, and RelaySugar's function count is a different number again — with votes as [Types.Vote] and account_venfts as its own small nested type", "Types.LpEpoch carries ts, lp, votes, emissions, bribes and fees, with bribes and fees decoded as lists of a shared {token, amount} nested type that is explicitly NOT conflated with Types.Reward", "Types.Reward carries the flat fields venft_id, lp, amount, token, fee and bribe, drift-tested against rewards_sugar.json like the others", "Each struct has a drift test reading the ABI JSON directly in the test (not via Bindings.Abi) asserting field count and order against the captured components", "Every struct decodes correctly against the task-4 fixtures, including the nested tuple arrays", "mix ci passes"]
 out_of_scope = ["Epoch boundary arithmetic, which is task 2", "APR or reward accounting logic", "Any RPC call", "The pool and token structs, which are task 6"]
-touches = ["lib/onchain/aerodrome/types/ve_nft.ex", "lib/onchain/aerodrome/types/vote.ex", "lib/onchain/aerodrome/types/relay.ex", "lib/onchain/aerodrome/types/lp_epoch.ex", "lib/onchain/aerodrome/types/reward.ex", "test/onchain/aerodrome/types/"]
+touches = ["lib/onchain/aerodrome/types/ve_nft.ex", "lib/onchain/aerodrome/types/vote.ex", "lib/onchain/aerodrome/types/relay.ex", "lib/onchain/aerodrome/types/lp_epoch.ex", "lib/onchain/aerodrome/types/reward.ex", "test/onchain/aerodrome/types/ve_nft_test.exs", "test/onchain/aerodrome/types/vote_test.exs", "test/onchain/aerodrome/types/relay_test.exs", "test/onchain/aerodrome/types/lp_epoch_test.exs", "test/onchain/aerodrome/types/reward_test.exs"]
 assignee = "grok"
 module = "Onchain.Aerodrome.Types.VeNFT"
 model = "grok-4.6"
 body = """
 Define the five structs the veAERO side decodes into. They are one task because they share the same positional-decode drift invariant and the same fixture set, and because two of them share a nested type that must be defined exactly once.
 
-Two shape facts to get right, both verified against the captured ABIs rather than inferred. Types.Vote ({lp, weight}) is byte-identical between VeSugar's VeNFT.votes and RelaySugar's Relay.votes, so it is defined once and aliased. And Relay is materially larger than its function count suggests: 16 fields with two nested arrays, one of them ({id, amount, earned}) unique to it. Record that correction in the moduledoc so nobody re-derives a wrong six-field assumption later.
+Two shape facts to get right, both verified against the captured ABIs rather than inferred. Types.Vote ({lp, weight}) is byte-identical between VeSugar's VeNFT.votes and RelaySugar's Relay.votes, so it is defined once and aliased. And Relay is materially larger than its function count suggests: a wide struct with two nested arrays, one of them ({id, amount, earned}) unique to it. Record in the moduledoc that the field list is read from the ABI JSON, so nobody re-derives it from memory or from the function count later.
 
 LpEpoch's bribes and fees are {token, amount} pairs; Reward is a flat six-field record. They are not structurally related. Do not merge their field lists.
 
@@ -350,8 +350,8 @@ milestone = "v0_1"
 title = "Bindings.LpSugar — the full read surface and the count()-driven pagination driver"
 scores = { d = 6, b = 9, u = 9 }
 depends_on = [3, 4, 6]
-acceptance_criteria = ["count/1 and single-page all/4 (limit, offset, filter) are implemented via Onchain.RPC.eth_call plus a Bindings.Abi-derived signature, decoding positionally into [%Types.Lp{}]", "The pagination driver drives offset TO count(), never terminating on a short page; a test using the task-4 non-zero-filter fixture (which returns fewer than limit rows mid-sequence) asserts the loop CONTINUES past that short page and the final offset reached equals or exceeds count()", "An explicit anti-regression test encodes the bug by name: a naive stop-when-length(page)-is-less-than-limit implementation is asserted to UNDER-COUNT against the same fixture set, so the suite fails against the bug this task exists to prevent rather than merely passing against the fix", "forSwaps/3, positions/4, positionsByFactory/5, positionsUnstakedConcentrated/4, tokens/5 and almEstimateAmounts/4 are implemented, decoding into [%Types.Swap{}], [%Types.Position{}], [%Types.Token{}] and a three-element amount tuple respectively", "Each of those functions carries an @doc explaining why short-page termination IS safe for it: none of them takes a filter argument, unlike all/4", "The filter argument on all/4 is an opaque non_neg_integer passthrough with an @doc warning that its semantics are undocumented upstream and that fixture drift detection is the only available verification", "Decode correctness is proven against the task-4 fixtures for every function", "mix ci passes"]
-out_of_scope = ["The ergonomic Sugar.Pools wrapper, which is task 23", "The MAX_* cap getters and the internal wiring getters (voter, registry, convertor, cl_helper, alm_factory, alm_map, launcher_map, token_sugar, lp_helper, locker_factory_map) — Contracts.constants() already carries the verified caps and re-fetching them live adds no v0.1 value", "Analytics of any kind"]
+acceptance_criteria = ["count/1 and single-page all/4 (limit, offset, filter) are implemented via Onchain.RPC.eth_call plus a Bindings.Abi-derived signature, decoding positionally into [%Types.Lp{}]", "The pagination driver drives offset TO count(), never terminating on a short page; a test using the task-4 non-zero-filter fixture (which returns fewer than limit rows mid-sequence) asserts the loop CONTINUES past that short page and the final offset reached equals or exceeds count()", "An explicit anti-regression test encodes the bug by name: a naive stop-when-length(page)-is-less-than-limit implementation is asserted to UNDER-COUNT against the same fixture set, so the suite fails against the bug this task exists to prevent rather than merely passing against the fix", "forSwaps/3, positions/4, positionsByFactory/5, positionsUnstakedConcentrated/4, tokens/5 and almEstimateAmounts/4 are implemented, decoding into [%Types.Swap{}], [%Types.Position{}], [%Types.Token{}] and a three-element amount tuple respectively", "Each of those functions carries an @doc naming which index space its offset walks and the correct termination rule. positions, positionsByFactory, positionsUnstakedConcentrated, forSwaps and tokens iterate a SCANNED index space (pool index or NFT index) that is not the returned-row space — entries are filtered, deduplicated or skipped upstream, so a page shorter than limit is normal mid-enumeration and short-page termination is the same silent-data-loss bug as on all/4; enumeration ends only when the offset has walked the full scanned space. A pagination test consumes the task-4 positions short-page fixture and asserts enumeration CONTINUES past the short page", "The filter argument on all/4 is an opaque non_neg_integer passthrough with an @doc warning that its semantics are undocumented upstream and that fixture drift detection is the only available verification", "Decode correctness is proven against the task-4 fixtures for every function", "mix ci passes"]
+out_of_scope = ["The ergonomic Sugar.Pools wrapper, which is task 23", "The MAX_* cap getters and the internal wiring getters (voter, registry, convertor, cl_helper, alm_factory, alm_map, launcher_map, token_sugar, lp_helper, locker_factory_map) — Contracts.constants() carries the verified pagination caps; further caps the ABI exposes (MAX_FACTORIES, MAX_ITERATIONS) are deliberately unwired, and re-fetching any of them live adds no v0.1 value", "Analytics of any kind"]
 touches = ["lib/onchain/aerodrome/bindings/lp_sugar.ex", "test/onchain/aerodrome/bindings/lp_sugar_test.exs"]
 files_to_modify = ["lib/onchain/aerodrome/bindings/lp_sugar.ex", "test/onchain/aerodrome/bindings/lp_sugar_test.exs"]
 assignee = "codex"
@@ -385,9 +385,9 @@ title = "Bindings.RewardsSugar and Bindings.VeSugar"
 scores = { d = 4, b = 7, u = 7 }
 depends_on = [3, 4, 7]
 markers = ["parallel"]
-acceptance_criteria = ["RewardsSugar epochsLatest/3, epochsByAddress/4, rewards/4, rewardsByAddress/3 and forRoot/2 are implemented, decoding into [%Types.LpEpoch{}], [%Types.Reward{}] and a three-address tuple", "The @doc on rewardsByAddress states explicitly that it is veNFT-scoped — its arguments are (venft_id, pool) — and NOT account-scoped; the function name must not be shortened in a way that implies account scoping", "VeSugar all/3 (paginated), byAccount/2 and byId/2 are implemented, decoding into [%Types.VeNFT{}] and %Types.VeNFT{} including the nested votes list", "Each list-returning function carries an @doc noting that ordinary short-page termination is safe here because no RewardsSugar or VeSugar function takes a filter argument, unlike LpSugar.all", "MAX_EPOCHS and MAX_REWARDS, which exist in the deployed ABI, are either wired as getters or explicitly documented as skipped in favour of Contracts.constants(); pick one and justify it in the moduledoc", "Decode correctness is proven against the task-4 fixtures for all eight functions", "mix ci passes"]
+acceptance_criteria = ["RewardsSugar epochsLatest/3, epochsByAddress/4, rewards/4, rewardsByAddress/3 and forRoot/2 are implemented, decoding into [%Types.LpEpoch{}], [%Types.Reward{}] and a three-address tuple", "The @doc on rewardsByAddress states explicitly that it is veNFT-scoped — its arguments are (venft_id, pool) — and NOT account-scoped; the function name must not be shortened in a way that implies account scoping", "VeSugar all/3 (paginated), byAccount/2 and byId/2 are implemented, decoding into [%Types.VeNFT{}] and %Types.VeNFT{} including the nested votes list", "Each list-returning function carries an @doc naming which index space its offset walks and the correct termination rule: epochsLatest and rewards offset over the POOL index (skipping dead gauges, emitting zero to many rows per pool) and VeSugar.all offsets over TOKEN IDS (skipping burned ids), so for all three a page shorter than limit is normal mid-enumeration and must NOT terminate; only epochsByAddress, one row per epoch, is genuinely short-page-terminal, and its @doc says so", "MAX_EPOCHS and MAX_REWARDS, which exist in the deployed ABI but are NOT currently carried by Contracts.constants(), are either wired as getters, added to Contracts.constants() verified by live probe, or explicitly documented as deliberately unwired; pick one and justify it in the moduledoc", "Decode correctness is proven against the task-4 fixtures for all eight functions", "mix ci passes"]
 out_of_scope = ["WEEK(), already verified as Contracts.constants().epoch_seconds", "The VeSugar wiring getters voter, token, ve, dist and gov", "The ergonomic Sugar.* wrappers, which are task 24", "Reward or APR accounting logic"]
-touches = ["lib/onchain/aerodrome/bindings/rewards_sugar.ex", "lib/onchain/aerodrome/bindings/ve_sugar.ex", "test/onchain/aerodrome/bindings/"]
+touches = ["lib/onchain/aerodrome/bindings/rewards_sugar.ex", "lib/onchain/aerodrome/bindings/ve_sugar.ex", "test/onchain/aerodrome/bindings/rewards_sugar_test.exs", "test/onchain/aerodrome/bindings/ve_sugar_test.exs"]
 assignee = "grok"
 module = "Onchain.Aerodrome.Bindings.RewardsSugar"
 model = "grok-4.6"
@@ -415,14 +415,14 @@ title = "Bindings.RelaySugar and Bindings.TokenSugar"
 scores = { d = 3, b = 6, u = 6 }
 depends_on = [3, 4, 6, 7]
 markers = ["parallel"]
-acceptance_criteria = ["RelaySugar all/2 (a single call — the signature is all(address) with no limit or offset), registries/2, voter/1, swapper/1, ve/1 and token/1 are implemented, with all/2 decoding into [%Types.Relay{}]", "TokenSugar tokens/5 (short-page-safe pagination, reusing Types.Token), safe_balance_of/3, safe_decimals/2 and safe_symbol/2 are implemented", "A cross-binding consistency test decodes an overlapping token address through both TokenSugar.tokens and LpSugar.tokens and asserts structurally identical Types.Token records, validating the shared-type decision at the binding level and not only at the struct level", "Decode correctness is proven against the task-4 fixtures for every function", "mix ci passes"]
+acceptance_criteria = ["RelaySugar all/2 (a single call — the signature is all(address) with no limit or offset), registries/2, voter/1, swapper/1, ve/1 and token/1 are implemented, with all/2 decoding into [%Types.Relay{}]", "TokenSugar tokens/5 (reusing Types.Token), safe_balance_of/3, safe_decimals/2 and safe_symbol/2 are implemented; the tokens driver never terminates on a short page — its offset walks the POOL index while already-seen and non-ERC20 tokens are dropped from the page, so short pages are the normal mid-enumeration case — and a test proves enumeration continues past a page shorter than the limit", "A cross-binding consistency test decodes an overlapping token address through both TokenSugar.tokens and LpSugar.tokens and asserts structurally identical Types.Token records, validating the shared-type decision at the binding level and not only at the struct level", "Decode correctness is proven against the task-4 fixtures for every function", "mix ci passes"]
 out_of_scope = ["MAX_TOKENS and MAX_TOKEN_SYMBOL_LEN, already carried by Contracts.constants()", "launcher_map", "Relay write operations", "The ergonomic Sugar.* wrappers, which is task 24"]
-touches = ["lib/onchain/aerodrome/bindings/relay_sugar.ex", "lib/onchain/aerodrome/bindings/token_sugar.ex", "test/onchain/aerodrome/bindings/"]
+touches = ["lib/onchain/aerodrome/bindings/relay_sugar.ex", "lib/onchain/aerodrome/bindings/token_sugar.ex", "test/onchain/aerodrome/bindings/relay_sugar_test.exs", "test/onchain/aerodrome/bindings/token_sugar_test.exs"]
 assignee = "cursor"
 module = "Onchain.Aerodrome.Bindings.RelaySugar"
 model = "cursor-grok-4.6-high"
 body = """
-The two smallest Sugar contracts, wrapped together. Neither has a pagination trap: RelaySugar.all takes only an address, and TokenSugar.tokens has no filter argument.
+The two smallest Sugar contracts, wrapped together. RelaySugar.all takes only an address and returns everything in one call. TokenSugar.tokens, though, carries the same family of pagination trap as LpSugar.all despite having no filter argument: its offset walks the pool index space while the returned rows are deduplicated tokens, so later pages are mostly dedup hits and far shorter than the limit. A short-page-terminating loop returns roughly the first page's unique tokens and reports success.
 
 The one piece of real work beyond mechanical wiring is the cross-binding consistency proof. lp_sugar.tokens and token_sugar.tokens are byte-identical ABI shapes, so decoding the same token through both must produce identical Types.Token records. It is a cheap, high-value check that the shared-type bet holds where it actually matters, and it is the test that will fail first if a future Sugar redeploy diverges the two.
 
@@ -443,7 +443,7 @@ depends_on = [3, 4]
 markers = ["parallel"]
 acceptance_criteria = ["PoolFactory allPools/2, allPoolsLength/1, isPool/2, getFee/3, stableFee/1, volatileFee/1 and customFee/2 are implemented", "The two overloaded getPool entries are exposed under DISTINCT Elixir function names — one for getPool(address,address,uint24), one for getPool(address,address,bool) — because they share arity and Elixir cannot dispatch on argument type; a test calls both independently with correct argument types", "CLFactory allPools/2, allPoolsLength/1, isPool/2, getPool/4, getSwapFee/2, getUnstakedFee/2, defaultUnstakedFee/1, tickSpacings/1 and tickSpacingToFee/2 are implemented", "A test asserts tickSpacings/1 decodes to [1, 50, 100, 200, 2000, 10] in that raw order against the fixture, and defaultUnstakedFee/1 decodes to 100_000", "SlipstreamHelper getSqrtRatioAtTick/2, getTickAtSqrtRatio/2, getAmountsForLiquidity/5, getLiquidityForAmounts/6 and both getAmount0Delta and getAmount1Delta overloads (distinctly named, same reason as getPool) are implemented as thin eth_call bindings", "The SlipstreamHelper moduledoc states that these bindings exist primarily as the differential oracle for the pure Elixir ports in phase 4, NOT as the primary consumption path, since an RPC round-trip for pure math would be wasteful in an analytics loop", "Decode correctness is proven against fixtures; extend the task-4 manifest where a fixture is missing for these three contracts", "mix ci passes"]
 out_of_scope = ["Governance and wiring getters: pauser, isPaused, feeManager, implementation, owner, factoryRegistry, swapFeeManager, swapFeeModule, unstakedFeeManager, unstakedFeeModule, poolImplementation", "getPopulatedTicks, poolFees, principal, fees, estimateAmount0 and estimateAmount1 — pool-state-dependent views with no v0.1 consumer outside task 20's integration check", "Any pure-Elixir math port, which is phase 4"]
-touches = ["lib/onchain/aerodrome/bindings/factories.ex", "lib/onchain/aerodrome/bindings/slipstream_helper.ex", "test/onchain/aerodrome/bindings/"]
+touches = ["lib/onchain/aerodrome/bindings/factories.ex", "lib/onchain/aerodrome/bindings/slipstream_helper.ex", "test/onchain/aerodrome/bindings/factories_test.exs", "test/onchain/aerodrome/bindings/slipstream_helper_test.exs"]
 assignee = "grok"
 module = "Onchain.Aerodrome.Bindings.Factories"
 model = "grok-4.6"
@@ -467,9 +467,9 @@ status = "pending"
 milestone = "v0_1"
 title = "Bindings.Voter — the read surface (epochs, weights, gauge and pool registry)"
 scores = { d = 3, b = 6, u = 6 }
-depends_on = [3, 4]
+depends_on = [3, 4, 2]
 markers = ["parallel"]
-acceptance_criteria = ["The epoch and weight getters are implemented: epochNext, epochStart, epochVoteEnd, epochVoteStart, totalWeight, weights, votes, usedWeights, lastVoted, poolVote, maxVotingNum, length and pools", "The registry getters are implemented: gaugeToBribe, gaugeToFees, gauges, isGauge, isAlive, poolForGauge, isWhitelistedToken, isWhitelistedNFT, factoryRegistry, minter, ve, governor, epochGovernor, emergencyCouncil, forwarder and isTrustedForwarder", "All return primitives or addresses — no custom struct is introduced, and the moduledoc says why", "A test cross-checks epochStart against Onchain.Aerodrome.Epoch.start/1 for at least 20 timestamps, so the pure Elixir epoch arithmetic and the deployed contract's own epoch boundary are proven to agree rather than assumed to", "The @doc on each epoch getter states its units and whether the value is a timestamp or a duration, since Analytics.APR's timing math leans on exactly these", "Decode correctness is proven against fixtures", "mix ci passes"]
+acceptance_criteria = ["The epoch and weight getters are implemented: epochNext, epochStart, epochVoteEnd, epochVoteStart, totalWeight, weights, votes, usedWeights, lastVoted, poolVote, maxVotingNum, length and pools", "The registry getters are implemented: gaugeToBribe, gaugeToFees, gauges, isGauge, isAlive, poolForGauge, isWhitelistedToken, isWhitelistedNFT, factoryRegistry, minter, ve, governor, epochGovernor, emergencyCouncil, forwarder and isTrustedForwarder", "All return primitives or addresses — no custom struct is introduced, and the moduledoc says why", "A test cross-checks epochStart against Onchain.Aerodrome.Epoch.start/1 for at least 20 timestamps, so the pure Elixir epoch arithmetic and the deployed contract's own epoch boundary are proven to agree rather than assumed to", "The @doc on each epoch getter states its units and whether the value is a timestamp or a duration — a units error in an epoch-timing consumer surfaces as a plausible-looking wrong number, not a crash", "Decode correctness is proven against fixtures", "mix ci passes"]
 out_of_scope = ["All 24 Voter write functions, which are task 27", "Governance-only setters", "Gauge instance enumeration across all pools — Sugar's Lp.gauge already gives it per pool"]
 touches = ["lib/onchain/aerodrome/bindings/voter.ex", "test/onchain/aerodrome/bindings/voter_test.exs"]
 assignee = "codex"
@@ -482,7 +482,7 @@ Both halves land in one module and one diff. They are the same contract and the 
 
 The cross-check against Onchain.Aerodrome.Epoch is the point of routing this task carefully. Task 2 implements epoch boundaries as pure arithmetic; this task can ask the deployed Voter what it thinks the epoch boundary is. If they ever disagree, the contract wins and task 2 is wrong — so wire the comparison as a test now rather than discovering the divergence through a wrong APR later.
 
-Units matter more than usual here. epochVoteEnd and epochVoteStart are timestamps; weights and usedWeights are voting-power quantities in veAERO base units. Document each, because task 21 will consume them and a units error there produces a plausible-looking wrong APR rather than a crash.
+Units matter more than usual here. epochVoteEnd and epochVoteStart are timestamps; weights and usedWeights are voting-power quantities in veAERO base units. Document each; a consumer's units error produces a plausible-looking wrong number rather than a crash.
 
 AUTHORITY: priv/abis/voter.json, captured from the deployed Voter at 0x16613524e02ad97eDfeF371bC883F2F5d6C480A5. Verified live on 2026-08-26: length() returned 1877, and both ve_sugar.voter() and relay_sugar.voter() return this same address.
 """
@@ -511,7 +511,7 @@ Base EVM simulation is blocked: onchain_evm's revm rejects chain id 8453. That i
 
 Three tiers of evidence, each doing a job the others cannot. The full-domain SHA-256 digest is 64 committed characters, impossible to satisfy by accident, and it is what makes the word swept true. The packed lattice makes a mismatch localisable to a tick instead of a shrug. The live boundary probes catch what in-range values cannot show you: revert behaviour, and int24 sign handling.
 
-Implementation notes that will save a day. The Solidity port relies on truncating integer division and 128-bit right shifts, all fitting inside 256 bits with no intentional overflow, so Elixir bignums are safe — but div/2 truncating toward zero must be used, never a float. getTickAtSqrtRatio computes a most-significant-bit and a log base sqrt(1.0001) with signed intermediates, which is exactly where ports break; that is why the inverse fixture perturbs each ratio by plus and minus one.
+Implementation notes that will save a day. The Solidity port relies on truncating integer division and 128-bit right shifts, all fitting inside 256 bits with no intentional overflow, so Elixir bignums are safe — but never a float, and match the division semantics to the EVM operation in play: the unsigned getSqrtRatioAtTick pipeline uses truncating division (div/2), while getTickAtSqrtRatio's signed tail shifts with sar, which is FLOOR division — floor and truncate differ by one on negative intermediates, so a blanket div/2 port is off by one on the negative side there; use arithmetic right shifts (Bitwise) or explicit floor division for those steps. getTickAtSqrtRatio computes a most-significant-bit and a log base sqrt(1.0001) with signed intermediates, which is exactly where ports break; that is why the inverse fixture perturbs each ratio by plus and minus one.
 
 The generator lives under lib/mix/tasks/ on purpose: Mix.Tasks.* resolves to no declared layer, so it may reach the network without violating the task-1 gate. Math.Tick itself must never call RPC, and after task 1 lands mix reach.check --arch will refuse it.
 
@@ -656,7 +656,7 @@ title = "Bindings.Chainlink and Sugar.Prices — anchor feeds with a staleness p
 scores = { d = 5, b = 8, u = 8 }
 depends_on = [17]
 acceptance_criteria = ["Bindings.Chainlink latest_round_data/2, decimals/2 and description/2 wrap AggregatorV3Interface against a feed address, with the ABI captured into priv/abis/chainlink_aggregator_v3.json and its provenance recorded in priv/abis/README.md in the same table shape as the existing entries", "Every feed address added to Contracts is verified by calling description() and asserting the returned string equals the expected pair; the verified description, decimals and documented heartbeat are recorded as a comment beside each address. No feed address is added from memory or from a single explorer label", "Sugar.Prices.price_map/1 returns {:ok, %Types.PriceMap{}} by fetching anchors plus the Lp set and delegating ALL arithmetic to Analytics.Price.resolve/3; a reach check plus an explicit review criterion confirm this module contains no price arithmetic of its own", "The staleness policy returns an error rather than a number: a round older than max_staleness_s (defaulting to twice the feed's recorded heartbeat), or with a non-positive answer, or with answered_in_round behind round_id, yields a tagged error tuple. A unit test drives each rejection path with a synthetic round tuple", "A stale or invalid anchor degrades explicitly — either the affected token lands in PriceMap.unpriced with :stale_anchor and the rest of the call succeeds, or the whole call fails. Whichever is chosen is documented and tested, and a stale anchor is NEVER silently replaced by a pool-derived price without the Price struct's source field reflecting that", "An integration-tagged reconciliation test prices at least 10 high-TVL Base tokens both ways (Chainlink anchor versus pool route) at a pinned block and asserts agreement within a documented tolerance; the comparison table is committed with its block number and date", "The moduledoc states which calls require archive access (any pinned-block query) and which do not, per the node-portability law", "mix ci passes"]
-out_of_scope = ["Price arithmetic of any kind, which lives in Math.Price and Analytics.Price", "Caching, GenServers or any long-lived process — this is a request-scoped read", "Feeds for tokens with no Chainlink coverage on Base, which resolve through the pool graph by design", "Optimism or Velodrome feed addresses; Base only"]
+out_of_scope = ["Price arithmetic of any kind, which lives in Math.Price and Analytics.Price", "Caching, GenServers or any long-lived process — this is a request-scoped read", "Feeds for tokens with no Chainlink coverage on Base, which resolve through the pool graph by design", "Optimism or Velodrome feed addresses; Base only", "Upstreaming the AggregatorV3 binding into onchain core — a deliberate non-goal for now: it lives here until a second family consumer exists, and that move is a decision to make then, not a silent assumption"]
 touches = ["lib/onchain/aerodrome/bindings/chainlink.ex", "lib/onchain/aerodrome/sugar/prices.ex", "lib/onchain/aerodrome/contracts.ex", "priv/abis/chainlink_aggregator_v3.json", "priv/abis/README.md", "test/onchain/aerodrome/sugar/prices_test.exs", "test/fixtures/prices/reconciliation.json"]
 assignee = "cursor"
 module = "Onchain.Aerodrome.Sugar.Prices"
@@ -755,9 +755,9 @@ status = "pending"
 milestone = "v0_1"
 title = "Analytics.APR — separate fee and emission rates, each carrying its denominator as data"
 scores = { d = 5, b = 8, u = 9 }
-depends_on = [2, 17, 19]
-acceptance_criteria = ["The return type is %Analytics.APR.Rate{} carrying at minimum kind (:fee or :emission), rate (Decimal), basis (an atom naming the denominator), numerator (with amount, unit, period and epochs_per_year 52), denominator (with amount, unit and label), and inputs recording the exact Lp, LpEpoch and price entries used. A bare Decimal is never returned from any APR function", "Rate.combine/2 raises Analytics.APR.IncomparableBasisError whenever the two rates' basis values differ, and it is the ONLY combining function in the module's public API", "Emission APR is computed from Lp.emissions times 604_800 — emissions is a PER-SECOND rate — annualised by Epoch.epochs_per_year/0 which is 52; a regression test asserts the produced rate is NOT equal to the daily-annualised variant, pinning out the roughly 7x error", "emissions_cap is ALWAYS recorded in Rate.inputs. When it is positive the effective weekly emission is the minimum of the weekly rate and the cap, and Rate.capped is true; otherwise false. This task establishes by LIVE PROBE that emissions_cap is a per-epoch quantity in emissions-token base units before applying the minimum, and records that evidence. If the probe is inconclusive, no cap is applied and Rate.capped is :unknown with the reason documented. Goldens include one pool with a positive cap and one without", "gauge_alive false yields {:unavailable, :gauge_not_alive} for the emission rate and NOT a zero rate; likewise {:unavailable, :no_gauge} for a zero gauge address and {:unavailable, :no_staked_liquidity} for a zero denominator. A test asserts a tagged tuple cannot be arithmetically combined with a Rate", "Emission APR supports two bases and records which was used: a USD basis from staked0 and staked1 valued through a PriceMap, and a price-free basis of weekly emissions in emissions-token units over gauge_liquidity. The price-free basis is exercised by a test passing an EMPTY PriceMap and still succeeding", "Fee APR is computed from an epoch-scoped fee flow taken from %LpEpoch{}.fees, NOT from Lp.token0_fees or Lp.token1_fees; those two are claimable balances accumulated over an unknown window, appear only in Rate.inputs, and the moduledoc states in one sentence why using them as a weekly flow is wrong", "For CL pools the fee Rate carries a caveat marking that CL fees accrue to in-range liquidity only, as DATA on the struct and not merely as prose, because Sugar's reserves span all ticks and no in-range-only denominator is available", "unstaked_cl_fee_apr/3 returns a Rate whose rate is the fee rate scaled by one minus Analytics.Pool.unstaked_fee_rate/1 and whose basis records that it is net of the unstaked fee; voter_fee_share/1 returns the complementary gauge rake; a test asserts the two partition the gross fee flow exactly", "No function returns or accepts a float — a grep test enforces it — and all money stays integer until the final Decimal ratio", "The module is pure: mix reach.check --arch passes under the task-1 rules", "Line coverage of Onchain.Aerodrome.Analytics.APR is at least 95 percent", "mix ci passes"]
-out_of_scope = ["Any total, blended or combined APR figure under any name — this is the point of the task", "Reproducing the aerodrome.finance headline number; if ours differs the response is to state the denominators, never to tune a constant", "Bribe or voting APR for veAERO holders, which is a different capital base and a different task", "Historical APR series across epochs, which needs archive reads; v0.1 is current-epoch", "The enforcement tests, goldens and coverage gate, which are task 22 and deliberately a different agent"]
+depends_on = [2, 17, 19, 7]
+acceptance_criteria = ["The return type is %Analytics.APR.Rate{} carrying at minimum kind (:fee or :emission), rate (Decimal), basis (an atom naming the denominator), numerator (with amount, unit, period and epochs_per_year 52), denominator (with amount, unit and label), and inputs recording the exact Lp, LpEpoch and price entries used. A bare Decimal is never returned from any APR function", "Rate.combine/2 raises Analytics.APR.IncomparableBasisError whenever the two rates' basis values differ, and it is the ONLY combining function in the module's public API", "Emission APR is computed from Lp.emissions times 604_800 — emissions is a PER-SECOND rate — annualised by Epoch.epochs_per_year/0 which is 52; a regression test asserts the produced rate is NOT equal to the daily-annualised variant, pinning out the roughly 7x error", "emissions_cap is ALWAYS recorded in Rate.inputs and NEVER applied as a token-amount minimum. Live probing during roadmap review showed the gauge-factory cap mechanism is a RELATIVE share — defaultCap()/emissionsCaps() in basis points of MAX_BPS() on the gauge factories that expose it, with the other gauge factories reverting on those selectors (Sugar's _safe_emissions_cap then yields 0) — and Lp.emissions is the gauge's live post-notification reward rate, so whatever cap the protocol honours is already reflected in it and re-applying one double-counts. This task re-verifies that with its own recorded live probe against at least one cap-exposing and one reverting gauge factory, and sets Rate.capped from the probed factory semantics, with :unknown and a documented reason where the factory reverts. A grep test asserts no min() of a weekly emission against emissions_cap exists anywhere in the module", "gauge_alive false yields {:unavailable, :gauge_not_alive} for the emission rate and NOT a zero rate; likewise {:unavailable, :no_gauge} for a zero gauge address and {:unavailable, :no_staked_liquidity} for a zero denominator. A test asserts a tagged tuple cannot be arithmetically combined with a Rate", "Emission APR supports two bases and records which was used: a USD basis from staked0 and staked1 valued through a PriceMap, and a price-free basis of weekly emissions in emissions-token units over gauge_liquidity. The price-free basis is exercised by a test passing an EMPTY PriceMap and still succeeding", "Fee APR is computed from an epoch-scoped fee flow taken from %LpEpoch{}.fees, NOT from Lp.token0_fees or Lp.token1_fees; those two are claimable balances accumulated over an unknown window, appear only in Rate.inputs, and the moduledoc states in one sentence why using them as a weekly flow is wrong", "For CL pools the fee Rate carries a caveat marking that CL fees accrue to in-range liquidity only, as DATA on the struct and not merely as prose, because Sugar's reserves span all ticks and no in-range-only denominator is available", "unstaked_cl_fee_apr/3 returns a Rate whose rate is the fee rate scaled by one minus Analytics.Pool.unstaked_fee_rate/1 and whose basis records that it is net of the unstaked fee; voter_fee_share/1 returns the complementary gauge rake; a test asserts the two partition the gross fee flow exactly", "No function returns or accepts a float — a grep test enforces it — and all money stays integer until the final Decimal ratio", "The module is pure: mix reach.check --arch passes under the task-1 rules", "Line coverage of Onchain.Aerodrome.Analytics.APR is at least 95 percent", "mix ci passes"]
+out_of_scope = ["Any total, blended or combined APR figure under any name — this is the point of the task", "Reproducing the aerodrome.finance headline number; if ours differs the response is to state the denominators, never to tune a constant", "Bribe or voting APR for veAERO holders — a different capital base, deliberately unfiled; file it via rmap new when veAERO-holder analytics is scoped", "Historical APR series across epochs, which needs archive reads; v0.1 is current-epoch", "The enforcement tests, goldens and coverage gate, which are task 22 and deliberately a different agent"]
 touches = ["lib/onchain/aerodrome/analytics/apr.ex", "lib/onchain/aerodrome/analytics/apr/rate.ex", "test/onchain/aerodrome/analytics/apr_test.exs", "test/fixtures/goldens/apr/"]
 assignee = "codex"
 module = "Onchain.Aerodrome.Analytics.APR"
@@ -773,7 +773,7 @@ Emissions are PER SECOND. Weekly is emissions times 604_800. Annualising uses 52
 
 Emission APR is denominated in staked, in-range liquidity, not in total TVL. Support both the USD form and the price-free form. The price-free form is the honest primitive: it needs no oracle at all and cannot be wrong about a price.
 
-emissions_cap bounds real emissions. Ignoring a live cap overstates yield the same way the daily error does. Apply it — but verify its units against a real capped pool before you do, and record the capped flag either way. Applying an unverified cap is as bad as ignoring a verified one.
+emissions_cap is a trap, not a bound to apply. Where the gauge factories expose a cap at all it is a relative share in basis points of MAX_BPS(), not a token quantity, and several gauge factories revert on the cap selectors entirely. Lp.emissions is the post-notification rate the cap has already shaped. Record the cap as evidence in Rate.inputs; never subtract it from or min() it against the weekly rate.
 
 Fee APR must come from an epoch-scoped flow. Lp.token0_fees and Lp.token1_fees are claimable balances that have been accumulating since someone last claimed, over an unknown window. Dividing them by a week produces a number whose error depends on claim behaviour, which is untraceable.
 
@@ -797,7 +797,7 @@ milestone = "v0_1"
 title = "APR invariant enforcement, the 7.53 percent golden, and the tiered coverage gate"
 scores = { d = 6, b = 10, u = 8 }
 depends_on = [21]
-acceptance_criteria = ["A manifest test enumerates every exported function of every module under the Onchain.Aerodrome namespace via :application.get_key/2 and FAILS if any function name matches total_apr, combined_apr, overall_apr, net_apr, apr_sum or blended_apr. The same test asserts it scanned at least 10 modules and that the blacklist is non-empty, so it cannot pass vacuously when the scan finds nothing", "A test asserts arithmetic on two %Analytics.APR.Rate{} structs raises, and that Rate.combine/2 raises IncomparableBasisError for differing bases and succeeds only for identical ones. These are the mechanical teeth on the invariant, not documentation", "test/fixtures/goldens/apr/emission_apr_7_53.json is committed and records as explicitly NAMED fields: weekly_emissions_value 12337.58, epochs_per_year 52, denominator 8515374, denominator_basis, the pool address, the pinned block, the capture date, an expected rate of 0.0753, and a contrast block recording the aerodrome.finance displayed 8.76 percent together with a one-line note that the gap is the denominator and must never be closed by tuning a constant", "A test drives those exact inputs through Analytics.APR and asserts the rate rounds to 7.53 percent, that Rate.basis equals the golden's denominator_basis, and that Rate.numerator.epochs_per_year is 52", "A schema test on the golden file itself asserts every one of those field names is present, so a future edit cannot quietly drop the denominator and leave a bare number behind", "An anti-regression test asserts the produced rate does NOT equal the daily-annualised variant and does NOT equal the 8.76 percent headline; both assertions carry a comment naming the error they pin out", "A stream_data property over generated Lp and LpEpoch pairs asserts that whenever both a fee Rate and an emission Rate are produced for the same CL pool with a live gauge, their basis values DIFFER, making an accidental unification of the two denominators a test failure", "mix coverage.gate parses the per-module coverage array emitted by mix test.json --cover --output and fails when any module matching Analytics.* or Math.* is below 95 percent or any other project module is below 80 percent; it fails loudly with a non-zero exit and a named module and percentage if the coverage file is missing or contains zero modules, because a gate that passes on absent data is not a gate", "mix ci chains coverage.gate immediately after the test.json step, and the existing global --cover-threshold 65 placeholder is raised to the measured post-analytics baseline with the measured number recorded in a mix.exs comment and in CLAUDE.md; AGENTS.md is regenerated so mix agents.check passes", "mix ci passes"]
+acceptance_criteria = ["A manifest test enumerates every exported function of every module under the Onchain.Aerodrome namespace via :application.get_key/2 and FAILS if any function name matches total_apr, combined_apr, overall_apr, net_apr, apr_sum or blended_apr. The same test asserts it scanned at least 10 modules and that the blacklist is non-empty, so it cannot pass vacuously when the scan finds nothing", "A test asserts arithmetic on two %Analytics.APR.Rate{} structs raises, and that Rate.combine/2 raises IncomparableBasisError for differing bases and succeeds only for identical ones. These are the mechanical teeth on the invariant, not documentation", "test/fixtures/goldens/apr/emission_apr_7_53.json is committed and records as explicitly NAMED fields: weekly_emissions_value 12337.58, epochs_per_year 52, denominator 8515374, denominator_basis, the pool address, the pinned block, the capture date, an expected rate of 0.0753, and a contrast block recording the aerodrome.finance displayed 8.76 percent together with a one-line note that the gap is the denominator and must never be closed by tuning a constant", "A test drives those exact inputs through Analytics.APR and asserts the rate rounds to 7.53 percent, that Rate.basis equals the golden's denominator_basis, and that Rate.numerator.epochs_per_year is 52", "A schema test on the golden file itself asserts every one of those field names is present, so a future edit cannot quietly drop the denominator and leave a bare number behind", "An anti-regression test asserts the produced rate does NOT equal the daily-annualised variant and does NOT equal the 8.76 percent headline; both assertions carry a comment naming the error they pin out", "A stream_data property over generated Lp and LpEpoch pairs asserts that whenever both a fee Rate and an emission Rate are produced for the same CL pool with a live gauge, their basis values DIFFER, making an accidental unification of the two denominators a test failure", "mix coverage.gate parses the per-module coverage array emitted by mix test.json --cover --output and fails when any module matching Analytics.* or Math.* is below 95 percent or any other project module is below 80 percent; it fails loudly with a non-zero exit and a named module and percentage if the coverage file is missing or contains zero modules, because a gate that passes on absent data is not a gate", "mix ci chains coverage.gate immediately after the test.json step, and the existing global --cover-threshold placeholder in mix.exs is raised to the measured post-analytics baseline with the measured number recorded in a mix.exs comment and in CLAUDE.md; AGENTS.md is regenerated so mix agents.check passes", "mix ci passes"]
 out_of_scope = ["Changing any APR formula — this task GRADES task 21, it does not reimplement it. A formula defect found here is filed as a new task, not silently patched", "Mutation-testing infrastructure beyond the assertions above", "Reconciling against aerodrome.finance across many pools, which is not in v0.1"]
 touches = ["test/onchain/aerodrome/analytics/apr_invariants_test.exs", "test/onchain/aerodrome/manifest_test.exs", "test/fixtures/goldens/apr/emission_apr_7_53.json", "lib/mix/tasks/coverage.gate.ex", "mix.exs", "CLAUDE.md", "AGENTS.md"]
 assignee = "cursor"
@@ -812,9 +812,11 @@ First, the no-summing invariant. Documentation enforces nothing. Three overlappi
 
 Second, the cross-check becomes a committed artefact rather than a sentence in a markdown file: 12337.58 times 52 over 8515374 is 7.53 percent, against a displayed 8.76 percent. The golden records the inputs AND the denominator AND the contrast, with a schema test on the golden itself so the denominator field cannot be dropped later. The two negative assertions matter as much as the positive one: the daily-annualised value pins out the roughly 7x error, and asserting we do NOT produce 8.76 percent documents in executable form that we are not trying to.
 
-Third, coverage. The --cover-threshold flag is global only, but the JSON output carries a per-module array, so a small Mix task can enforce the tiered floors the house rules actually require: 95 percent for Analytics.* and Math.* because they are pure and there is no excuse, 80 percent elsewhere. The global 65 currently in mix.exs is a scaffold placeholder and says so; replace it with a measured number and record what you measured.
+Third, coverage. The --cover-threshold flag is global only, but the JSON output carries a per-module array, so a small Mix task can enforce the tiered floors the house rules actually require: 95 percent for Analytics.* and Math.* because they are pure and there is no excuse, 80 percent elsewhere. The global threshold currently in mix.exs is a scaffold-time placeholder; replace it with a measured number and record what you measured.
 
 If, while writing these, you find that an APR formula is wrong, file it as a new task and say so plainly in the write-up. Do not fix it here. The separation between implementing and grading is the whole reason this task exists as its own dispatch.
+
+DISPATCH NOTE: the coverage-gate half gives this task a repo-wide effective write-set — every module's coverage becomes a landing-time invariant — so dispatch it as a SOLO wave; nothing lands in parallel with it.
 
 AUTHORITY: the deployed LpSugar at 0x69dD9db6d8f8E7d83887A704f447b1a584b599A1 and RewardsSugar at 0x1b121EfDaF4ABb8785a315C51D29BCE0552A7678 supply the golden's inputs at a pinned block — capture them live rather than transcribing them. RewardsSugar.WEEK() at 604800, verified 2026-08-26, is the authority on the epoch length the annualiser depends on. aerodrome.finance is recorded in the golden as a contrast, explicitly not as an authority.
 """
@@ -831,9 +833,9 @@ title = "Sugar.Pools and Sugar.Tokens — the ergonomic pool and token read API"
 scores = { d = 4, b = 8, u = 8 }
 depends_on = [8, 10]
 markers = ["parallel"]
-acceptance_criteria = ["Sugar.Pools.all/1 and a streaming variant drive pagination to count() through the task-8 binding, returning {:ok, [%Types.Lp{}]} or a tagged error tuple", "A test asserts Sugar.Pools.all/1 against the task-4 short-page fixture returns the FULL row count, not the short page's count — re-proving the pagination invariant at the ergonomic layer, because a naive re-implementation here reintroduces the bug even with a correct binding underneath", "get/2 resolves a single pool by address, or the moduledoc documents the limitation explicitly if no single-pool Sugar function exists; swaps/1 wraps forSwaps; pool_tokens/1 wraps the LpSugar tokens read", "Sugar.Tokens list/1 paginates through TokenSugar.tokens, and balance_of/2, symbol/1 and decimals/1 wrap the safe_ variants", "Every function returns the standard {:ok, result} or {:error, {:tag, reason}} shape", "The moduledoc states the eth_call weight requirement: one all(500, ...) returns roughly 1.1 MB, limit 500 is verified on both the public Base endpoint and a hosted provider, and an endpoint with a tighter per-call cap will fail it while appearing otherwise healthy", "mix ci passes"]
+acceptance_criteria = ["Sugar.Pools.all/1 and a streaming variant drive pagination to count() through the task-8 binding, returning {:ok, [%Types.Lp{}]} or a tagged error tuple", "A test asserts Sugar.Pools.all/1 against the task-4 short-page fixture returns the FULL row count, not the short page's count — re-proving the pagination invariant at the ergonomic layer, because a naive re-implementation here reintroduces the bug even with a correct binding underneath", "get/2 resolves a single pool by address, or the moduledoc documents the limitation explicitly if no single-pool Sugar function exists; swaps/1 wraps forSwaps; pool_tokens/1 wraps the LpSugar tokens read", "Sugar.Tokens list/1 paginates through TokenSugar.tokens with the task-10 never-terminate-on-a-short-page discipline (the offset walks the pool index space), and balance_of/2, symbol/1 and decimals/1 wrap the safe_ variants", "Every function returns the standard {:ok, result} or {:error, {:tag, reason}} shape", "The moduledoc states the eth_call weight requirement: one all(500, ...) returns roughly 1.1 MB, limit 500 is verified on both the public Base endpoint and a hosted provider, and an endpoint with a tighter per-call cap will fail it while appearing otherwise healthy", "mix ci passes"]
 out_of_scope = ["APR, valuation or price resolution — this layer exposes decoded structs", "The account-scoped reads, which are task 24", "Re-implementing pagination rather than delegating to the task-8 driver"]
-touches = ["lib/onchain/aerodrome/sugar/pools.ex", "lib/onchain/aerodrome/sugar/tokens.ex", "test/onchain/aerodrome/sugar/"]
+touches = ["lib/onchain/aerodrome/sugar/pools.ex", "lib/onchain/aerodrome/sugar/tokens.ex", "test/onchain/aerodrome/sugar/pools_test.exs", "test/onchain/aerodrome/sugar/tokens_test.exs"]
 assignee = "codex"
 module = "Onchain.Aerodrome.Sugar.Pools"
 model = "gpt-5.6-sol"
@@ -859,14 +861,14 @@ title = "Sugar.Positions, .VeNfts, .Rewards and .Relays — the account-scoped r
 scores = { d = 4, b = 7, u = 7 }
 depends_on = [8, 9, 10]
 markers = ["parallel"]
-acceptance_criteria = ["Sugar.Positions exposes for_account/2, for_factory/3 and unstaked_concentrated/2 over the LpSugar position reads", "Sugar.VeNfts exposes all/1, for_account/1 and get/1 over VeSugar", "Sugar.Rewards exposes epochs/1, epochs_for_pool/2, rewards_for_venft/2 and for_root/1 over RewardsSugar; the veNFT-scoped function is NAMED and documented as veNFT-scoped and must not be renamed in a way that implies account scoping", "Sugar.Relays exposes for_account/1 and registries/0 over RelaySugar", "Every function returns the standard {:ok, result} or {:error, {:tag, reason}} shape and delegates all RPC construction to its binding", "A test per module proves the wrapper preserves the binding's decoded struct shape against the task-4 fixtures rather than reshaping it", "mix ci passes"]
+acceptance_criteria = ["Sugar.Positions exposes for_account/2, for_factory/3 and unstaked_concentrated/2 over the LpSugar position reads", "Sugar.VeNfts exposes all/1, for_account/1 and get/1 over VeSugar", "Sugar.Rewards exposes epochs/1, epochs_for_pool/2, rewards_for_venft/2 and for_root/1 over RewardsSugar; the veNFT-scoped function is NAMED and documented as veNFT-scoped and must not be renamed in a way that implies account scoping", "Sugar.Relays exposes for_account/1 over RelaySugar, plus registry access in a shape the deployed ABI actually supports: registries(uint256) is a per-index Vyper array accessor with no length getter, so expose an index-based read delegating to task 10's registries/2 (with the no-full-enumeration limitation documented) rather than promising a full-list registries/0 the contract cannot answer in one call", "Every function returns the standard {:ok, result} or {:error, {:tag, reason}} shape and delegates all RPC construction to its binding", "A test per module proves the wrapper preserves the binding's decoded struct shape against the task-4 fixtures rather than reshaping it", "mix ci passes"]
 out_of_scope = ["Pool and token reads, which are task 23", "Price resolution, which is task 18", "Analytics of any kind", "Reimplementing pagination — delegate to the bindings"]
-touches = ["lib/onchain/aerodrome/sugar/positions.ex", "lib/onchain/aerodrome/sugar/ve_nfts.ex", "lib/onchain/aerodrome/sugar/rewards.ex", "lib/onchain/aerodrome/sugar/relays.ex", "test/onchain/aerodrome/sugar/"]
+touches = ["lib/onchain/aerodrome/sugar/positions.ex", "lib/onchain/aerodrome/sugar/ve_nfts.ex", "lib/onchain/aerodrome/sugar/rewards.ex", "lib/onchain/aerodrome/sugar/relays.ex", "test/onchain/aerodrome/sugar/positions_test.exs", "test/onchain/aerodrome/sugar/ve_nfts_test.exs", "test/onchain/aerodrome/sugar/rewards_test.exs", "test/onchain/aerodrome/sugar/relays_test.exs"]
 assignee = "cursor"
 module = "Onchain.Aerodrome.Sugar.Positions"
 model = "cursor-grok-4.6-high"
 body = """
-The four account-scoped ergonomic wrappers, landed as one dispatch. Each is a thin delegation over a binding built in phase 3; none carries a pagination trap, because none of the underlying functions takes a filter argument. Splitting them into four dispatches would spend four implement, review and land cycles on work a reviewer verifies in one glance.
+The four account-scoped ergonomic wrappers, landed as one dispatch. Each is a thin delegation over a binding built in phase 3; pagination and termination semantics stay in the bindings, which own the offset-walks-a-different-index-space rules, and this layer must not reimplement any loop. Splitting them into four dispatches would spend four implement, review and land cycles on work a reviewer verifies in one glance.
 
 The one substantive obligation is naming discipline in Sugar.Rewards. RewardsSugar.rewardsByAddress is veNFT-scoped, taking a veNFT id and a pool, not an account. Preserve that in the wrapper's name and @doc. This is the ground-truth correction most likely to be quietly fixed into an account-scoping assumption by a future refactor if the naming here is ambiguous.
 
@@ -877,7 +879,7 @@ scored_at = "2026-08-26"
 
 [[task]]
 id = 25
-phase = 8
+phase = 9
 bundle = "write"
 status = "pending"
 milestone = "v0_2"
@@ -906,7 +908,7 @@ scored_at = "2026-08-26"
 
 [[task]]
 id = 26
-phase = 8
+phase = 9
 bundle = "write"
 status = "pending"
 milestone = "v0_2"
@@ -940,7 +942,7 @@ scored_at = "2026-08-26"
 
 [[task]]
 id = 27
-phase = 8
+phase = 9
 bundle = "write"
 status = "pending"
 milestone = "v0_2"
@@ -948,8 +950,8 @@ title = "Write.Voter — vote, reset, poke, claims, managed deposits and distrib
 scores = { d = 5, b = 7, u = 6 }
 depends_on = [26]
 markers = ["security", "parallel"]
-acceptance_criteria = ["All nine already-captured Voter write functions get calldata builders: vote, reset, poke, claimBribes, claimFees, claimRewards, depositManaged, withdrawManaged and distribute", "Every function returns {:ok, %{to: address, calldata: binary}} BY DEFAULT with no signing and no key material touched", "An opt-in signer option threads to Onchain.Signer, and it is impossible to reach a signing path without an explicit caller-supplied signer; a grep test asserts no System.get_env call in this module reads anything key-shaped", "vote's pools and weights array-length mismatch is checked locally before encoding and returns a tagged error tuple, saving a wasted round-trip on a bug the contract also rejects", "Golden-calldata tests pass the task-26 cast oracle for vote, reset and claimBribes — representative of scalar, single-argument and nested-array argument shapes", "A negative-control eth_call against the deployed Voter with a veNFT id the impersonated address does not own returns real on-chain reverts for BOTH reset and vote", "Governance-only setters are explicitly out of scope and the moduledoc says why they are not a library concern", "mix ci passes"]
-out_of_scope = ["Governance-only Voter setters", "veNFT ownership and eligibility reads, which are the read layer", "Any dependency on task 25 — voter.json is already captured, and adding one would be a spurious dependency"]
+acceptance_criteria = ["Every user-facing Voter write function in the captured voter.json gets a calldata builder: vote, reset, poke, claimBribes, claimFees, claimRewards, depositManaged, withdrawManaged and BOTH distribute overloads — distinct selectors, so per the task-11 convention each gets a distinct, self-describing Elixir name. A completeness test derives the covered-function set from the ABI JSON minus an explicit named-exclusion list, so a re-captured ABI that adds a write function fails the test instead of being silently absent", "Every function returns {:ok, %{to: address, calldata: binary}} BY DEFAULT with no signing and no key material touched", "An opt-in signer option threads to Onchain.Signer, and it is impossible to reach a signing path without an explicit caller-supplied signer; a grep test asserts no System.get_env call in this module reads anything key-shaped", "vote's pools and weights array-length mismatch is checked locally before encoding and returns a tagged error tuple, saving a wasted round-trip on a bug the contract also rejects", "Golden-calldata tests pass the task-26 cast oracle for vote, reset and claimBribes — representative of scalar, single-argument and nested-array argument shapes", "A negative-control eth_call against the deployed Voter with a veNFT id the impersonated address does not own returns real on-chain reverts for BOTH reset and vote", "Governance-only setters are explicitly out of scope and the moduledoc says why they are not a library concern", "mix ci passes"]
+out_of_scope = ["Governance-only Voter setters", "updateFor and notifyRewardAmount — keeper and minter accounting entrypoints with no library consumer; they go on the completeness test's explicit exclusion list with that reason, never silently omitted", "veNFT ownership and eligibility reads, which are the read layer", "Any dependency on task 25 — voter.json is already captured, and adding one would be a spurious dependency"]
 touches = ["lib/onchain/aerodrome/write/voter.ex", "test/onchain/aerodrome/write/voter_test.exs"]
 assignee = "grok"
 module = "Onchain.Aerodrome.Write.Voter"
@@ -968,7 +970,7 @@ scored_at = "2026-08-26"
 
 [[task]]
 id = 28
-phase = 8
+phase = 9
 bundle = "write"
 status = "pending"
 milestone = "v0_2"
@@ -976,8 +978,8 @@ title = "Write.Router — swap and liquidity calldata builders with Signer opt-i
 scores = { d = 6, b = 8, u = 7 }
 depends_on = [25, 26]
 markers = ["security"]
-acceptance_criteria = ["Swap functions over the Route struct Aerodrome inherited from Solidly, and addLiquidity and removeLiquidity with their stable and volatile variants, all return {:ok, %{to: address, calldata: binary}} by default", "An opt-in signer option threads to Onchain.Signer; a grep test asserts no System.get_env call in this module reads anything key-shaped", "Golden-calldata tests pass the task-26 cast oracle for a single-hop swap, a multi-hop swap, a stable-pool liquidity call and a volatile-pool liquidity call", "A negative-control eth_call against the deployed Router with an intentionally expired deadline returns the real on-chain expiry revert, proving deadline enforcement is contract-side and not encoder-side", "A second negative control with a slippage minimum set above any achievable output returns the real insufficient-amount revert", "The stable boolean is treated as a domain invariant, not a flag: a test asserts that flipping it targets a DIFFERENT deployed pool for the same token pair, because a wrong default here silently routes to the wrong pool", "The @doc states explicitly whether route validity is checked locally before encoding or left to the contract to revert on, and that this module does not compute expected LP amounts or fair slippage minimums — those are analytics concerns, named as a handoff", "mix ci passes"]
-out_of_scope = ["Router-side quoting such as quoteAddLiquidity, which is a read concern", "Computing a fair slippage minimum, which is an analytics concern named as a handoff", "Concentrated-liquidity position management, which is task 30"]
+acceptance_criteria = ["Swap functions over Aerodrome's four-field Route struct — Solidly's (from, to, stable) plus the factory field Aerodrome added, which the encoder must include — and addLiquidity and removeLiquidity (stable is a bool parameter on each; the actual signature variants are the ETH forms), all returning {:ok, %{to: address, calldata: binary}} by default", "An opt-in signer option threads to Onchain.Signer; a grep test asserts no System.get_env call in this module reads anything key-shaped", "Golden-calldata tests pass the task-26 cast oracle for a single-hop swap, a multi-hop swap, a stable-pool liquidity call and a volatile-pool liquidity call", "A negative-control eth_call against the deployed Router with an intentionally expired deadline returns the real on-chain expiry revert, proving deadline enforcement is contract-side and not encoder-side", "A second negative control with a slippage minimum set above any achievable output returns the real insufficient-amount revert", "The stable boolean is treated as a domain invariant, not a flag: a test asserts that flipping it targets a DIFFERENT deployed pool for the same token pair, because a wrong default here silently routes to the wrong pool", "The @doc states explicitly whether route validity is checked locally before encoding or left to the contract to revert on, and that this module does not compute expected LP amounts or fair slippage minimums — those are analytics concerns, named as a handoff", "mix ci passes"]
+out_of_scope = ["Router-side quoting such as quoteAddLiquidity — a read concern, deliberately unfiled; file it via rmap new when a consumer needs in-package quoting", "Computing a fair slippage minimum — an analytics concern, deliberately unfiled; file it via rmap new alongside router quoting when swap-safety analytics is scoped", "Concentrated-liquidity position management, which is task 30"]
 touches = ["lib/onchain/aerodrome/write/router.ex", "test/onchain/aerodrome/write/router_test.exs"]
 assignee = "cursor"
 module = "Onchain.Aerodrome.Write.Router"
@@ -998,7 +1000,7 @@ scored_at = "2026-08-26"
 
 [[task]]
 id = 29
-phase = 8
+phase = 9
 bundle = "write"
 status = "pending"
 milestone = "v0_2"
@@ -1026,7 +1028,7 @@ scored_at = "2026-08-26"
 
 [[task]]
 id = 30
-phase = 8
+phase = 9
 bundle = "write"
 status = "pending"
 milestone = "v0_2"
@@ -1041,7 +1043,7 @@ assignee = "codex"
 module = "Onchain.Aerodrome.Write.NFPM"
 model = "gpt-5.6-sol"
 body = """
-The write surface for Slipstream concentrated-liquidity position lifecycle management through the NonfungiblePositionManager. This is the most parameter-dense write surface in the package: mint alone carries tick bounds, a fee tier, both token amounts and their minimums, a recipient and a deadline, plus tick-spacing validity against the pool's own spacing.
+The write surface for Slipstream concentrated-liquidity position lifecycle management through the NonfungiblePositionManager. This is the most parameter-dense write surface in the package: mint alone carries tick bounds, the pool-identifying tickSpacing — Slipstream's MintParams has NO fee field; the pool key is (token0, token1, tickSpacing), and sqrtPriceX96 in MintParams creates the pool when it does not yet exist — both token amounts and their minimums, a recipient and a deadline.
 
 Resist the temptation to under-validate mint's tick arguments on the grounds that the contract will revert anyway. A caller deserves a cheap local check before spending gas on a doomed transaction. But that check must never become load-bearing in place of the real on-chain enforcement, which is why the acceptance criteria require testing both: the local rejection, and the deployed revert when the local check is deliberately bypassed.
 
@@ -1054,7 +1056,7 @@ scored_at = "2026-08-26"
 
 [[task]]
 id = 31
-phase = 8
+phase = 9
 bundle = "write"
 status = "pending"
 milestone = "v0_2"
@@ -1065,9 +1067,9 @@ markers = ["security"]
 acceptance_criteria = ["For every Write.* golden-calldata test added in tasks 27 through 30, a paired canary test deliberately corrupts one byte or one argument of the expected calldata and asserts the comparator DOES fail on the corrupted value, proving the assertion is exact-byte equality rather than a prefix match, a length-only check, or an accidentally-true comparison", "At least one canary targets a nested array argument such as Voter vote(uint256,address[],uint256[]), since array-encoding offset and length fields are the most common place a looks-equal bug hides", "The audit is a REUSABLE helper used identically across all four write modules, not one-off corruption code copy-pasted per test file", "A doc note states that this substitutes for real mutation-testing tooling, since no established Elixir mutation-testing framework is in the dependency set, and names what would replace it if one became available", "mix ci passes"]
 out_of_scope = ["Adopting a general-purpose Elixir mutation-testing library, which is a separate and larger decision", "Mutating anything other than the golden-calldata assertions — analytics mutation grading is task 22's territory", "Changing any write module's encoding; a defect found here is filed as a new task"]
 touches = ["test/support/calldata_fixture.ex", "test/onchain/aerodrome/write/"]
-assignee = "cursor"
+assignee = "codex"
 module = "Onchain.Aerodrome.CalldataFixture"
-model = "cursor-grok-4.6-high"
+model = "gpt-5.6-sol"
 body = """
 This closes the gap the onchain-verification discipline calls a deliberate negative control and mutation-survivor review, without pretending real mutation-testing tooling exists here. It does not, and Base simulation is blocked, so building a mutation framework from scratch is out of proportion to this milestone.
 
@@ -1077,6 +1079,8 @@ Nested-array arguments get their own canary. Offset and length fields in ABI arr
 
 If a canary reveals that a write module's encoding is actually wrong, file it as a new task and say so. Do not fix it here — this task grades comparators, it does not re-implement encoders.
 
+ROUTING: this audit is routed to codex for evaluator separation — cursor and grok are one model family, and tasks 27 through 29 were implemented by that family; codex overlaps only with task 30's comparator, and the write-up must name that residual self-audit rather than letting it pass as fully independent.
+
 AUTHORITY: the cast reference values established in tasks 26 through 30 are the ground truth being mutated against. This task's job is proving the comparator, not re-deriving correctness.
 """
 created_at = "2026-08-26"
@@ -1084,7 +1088,7 @@ scored_at = "2026-08-26"
 
 [[task]]
 id = 32
-phase = 9
+phase = 8
 bundle = "evidence_release"
 status = "pending"
 milestone = "v0_1"
@@ -1112,13 +1116,13 @@ scored_at = "2026-08-26"
 
 [[task]]
 id = 33
-phase = 9
+phase = 8
 bundle = "evidence_release"
 status = "pending"
 milestone = "v0_1"
 title = "Live integration proof of the full read, analytics and price surface across two endpoints"
 scores = { d = 4, b = 8, u = 9 }
-depends_on = [5, 21, 23, 24]
+depends_on = [5, 21, 23, 24, 18]
 acceptance_criteria = ["An integration-tagged suite exercises Sugar.Pools, Sugar.Tokens, Sugar.Positions, Sugar.VeNfts, Sugar.Rewards, Sugar.Relays and Sugar.Prices against a live Base RPC, excluded from the default mix test.json run and from mix ci's excluded-integration pass", "At least one assertion proves the FULL Sugar.Pools enumeration reaches or exceeds a live count() call made in the same test — the end-to-end proof that the pagination driver behaves against the real contract and not only against fixtures", "The suite runs through the task-5 multi-endpoint seam and asserts identical decoded results from the public Base endpoint and a second unprivileged provider, so the portability claim rests on two endpoints rather than one", "At least one Analytics.APR result is computed end to end from live data and asserted for INTERNAL consistency: each Rate's numerator over its denominator reproduces its rate, and the fee and emission bases differ. No assertion compares against aerodrome.finance", "The suite doc states explicitly that this is NOT a revm or fork simulation, since Base chain id 8453 is hard-blocked in onchain_evm, and that it is a live-endpoint proof complementing the pinned-fixture suite rather than replacing it", "Missing credentials flunk with the exact env vars and export commands; nothing is ever skipped silently", "mix ci passes"]
 out_of_scope = ["Write-path testing, which is milestone v0_2", "Anything requiring EVM simulation", "Tuning any analytics constant to match a frontend figure"]
 touches = ["test/onchain/aerodrome/integration/read_surface_test.exs"]
@@ -1143,7 +1147,7 @@ scored_at = "2026-08-26"
 
 [[task]]
 id = 34
-phase = 9
+phase = 8
 bundle = "evidence_release"
 status = "pending"
 milestone = "v0_1"
@@ -1165,6 +1169,34 @@ Three things carry weight beyond bookkeeping. The descripex roster is how an age
 Do not publish. That is a human call gated on this task's pass. And do not silently register the harness project either — name it as an operator prerequisite so nobody assumes it happened.
 
 AUTHORITY: the built artifacts themselves. mix hex.build's file list, mix docs output, and a live OnchainAerodrome.describe/0 call are the evidence — not an assertion that the configuration looks right.
+"""
+created_at = "2026-08-26"
+scored_at = "2026-08-26"
+
+[[task]]
+id = 35
+phase = 9
+bundle = "write"
+milestone = "v0_2"
+status = "pending"
+title = "Cut 0.2.0: live write-surface evidence capstone, CHANGELOG, SECURITY scope and descripex roster for Write.*"
+scores = { d = 4, b = 7, u = 7 }
+markers = ["docs"]
+depends_on = [27, 28, 29, 30, 31, 34]
+acceptance_criteria = ["An integration-tagged live evidence suite exercises every Write.* module end to end against live Base in one sweep — for each module at least one builder's calldata is re-graded against the task-26 cast oracle at run time and at least one negative-control eth_call reproduces a real on-chain revert — paralleling what task 33 proves for the read surface; missing credentials flunk with exact setup instructions, never skip", "CHANGELOG.md's Unreleased section becomes a dated 0.2.0 entry describing the shipped write surface in prose, not a copy of task titles", "SECURITY.md's in-scope section is extended to the write surface: calldata construction for value-moving functions, the Signer opt-in boundary, and the no-key-material-from-env invariant", "lib/onchain_aerodrome.ex's Descripex.Discoverable roster is extended to every landed Write.* module, VERIFIED by running OnchainAerodrome.describe/0 and confirming each appears", "mix hex.build produces a valid tarball with no warnings, and mix docs builds clean", "mix ci passes"]
+out_of_scope = ["Running mix hex.publish, which is a human decision gated on this task passing", "VotingEscrow lock lifecycle writes (create_lock, increase_amount, increase_unlock_time, merge, split, withdraw), rebase claiming via the RewardsDistributor, zap in/out, and incentive deposits — deliberately absent from v0_2 and unfiled; file via rmap new when a consumer needs them. Until then, task 27's vote/reset/poke presuppose a veNFT created outside this package, and the moduledoc must say so", "Any simulation-based evidence — Base is hard-blocked in onchain_evm and the cast oracle plus live reverts are the evidence mechanism"]
+touches = ["CHANGELOG.md", "README.md", "SECURITY.md", "lib/onchain_aerodrome.ex", "mix.exs", "test/onchain/aerodrome/integration/write_surface_test.exs"]
+assignee = "grok"
+module = "OnchainAerodrome"
+model = "grok-4.6"
+body = """
+The capstone for v0_2, mirroring what task 34 is for v0_1. The milestone's own hypothesis — a write surface shipping with honest evidence when no local EVM can execute it — is only tested at milestone level if the per-task cast-oracle tests are joined by one live end-to-end sweep and the release mechanics actually happen. Without this task the milestone ends at a grading task with no release.
+
+The live sweep is the write-side sibling of task 33: not a re-test of every builder, but one proof per module that the calldata a consumer gets today still grades against an independent encoder and still draws the expected real revert from the deployed contract. It is what catches an upstream redeploy between the write tasks landing and the release being cut.
+
+The deliberately-absent write surfaces are named in out_of_scope so their absence is a recorded decision rather than a silent gap. Do not quietly add any of them here.
+
+AUTHORITY: the built artifacts (hex tarball, docs, a live describe/0 call) and live Base reverts through the task-26 harness. Self-reported greenness of the write modules is not evidence; this task re-derives it at release time.
 """
 created_at = "2026-08-26"
 scored_at = "2026-08-26"

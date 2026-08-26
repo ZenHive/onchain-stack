@@ -40,7 +40,7 @@ Three facts shape the whole plan and are worth reading before picking up any tas
 - **target_version:** 0.2.0
 - **status:** ⬜ pending
 - **hypothesis:** Tests whether a full Router/Gauge/NFPM/Voter write surface can ship with honest evidence when no local EVM can execute it — calldata graded against an independent encoder and real on-chain reverts, never against our own encoder.
-- **pinned tasks:** 0/7 done
+- **pinned tasks:** 0/8 done
 <!-- MILESTONES:END -->
 
 ---
@@ -144,9 +144,21 @@ Three facts shape the whole plan and are worth reading before picking up any tas
 
 ---
 
-## Write Surface
+## Evidence & Release
 
 <!-- TASKS:BEGIN phase=8 -->
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 32 `[P]` | ⬜ | 🎁 **evidence_release** · 🚀 **v0_1** · *Onchain.Aerodrome.AbiDrift* · Runnable ABI-drift detector: re-fetch every priv/abis entry and diff selector sets [D:4/B:7/U:7 → Eff:1.75] 🚀 |
+| Task 33 | ⬜ | 🎁 **evidence_release** · 🚀 **v0_1** · *Onchain.Aerodrome* · Live integration proof of the full read, analytics and price surface across two endpoints [D:4/B:8/U:9 → Eff:2.12] 🎯 |
+| Task 34 | ⬜ | 🎁 **evidence_release** · 🚀 **v0_1** · *OnchainAerodrome* · 📝 Cut 0.1.0: CHANGELOG, README status, SECURITY scope, descripex roster and a hex build dry run [D:3/B:6/U:7 → Eff:2.17] 🎯 |
+<!-- TASKS:END -->
+
+---
+
+## Write Surface
+
+<!-- TASKS:BEGIN phase=9 -->
 | Task | Status | Notes |
 |------|--------|-------|
 | Task 25 | ⬜ | 🎁 **write** · 🚀 **v0_2** · *Onchain.Aerodrome.Contracts* · 🔒 Capture Router, Gauge and NFPM ABIs from Sourcify and extend the registry with two-source-verified addresses [D:5/B:9/U:8 → Eff:1.7] 🚀 |
@@ -156,18 +168,7 @@ Three facts shape the whole plan and are worth reading before picking up any tas
 | Task 29 `[P]` | ⬜ | 🎁 **write** · 🚀 **v0_2** · *Onchain.Aerodrome.Write.Gauge* · 🔒 Write.Gauge — stake, unstake and claim calldata builders [D:4/B:7/U:7 → Eff:1.75] 🚀 |
 | Task 30 `[P]` | ⬜ | 🎁 **write** · 🚀 **v0_2** · *Onchain.Aerodrome.Write.NFPM* · 🔒 Write.NFPM — Slipstream concentrated-liquidity position lifecycle [D:6/B:8/U:7 → Eff:1.25] 📋 |
 | Task 31 | ⬜ | 🎁 **write** · 🚀 **v0_2** · *Onchain.Aerodrome.CalldataFixture* · 🔒 Mutation-survivor audit: prove the golden-calldata comparators actually discriminate [D:5/B:9/U:6 → Eff:1.5] 🚀 |
-<!-- TASKS:END -->
-
----
-
-## Evidence & Release
-
-<!-- TASKS:BEGIN phase=9 -->
-| Task | Status | Notes |
-|------|--------|-------|
-| Task 32 `[P]` | ⬜ | 🎁 **evidence_release** · 🚀 **v0_1** · *Onchain.Aerodrome.AbiDrift* · Runnable ABI-drift detector: re-fetch every priv/abis entry and diff selector sets [D:4/B:7/U:7 → Eff:1.75] 🚀 |
-| Task 33 | ⬜ | 🎁 **evidence_release** · 🚀 **v0_1** · *Onchain.Aerodrome* · Live integration proof of the full read, analytics and price surface across two endpoints [D:4/B:8/U:9 → Eff:2.12] 🎯 |
-| Task 34 | ⬜ | 🎁 **evidence_release** · 🚀 **v0_1** · *OnchainAerodrome* · 📝 Cut 0.1.0: CHANGELOG, README status, SECURITY scope, descripex roster and a hex build dry run [D:3/B:6/U:7 → Eff:2.17] 🎯 |
+| Task 35 | ⬜ | 🎁 **write** · 🚀 **v0_2** · *OnchainAerodrome* · 📝 Cut 0.2.0: live write-surface evidence capstone, CHANGELOG, SECURITY scope and descripex roster for Write.* [D:4/B:7/U:7 → Eff:1.75] 🚀 |
 <!-- TASKS:END -->
 
 ---
