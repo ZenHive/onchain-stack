@@ -34,11 +34,11 @@ The V3 core, math-validation suite, V4 wrapper modules, and read-path multicall 
 ## 🎯 Current Focus
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 5 — Aave V4 Support (10 of 10 done · 0 in progress)
+**Focus phase:** 5 — Aave V4 Support (10 of 13 done · 0 in progress)
 
 **Last shipped:** Task 52 — Prove V4 reads and PositionManager writes against deployed mainnet state on 2026-08-23
 
-**Up next:** Task 59 — Retire stable-rate APIs and resolve variable debt tokens through the dedicated Pool getter [D:4/B:8/U:7 → Eff:1.88] 🚀
+**Up next:** Task 69 — Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs [D:4/B:9/U:9 → Eff:2.25] 🎯
 <!-- FOCUS:END -->
 
 **Active path:** Task 52 proves the shipped V4 wrappers against pinned deployed state, including stateful PositionManager success and authorization-error paths.
@@ -109,6 +109,9 @@ V4 went live on Ethereum mainnet on 2026-03-30 with a Hub-and-Spoke architecture
 | Task 51 | ✅ | 🎁 **v4_support** · *Onchain.Aave.V4.PositionManager* · Implement Onchain.Aave.V4.PositionManager ergonomic write wrappers (supply/borrow/repay analogs) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
 | Task 52 | ✅ | 🎁 **v4_support** · 🚀 **v0_5** · *test/onchain/aave/v4/* · 🔒 Prove V4 reads and PositionManager writes against deployed mainnet state [D:6/B:9/U:9 → Eff:1.5] 🚀 |
 | Task 57 | ✅ | 🎁 **v4_support** · *Onchain.Aave.V4.Hub* · Wrap remaining IHub preview converters and Hub bound constants [D:3/B:4/U:5 → Eff:1.5] 🚀 |
+| Task 66 | ⬜ | 🎁 **v4_support** · *Onchain.Aave.V4.TokenizationSpoke* · Execute the V4 Tokenization Spoke: ERC-4626 writes and the share token's ERC-20 surface [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 67 | ⬜ | 🎁 **v4_support** · *Onchain.Aave.V4.PositionManager* · Wrap V4 position configuration and position-manager authorization, and close the Taker fork-evidence gap [D:4/B:8/U:8 → Eff:2.0] 🎯 |
+| Task 69 | ⬜ | 🎁 **v4_support** · *Onchain.Aave.Contracts* · Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs [D:4/B:9/U:9 → Eff:2.25] 🎯 |
 <!-- TASKS:END -->
 
 ---
@@ -149,6 +152,7 @@ Decode what the deployed protocol says back. hieroglyph ≥ 1.5 carries the full
 | Task 63 | ⬜ | 🎁 **event_error_decoding** · *Onchain.Aave.Events* · Decode deployed Aave V3 Pool events from logs with topic-filter fetch [D:5/B:8/U:7 → Eff:1.5] 🚀 |
 | Task 64 | ⬜ | 🎁 **event_error_decoding** · Surface decoded revert reasons on Aave write and call failures [D:4/B:7/U:7 → Eff:1.75] 🚀 |
 | Task 65 | 🔶 | 🎁 **event_error_decoding** · Adopt strict ABI decoding across Aave response decode paths [D:3/B:6/U:5 → Eff:1.83] 🚀 ⛔ onchain task 88 must land first: Onchain.ABI.decode_response/2 and Onchain.Contract.call accept no decode options today, so strict mode is unreachable from this repo |
+| Task 68 | ⬜ | 🎁 **event_error_decoding** · *Onchain.Aave.Events* · Decode V4 Hub, Spoke and Tokenization Spoke events from logs [D:5/B:8/U:7 → Eff:1.5] 🚀 |
 <!-- TASKS:END -->
 
 ---

@@ -943,3 +943,116 @@ Routing is left open on purpose: the change is small but its cost depends on how
 """
 created_at = "2026-08-25"
 scored_at = "2026-08-25"
+
+[[task]]
+id = "66"
+phase = 5
+bundle = "v4_support"
+status = "pending"
+title = "Execute the V4 Tokenization Spoke: ERC-4626 writes and the share token's ERC-20 surface"
+scores = { d = 5, b = 8, u = 8 }
+acceptance_criteria = ["Whether the deployed share token exposes an executable ERC-20 surface — transfer, approve, allowance, EIP-2612 permit — and under what restrictions is established live against a deployed Tokenization Spoke and recorded in the moduledoc; the wrapper surfaces what exists and documents what does not", "deposit, mint, withdraw and redeem execute against a pinned-block mainnet fork and move both share balance and underlying balance in the direction and magnitude the matching preview_* read predicted, within the documented rounding direction", "A share transfer between two accounts is exercised on the fork and both balances reflect it, or the finding that transfers are restricted is recorded with the on-chain evidence for that restriction", "Each new write is pinned by an encoded-calldata unit test asserting the 4-byte selector and argument encoding, matching the existing V4 position-manager test pattern", "Share-token reads route through Onchain.ERC20 rather than module-local call_uint reimplementations, or the moduledoc records why they cannot", "Missing RPC or fork prerequisites flunk with the exact export commands, never skip", "mix ci passes"]
+out_of_scope = ["Hub-level writes and the Hub/Spoke configurators", "IConfigPositionManager and ISpoke position-manager authorization — its own task", "Off-chain APY or share-price timeseries derivation"]
+touches = ["lib/onchain/aave/v4/tokenization_spoke.ex", "test/onchain/aave/v4/tokenization_spoke_test.exs", "test/onchain/aave/v4/tokenization_spoke_write_integration_test.exs", "CHANGELOG.md"]
+assignee = "codex"
+module = "Onchain.Aave.V4.TokenizationSpoke"
+model = "gpt-5.6-sol"
+body = """
+The Tokenization Spoke is the one V4 object other protocols can hold: an ERC-4626 share per (Hub, asset), which is what makes a V4 supply position portable into a vault, a lending market, or trading collateral elsewhere. This library can currently only look at it. lib/onchain/aave/v4/tokenization_spoke.ex is read-only — the ERC-4626 previews and caps are wrapped (preview_deposit/preview_mint/preview_withdraw/preview_redeem, max_*), the EIP-712 typehashes and domain separator are readable, but there is no deposit, mint, withdraw or redeem, and the share token exposes only balance_of/2 and total_supply/1 — no transfer, approve, allowance or executable permit. A consumer can compute what a deposit would mint and cannot make the deposit.
+
+Premise unverified — confirm before building on it: that the deployed share token is a freely transferable ERC-20 with working EIP-2612 permit. It is inferred from the permit typehash and domain-separator getters this module already reads, not from an on-chain observation; a Spoke share could be transfer-restricted while a position is used as collateral. Establish the real behavior first and let the finding shape the wrapper, rather than shipping a transfer wrapper that reverts.
+
+Onchain.ERC20 (onchain dep) already provides balance_of/allowance/decimals/symbol/total_supply/approve/transfer and is the established pattern in this repo's V3 write integration tests. Prefer delegating to it over reimplementing token reads locally.
+
+The four signed-intent typehashes this module reads (deposit/mint/withdraw/redeem) suggest a signature path exists alongside the direct calls; wrap the direct calls here and record what the intent path would additionally require.
+
+AUTHORITY: the deployed Ethereum Tokenization Spokes registered in Onchain.Aave.Contracts and Aave-owned aave-v4 ITokenizationSpoke source. Fork execution at a pinned block is the evidence for every write; previews and third-party ABIs are reference material only.
+
+Dispatch trigger: money-path write surface requiring live external-system evidence.
+"""
+created_at = "2026-08-26"
+scored_at = "2026-08-26"
+
+[[task]]
+id = "67"
+phase = 5
+bundle = "v4_support"
+status = "pending"
+title = "Wrap V4 position configuration and position-manager authorization, and close the Taker fork-evidence gap"
+scores = { d = 4, b = 8, u = 8 }
+acceptance_criteria = ["A user can authorize and revoke a position manager on a Spoke and toggle a reserve's collateral flag through this library's public API, without hand-encoding calldata", "The Config Position Manager's on-behalf-of configuration surface is wrapped with the owner as an explicit required argument, consistent with the Giver/Taker wrappers' rule that no entrypoint infers the owner from msg.sender", "withdraw, approve_withdraw and both renounce_* paths are exercised on a pinned-block mainnet fork with balance and allowance assertions, not only by calldata-shape unit tests", "A withdraw attempted beyond the granted allowance fails on the fork and surfaces the tagged insufficient_withdraw_allowance tuple carrying allowance and required amount", "Each new write is pinned by an encoded-calldata unit test asserting the 4-byte selector and argument encoding", "The raw encoded_call usages in the V4 deployed integration test are replaced by the new wrappers", "mix ci passes"]
+out_of_scope = ["INativeTokenGateway and ISignatureGateway", "The governance surfaces: IHubConfigurator, ISpokeConfigurator, IAaveV4ConfigEngine, IAccessManagerEnumerable", "Tokenization Spoke ERC-4626 writes — its own task"]
+touches = ["lib/onchain/aave/v4/position_manager.ex", "lib/onchain/aave/v4/spoke.ex", "test/onchain/aave/v4/position_manager_test.exs", "test/onchain/aave/v4/deployed_integration_test.exs", "CHANGELOG.md"]
+assignee = "cursor"
+module = "Onchain.Aave.V4.PositionManager"
+model = "cursor-grok-4.6-high"
+body = """
+V4's delegation surface is what makes a position programmable — Aave ships the three Position Managers explicitly so third-party contracts can act on a position without governance listing, gated by per-reserve allowances the user grants and can revoke. This library wraps only two thirds of it, and one gap blocks ordinary use: there is no way to enable a position manager or to toggle a reserve as collateral. IConfigPositionManager has zero coverage, and ISpoke's setUserPositionManager / setUsingAsCollateral are reachable today only by hand-encoding — the V4 deployed integration test calls them through raw encoded_call rather than through Spoke (verified 2026-08-26 by reading test/onchain/aave/v4/deployed_integration_test.exs and grepping lib/ for the interface names).
+
+The second half of this task closes an evidence gap on a money path already shipped: of the Taker surface, supply, approve_borrow, borrow and repay are exercised on a fork at a pinned mainnet block, but withdraw, approve_withdraw and the renounce_* counterparts are pinned only by calldata-shape unit tests against an RPC stub. A selector assertion proves the call encodes; it does not prove the deployed contract moves the assets or enforces the allowance. Both halves live in the same module and the same fork test, so they are one session's work.
+
+AUTHORITY: the deployed Ethereum V4 Spokes and Position Managers registered in Onchain.Aave.Contracts, plus Aave-owned aave-v4 ISpoke / IConfigPositionManager / ITakerPositionManager source. Fork execution at a pinned block is the evidence; the existing stub tests are reference material only.
+
+Dispatch trigger: authorization and money-path write surface requiring live external-system evidence.
+"""
+created_at = "2026-08-26"
+scored_at = "2026-08-26"
+
+[[task]]
+id = "68"
+phase = 8
+bundle = "event_error_decoding"
+status = "pending"
+title = "Decode V4 Hub, Spoke and Tokenization Spoke events from logs"
+scores = { d = 5, b = 8, u = 7 }
+depends_on = [63]
+acceptance_criteria = ["The V4 protocol events actually emitted by the deployed Hubs, Spokes and Tokenization Spokes are enumerated from Aave-owned aave-v4 source and each is decoded from a raw log map into a named-field map", "A pinned-block integration test fetches real mainnet V4 logs via Onchain.RPC.eth_get_logs and decodes them, asserting known field values of at least one Hub credit-line event, one Spoke position event and one ERC-4626 Deposit or Withdraw; missing RPC env vars flunk with exact export instructions", "Topic-filter construction scopes a fetch to one Spoke or one Hub asset, and every log the filter returns decodes as the expected event", "Spoke-local reserveId values in decoded events are resolvable to their underlying asset through the existing Spoke reads, and the moduledoc shows that path", "Decoding shares the module and conventions task 63 establishes for V3 rather than forking a parallel implementation", "Unit tests pin decoding against log fixtures recorded from the live observations", "mix ci passes"]
+out_of_scope = ["V3 Pool events — task 63 owns them", "Streaming via eth_subscribe, and any indexer, backfill or storage machinery", "Revert decoding — task 64 owns it"]
+touches = ["lib/onchain/aave/events.ex", "lib/onchain/aave/v4/events.ex", "test/onchain/aave/v4/events_test.exs", "test/onchain/aave/v4/events_integration_test.exs", "CHANGELOG.md"]
+assignee = "grok"
+module = "Onchain.Aave.Events"
+model = "grok-4.6"
+body = """
+Nothing in this library can observe what V4 did. The wrappers can read current Hub and Spoke state and execute writes, but there is no way to see a supply, a borrow, a liquidation, a credit-line draw or a share mint after the fact — and V4 makes that gap worse than it was in V3, because state that used to be one Pool's is now spread across three Hubs and their Spokes, with credit lines moving liquidity between them. Point-in-time reads cannot reconstruct that movement; only the logs can.
+
+Task 63 builds the event surface for the deployed V3 Pool and explicitly excludes V4. This task extends that work to V4 and should reuse its module, its signature-string conventions and its topic-filter construction rather than starting a second implementation. It depends on 63 landing first.
+
+Two things are V4-specific and worth attention. Credit-line events at the Hub have no V3 analog — they are the only externally visible record of a Spoke drawing on or restoring Hub liquidity, which is the flow that makes the Hub-and-Spoke design observable at all. And Spoke events carry Spoke-local reserveId rather than an asset address, so a decoded event is not self-describing: resolving an id back to its underlying is part of making the output usable.
+
+AUTHORITY: the deployed Ethereum V4 contracts registered in Onchain.Aave.Contracts and Aave-owned aave-v4 IHub / ISpoke / ITokenizationSpoke event definitions. Establish each signature and indexed layout from that source and prove decoding against real mainnet logs at pinned blocks before deriving any fixture; explorers and third-party ABIs are reference material only.
+
+Dispatch trigger: public API addition with live external-system evidence against the archive node.
+"""
+created_at = "2026-08-26"
+scored_at = "2026-08-26"
+
+[[task]]
+id = "69"
+phase = 5
+bundle = "v4_support"
+status = "pending"
+title = "Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs"
+scores = { d = 4, b = 9, u = 9 }
+acceptance_criteria = ["Every AaveV4 entry the address book lists for Ethereum and for Avalanche resolves through this library's public API — Hubs, Spokes and their oracles, Tokenization Spokes, Position Managers, gateways, Treasury Spoke, configurators and the access manager", "A Hub is no longer restricted to three hardcoded atoms: the fourth deployed Ethereum Hub resolves and works through the Hub read functions with no code change beyond registry data, and an unknown hub still returns the tagged unknown_hub error", "networks/0 reports networks that exist in the V4 registry, not only those present in the V3 registry, and a test pins that a V4-only network would be listed", "A pinned-block integration read against at least one newly registered Ethereum Hub and one Avalanche Spoke returns live data, proving the addresses are real and the Avalanche endpoint is reachable; missing RPC env vars flunk with exact export instructions", "V4_SCOPING.md and CHANGELOG no longer state that V4 is Ethereum-mainnet-only, and V4_SCOPING.md records the date and address-book commit its enumeration was re-derived from", "CLAUDE.md's address-verification recipe names the address book's current canonical org", "mix ci passes"]
+out_of_scope = ["Wrapping the configurator, config-engine or access-manager interfaces — registering their addresses is enough here", "Avalanche-specific write paths or a second fork-simulation target", "Chainlink price-feed address space, which is separate from the Aave registry"]
+touches = ["lib/onchain/aave/contracts.ex", "lib/onchain/aave/v4/hub.ex", "test/onchain/aave/contracts_test.exs", "test/onchain/aave/v4/hub_test.exs", "V4_SCOPING.md", "CLAUDE.md", "CHANGELOG.md"]
+assignee = "codex"
+module = "Onchain.Aave.Contracts"
+model = "gpt-5.6-sol"
+body = """
+The V4 registry describes a deployment that has moved on twice, and one of the two gaps is structural rather than data.
+
+Verified against the address book on 2026-08-26: the AaveV4Ethereum namespace has grown from 150 entries at commit 10c4e9d (2026-04-16, the snapshot V4_SCOPING.md was built from) to 304 today. That includes a fourth Hub, GLOBAL_DOLLAR_HUB at 0x62d63197660c080236193CA60b70E49A08E90368, two additional Spokes, four additional Tokenization Spokes and their interest-rate strategies. Onchain.Aave.V4.Hub types a hub as :core | :prime | :plus and resolves it through a closed case, so the fourth Hub is not merely missing from the registry — it cannot be named. Opening that up is the substance of this task; the rest is data.
+
+Second: V4 is no longer Ethereum-only. It deployed to Avalanche (chainId 43114) on 2026-07-15 with 73 entries — one Core Hub, Main / Forex / AVAX-Correlated Spokes with their oracles, seven Tokenization Spokes, the full Position Manager set including both gateways, and a Treasury Spoke. The contract kind labels are identical to Ethereum's, so no new registry shape is needed. Both @v4_addresses and @v4_tokenization_spokes are already keyed by network, and address/2, v4_contracts/1 and v4_tokenization_spoke/3 are network-generic — adding a network is additive data. The one function that would silently omit it is networks/0, which walks only the V3 map.
+
+Two documentation claims are now false and are load-bearing for other sessions: V4_SCOPING.md and the v0.4.0 CHANGELOG entry both state V4 is Ethereum-mainnet-only, and a task in the aave_sim repo cites that claim as its reason to exclude V4 from multi-chain work. Also note the address book repo has been transferred from the bgd-labs org to aave-dao; the raw URL in CLAUDE.md still resolves, but the recipe should name the canonical org.
+
+Upstream also renamed some keys without changing addresses (ETHERFI_E_SPOKE became ETHERFI_ESPOKE, and price-feed keys gained a _SPOKE infix). Our atoms need not mirror upstream naming, but where they were derived from it, keep them resolvable and say which convention this registry follows.
+
+AUTHORITY: the address book at aave-dao/aave-address-book (safe.csv, the AaveV4Ethereum and AaveV4Avalanche namespaces) for the address set, and a live read against the deployed contracts for proof that a registered address is the contract we think it is. Explorers, blog posts and this repo's existing V4_SCOPING.md snapshot are reference material only.
+
+Dispatch trigger: the library's stated coverage disagrees with deployed reality on a money surface, and the fix needs live external-system evidence.
+"""
+created_at = "2026-08-26"
+scored_at = "2026-08-26"
