@@ -1094,3 +1094,45 @@ started_at = "2026-08-22"
 scored_at = "2026-08-22"
 done_at = "2026-08-22"
 shipped_in = "c0ac7c9865de704190aa868a50b89523748ffc49"
+
+[[task]]
+id = "64"
+phase = 3
+bundle = "standalone"
+status = "pending"
+title = "Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch"
+scores = { d = 5, b = 9, u = 8 }
+acceptance_criteria = ["A fork pinned to a real Base (chain id 8453) block succeeds and executes under a revision that is not silently the Ethereum mainnet schedule misapplied to an L2 block number — verified against an actual behavioural difference (e.g. an opcode or gas rule), not just by reading a configured value back", "Existing Ethereum mainnet (chain id 1) fork behaviour is unchanged: the current `MAINNET_HARDFORK_BLOCKS` resolution and its historical-block test coverage still pass as a regression check", "If the caller-supplied `:spec_id` escape hatch is the chosen (or partial) solution, an invalid or unknown spec_id value fails loudly with a tagged error — it must never silently fall back to the mainnet schedule or to a default revision", "The task's implementer evaluates both shapes named in the body with evidence (schedule table vs. escape hatch, or both) and states which was built and why, rather than presupposing one", "mix ci passes, including cargo tests for the native crate"]
+out_of_scope = ["OP-Stack-specific execution semantics beyond hardfork/SpecId resolution (L1 data fee opcode, deposit transactions, Arbitrum retryables) — this task only makes fork revision resolution correct for non-mainnet chain ids, not full L2 semantic parity", "Changes to onchain_aerodrome or any other consumer repo — this task is scoped to onchain_evm only", "Building out a generic multi-chain provider/registry abstraction beyond what resolving spec_id needs"]
+touches = ["native/onchain_evm/src/lib.rs", "lib/onchain/evm.ex"]
+assignee = "grok"
+module = "native/onchain_evm, Onchain.EVM"
+model = "grok-4.6"
+body = """
+`spec_id_for_fork` in `native/onchain_evm/src/lib.rs:98-102` hard-rejects every chain id except Ethereum mainnet:
+
+```rust
+fn spec_id_for_fork(chain_id: u64, block_number: u64) -> Result<SpecId, EvmError> {
+    if chain_id != ETHEREUM_MAINNET_CHAIN_ID {
+        return Err(EvmError::ForkError(format!(
+            "unsupported chain id {chain_id}: hardfork schedule is known only for Ethereum mainnet (chain id {ETHEREUM_MAINNET_CHAIN_ID})"
+        )));
+    }
+    ...
+}
+```
+
+`lib/onchain/evm.ex:34-40` documents the same constraint in the `Onchain.EVM` moduledoc's "Fork revision" section: "RPC endpoints whose chain id is not Ethereum mainnet (`1`) return `{:error, {:fork_error, _}}` rather than silently executing under mainnet rules." Both are working as designed today — this is not a bug, it is a deliberately narrow feature that now blocks real consumers.
+
+This is the direct extension of Task 60 (`Derive the EVM revision from the forked block instead of always executing under one modern SpecId`), which built the mainnet-only `MAINNET_HARDFORK_BLOCKS` schedule and explicitly scoped "supporting chains beyond those the module already targets" out. That scope boundary is what this task now needs to cross.
+
+**Concrete blocking case:** `onchain_aerodrome` targets Aerodrome Finance on Base (chain id 8453). Its intended test strategy is revm fork tests against a pinned Base block plus a `simulate/2` path for validating writes before broadcast — both impossible today, since any fork attempt against a Base RPC returns `{:error, {:fork_error, _}}`. It has fallen back to golden fixtures plus pinned-block `eth_call`, which cannot validate write paths at all. The same blocker hits every OP-Stack chain (Optimism, chain id 10; Base, chain id 8453) and Arbitrum.
+
+**Two shapes to evaluate, not presuppose:**
+1. Add an OP-Stack/Base hardfork-schedule table (mirroring `MAINNET_HARDFORK_BLOCKS`) so `spec_id_for_fork` resolves known L2 chain ids against their own activation history.
+2. A caller-supplied `:spec_id` option that bypasses the built-in schedule lookup entirely, putting correctness burden on the caller. Likely far smaller and unblocks every chain at once, but is a weaker long-term guarantee for chains this library wants to support first-class.
+
+Pick with evidence — option 2 may be the right immediate unblock even if option 1 (or both together) is the correct long-term answer for chains this library supports directly.
+"""
+created_at = "2026-08-26"
+scored_at = "2026-08-26"

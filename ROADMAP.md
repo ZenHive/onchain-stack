@@ -11,11 +11,11 @@
 ---
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 3 — Standalone & Release (12 of 13 done · 0 in progress)
+**Focus phase:** 3 — Standalone & Release (12 of 14 done · 0 in progress)
 
 **Last shipped:** Task 62 — Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex on 2026-08-23
 
-**Up next:** none — focus phase complete or all blocked
+**Up next:** Task 64 — Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch [D:5/B:9/U:8 → Eff:1.7] 🚀
 <!-- FOCUS:END -->
 
 ---
@@ -69,7 +69,7 @@ Bundles identified via code review — grouped by shared code and common goals.
 Standalone tasks: Rust unit tests, tokio runtime reuse, clippy CI, codegen extensions, and hex-release prep.
 
 <!-- TASKS:BEGIN phase=3 -->
-> 13 tasks. See [CHANGELOG.md](CHANGELOG.md#phase-3-standalone-release).
+> 14 tasks. See [CHANGELOG.md](CHANGELOG.md#phase-3-standalone-release).
 <!-- TASKS:END -->
 
 ---
