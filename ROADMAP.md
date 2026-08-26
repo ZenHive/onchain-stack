@@ -34,5 +34,5 @@
 | Task 7 | ✅ | 🎁 **public_faucet** · Public `Onchain.Tempo.Faucet` helper for `tempo_fundAddress` [D:2/B:5/U:5 → Eff:2.5?] 🎯 |
 | Task 10 | ✅ | 🎁 **integration_coverage** · Stop hardcoding Builder @default_gas_limit — estimate gas per-tx (mirror mppx) [D:3/B:4/U:6 → Eff:1.67?] 🚀 |
 | Task 11 | ✅ | 🎁 **cartouche_migration** · Update transport stub off the :cartouche,:client seam after onchain's Req migration [D:2/B:5/U:5 → Eff:2.5?] 🎯 |
-| Task 12 | 🔄 | 🎁 **verification** · 🔒 Mutation-grade 0x76 transaction and signing invariants [D:5/B:9/U:8 → Eff:1.7] 🚀 |
+| Task 12 | ✅ | 🎁 **verification** · 🔒 Mutation-grade 0x76 transaction and signing invariants [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 <!-- TASKS:END -->
