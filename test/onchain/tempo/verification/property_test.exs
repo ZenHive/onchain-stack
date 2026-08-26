@@ -33,23 +33,38 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
            ]
   end
 
-  property "deserialize round-trips every field of a spec-encoded envelope" do
+  property "deserialize round-trips every named 0x76 field of a spec-encoded envelope" do
     check all(fields <- field_map_gen(), max_runs: 40) do
-      dummy = <<1::unsigned-big-size(256), 2::unsigned-big-size(256), 27>>
+      dummy = SpecEncoder.secp256k1_sig(1, 2, 0)
       hex = SpecEncoder.to_hex(SpecEncoder.signed_envelope(fields, dummy))
 
       assert {:ok, tx} = Transaction.deserialize(hex)
-      assert tx.chain_id == fields.chain_id
-      assert length(tx.calls) == length(fields.calls)
-      assert Enum.at(tx.fields, 3) == quantity_bin(fields.gas_limit)
-      assert Enum.at(tx.fields, 6) == quantity_bin(fields.nonce_key)
-      assert Enum.at(tx.fields, 7) == quantity_bin(fields.nonce)
-      assert Enum.at(tx.fields, 8) == quantity_bin(fields.valid_before)
-      assert Enum.at(tx.fields, 9) == quantity_bin(fields.valid_after)
-      assert hd(tx.calls).to == hd(fields.calls).to
-      assert hd(tx.calls).value == hd(fields.calls).value
-      assert hd(tx.calls).input == hd(fields.calls).input
+      assert_round_tripped(tx, fields, dummy)
     end
+  end
+
+  test "unsigned spec envelope has one RLP item per named field and omits optional key_authorization" do
+    fields = %{
+      chain_id: 1,
+      max_priority_fee_per_gas: 0,
+      max_fee_per_gas: 1,
+      gas_limit: 21_000,
+      calls: [%{to: @token, value: 0, input: <<>>}],
+      access_list: [],
+      nonce_key: 0,
+      nonce: 0,
+      valid_before: 0,
+      valid_after: 0,
+      fee_token: @token,
+      fee_payer?: false,
+      aa_authorization_list: []
+    }
+
+    <<0x76, rlp::binary>> = SpecEncoder.sender_payload(fields)
+    items = ExRLP.decode(rlp)
+    assert is_list(items)
+    assert items != []
+    assert length(items) == length(SpecEncoder.spec_order())
   end
 
   property "mutating any spec-order scalar field changes the canonical sender payload" do
@@ -57,6 +72,32 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
       original = SpecEncoder.sender_payload(fields)
       mutated = SpecEncoder.sender_payload(Map.put(fields, name, new_val))
       assert original != mutated
+    end
+  end
+
+  property "distinct access lists, fee-payer markers and call payloads produce distinct encodings" do
+    check all(fields <- field_map_gen(), max_runs: 20) do
+      other_access = [[<<1::160>>, [<<2::256>>]]]
+
+      if fields.access_list != other_access do
+        refute SpecEncoder.sender_payload(fields) ==
+                 SpecEncoder.sender_payload(Map.put(fields, :access_list, other_access))
+      end
+
+      refute SpecEncoder.sender_payload(fields) ==
+               SpecEncoder.sender_payload(Map.put(fields, :fee_payer?, not fields.fee_payer?))
+
+      other_call = %{to: <<3::160>>, value: 1, input: <<4>>}
+
+      if hd(fields.calls) != other_call do
+        refute SpecEncoder.sender_payload(fields) ==
+                 SpecEncoder.sender_payload(Map.put(fields, :calls, [other_call]))
+      end
+
+      if fields.aa_authorization_list != [[<<0xAA>>]] do
+        refute SpecEncoder.sender_payload(fields) ==
+                 SpecEncoder.sender_payload(Map.put(fields, :aa_authorization_list, [[<<0xAA>>]]))
+      end
     end
   end
 
@@ -101,11 +142,34 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
     end
   end
 
-  property "RLP quantities never carry a leading zero byte" do
-    check all(n <- StreamData.integer(1..0xFFFF_FFFF), max_runs: 40) do
-      bin = quantity_bin(n)
-      refute match?(<<0, _::binary>>, bin)
-      assert :binary.decode_unsigned(bin) == n
+  property "spec-encoded RLP quantities are canonical (zero is empty, no leading zero)" do
+    check all(fields <- field_map_gen(), max_runs: 40) do
+      <<0x76, rlp::binary>> = SpecEncoder.sender_payload(fields)
+      items = ExRLP.decode(rlp)
+
+      Enum.each([0, 1, 2, 3, 6, 7, 8, 9], fn idx ->
+        bin = Enum.at(items, idx)
+        assert is_binary(bin)
+        refute match?(<<0, _::binary>>, bin)
+      end)
+    end
+  end
+
+  property "deserialize never raises on malformed input" do
+    check all(
+            payload <-
+              StreamData.one_of([
+                StreamData.binary(max_length: 48),
+                StreamData.map(StreamData.binary(max_length: 48), fn bin ->
+                  "0x" <> Base.encode16(bin, case: :lower)
+                end),
+                StreamData.member_of(["", "0x", "0x76", "0x76ff", "0x02aa", "not-hex", "0x76zz"]),
+                StreamData.integer(0..32)
+              ]),
+            max_runs: 40
+          ) do
+      result = Transaction.deserialize(payload)
+      assert match?({:error, msg} when is_binary(msg), result) or match?({:ok, %Transaction{}}, result)
     end
   end
 
@@ -180,7 +244,10 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
           valid_after <- uint_gen(),
           to <- StreamData.binary(length: 20),
           value <- uint_gen(),
-          input <- StreamData.binary(min_length: 0, max_length: 32)
+          input <- StreamData.binary(min_length: 0, max_length: 32),
+          fee_payer? <- StreamData.boolean(),
+          access_list <- access_list_gen(),
+          aa <- aa_list_gen()
         ) do
       %{
         chain_id: chain_id,
@@ -188,21 +255,51 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
         max_fee_per_gas: max_fee,
         gas_limit: gas,
         calls: [%{to: to, value: value, input: input}],
-        access_list: [],
+        access_list: access_list,
         nonce_key: nonce_key,
         nonce: nonce,
         valid_before: valid_before,
         valid_after: valid_after,
         fee_token: @token,
-        fee_payer?: false
+        fee_payer?: fee_payer?,
+        aa_authorization_list: aa
       }
     end
+  end
+
+  defp access_list_gen do
+    StreamData.one_of([
+      StreamData.constant([]),
+      gen all(
+            addr <- StreamData.binary(length: 20),
+            key <- StreamData.binary(length: 32)
+          ) do
+        [[addr, [key]]]
+      end
+    ])
+  end
+
+  defp aa_list_gen do
+    StreamData.one_of([
+      StreamData.constant([]),
+      StreamData.constant([[<<0xAA, 0xBB>>]])
+    ])
   end
 
   defp scalar_mutation_gen do
     gen all(
           fields <- field_map_gen(),
-          name <- StreamData.member_of([:chain_id, :gas_limit, :nonce, :nonce_key, :valid_before, :valid_after]),
+          name <-
+            StreamData.member_of([
+              :chain_id,
+              :max_priority_fee_per_gas,
+              :max_fee_per_gas,
+              :gas_limit,
+              :nonce,
+              :nonce_key,
+              :valid_before,
+              :valid_after
+            ]),
           new_val <- uint_gen(),
           new_val != Map.fetch!(fields, name)
         ) do
@@ -225,8 +322,33 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
     StreamData.one_of([
       StreamData.constant(0),
       StreamData.integer(1..255),
-      StreamData.integer(256..65_535)
+      StreamData.integer(256..65_535),
+      StreamData.constant(0xFFFFFFFFFFFFFFFF)
     ])
+  end
+
+  defp assert_round_tripped(tx, fields, dummy) do
+    q = &quantity_bin/1
+    assert tx.chain_id == fields.chain_id
+    assert Enum.at(tx.fields, 0) == q.(fields.chain_id)
+    assert Enum.at(tx.fields, 1) == q.(fields.max_priority_fee_per_gas)
+    assert Enum.at(tx.fields, 2) == q.(fields.max_fee_per_gas)
+    assert Enum.at(tx.fields, 3) == q.(fields.gas_limit)
+    assert length(tx.calls) == length(fields.calls)
+    assert hd(tx.calls).to == hd(fields.calls).to
+    assert hd(tx.calls).value == hd(fields.calls).value
+    assert hd(tx.calls).input == hd(fields.calls).input
+    assert Enum.at(tx.fields, 5) == fields.access_list
+    assert Enum.at(tx.fields, 6) == q.(fields.nonce_key)
+    assert Enum.at(tx.fields, 7) == q.(fields.nonce)
+    assert Enum.at(tx.fields, 8) == q.(fields.valid_before)
+    assert Enum.at(tx.fields, 9) == q.(fields.valid_after)
+    expected_token = if fields.fee_payer?, do: <<>>, else: fields.fee_token
+    assert Enum.at(tx.fields, 10) == expected_token
+    expected_fp = if fields.fee_payer?, do: <<0x00>>, else: <<>>
+    assert Enum.at(tx.fields, 11) == expected_fp
+    assert Enum.at(tx.fields, 12) == fields.aa_authorization_list
+    assert List.last(tx.fields) == dummy
   end
 
   defp quantity_bin(0), do: <<>>

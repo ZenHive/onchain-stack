@@ -1,7 +1,19 @@
 {
   "artifact": "0x76",
-  "commit": "worktree-pending",
+  "commit": "cacc20177be48211d43a7e88933867b1f7632e2c",
   "observed_at": "2026-08-26T14:37:57Z",
+  "independent_reproduction": {
+    "ox_version": "1.7.2",
+    "self_paid_and_fee_payer_byte_match": true,
+    "all_five_cases_ox_deserialize_roundtrip": true,
+    "live_moderato_tx": "0x63f75666ebc54a44a442534c0d86c3687607c5a2dfdd9ea95f860e3a458bbee5",
+    "live_moderato_tx_type": "0x76",
+    "live_moderato_from": "0x582f32e8696e90ca66c0e2f24cfc9bbc721adbc4",
+    "live_malformed_0x76ff": {
+      "code": -32602,
+      "message": "failed to decode signed transaction"
+    }
+  },
   "invariants": [
     {
       "id": "INV-TX-TYPE",

@@ -137,6 +137,10 @@ defmodule Onchain.Tempo.Verification.Campaign do
         verdict = oracle_verdict(mutant, module)
         Map.merge(mutant_meta(mutant), verdict)
 
+      {:error, {:pattern_missing, _} = reason} ->
+        # The mutant never applied — that is a broken campaign, not a kill.
+        Map.merge(mutant_meta(mutant), %{status: :invalid, evidence: reason})
+
       {:error, reason} ->
         Map.merge(mutant_meta(mutant), %{status: :killed, evidence: {:compile_error, reason}})
     end
@@ -153,17 +157,28 @@ defmodule Onchain.Tempo.Verification.Campaign do
       patched = String.replace(source, mutant.replace, mutant.with)
       module = module_name(mutant)
       renamed = rename_defmodule(patched, mutant.surface, module)
-
-      try do
-        Code.compiler_options(ignore_module_conflict: true)
-        purge(module)
-        [{^module, _}] = Code.compile_string(renamed, mutant.file)
-        {:ok, module}
-      rescue
-        e -> {:error, Exception.message(e)}
-      end
+      compile_renamed(renamed, mutant.file, module)
     else
       {:error, {:pattern_missing, mutant.replace}}
+    end
+  end
+
+  defp compile_renamed(renamed, file, module) do
+    previous = Code.get_compiler_option(:ignore_module_conflict)
+
+    try do
+      Code.put_compiler_option(:ignore_module_conflict, true)
+      purge(module)
+      compiled = Code.compile_string(renamed, file)
+
+      case List.keyfind(compiled, module, 0) do
+        {^module, _} -> {:ok, module}
+        nil -> {:error, {:module_missing, Enum.map(compiled, &elem(&1, 0))}}
+      end
+    rescue
+      e -> {:error, Exception.message(e)}
+    after
+      Code.put_compiler_option(:ignore_module_conflict, previous)
     end
   end
 
