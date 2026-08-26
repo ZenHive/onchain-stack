@@ -1,0 +1,310 @@
+[
+  {
+    "name": "epochsLatest",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_limit",
+        "type": "uint256"
+      },
+      {
+        "name": "_offset",
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "components": [
+          {
+            "name": "ts",
+            "type": "uint256"
+          },
+          {
+            "name": "lp",
+            "type": "address"
+          },
+          {
+            "name": "votes",
+            "type": "uint256"
+          },
+          {
+            "name": "emissions",
+            "type": "uint256"
+          },
+          {
+            "name": "bribes",
+            "type": "tuple[]",
+            "components": [
+              {
+                "name": "token",
+                "type": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "fees",
+            "type": "tuple[]",
+            "components": [
+              {
+                "name": "token",
+                "type": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "epochsByAddress",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_limit",
+        "type": "uint256"
+      },
+      {
+        "name": "_offset",
+        "type": "uint256"
+      },
+      {
+        "name": "_address",
+        "type": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "components": [
+          {
+            "name": "ts",
+            "type": "uint256"
+          },
+          {
+            "name": "lp",
+            "type": "address"
+          },
+          {
+            "name": "votes",
+            "type": "uint256"
+          },
+          {
+            "name": "emissions",
+            "type": "uint256"
+          },
+          {
+            "name": "bribes",
+            "type": "tuple[]",
+            "components": [
+              {
+                "name": "token",
+                "type": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "fees",
+            "type": "tuple[]",
+            "components": [
+              {
+                "name": "token",
+                "type": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "rewards",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_limit",
+        "type": "uint256"
+      },
+      {
+        "name": "_offset",
+        "type": "uint256"
+      },
+      {
+        "name": "_venft_id",
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "components": [
+          {
+            "name": "venft_id",
+            "type": "uint256"
+          },
+          {
+            "name": "lp",
+            "type": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "name": "fee",
+            "type": "address"
+          },
+          {
+            "name": "bribe",
+            "type": "address"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "rewardsByAddress",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_venft_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_pool",
+        "type": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "components": [
+          {
+            "name": "venft_id",
+            "type": "uint256"
+          },
+          {
+            "name": "lp",
+            "type": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "name": "fee",
+            "type": "address"
+          },
+          {
+            "name": "bribe",
+            "type": "address"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "forRoot",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_root_pool",
+        "type": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[3]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "MAX_EPOCHS",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "MAX_REWARDS",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "WEEK",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_voter",
+        "type": "address"
+      },
+      {
+        "name": "_registry",
+        "type": "address"
+      },
+      {
+        "name": "_convertor",
+        "type": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+]

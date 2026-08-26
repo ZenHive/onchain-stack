@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "dep-audit@zenhive": true
+  }
+}
