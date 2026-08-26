@@ -1607,7 +1607,7 @@
       },
       "eff": 2.25,
       "dep_layer": 0,
-      "unlocks": 0,
+      "unlocks": 1,
       "markers": [],
       "depends_on": [],
       "assignee": "codex",
@@ -1625,7 +1625,9 @@
       "out_of_scope": [
         "Wrapping the configurator, config-engine or access-manager interfaces — registering their addresses is enough here",
         "Avalanche-specific write paths or a second fork-simulation target",
-        "Chainlink price-feed address space, which is separate from the Aave registry"
+        "Chainlink price-feed address space, which is separate from the Aave registry",
+        "ether.fi Cash on Optimism — DAO-licensed whitelabel, not in safe.csv; follow-on after this task (see V4_DEPLOYMENTS.md)",
+        "Base V4 lending — announced, not in the address book"
       ],
       "touches": [
         "lib/onchain/aave/contracts.ex",
@@ -1636,7 +1638,63 @@
         "CLAUDE.md",
         "CHANGELOG.md"
       ],
-      "body": "The V4 registry describes a deployment that has moved on twice, and one of the two gaps is structural rather than data.\n\nVerified against the address book on 2026-08-26: the AaveV4Ethereum namespace has grown from 150 entries at commit 10c4e9d (2026-04-16, the snapshot V4_SCOPING.md was built from) to 304 today. That includes a fourth Hub, GLOBAL_DOLLAR_HUB at 0x62d63197660c080236193CA60b70E49A08E90368, two additional Spokes, four additional Tokenization Spokes and their interest-rate strategies. Onchain.Aave.V4.Hub types a hub as :core | :prime | :plus and resolves it through a closed case, so the fourth Hub is not merely missing from the registry — it cannot be named. Opening that up is the substance of this task; the rest is data.\n\nSecond: V4 is no longer Ethereum-only. It deployed to Avalanche (chainId 43114) on 2026-07-15 with 73 entries — one Core Hub, Main / Forex / AVAX-Correlated Spokes with their oracles, seven Tokenization Spokes, the full Position Manager set including both gateways, and a Treasury Spoke. The contract kind labels are identical to Ethereum's, so no new registry shape is needed. Both @v4_addresses and @v4_tokenization_spokes are already keyed by network, and address/2, v4_contracts/1 and v4_tokenization_spoke/3 are network-generic — adding a network is additive data. The one function that would silently omit it is networks/0, which walks only the V3 map.\n\nTwo documentation claims are now false and are load-bearing for other sessions: V4_SCOPING.md and the v0.4.0 CHANGELOG entry both state V4 is Ethereum-mainnet-only, and a task in the aave_sim repo cites that claim as its reason to exclude V4 from multi-chain work. Also note the address book repo has been transferred from the bgd-labs org to aave-dao; the raw URL in CLAUDE.md still resolves, but the recipe should name the canonical org.\n\nUpstream also renamed some keys without changing addresses (ETHERFI_E_SPOKE became ETHERFI_ESPOKE, and price-feed keys gained a _SPOKE infix). Our atoms need not mirror upstream naming, but where they were derived from it, keep them resolvable and say which convention this registry follows.\n\nAUTHORITY: the address book at aave-dao/aave-address-book (safe.csv, the AaveV4Ethereum and AaveV4Avalanche namespaces) for the address set, and a live read against the deployed contracts for proof that a registered address is the contract we think it is. Explorers, blog posts and this repo's existing V4_SCOPING.md snapshot are reference material only.\n\nDispatch trigger: the library's stated coverage disagrees with deployed reality on a money surface, and the fix needs live external-system evidence.\n",
+      "body": "The V4 registry describes a deployment that has moved on twice, and one of the two gaps is structural rather than data.\n\nVerified against the address book on 2026-08-26: the AaveV4Ethereum namespace has grown from 150 entries at commit 10c4e9d (2026-04-16, the snapshot V4_SCOPING.md was built from) to 304 today. That includes a fourth Hub, GLOBAL_DOLLAR_HUB at 0x62d63197660c080236193CA60b70E49A08E90368, two additional Spokes, four additional Tokenization Spokes and their interest-rate strategies. Onchain.Aave.V4.Hub types a hub as :core | :prime | :plus and resolves it through a closed case, so the fourth Hub is not merely missing from the registry — it cannot be named. Opening that up is the substance of this task; the rest is data.\n\nSecond: V4 is no longer Ethereum-only. It deployed to Avalanche (chainId 43114) on 2026-07-15 with 73 entries — one Core Hub, Main / Forex / AVAX-Correlated Spokes with their oracles, seven Tokenization Spokes, the full Position Manager set including both gateways, and a Treasury Spoke. The contract kind labels are identical to Ethereum's, so no new registry shape is needed. Both @v4_addresses and @v4_tokenization_spokes are already keyed by network, and address/2, v4_contracts/1 and v4_tokenization_spoke/3 are network-generic — adding a network is additive data. The one function that would silently omit it is networks/0, which walks only the V3 map.\n\nTwo documentation claims are now false and are load-bearing for other sessions: V4_SCOPING.md and the v0.4.0 CHANGELOG entry both state V4 is Ethereum-mainnet-only, and a task in the aave_sim repo cites that claim as its reason to exclude V4 from multi-chain work. Also note the address book repo has been transferred from the bgd-labs org to aave-dao; the raw URL in CLAUDE.md still resolves, but the recipe should name the canonical org.\n\nUpstream also renamed some keys without changing addresses (ETHERFI_E_SPOKE became ETHERFI_ESPOKE, and price-feed keys gained a _SPOKE infix). Our atoms need not mirror upstream naming, but where they were derived from it, keep them resolvable and say which convention this registry follows.\n\nAddress book today has only AaveV4Ethereum and AaveV4Avalanche. The ether.fi Cash instance on Optimism is a DAO-licensed whitelabel and is not in safe.csv; Base V4 lending is announced, not deployed. Both are out of this task — see V4_DEPLOYMENTS.md.\n\nAUTHORITY: the address book at aave-dao/aave-address-book (safe.csv, the AaveV4Ethereum and AaveV4Avalanche namespaces) for the address set, and a live read against the deployed contracts for proof that a registered address is the contract we think it is. Explorers, blog posts and this repo's existing V4_SCOPING.md snapshot are reference material only.\n\nDispatch trigger: the library's stated coverage disagrees with deployed reality on a money surface, and the fix needs live external-system evidence.\n",
+      "created_at": "2026-08-26",
+      "scored_at": "2026-08-26",
+      "cross_repo": []
+    },
+    {
+      "id": "70",
+      "phase": 5,
+      "bundle": "v4_support",
+      "status": "pending",
+      "title": "Register the ether.fi Cash V4 whitelabel instance on Optimism",
+      "scores": {
+        "d": 4,
+        "b": 8,
+        "u": 8
+      },
+      "eff": 2.0,
+      "dep_layer": 1,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [
+        69
+      ],
+      "assignee": "codex",
+      "module": "Onchain.Aave.Contracts",
+      "model": "gpt-5.6-sol",
+      "acceptance_criteria": [
+        "The Cash Hub, Cash Spoke, Spoke oracle, Position Managers, and any Tokenization Spokes that actually exist on the deployed Optimism instance resolve through this library's public API",
+        "A Hub atom for this instance is not one of :core, :prime, or :plus — an unknown_hub error is not the result of looking it up after it has been registered",
+        "A pinned-block integration read against the Cash Hub returns {:ok, _} for at least one Task-46-selected Hub view (member Spokes or credit-line inventory); missing RPC env vars flunk with the exact export commands, never skip",
+        "V4_DEPLOYMENTS.md records the addresses that were observed, the AIP or explorer source they came from, and the date; it no longer lists this instance as unregistered",
+        "The Ethereum Core Hub EtherFi Spoke (weETH e-Mode) remains a distinct lookup — registering Cash does not alias or overwrite it",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "Writes through the Cash borrow-whitelist (Cash-user only)",
+        "GHO GSM on Optimism and the EtherFi card product",
+        "Base V4 and Aerodrome",
+        "Re-syncing AaveV4Ethereum / AaveV4Avalanche — Task 69"
+      ],
+      "files_to_modify": [
+        "lib/onchain/aave/contracts.ex",
+        "lib/onchain/aave/v4/hub.ex",
+        "test/onchain/aave/contracts_test.exs",
+        "test/onchain/aave/v4/hub_test.exs",
+        "V4_DEPLOYMENTS.md",
+        "CHANGELOG.md"
+      ],
+      "touches": [
+        "lib/onchain/aave/contracts.ex",
+        "lib/onchain/aave/v4/hub.ex",
+        "test/onchain/aave/contracts_test.exs",
+        "test/onchain/aave/v4/hub_test.exs",
+        "V4_DEPLOYMENTS.md",
+        "CHANGELOG.md"
+      ],
+      "body": "Open decision (default unless observation contradicts it): key this instance as network: :optimism. V3 already uses :optimism for the V3 pool; V4 lives in a separate map so that does not collide. Switch to a named instance key (e.g. :etherfi_cash) only if a second V4 deployment on Optimism is already listed in the address book or an AIP — one V4 per chain is the default.\n\nether.fi Cash is a live Aave V4 market that this library cannot name. It is not a Spoke on Ethereum Core Hub (that is v4_etherfi_spoke, weETH→WETH e-Mode, already registered). It is a DAO-licensed, EtherFi-operated whitelabel on OP Mainnet: one Liquidity Hub (Cash Hub), one Spoke at launch (Cash Spoke), borrow-whitelisted to Cash cardholders, isolated from every other Aave market. Stani called it the first externally managed V4 deployment. Third-party figures as of 2026-08-26 put it around $249M deposits / $20M borrows, the #2 V4 market by deposits.\n\nPremise verified 2026-08-26 against aave-dao/aave-address-book safe.csv: there is no AaveV4Optimism namespace. Task 69's authority is that file, so Cash is out of 69 on purpose. Landscape and sources: V4_DEPLOYMENTS.md.\n\nThis task is only reachable after 69 because Onchain.Aave.V4.Hub currently types a hub as :core | :prime | :plus. Adding :cash (or whatever the instance is called) onto that closed set repeats the Global Dollar failure. 69 opens the type; this task is then additive registry data plus live evidence.\n\nDo not invent addresses. Observe them from the executed AIP / Optimism explorer / a live eth_call that proves the contract is a Hub, then register what was seen. Previews, blogs and V4_DEPLOYMENTS.md figures are reference material, not the address set.\n\nAUTHORITY: the deployed Optimism instance itself (eth_call at a pinned block) plus the Aave governance AIP/ARFC that authorized it (https://governance.aave.com/t/arfc-deploy-a-dedicated-aave-v4-whitelabel-instance-fully-managed-by-etherfi-on-op-mainnet-to-power-ether-fi-cash/25314). The address book is not authority here — it does not list this instance.\n\nDispatch trigger: the library's stated V4 coverage disagrees with a live deployed market on a money surface, and the fix needs live external-system evidence against a source that is not the DAO address book.\n",
       "created_at": "2026-08-26",
       "scored_at": "2026-08-26",
       "cross_repo": []

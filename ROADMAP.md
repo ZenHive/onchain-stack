@@ -34,7 +34,7 @@ The V3 core, math-validation suite, V4 wrapper modules, and read-path multicall 
 ## 🎯 Current Focus
 
 <!-- FOCUS:BEGIN -->
-**Focus phase:** 5 — Aave V4 Support (10 of 13 done · 0 in progress)
+**Focus phase:** 5 — Aave V4 Support (10 of 14 done · 0 in progress)
 
 **Last shipped:** Task 52 — Prove V4 reads and PositionManager writes against deployed mainnet state on 2026-08-23
 
@@ -112,6 +112,7 @@ V4 went live on Ethereum mainnet on 2026-03-30 with a Hub-and-Spoke architecture
 | Task 66 | ⬜ | 🎁 **v4_support** · *Onchain.Aave.V4.TokenizationSpoke* · Execute the V4 Tokenization Spoke: ERC-4626 writes and the share token's ERC-20 surface [D:5/B:8/U:8 → Eff:1.6] 🚀 |
 | Task 67 | ⬜ | 🎁 **v4_support** · *Onchain.Aave.V4.PositionManager* · Wrap V4 position configuration and position-manager authorization, and close the Taker fork-evidence gap [D:4/B:8/U:8 → Eff:2.0] 🎯 |
 | Task 69 | ⬜ | 🎁 **v4_support** · *Onchain.Aave.Contracts* · Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs [D:4/B:9/U:9 → Eff:2.25] 🎯 |
+| Task 70 | ⬜ | 🎁 **v4_support** · *Onchain.Aave.Contracts* · Register the ether.fi Cash V4 whitelabel instance on Optimism [D:4/B:8/U:8 → Eff:2.0] 🎯 |
 <!-- TASKS:END -->
 
 ---
@@ -164,7 +165,7 @@ Potential expansions — not yet scoped or scored:
 - **Flash loan wrappers** — typed flash loan construction and callback helpers
 - **Governance module** — Aave governance proposal reading and voting
 - **Liquidation helpers** — health factor monitoring, liquidation call wrappers
-- **More chains** — expand `Contracts` registry as Aave deploys to new L2s
+- **More chains / instances** — expand `Contracts` as Aave deploys to new L2s, and as licensed whitelabel instances appear. Live map: [V4_DEPLOYMENTS.md](V4_DEPLOYMENTS.md). DAO Avalanche is Task 69; ether.fi Cash on Optimism is a follow-on after 69 (not in the address book). Base V4 lending is announced, not listed.
 - **Safe + delegatecall automation ergonomics.** Real-world Aave V3 automation often goes: `EOA → Gnosis Safe → DELEGATECALL → automation-proxy contract → protocol storage writes`. Observed on-chain (tx `0x32c9f2a0…5347`, block 24932739 — owner deactivated two DeFi Saver sub IDs in one call). Implication for V4 design (Task 51 `PositionManager`): the primary user-facing write surface should compose cleanly when executed under DELEGATECALL from a Safe. A likely future "`Onchain.Aave.Safe` helper module" if we grow Safe-aware calldata builders.
 - **Debt-swap CREATE2 adapter + CoW solver pattern.** Aave V3's "Swap debt" UI (observed 2026-04-22) composes: (a) `approveDelegation` on the debt-token to a counterfactual CREATE2 adapter, (b) a CoW Protocol solver submits the settlement tx and pays gas, (c) inside settlement the adapter flash-loans, swaps, borrows via the allowance, and repays. An eventual `Onchain.Aave.DebtSwap` helper would need CREATE2 salt derivation compatible with Aave's UI factory, a CoW order builder, and solver/order-book integration — a large surface. For now `Onchain.Aave.DebtToken` (Task 53) plus a documented "submit flash-loan adapter call yourself" path is the pragmatic scope.
 

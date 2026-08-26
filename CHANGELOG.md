@@ -35,6 +35,12 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ### Documentation
 
+- **`V4_DEPLOYMENTS.md`** — dated (2026-08-26) map of live V4 instances versus
+  this library's coverage: Ethereum DAO (four Hubs; Global Dollar unwrapped),
+  Avalanche DAO (Task 69), ether.fi Cash on Optimism (whitelabel, not in the
+  address book), Base V4 lending still announced. Landscape only — addresses
+  stay in `V4_SCOPING.md` / `Onchain.Aave.Contracts`.
+
 - **`README.md` § "Node compatibility"** — every call here is a plain `eth_call`
   against a deployed Aave contract, so it runs on any mainstream endpoint; the one
   requirement worth planning for is that reading reserve state at a past block is a

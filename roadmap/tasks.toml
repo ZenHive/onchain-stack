@@ -1034,7 +1034,7 @@ status = "pending"
 title = "Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs"
 scores = { d = 4, b = 9, u = 9 }
 acceptance_criteria = ["Every AaveV4 entry the address book lists for Ethereum and for Avalanche resolves through this library's public API — Hubs, Spokes and their oracles, Tokenization Spokes, Position Managers, gateways, Treasury Spoke, configurators and the access manager", "A Hub is no longer restricted to three hardcoded atoms: the fourth deployed Ethereum Hub resolves and works through the Hub read functions with no code change beyond registry data, and an unknown hub still returns the tagged unknown_hub error", "networks/0 reports networks that exist in the V4 registry, not only those present in the V3 registry, and a test pins that a V4-only network would be listed", "A pinned-block integration read against at least one newly registered Ethereum Hub and one Avalanche Spoke returns live data, proving the addresses are real and the Avalanche endpoint is reachable; missing RPC env vars flunk with exact export instructions", "V4_SCOPING.md and CHANGELOG no longer state that V4 is Ethereum-mainnet-only, and V4_SCOPING.md records the date and address-book commit its enumeration was re-derived from", "CLAUDE.md's address-verification recipe names the address book's current canonical org", "mix ci passes"]
-out_of_scope = ["Wrapping the configurator, config-engine or access-manager interfaces — registering their addresses is enough here", "Avalanche-specific write paths or a second fork-simulation target", "Chainlink price-feed address space, which is separate from the Aave registry"]
+out_of_scope = ["Wrapping the configurator, config-engine or access-manager interfaces — registering their addresses is enough here", "Avalanche-specific write paths or a second fork-simulation target", "Chainlink price-feed address space, which is separate from the Aave registry", "ether.fi Cash on Optimism — DAO-licensed whitelabel, not in safe.csv; follow-on after this task (see V4_DEPLOYMENTS.md)", "Base V4 lending — announced, not in the address book"]
 touches = ["lib/onchain/aave/contracts.ex", "lib/onchain/aave/v4/hub.ex", "test/onchain/aave/contracts_test.exs", "test/onchain/aave/v4/hub_test.exs", "V4_SCOPING.md", "CLAUDE.md", "CHANGELOG.md"]
 assignee = "codex"
 module = "Onchain.Aave.Contracts"
@@ -1050,9 +1050,44 @@ Two documentation claims are now false and are load-bearing for other sessions: 
 
 Upstream also renamed some keys without changing addresses (ETHERFI_E_SPOKE became ETHERFI_ESPOKE, and price-feed keys gained a _SPOKE infix). Our atoms need not mirror upstream naming, but where they were derived from it, keep them resolvable and say which convention this registry follows.
 
+Address book today has only AaveV4Ethereum and AaveV4Avalanche. The ether.fi Cash instance on Optimism is a DAO-licensed whitelabel and is not in safe.csv; Base V4 lending is announced, not deployed. Both are out of this task — see V4_DEPLOYMENTS.md.
+
 AUTHORITY: the address book at aave-dao/aave-address-book (safe.csv, the AaveV4Ethereum and AaveV4Avalanche namespaces) for the address set, and a live read against the deployed contracts for proof that a registered address is the contract we think it is. Explorers, blog posts and this repo's existing V4_SCOPING.md snapshot are reference material only.
 
 Dispatch trigger: the library's stated coverage disagrees with deployed reality on a money surface, and the fix needs live external-system evidence.
+"""
+created_at = "2026-08-26"
+scored_at = "2026-08-26"
+
+[[task]]
+id = "70"
+phase = 5
+bundle = "v4_support"
+status = "pending"
+title = "Register the ether.fi Cash V4 whitelabel instance on Optimism"
+scores = { d = 4, b = 8, u = 8 }
+depends_on = [69]
+acceptance_criteria = ["The Cash Hub, Cash Spoke, Spoke oracle, Position Managers, and any Tokenization Spokes that actually exist on the deployed Optimism instance resolve through this library's public API", "A Hub atom for this instance is not one of :core, :prime, or :plus — an unknown_hub error is not the result of looking it up after it has been registered", "A pinned-block integration read against the Cash Hub returns {:ok, _} for at least one Task-46-selected Hub view (member Spokes or credit-line inventory); missing RPC env vars flunk with the exact export commands, never skip", "V4_DEPLOYMENTS.md records the addresses that were observed, the AIP or explorer source they came from, and the date; it no longer lists this instance as unregistered", "The Ethereum Core Hub EtherFi Spoke (weETH e-Mode) remains a distinct lookup — registering Cash does not alias or overwrite it", "mix ci passes"]
+out_of_scope = ["Writes through the Cash borrow-whitelist (Cash-user only)", "GHO GSM on Optimism and the EtherFi card product", "Base V4 and Aerodrome", "Re-syncing AaveV4Ethereum / AaveV4Avalanche — Task 69"]
+files_to_modify = ["lib/onchain/aave/contracts.ex", "lib/onchain/aave/v4/hub.ex", "test/onchain/aave/contracts_test.exs", "test/onchain/aave/v4/hub_test.exs", "V4_DEPLOYMENTS.md", "CHANGELOG.md"]
+touches = ["lib/onchain/aave/contracts.ex", "lib/onchain/aave/v4/hub.ex", "test/onchain/aave/contracts_test.exs", "test/onchain/aave/v4/hub_test.exs", "V4_DEPLOYMENTS.md", "CHANGELOG.md"]
+assignee = "codex"
+module = "Onchain.Aave.Contracts"
+model = "gpt-5.6-sol"
+body = """
+Open decision (default unless observation contradicts it): key this instance as network: :optimism. V3 already uses :optimism for the V3 pool; V4 lives in a separate map so that does not collide. Switch to a named instance key (e.g. :etherfi_cash) only if a second V4 deployment on Optimism is already listed in the address book or an AIP — one V4 per chain is the default.
+
+ether.fi Cash is a live Aave V4 market that this library cannot name. It is not a Spoke on Ethereum Core Hub (that is v4_etherfi_spoke, weETH→WETH e-Mode, already registered). It is a DAO-licensed, EtherFi-operated whitelabel on OP Mainnet: one Liquidity Hub (Cash Hub), one Spoke at launch (Cash Spoke), borrow-whitelisted to Cash cardholders, isolated from every other Aave market. Stani called it the first externally managed V4 deployment. Third-party figures as of 2026-08-26 put it around $249M deposits / $20M borrows, the #2 V4 market by deposits.
+
+Premise verified 2026-08-26 against aave-dao/aave-address-book safe.csv: there is no AaveV4Optimism namespace. Task 69's authority is that file, so Cash is out of 69 on purpose. Landscape and sources: V4_DEPLOYMENTS.md.
+
+This task is only reachable after 69 because Onchain.Aave.V4.Hub currently types a hub as :core | :prime | :plus. Adding :cash (or whatever the instance is called) onto that closed set repeats the Global Dollar failure. 69 opens the type; this task is then additive registry data plus live evidence.
+
+Do not invent addresses. Observe them from the executed AIP / Optimism explorer / a live eth_call that proves the contract is a Hub, then register what was seen. Previews, blogs and V4_DEPLOYMENTS.md figures are reference material, not the address set.
+
+AUTHORITY: the deployed Optimism instance itself (eth_call at a pinned block) plus the Aave governance AIP/ARFC that authorized it (https://governance.aave.com/t/arfc-deploy-a-dedicated-aave-v4-whitelabel-instance-fully-managed-by-etherfi-on-op-mainnet-to-power-ether-fi-cash/25314). The address book is not authority here — it does not list this instance.
+
+Dispatch trigger: the library's stated V4 coverage disagrees with a live deployed market on a money surface, and the fix needs live external-system evidence against a source that is not the DAO address book.
 """
 created_at = "2026-08-26"
 scored_at = "2026-08-26"

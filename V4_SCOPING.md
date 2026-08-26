@@ -1,7 +1,7 @@
 # Aave V4 Scoping
 
 **Captured:** 2026-04-20 during Task 44
-**Purpose:** enumerate the Aave V4 mainnet contract surface as the basis for follow-on wrapper tasks (see ROADMAP.md Tasks 45+). This doc is the **source of truth for V4 addresses and ABI pointers** — downstream tasks should link here rather than duplicating the data.
+**Purpose:** enumerate the Aave V4 mainnet contract surface as the basis for follow-on wrapper tasks (see ROADMAP.md Tasks 45+). This doc is the **source of truth for V4 addresses and ABI pointers** — downstream tasks should link here rather than duplicating the data. Which chains and instances exist *now* (including deployments this snapshot does not list) is in [V4_DEPLOYMENTS.md](V4_DEPLOYMENTS.md).
 
 V4 went live on Ethereum mainnet on **2026-03-30** (AIP executed; Snapshot passed 2026-03-23, 100% support). Deployment uses a **Hub-and-Spoke architecture** that is materially different from V3's single-`Pool` model — this is not a drop-in interface addition. Most user-facing V4 work lands as new wrapper modules under `Onchain.Aave.V4.*` alongside the V3 tree, while shared support modules like `Contracts` are extended in place.
 
