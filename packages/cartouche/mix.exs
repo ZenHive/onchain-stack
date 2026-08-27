@@ -235,33 +235,16 @@ defmodule Cartouche.MixProject do
       # campaigns are run on demand; the record lives in
       # docs/verification-ledger.md.
       #
-      # muex 0.8.3 carries the fix for Oeditus/muex#20: 0.8.2's
-      # `Muex.TestRunner.Port.count_failures/2` matched only the pre-1.20 ExUnit
-      # summary wording (`N tests, M failures`), so on Elixir 1.20 —
-      # `Result: N passed` / `Failed: N test` — the regex missed, the fallback
-      # returned 1 failure, every survivor was reported `killed`, and the score
-      # was a constant 100%. 0.8.3 adds a `^Failed: (\d+) tests?` pattern
-      # alongside the old one.
-      #
-      # That fix is necessary but not sufficient, and 0.8.3 still cannot produce
-      # a usable score here — a 2026-08-24 campaign was run on it and discarded.
-      # Two upstream defects remain open. Oeditus/muex#23: sandboxes share the
-      # project's real `_build` in any project with dependencies, so a mutant
-      # can be compiled away by a sibling worker and graded on unmutated code —
-      # verified here against a survivor that the suite in fact kills.
-      # Oeditus/muex#24: mutations are keyed by their reported line, so
-      # `StatementDeletion` never applies at all and bare-boolean flips mostly
-      # do not, regardless of scheduling. ROADMAP task 2119 is blocked on a
-      # release carrying both; its first acceptance criterion is a per-defect
-      # gate, not #20's reproduction alone.
-      #
-      # `no_coverage` is decided before any mutation is applied and its task 2114
-      # result stands. `equivalent` does NOT: Trivial Compiler Equivalence runs
-      # after the line-keyed application #24 breaks, so a no-op mutation compiles
-      # to identical bytecode and is classified `equivalent` without reaching a
-      # sandbox. Those counts are an upper bound, not a measurement — see
-      # docs/verification-ledger.md.
-      {:muex, "~> 0.8.3", only: [:dev, :test], runtime: false},
+      # muex 0.9 floor is load-bearing, same as hieroglyph's: 0.8.x could not
+      # produce a usable score here. 0.9.0 closes all three defects a 2026-08-24
+      # campaign on 0.8.3 hit — Oeditus/muex#20 (ExUnit 1.20 summary parsing,
+      # partially fixed in 0.8.3), #23 (sandboxes shared the project's real
+      # `_build`, so mutants could be graded on unmutated code), and #24 via
+      # PR #27 (line-keyed mutation matching, which silently disabled
+      # StatementDeletion and most boolean flips). ROADMAP task 2119 was
+      # blocked on exactly that release; see docs/verification-ledger.md for
+      # the discarded 0.8.3 campaign record.
+      {:muex, "~> 0.9", only: [:dev, :test], runtime: false},
       {:tidewave, "~> 0.6", only: :dev},
       {:bandit, "~> 1.12", only: :dev}
       # :boxart intentionally omitted — conflicts with upstream ex_doc 0.31.1
