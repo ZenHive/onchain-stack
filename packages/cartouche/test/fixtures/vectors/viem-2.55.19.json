@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "source_implementation": "viem",
+    "source_url": "https://github.com/wevm/viem",
+    "exact_version": "2.55.19",
+    "generation_command": "npm install --prefix /tmp/cartouche-vector-tools ethers@6.17.0 viem@2.55.19 && VECTOR_TOOL_ROOT=/tmp/cartouche-vector-tools node test/fixtures/vectors/generate.cjs"
+  },
+  "signer": "0x9d8A62f656a8d1615C1294fd71e9CFb3E4855A4F",
+  "authority": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+  "authorization": {
+    "chain_id": "1",
+    "address": "0x2222222222222222222222222222222222222222",
+    "nonce": "7",
+    "y_parity": 0,
+    "r": "0x8d14c7d7e06b67c43a147f14c63523ef36d6eb34deb105b7b1f7c594c7f91818",
+    "s": "0x02a7f2524299517a73b25a159174a75c09e7e9039a45a4818400838716755195"
+  },
+  "vectors": {
+    "v1": {
+      "fields": {
+        "chain_id": "1",
+        "nonce": "9",
+        "gas_price": "20000000000",
+        "gas_limit": "21000",
+        "destination": "0x3535353535353535353535353535353535353535",
+        "amount": "1000000000000000000",
+        "data": "0x"
+      },
+      "unsigned_serialized": "0xec098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080018080",
+      "unsigned_hash": "0xdaf5a779ae972f972197303d7b574746c7ef83eadac0f2791ad23db92e4c8e53",
+      "serialized": "0xf86c098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a76400008025a028ef61340bd939bc2195fe537567866003e1a15d3c71ff63e1590620aa636276a067cbe9d8997f761aecb703304b3800ccf555c9f3dc64214b297fb1966a3b6d83",
+      "hash": "0x33469b22e9f636356c4160a87eb19df52b7412e8eac32a4a55ffe88ea8350788",
+      "from": "0x9d8A62f656a8d1615C1294fd71e9CFb3E4855A4F"
+    },
+    "v2930": {
+      "fields": {
+        "chain_id": "1",
+        "gas_limit": "100000",
+        "destination": "0x3535353535353535353535353535353535353535",
+        "data": "0x1234",
+        "access_list": [
+          {
+            "address": "0xffffffffffffffffffffffffffffffffffffffff",
+            "storage_keys": [
+              "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            ]
+          }
+        ],
+        "nonce": "1",
+        "gas_price": "20000000000",
+        "amount": "2"
+      },
+      "unsigned_serialized": "0x01f85f01018504a817c800830186a094353535353535353535353535353535353535353502821234f838f794ffffffffffffffffffffffffffffffffffffffffe1a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "unsigned_hash": "0x8d6fd10dc031c1fd6bfbd4cb6d1ac07431de98c1be33a758115c97197cef8b9a",
+      "serialized": "0x01f8a201018504a817c800830186a094353535353535353535353535353535353535353502821234f838f794ffffffffffffffffffffffffffffffffffffffffe1a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80a089ac4546637532d5da81d4772a2c79af8ee70eb202acd718cba3033c5d84000ca01dce7525bd0e8fac8dbb0cf8b428a058d2300f25857e6ec5ad596be00eab45a3",
+      "hash": "0x4a706b8103095b0e2dd55b06049f31212f86628176615d08fd90829cabaa921a",
+      "from": "0x9d8A62f656a8d1615C1294fd71e9CFb3E4855A4F"
+    },
+    "v2": {
+      "fields": {
+        "chain_id": "1",
+        "gas_limit": "100000",
+        "destination": "0x3535353535353535353535353535353535353535",
+        "data": "0x1234",
+        "access_list": [
+          {
+            "address": "0xffffffffffffffffffffffffffffffffffffffff",
+            "storage_keys": [
+              "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            ]
+          }
+        ],
+        "nonce": "2",
+        "max_priority_fee_per_gas": "1000000000",
+        "max_fee_per_gas": "20000000000",
+        "amount": "3"
+      },
+      "unsigned_serialized": "0x02f8640102843b9aca008504a817c800830186a094353535353535353535353535353535353535353503821234f838f794ffffffffffffffffffffffffffffffffffffffffe1a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "unsigned_hash": "0x5795ad94d07481b355228a63cc6c6acb91df96c476e0e5670508726198a4541b",
+      "serialized": "0x02f8a70102843b9aca008504a817c800830186a094353535353535353535353535353535353535353503821234f838f794ffffffffffffffffffffffffffffffffffffffffe1a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff01a02b0e2f14f8d069a7a82f9eca7721c9d45345162cc64fcc289f2eb4f6bc3841d0a031de077cdea302e84db2821eb377078ef82cc8839a56b5c5e2c3f1d285c2a9f0",
+      "hash": "0xa2f1dda6e6ac96a0519c2aa25973f674a515c1dbdade45b0c242954193f82d32",
+      "from": "0x9d8A62f656a8d1615C1294fd71e9CFb3E4855A4F"
+    },
+    "v3": {
+      "fields": {
+        "chain_id": "1",
+        "gas_limit": "100000",
+        "destination": "0x3535353535353535353535353535353535353535",
+        "data": "0x1234",
+        "access_list": [
+          {
+            "address": "0xffffffffffffffffffffffffffffffffffffffff",
+            "storage_keys": [
+              "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            ]
+          }
+        ],
+        "nonce": "3",
+        "max_priority_fee_per_gas": "1000000000",
+        "max_fee_per_gas": "20000000000",
+        "amount": "4",
+        "max_fee_per_blob_gas": "7",
+        "blob_versioned_hashes": [
+          "0x01ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        ]
+      },
+      "unsigned_serialized": "0x03f8870103843b9aca008504a817c800830186a094353535353535353535353535353535353535353504821234f838f794ffffffffffffffffffffffffffffffffffffffffe1a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff07e1a001ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "unsigned_hash": "0xbdda57f74fa6193d4b8a2c5fd9dfa68902646d94af50c6995df16d03b7120560",
+      "serialized": "0x03f8ca0103843b9aca008504a817c800830186a094353535353535353535353535353535353535353504821234f838f794ffffffffffffffffffffffffffffffffffffffffe1a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff07e1a001ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff01a027a581c102bf37dacb742dc3a3849b69baa5996cae6da879de1c750fc396ee79a0056b97001f781b4d40ffd06ae42ed1c6b8b20c792603644cb561768396b1a4b3",
+      "hash": "0xdcd49d233ffb2c5d972dec1027fdd0e357a2459bf017bc38f2be5aa7d139c052",
+      "from": "0x9d8A62f656a8d1615C1294fd71e9CFb3E4855A4F"
+    },
+    "v4": {
+      "fields": {
+        "chain_id": "1",
+        "gas_limit": "100000",
+        "destination": "0x3535353535353535353535353535353535353535",
+        "data": "0x1234",
+        "access_list": [
+          {
+            "address": "0xffffffffffffffffffffffffffffffffffffffff",
+            "storage_keys": [
+              "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            ]
+          }
+        ],
+        "nonce": "4",
+        "max_priority_fee_per_gas": "1000000000",
+        "max_fee_per_gas": "20000000000",
+        "amount": "5",
+        "authorization_list": [
+          {
+            "chain_id": "1",
+            "address": "0x2222222222222222222222222222222222222222",
+            "nonce": "7",
+            "y_parity": 0,
+            "r": "0x8d14c7d7e06b67c43a147f14c63523ef36d6eb34deb105b7b1f7c594c7f91818",
+            "s": "0x02a7f2524299517a73b25a159174a75c09e7e9039a45a4818400838716755195"
+          }
+        ]
+      },
+      "unsigned_serialized": "0x04f8c20104843b9aca008504a817c800830186a094353535353535353535353535353535353535353505821234f838f794ffffffffffffffffffffffffffffffffffffffffe1a0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff85cf85a019422222222222222222222222222222222222222220780a08d14c7d7e06b67c43a147f14c63523ef36d6eb34deb105b7b1f7c594c7f91818a002a7f2524299517a73b25a159174a75c09e7e9039a45a4818400838716755195",
+      "unsigned_hash": "0x62f694812e2ab5b26c70285cbc4aa1ae882c68e8f167d143516feeeea978fb09",
+      "serialized": "0x04f901050104843b9aca008504a817c800830186a094353535353535353535353535353535353535353505821234f838f794ffffffffffffffffffffffffffffffffffffffffe1a0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff85cf85a019422222222222222222222222222222222222222220780a08d14c7d7e06b67c43a147f14c63523ef36d6eb34deb105b7b1f7c594c7f91818a002a7f2524299517a73b25a159174a75c09e7e9039a45a481840083871675519501a02fb151c62b5ca7361fde9bc8623eb151bcefc4ab883b9607c82e70cc800d78e2a03bc383e2584d02a4208209174ec7a4513ea9038a9cc0fd00c17e65114ea3433f",
+      "hash": "0x3a0f20f9f5fc9e4c18d1e61e75fb70d38db3e35cc2f5a2acc4cb538d9bb6e3b0",
+      "from": "0x9d8A62f656a8d1615C1294fd71e9CFb3E4855A4F"
+    }
+  }
+}

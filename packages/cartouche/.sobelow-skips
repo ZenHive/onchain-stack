@@ -1,0 +1,7 @@
+
+Config.HTTPS: HTTPS Not Enabled,config/prod.exs:0,2B5C077
+Traversal.FileModule: Directory Traversal in `File.read!`,lib/mix/cartouche.gen.ex:1458,6003D56
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/mix/cartouche.gen.ex:860,67F6F99
+Traversal.FileModule: Directory Traversal in `File.write!`,lib/mix/cartouche.gen.ex:1497,6C13731
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/mix/cartouche.gen.ex:1329,712CD77
+Traversal.FileModule: Directory Traversal in `File.mkdir_p!`,lib/mix/cartouche.gen.ex:1496,E3BCF9

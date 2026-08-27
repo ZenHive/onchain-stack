@@ -1,0 +1,70 @@
+# The directory Mix will write compiled artifacts to.
+/_build/
+
+# Dialyzer PLT files (mix.exs pins plt_*_path here so CI can cache them
+# independently of _build/, which invalidates on mix.lock changes).
+/priv/plts/
+
+# If you run "mix test --cover", coverage assets end up here.
+/cover/
+
+# The directory Mix downloads your dependencies sources to.
+/deps/
+
+# Where third-party dependencies like ExDoc output generated docs.
+/doc/
+
+# Ignore .fetch files in case you like to edit your project deps locally.
+/.fetch
+
+# If the VM crashes, it generates a dump, let's ignore it too.
+erl_crash.dump
+
+# Also ignore archive artifacts (built via "mix archive.build").
+*.ez
+
+# Ignore package tarball (built via "mix hex.build").
+cartouche-*.tar
+
+# ElixirLS / IDE
+.elixir_ls/
+
+# Secrets
+/config/*.secret.exs
+
+# Hex docs cache (local, churns on every deps update)
+/.hex-docs/
+
+# macOS Finder metadata
+.DS_Store
+
+# Claude Code per-session runtime state and personal settings.
+# `.claude/settings.json` (project scope) IS committed so collaborators
+# inherit the plugin / marketplace setup — see ~/.claude/setup-guide.md § Plugins.
+/.claude/settings.local.json
+/.claude/scheduled_tasks.lock
+/.claude/hookify.*.local.md
+
+# claude plugin remember
+/.remember/
+
+# Local backups (`.bak.exs`, `.bak`, etc.) — never commit
+*.bak
+*.bak.*
+
+# Generated descripex API manifest — regenerated on demand via `mix manifest`.
+# Not checked in to avoid merge drift; consumers regenerate from source or
+# call `Cartouche.Manifest.build/0` at runtime.
+/api_manifest.json
+
+# Mutation-adequacy campaign artifacts (ROADMAP tasks 114 / 119). The scripts that
+# define a campaign are tracked; the raw muex output is not — one run is ~40 MB of
+# JSON, and the numbers that matter are transcribed into docs/verification-ledger.md.
+/.mutation/results/
+/.mutation/*.log
+
+# Harness run artifacts must not land. The contract is `.harness/review.json`
+# (excluded from staging). `.review/` leaked once onto main (task 125) and is
+# ignored so neither can ride a reviewer-fixes commit again.
+/.harness/
+/.review/

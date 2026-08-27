@@ -1,0 +1,57 @@
+[
+  {"type": "fallback", "stateMutability": "payable"},
+  {"type": "receive", "stateMutability": "payable"},
+  {
+    "type": "constructor",
+    "inputs": [{"name": "owner", "type": "address"}],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "Pinged",
+    "inputs": [{"name": "sender", "type": "address", "indexed": true}],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "CustomError",
+    "inputs": [{"name": "code", "type": "uint256"}]
+  },
+  {
+    "type": "function",
+    "name": "noArgs",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "blankName",
+    "inputs": [{"name": "", "type": "uint256"}],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setPair",
+    "inputs": [
+      {
+        "name": "pair",
+        "type": "tuple",
+        "components": [
+          {"name": "left", "type": "uint256"},
+          {"name": "right", "type": "address"}
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "unnamed",
+    "inputs": [{"type": "uint256"}],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+]
