@@ -4,16 +4,19 @@ defmodule Onchain.RPCCase do
   # Resolves RPC URL from env vars. Used by all integration tests needing RPC.
 
   @doc false
+  @spec rpc_url() :: String.t() | nil
   def rpc_url do
     System.get_env("ETHEREUM_API_URL") || System.get_env("ETH_RPC_URL")
   end
 
   @doc false
+  @spec rpc_url!() :: String.t()
   def rpc_url! do
     rpc_url() || flunk_missing_rpc()
   end
 
   @doc false
+  @spec rpc_opts!() :: keyword()
   def rpc_opts!, do: [rpc_url: rpc_url!()]
 
   # Declared `no_return()` because it only ever raises. Its sibling

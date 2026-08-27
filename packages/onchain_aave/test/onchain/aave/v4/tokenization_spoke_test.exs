@@ -34,7 +34,7 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
       {:ok, prime_usdc} = TokenizationSpoke.lookup(:prime, :usdc)
       {:ok, plus_usdc} = TokenizationSpoke.lookup(:plus, :usdc)
 
-      assert length(Enum.uniq([core_usdc, prime_usdc, plus_usdc])) == 3
+      assert [_, _, _] = Enum.uniq([core_usdc, prime_usdc, plus_usdc])
     end
 
     test "every registered Tokenization Spoke is a valid checksummed address" do

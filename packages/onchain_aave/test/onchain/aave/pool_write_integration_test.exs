@@ -19,7 +19,7 @@ defmodule Onchain.Aave.Pool.WriteIntegrationTest do
   @aave_sepolia_weth "0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c"
   @aave_sepolia_usdc "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8"
 
-  # TODO: Gas limits are testnet-calibrated headroom. Sepolia gas estimates can spike during
+  # Gas limits are testnet-calibrated headroom. Sepolia gas estimates can spike during
   # congestion; values picked to clear current Aave V3 ops with margin. May need bumping if
   # upstream contracts redeploy with different gas profiles.
   @gas_limit_weth_deposit 60_000
@@ -33,7 +33,7 @@ defmodule Onchain.Aave.Pool.WriteIntegrationTest do
   # Amounts (raw integers — WETH has 18 decimals, USDC has 6)
   @weth_supply_amount 10_000_000_000_000_000
   @usdc_borrow_amount 1_000_000
-  # TODO: WETH deposit and faucet mint thresholds are cumulative-run sized — top up only when
+  # WETH deposit and faucet mint thresholds are cumulative-run sized — top up only when
   # balance dips below threshold so the suite can run repeatedly without depleting the test
   # account. WETH deposit: wrap 0.1 ETH when balance drops below 0.05 ETH.
   @weth_deposit_threshold 50_000_000_000_000_000
@@ -151,7 +151,7 @@ defmodule Onchain.Aave.Pool.WriteIntegrationTest do
   # Asserts two Decimal values are within a relative tolerance (e.g. "0.05" = 5%).
   # Uses min base of 1 to avoid division by zero. Accounts for oracle price jitter
   # between reads on testnet.
-  # TODO: Empirical 5% slack covers Chainlink price drift between supply and withdraw
+  # Empirical 5% slack covers Chainlink price drift between supply and withdraw
   # reads on Sepolia; tighten if oracle stability improves.
   @oracle_jitter_tolerance "0.05"
   defp assert_approximately_restored(actual, expected, label) do

@@ -209,7 +209,7 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
           selector
         end)
 
-      assert length(Enum.uniq(selectors)) == 4
+      assert [_, _, _, _] = Enum.uniq(selectors)
     end
   end
 

@@ -376,7 +376,7 @@ defmodule Onchain.Aave.PoolTest do
           end
         )
 
-      assert length(Enum.uniq(selectors)) == 4
+      assert [_, _, _, _] = Enum.uniq(selectors)
     end
   end
 

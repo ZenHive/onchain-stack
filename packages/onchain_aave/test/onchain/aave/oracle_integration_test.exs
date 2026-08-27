@@ -28,7 +28,7 @@ defmodule Onchain.Aave.Oracle.IntegrationTest do
     test "returns prices for WETH and USDC" do
       assert {:ok, prices} = Oracle.get_asset_prices([@weth, @usdc], Onchain.RPCCase.rpc_opts!())
       assert is_list(prices)
-      assert length(prices) == 2
+      assert [_, _] = prices
 
       [weth_price, usdc_price] = prices
       assert weth_price > 0

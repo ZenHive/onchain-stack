@@ -53,7 +53,7 @@ defmodule Onchain.Aave.V4.HubTest do
                Contracts.address!(:v4_plus_hub)
              ]
 
-      assert length(Enum.uniq(addresses)) == 3
+      assert [_, _, _] = Enum.uniq(addresses)
     end
 
     test "returns unknown_hub for an unconfigured atom" do

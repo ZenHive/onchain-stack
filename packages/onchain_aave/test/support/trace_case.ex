@@ -11,6 +11,7 @@ defmodule Onchain.TraceCase do
   @doc false
   # Traces Signer.send_transaction/3, executes the given function, and returns
   # the full {to, calldata, opts} tuple from the traced call.
+  @spec capture_signer_call((-> term())) :: {term(), term(), term()}
   def capture_signer_call(fun) do
     parent = self()
 
@@ -39,6 +40,7 @@ defmodule Onchain.TraceCase do
 
   @doc false
   # Waits for the traced Signer.send_transaction/3 call and returns {to, calldata, opts}.
+  @spec receive_signer_call() :: {term(), term(), term()}
   defp receive_signer_call do
     receive do
       {:dbg_trace, {:trace, _pid, :call, {Onchain.Signer, :send_transaction, [to, calldata, opts]}}} ->
@@ -54,6 +56,7 @@ defmodule Onchain.TraceCase do
 
   @doc false
   # Clears any buffered dbg trace messages so later tests start cleanly.
+  @spec drain_dbg_messages() :: :ok
   defp drain_dbg_messages do
     receive do
       {:dbg_trace, _message} -> drain_dbg_messages()
@@ -64,6 +67,7 @@ defmodule Onchain.TraceCase do
 
   @doc false
   # Finds the OTP runtime_tools ebin path so mix test can load :dbg on demand.
+  @spec runtime_tools_ebin!() :: String.t()
   defp runtime_tools_ebin! do
     root_dir = List.to_string(:code.root_dir())
 

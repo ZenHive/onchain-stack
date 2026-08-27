@@ -84,7 +84,7 @@ defmodule Onchain.Aave.Contracts do
       oracle: "0xEBd36016B3eD09D4693Ed4251c67Bd858c3c7C9C",
       ui_pool_data_provider: "0x3518E8927A7827CDdAf841872453003CA95906A3"
     },
-    # TODO(Task 6): Sepolia addresses — last verified 2026-03-09 via
+    # Sepolia addresses (roadmap task 6) — last verified 2026-03-09 via
     # PoolAddressesProvider.getPool/getPriceOracle and BGD Labs aave-address-book
     # (src/AaveV3Sepolia.sol). Re-verify on each Aave upgrade.
     sepolia: %{

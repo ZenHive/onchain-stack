@@ -429,7 +429,7 @@ defmodule Onchain.Aave.MathMutator do
 
   @spec mutable_site?(Macro.t()) :: boolean()
   defp mutable_site?({op, _meta, args}) when op in @arith or op in @compare do
-    is_list(args) and length(args) == 2
+    match?([_, _], args)
   end
 
   defp mutable_site?({:., _, [{:__aliases__, _, [:Kernel]}, :min]}), do: false

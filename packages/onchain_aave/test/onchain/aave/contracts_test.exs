@@ -116,7 +116,7 @@ defmodule Onchain.Aave.ContractsTest do
   describe "networks/0" do
     test "returns all 7 supported networks" do
       networks = Contracts.networks()
-      assert length(networks) == 7
+      assert [_, _, _, _, _, _, _] = networks
 
       for network <- @all_networks do
         assert network in networks
@@ -127,7 +127,7 @@ defmodule Onchain.Aave.ContractsTest do
   describe "contracts/0" do
     test "returns all 4 contract keys" do
       assert {:ok, keys} = Contracts.contracts()
-      assert length(keys) == 4
+      assert [_, _, _, _] = keys
 
       for key <- @known_contracts do
         assert key in keys
@@ -138,13 +138,15 @@ defmodule Onchain.Aave.ContractsTest do
   describe "contracts/1 with network option" do
     test "explicit network: :ethereum works" do
       assert {:ok, keys} = Contracts.contracts(network: :ethereum)
-      assert length(keys) == 4
+      assert [_, _, _, _] = keys
     end
 
     test "mainnet networks have exactly the 4 core contract keys" do
       for network <- @mainnet_networks do
         assert {:ok, keys} = Contracts.contracts(network: network)
-        assert length(keys) == 4, "#{network} has #{length(keys)} keys, expected 4: #{inspect(keys)}"
+
+        assert match?([_, _, _, _], keys),
+               "#{network} has #{length(keys)} keys, expected 4: #{inspect(keys)}"
 
         for key <- @known_contracts do
           assert key in keys, "Missing #{key} for #{network}"
@@ -154,7 +156,9 @@ defmodule Onchain.Aave.ContractsTest do
 
     test "sepolia has exactly 5 contract keys (4 core + faucet)" do
       assert {:ok, keys} = Contracts.contracts(network: :sepolia)
-      assert length(keys) == 5, "Sepolia has #{length(keys)} keys, expected 5: #{inspect(keys)}"
+
+      assert match?([_, _, _, _, _], keys),
+             "Sepolia has #{length(keys)} keys, expected 5: #{inspect(keys)}"
 
       for key <- @known_contracts do
         assert key in keys, "Missing #{key} for sepolia"
@@ -296,7 +300,7 @@ defmodule Onchain.Aave.ContractsTest do
   describe "v4_contracts/1" do
     test "lists all 34 V4 singleton keys on ethereum" do
       assert {:ok, keys} = Contracts.v4_contracts()
-      assert length(keys) == 34
+      assert Enum.count_until(keys, 35) == 34
       assert :v4_core_hub in keys
       assert :v4_main_spoke_oracle in keys
     end
