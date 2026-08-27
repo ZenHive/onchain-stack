@@ -38,6 +38,30 @@ defmodule OnchainAave.MixProject do
     ]
   end
 
+  # In the monorepo checkout this resolves to an in-repo path dep; everywhere
+  # else the declared Hex requirement below wins. The predicate is the root
+  # marker `.onchain-monorepo-root` — NEVER the existence of the sibling: in a
+  # consumer's `deps/` layout every Hex package is unpacked side by side, so
+  # `../cartouche/mix.exs` exists there too and an existence check would fire
+  # exactly at the stranger. `ONCHAIN_PUBLISH=1` forces the Hex branch, because
+  # `mix hex.publish` rejects path deps (precedent: onchain_aave 0.3.0 shipped
+  # `{:onchain_evm, path: "../onchain_evm", only: [:dev, :test]}` and was
+  # unbuildable for everyone else — `only:` does not save you).
+  #
+  # Convention, parsed by `mix onchain.bounds` at the monorepo root: the call is
+  # a literal `sibling(:name, "<requirement>")` or
+  # `sibling(:name, "<requirement>", opts)`; name and requirement are literals.
+  defp sibling(name, req, opts \\ []) do
+    monorepo? = File.exists?(Path.expand("../../.onchain-monorepo-root", __DIR__))
+    publishing? = System.get_env("ONCHAIN_PUBLISH") == "1"
+
+    if monorepo? and not publishing? do
+      {name, [path: Path.expand("../#{name}", __DIR__), override: true] ++ opts}
+    else
+      {name, req, opts}
+    end
+  end
+
   defp deps do
     [
       # Floor raised 0.11 -> 0.12: onchain 0.12.0 is the release that raises
@@ -47,7 +71,7 @@ defmodule OnchainAave.MixProject do
       # onchain 0.11.0 -> zen_websocket 0.4.2, whose looser gun bound only
       # happens to have landed on a fixed 2.5.0. Two-segment, so onchain 0.13.0
       # resolves here without a bound edit.
-      {:onchain, "~> 0.12"},
+      sibling(:onchain, "~> 0.12"),
       {:decimal, "~> 3.1"},
       # Two-segment on purpose: the three-segment cap turned every descripex
       # minor into a forced nine-repo release cascade, while the committed
@@ -58,7 +82,7 @@ defmodule OnchainAave.MixProject do
       {:descripex, "~> 0.12"},
 
       # Dev/test tooling
-      {:onchain_evm, "~> 0.6", only: [:dev, :test]},
+      sibling(:onchain_evm, "~> 0.6", only: [:dev, :test]),
       {:stream_data, "~> 1.0", only: [:dev, :test]},
       {:tidewave, "~> 0.5", only: :dev},
       {:bandit, "~> 1.0", only: :dev},

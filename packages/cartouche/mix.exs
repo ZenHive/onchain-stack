@@ -107,6 +107,30 @@ defmodule Cartouche.MixProject do
   defp elixirc_paths(_), do: ["lib"]
 
   # Run "mix help deps" to learn about dependencies.
+  # In the monorepo checkout this resolves to an in-repo path dep; everywhere
+  # else the declared Hex requirement below wins. The predicate is the root
+  # marker `.onchain-monorepo-root` — NEVER the existence of the sibling: in a
+  # consumer's `deps/` layout every Hex package is unpacked side by side, so
+  # `../cartouche/mix.exs` exists there too and an existence check would fire
+  # exactly at the stranger. `ONCHAIN_PUBLISH=1` forces the Hex branch, because
+  # `mix hex.publish` rejects path deps (precedent: onchain_aave 0.3.0 shipped
+  # `{:onchain_evm, path: "../onchain_evm", only: [:dev, :test]}` and was
+  # unbuildable for everyone else — `only:` does not save you).
+  #
+  # Convention, parsed by `mix onchain.bounds` at the monorepo root: the call is
+  # a literal `sibling(:name, "<requirement>")` or
+  # `sibling(:name, "<requirement>", opts)`; name and requirement are literals.
+  defp sibling(name, req, opts \\ []) do
+    monorepo? = File.exists?(Path.expand("../../.onchain-monorepo-root", __DIR__))
+    publishing? = System.get_env("ONCHAIN_PUBLISH") == "1"
+
+    if monorepo? and not publishing? do
+      {name, [path: Path.expand("../#{name}", __DIR__), override: true] ++ opts}
+    else
+      {name, req, opts}
+    end
+  end
+
   defp deps do
     [
       # zenhive/dev override: bumped from upstream's ~> 0.31.1 so :reach (needs
@@ -157,7 +181,7 @@ defmodule Cartouche.MixProject do
       # `override: true` dropped at publish time — no transitive dep
       # pulls `hieroglyph` or `:abi`, so nothing needs overriding, and
       # hex rejects overrides on published packages.
-      {:hieroglyph, "~> 1.6"},
+      sibling(:hieroglyph, "~> 1.6"),
       {:junit_formatter, "~> 3.4.0", only: [:test]},
       {:stream_data, "~> 1.4", only: :test, runtime: false}
     ] ++ zenhive_dev_deps()
