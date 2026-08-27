@@ -1,3 +1,18 @@
+# Gate helpers shared by all eight packages (`agents_check/1`,
+# `advisory_freshness/1`, `host_script/3`) live at the monorepo root in
+# `shared/mix_helpers.exs`. That file is NOT part of the published tarball, so
+# the load is guarded and every call site degrades to a loud skip: nothing in
+# this file may assume the monorepo checkout. (hieroglyph declares no in-repo
+# sibling — descripex is its only first-party dep and stays a Hex dep — so it
+# carries no `sibling/3`.)
+# `Code.ensure_loaded?/1` keeps the load idempotent (a re-require of the same
+# path would redefine the module and warn).
+shared_mix_helpers = Path.expand("../../shared/mix_helpers.exs", __DIR__)
+
+if not Code.ensure_loaded?(OnchainMonorepo.MixHelpers) and File.exists?(shared_mix_helpers) do
+  Code.require_file(shared_mix_helpers)
+end
+
 defmodule ABI.Mixfile do
   use Mix.Project
 
@@ -212,69 +227,31 @@ defmodule ABI.Mixfile do
     ]
   end
 
-  # Both gates below shell out to scripts that live OUTSIDE this repo, on the
-  # developer host: the AGENTS.md renderer needs the claude-marketplace
-  # checkout plus ~/.claude/includes, and the advisory-freshness prover needs
-  # the local mix_audit mirror. Neither exists on a CI runner, and `mix cmd`
-  # with an absent path exits non-zero — which aborted the whole `mix ci`
-  # alias, and since these steps precede test.json/dialyzer it took the test,
-  # coverage and dialyzer signal down with it. Skip loudly when the script is
-  # absent so CI keeps running the checks it CAN run; the developer host and
-  # the harness reviewer still get the full gate.
-  @spec agents_check([String.t()]) :: :ok
-  defp agents_check(_args) do
-    host_script(
-      "~/_DATA/code/claude-marketplace/scripts/sync-agents-md.sh",
-      ["--check"],
-      "AGENTS.md freshness check"
-    )
-  end
-
   @spec manifest_check([String.t()]) :: :ok
   defp manifest_check(_args) do
     Mix.Task.rerun("hieroglyph.manifest", ["--check"])
     :ok
   end
 
-  @spec advisory_freshness([String.t()]) :: :ok
-  defp advisory_freshness(_args) do
-    host_script(
-      "~/_DATA/code/onchain-stack/bin/advisory-freshness.sh",
-      [],
-      "advisory-mirror freshness check"
-    )
-  end
+  # Shared with the other seven packages — see `shared/mix_helpers.exs` at the
+  # monorepo root. Resolved dynamically so a consumer evaluating this mix.exs
+  # out of the tarball (where that file does not exist) gets a skip, not a
+  # crash.
+  defp agents_check(args), do: shared_gate(:agents_check, args)
 
-  @spec host_script(String.t(), [String.t()], String.t()) :: :ok
-  defp host_script(path, args, label) do
-    expanded = Path.expand(path)
+  defp advisory_freshness(args), do: shared_gate(:advisory_freshness, args)
 
-    cond do
-      not File.regular?(expanded) ->
-        Mix.shell().info("[skip] #{label}: #{expanded} not found (developer-host script, absent in CI).")
+  defp shared_gate(fun, args) do
+    mod = OnchainMonorepo.MixHelpers
 
-      # Present but not runnable is a broken host setup, not a CI runner — say
-      # so instead of letting System.cmd/3 blow up with a raw :eacces.
-      not executable?(expanded) ->
-        Mix.raise("#{label}: #{expanded} exists but is not executable (chmod +x it).")
+    if Code.ensure_loaded?(mod) do
+      apply(mod, fun, [args])
+    else
+      Mix.shell().info(
+        "[skip] #{fun}: shared/mix_helpers.exs not found (monorepo-root file, absent in a published tarball)."
+      )
 
-      true ->
-        {_out, status} =
-          System.cmd(expanded, args, into: IO.stream(:stdio, :line), stderr_to_stdout: true)
-
-        if status != 0 do
-          Mix.raise("#{label} failed (#{expanded} exited #{status})")
-        end
-    end
-
-    :ok
-  end
-
-  @spec executable?(String.t()) :: boolean()
-  defp executable?(path) do
-    case File.stat(path) do
-      {:ok, %File.Stat{mode: mode}} -> Bitwise.band(mode, 0o111) != 0
-      _error -> false
+      :ok
     end
   end
 end
