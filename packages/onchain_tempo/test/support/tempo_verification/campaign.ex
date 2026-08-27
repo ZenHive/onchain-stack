@@ -131,6 +131,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     Enum.map(mutants(), &evaluate/1)
   end
 
+  @spec evaluate(mutant()) :: map()
   defp evaluate(mutant) do
     case compile_mutant(mutant) do
       {:ok, module} ->
@@ -146,10 +147,12 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec mutant_meta(mutant()) :: map()
   defp mutant_meta(mutant) do
     %{id: mutant.id, canary?: mutant.canary?, class: mutant.class, surface: mutant.surface}
   end
 
+  @spec compile_mutant(mutant()) :: {:ok, module()} | {:error, term()}
   defp compile_mutant(mutant) do
     source = File.read!(mutant.file)
 
@@ -163,6 +166,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec compile_renamed(String.t(), String.t(), module()) :: {:ok, module()} | {:error, term()}
   defp compile_renamed(renamed, file, module) do
     previous = Code.get_compiler_option(:ignore_module_conflict)
 
@@ -182,6 +186,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec rename_defmodule(String.t(), :transaction | :builder, module()) :: String.t()
   defp rename_defmodule(source, :transaction, module) do
     String.replace(source, "defmodule Onchain.Tempo.Transaction do", "defmodule #{inspect(module)} do", global: false)
   end
@@ -195,6 +200,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     )
   end
 
+  @spec module_name(mutant()) :: module()
   defp module_name(mutant) do
     suffix =
       mutant.id
@@ -204,11 +210,13 @@ defmodule Onchain.Tempo.Verification.Campaign do
     Module.concat(Onchain.Tempo.Verification.Mutant, suffix)
   end
 
+  @spec purge(module()) :: boolean()
   defp purge(module) do
     :code.purge(module)
     :code.delete(module)
   end
 
+  @spec oracle_verdict(mutant(), module()) :: %{status: atom(), evidence: term()}
   defp oracle_verdict(mutant, module) do
     builder = if mutant.surface == :builder, do: module, else: Builder
     txmod = if mutant.surface == :transaction, do: module, else: Transaction
@@ -225,11 +233,13 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec builder_mismatches(module()) :: [term()]
   defp builder_mismatches(builder) do
     opts = builder_opts()
     check_self_paid(builder, opts) ++ check_nonce_lanes(builder, opts)
   end
 
+  @spec builder_opts() :: keyword()
   defp builder_opts do
     keys = Vectors.keys()
 
@@ -246,6 +256,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     ]
   end
 
+  @spec check_self_paid(module(), keyword()) :: [term()]
   defp check_self_paid(builder, opts) do
     expected = Vectors.case!("self_paid_transfer")["serialized"]
 
@@ -255,6 +266,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec check_nonce_lanes(module(), keyword()) :: [term()]
   defp check_nonce_lanes(builder, opts) do
     case builder.build_signed_transfer(Keyword.merge(opts, nonce: 5, nonce_key: 2)) do
       {:ok, hex} -> lanes_from_hex(hex)
@@ -262,6 +274,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec lanes_from_hex(String.t()) :: [term()]
   defp lanes_from_hex(hex) do
     case Transaction.deserialize(hex) do
       {:ok, tx} -> lanes_from_tx(tx)
@@ -269,6 +282,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec lanes_from_tx(term()) :: [term()]
   defp lanes_from_tx(tx) do
     nonce_key = field_int(Enum.at(tx.fields, 6))
     nonce = field_int(Enum.at(tx.fields, 7))
@@ -279,14 +293,17 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec field_int(term()) :: non_neg_integer() | :not_int
   defp field_int(<<>>), do: 0
   defp field_int(bin) when is_binary(bin), do: :binary.decode_unsigned(bin)
   defp field_int(_), do: :not_int
 
+  @spec transaction_mismatches(module()) :: [term()]
   defp transaction_mismatches(txmod) do
     check_self_paid_identity(txmod) ++ check_fee_payer_cosign(txmod)
   end
 
+  @spec check_self_paid_identity(module()) :: [term()]
   defp check_self_paid_identity(txmod) do
     paid = Vectors.case!("self_paid_transfer")
 
@@ -296,6 +313,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec identity_mismatches(module(), term(), map()) :: [term()]
   defp identity_mismatches(txmod, tx, paid) do
     sender_ok = sender_matches?(txmod.sender(tx), paid["sender"])
 
@@ -305,6 +323,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec check_fee_payer_cosign(module()) :: [term()]
   defp check_fee_payer_cosign(txmod) do
     fp = Vectors.case!("fee_payer_placeholder")
     keys = Vectors.keys()
@@ -317,6 +336,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec cosign_mismatches(module(), term(), binary(), binary(), map()) :: [term()]
   defp cosign_mismatches(txmod, tx, fee_key, fee_token, fp) do
     case txmod.cosign_fee_payer(tx, fee_key, fee_token) do
       {:ok, cosigned} -> cosign_result(txmod, cosigned, fp)
@@ -324,6 +344,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec cosign_result(module(), term(), map()) :: [term()]
   defp cosign_result(txmod, cosigned, fp) do
     bytes = same_hex(cosigned.raw, fp["cosigned"], :cosign)
     sender_ok = sender_matches?(txmod.sender(cosigned), fp["sender"])
@@ -335,12 +356,14 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  @spec sender_matches?(term(), term()) :: boolean()
   defp sender_matches?({:ok, addr}, expected) do
     "0x" <> Base.encode16(addr, case: :lower) == String.downcase(expected)
   end
 
   defp sender_matches?(_, _), do: false
 
+  @spec same_hex(String.t(), String.t(), atom()) :: [term()]
   defp same_hex(actual, expected, tag) do
     if String.downcase(actual) == String.downcase(expected) do
       []

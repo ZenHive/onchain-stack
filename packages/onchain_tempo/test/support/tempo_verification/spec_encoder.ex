@@ -67,10 +67,12 @@ defmodule Onchain.Tempo.Verification.SpecEncoder do
   @spec fee_payer_type() :: 0x78
   def fee_payer_type, do: @fee_payer_type
 
+  @spec rlp_items(field_map(), :sender | :fee_payer) :: [term()]
   defp rlp_items(fields, mode) do
     Enum.map(@spec_order, &encode_named(&1, fields, mode))
   end
 
+  @spec encode_named(atom(), field_map(), :sender | :fee_payer) :: term()
   defp encode_named(:calls, fields, _mode), do: encode_calls(Map.get(fields, :calls, []))
   defp encode_named(:access_list, fields, _mode), do: Map.get(fields, :access_list, [])
 
@@ -97,6 +99,7 @@ defmodule Onchain.Tempo.Verification.SpecEncoder do
 
   defp encode_named(name, fields, _mode), do: quantity(Map.get(fields, name, 0))
 
+  @spec encode_calls([term()]) :: [term()]
   defp encode_calls(calls) do
     Enum.map(calls, fn
       %{to: to, value: value, input: input} -> [to, quantity(value), input]
@@ -104,9 +107,11 @@ defmodule Onchain.Tempo.Verification.SpecEncoder do
     end)
   end
 
+  @spec token_bytes(binary()) :: binary()
   defp token_bytes(<<>>), do: <<>>
   defp token_bytes(token) when is_binary(token), do: token
 
+  @spec quantity(term()) :: binary()
   defp quantity(0), do: <<>>
   defp quantity(n) when is_integer(n) and n > 0, do: :binary.encode_unsigned(n)
   defp quantity(bin) when is_binary(bin), do: bin
