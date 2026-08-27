@@ -29,3 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with Base addresses verified against `velodrome-finance/sugar` deployments
   and live `eth_call`, captured Sugar/factory ABIs in `priv/abis/`, and the
   `.reach.exs` layer contract.
+
+### Changed
+
+- **Package lives in the `onchain-stack` monorepo from its first release.**
+  Source, issue tracker and release tags are at
+  `github.com/ZenHive/onchain-stack`, under `packages/onchain_aerodrome/`;
+  the tag scheme is `onchain_aerodrome-v<version>`. This package has never
+  had a standalone repo.

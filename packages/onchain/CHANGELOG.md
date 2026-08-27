@@ -4,7 +4,7 @@ Completed roadmap tasks.
 
 ---
 
-## Unreleased
+## v0.14.0 — node-capability classification, fee reads, and the onchain-stack move (2026-08-27)
 
 ### Added
 
@@ -130,6 +130,23 @@ Completed roadmap tasks.
   `Onchain.Log` and `Onchain.Transfer` for any log whose event is declared
   `anonymous`. Suite green on the bump (831 tests); offline only —
   `:integration` and `:differential` were not run.
+
+- **`{:descripex, "~> 0.12"}` → `{:descripex, "~> 1.0"}`.** descripex 1.0.0 is
+  the stable major line, behaviourally equal to 0.13.0 per its own CHANGELOG
+  ("No behavioural change over 0.13.0"). A requirement narrowing, hence this
+  minor.
+
+- **`{:zen_websocket, "~> 0.8.0"}` → `{:zen_websocket, "~> 0.9.0"}`.** Pure
+  bound widening — zen_websocket 0.9.0 raises its own `descripex` floor to
+  `~> 1.0`, and no runtime code changed on the bump ("No runtime code
+  changed").
+
+- **Repo moved into the `onchain-stack` monorepo.** Source, issue tracker and
+  release tags now live at `github.com/ZenHive/onchain-stack`, under
+  `packages/onchain/`; the tag scheme is `onchain-v<version>` (was a bare
+  `v<version>` in the standalone repo). The standalone `ZenHive/onchain`
+  GitHub repo is archived. The Hex package name, module namespace and public
+  API are unchanged.
 
 ---
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.10.0 — node portability docs + descripex 1.0 floor + monorepo (2026-08-27)
 
 ### Documentation
 
@@ -15,6 +15,19 @@
   section (and imports the shared `node-portability.md` include), so the rule that
   our archive node is a privileged environment rather than the reference one is
   ambient for every agent working in this checkout, not folklore.
+
+### Changed
+
+- **`{:descripex, "~> 0.12"}` → `{:descripex, "~> 1.0"}`.** descripex 1.0.0 is
+  the stable major line, behaviourally equal to 0.13.0 per its own CHANGELOG
+  ("No behavioural change over 0.13.0"). A requirement narrowing, hence this
+  minor.
+- **Repo moved into the `onchain-stack` monorepo.** Source, issue tracker and
+  release tags now live at `github.com/ZenHive/onchain-stack`, under
+  `packages/onchain_tempo/`; the tag scheme is `onchain_tempo-v<version>` (was
+  a bare `v<version>` in the standalone repo). The standalone
+  `ZenHive/onchain_tempo` GitHub repo is archived. The Hex package name,
+  module namespace and public API are unchanged.
 
 ## [0.9.2] - 2026-08-22
 

@@ -128,7 +128,7 @@ Three caveats worth knowing before you pick an endpoint:
 For the base fee specifically, the portable construction is to read `baseFeePerGas` from
 the **pending** block header — every EIP-1559 node serves it, and it carries the same
 "next block" semantics that `eth_baseFee` does. `Onchain.RPC.base_fee/1` in the
-[`onchain`](https://github.com/ZenHive/onchain) package does exactly that if you'd rather
+[`onchain`](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain) package does exactly that if you'd rather
 not hand-roll it.
 
 Note that the `:ethereum_node` default (`https://mainnet.infura.io`) is a placeholder, not

@@ -14,10 +14,13 @@ end
 defmodule Cartouche.MixProject do
   use Mix.Project
 
+  @version "0.8.0"
+  @source_url "https://github.com/ZenHive/onchain-stack"
+
   def project do
     [
       app: :cartouche,
-      version: "0.8.0",
+      version: @version,
       # 1.18 floor inherited from hieroglyph 1.6.0, whose encode path uses
       # `Enum.sum_by/2` (Elixir 1.18+). Declaring less would let cartouche
       # resolve on 1.17 and then fail compiling its own dependency.
@@ -28,7 +31,7 @@ defmodule Cartouche.MixProject do
       aliases: aliases(),
       name: "Cartouche",
       description: "Lightweight Ethereum and Solana RPC client for Elixir",
-      source_url: "https://github.com/zenhive/cartouche",
+      source_url: @source_url,
       docs: [
         main: "readme",
         extras: ["README.md", "CHANGELOG.md"],
@@ -38,7 +41,14 @@ defmodule Cartouche.MixProject do
         # warns and `mix docs --warnings-as-errors` (the pre-commit hook)
         # blocks the commit. Skip on CHANGELOG.md only; README and source
         # docstrings remain strict.
-        skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
+        skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
+        source_ref: "cartouche-v#{@version}",
+        # ExDoc builds file links relative to the package root, but the
+        # monorepo puts the package two levels below the repo root — without
+        # this pattern every generated doc link 404s against packages/cartouche/lib/…
+        # instead of the repo-root-relative path GitHub actually serves.
+        source_url_pattern:
+          "https://github.com/ZenHive/onchain-stack/blob/cartouche-v#{@version}/packages/cartouche/%{path}#L%{line}"
       ],
       # plt_*_path pin keeps the PLT outside _build/ so CI can cache it
       # independently of the deps cache (which invalidates on mix.lock).
@@ -101,8 +111,8 @@ defmodule Cartouche.MixProject do
       maintainers: ["ZenHive"],
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/zenhive/cartouche",
-        "Changelog" => "https://hexdocs.pm/cartouche/changelog.html"
+        "GitHub" => "https://github.com/ZenHive/onchain-stack/tree/main/packages/cartouche",
+        "Changelog" => "https://github.com/ZenHive/onchain-stack/blob/main/packages/cartouche/CHANGELOG.md"
       }
     ]
   end

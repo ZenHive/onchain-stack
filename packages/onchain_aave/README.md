@@ -1,6 +1,6 @@
 # OnchainAave
 
-Aave V3 and V4 protocol wrappers for Elixir -- V3 pool reads/writes, V4 Hub-and-Spoke reads and Position Manager writes, oracle, math, and type structs. Built on [onchain](https://github.com/ZenHive/onchain).
+Aave V3 and V4 protocol wrappers for Elixir -- V3 pool reads/writes, V4 Hub-and-Spoke reads and Position Manager writes, oracle, math, and type structs. Built on [onchain](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain).
 
 ## Installation
 

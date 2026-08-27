@@ -15,7 +15,7 @@ defmodule OnchainAave.MixProject do
   use Mix.Project
 
   @version "0.4.0"
-  @source_url "https://github.com/ZenHive/onchain_aave"
+  @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
     [
@@ -129,7 +129,10 @@ defmodule OnchainAave.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => @source_url},
+      links: %{
+        "GitHub" => "https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_aave",
+        "Changelog" => "https://github.com/ZenHive/onchain-stack/blob/main/packages/onchain_aave/CHANGELOG.md"
+      },
       # Explicit list because hex's default `files` ships all of `priv/`, and
       # `priv/plts/` holds the dialyzer PLTs this project pins there
       # (`dialyzer/0` sets `plt_local_path`). .gitignore does not apply to
@@ -142,8 +145,15 @@ defmodule OnchainAave.MixProject do
   defp docs do
     [
       main: "OnchainAave",
-      source_ref: "v#{@version}",
-      source_url: @source_url
+      source_ref: "onchain_aave-v#{@version}",
+      source_url: @source_url,
+      # ExDoc builds file links relative to the package root, but the
+      # monorepo puts the package two levels below the repo root — without
+      # this pattern every generated doc link 404s against
+      # packages/onchain_aave/lib/… instead of the repo-root-relative path
+      # GitHub actually serves.
+      source_url_pattern:
+        "https://github.com/ZenHive/onchain-stack/blob/onchain_aave-v#{@version}/packages/onchain_aave/%{path}#L%{line}"
     ]
   end
 

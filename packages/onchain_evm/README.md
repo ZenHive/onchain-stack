@@ -1,6 +1,6 @@
 # OnchainEvm
 
-Rust NIFs for Elixir: local EVM simulation via [revm](https://github.com/bluealloy/revm), Solidity ABI parsing via [Alloy](https://github.com/alloy-rs/alloy) and [solar-parse](https://github.com/paradigmxyz/solar), debug/trace APIs, and contract codegen. Built on [onchain](https://github.com/ZenHive/onchain).
+Rust NIFs for Elixir: local EVM simulation via [revm](https://github.com/bluealloy/revm), Solidity ABI parsing via [Alloy](https://github.com/alloy-rs/alloy) and [solar-parse](https://github.com/paradigmxyz/solar), debug/trace APIs, and contract codegen. Built on [onchain](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain).
 
 ## Installation
 

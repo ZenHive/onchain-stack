@@ -4,6 +4,25 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## v0.4.0 — descripex 1.0 floor + monorepo (2026-08-27)
+
+No public API or runtime behaviour changed.
+
+### Changed
+
+- **`{:descripex, "~> 0.12"}` → `{:descripex, "~> 1.0"}`.** descripex 1.0.0 is
+  the stable major line, behaviourally equal to 0.13.0 per its own CHANGELOG
+  ("No behavioural change over 0.13.0"). A requirement narrowing, hence this
+  minor.
+- **Repo moved into the `onchain-stack` monorepo.** Source, issue tracker and
+  release tags now live at `github.com/ZenHive/onchain-stack`, under
+  `packages/onchain_js/`; the tag scheme is `onchain_js-v<version>` (was a
+  bare `v<version>` in the standalone repo). The standalone `ZenHive/onchain_js`
+  GitHub repo is archived. The Hex package name, module namespace and public
+  API are unchanged.
+
+---
+
 ## v0.3.1 — widened descripex bound (2026-08-22)
 
 No public API or runtime behaviour changed.

@@ -340,4 +340,4 @@ Solidity itself does not fully support fixed-point types — quoting the [Solidi
 
 # Collaboration
 
-MIT-licensed. Issues and PRs welcome at [ZenHive/hieroglyph](https://github.com/ZenHive/hieroglyph/issues). Upstream bugs affecting Solidity ABI semantics are also filed at [exthereum/abi](https://github.com/exthereum/abi/issues) — see `CHANGELOG.md` for cross-references.
+MIT-licensed. Issues and PRs welcome at [ZenHive/onchain-stack](https://github.com/ZenHive/onchain-stack/issues). Upstream bugs affecting Solidity ABI semantics are also filed at [exthereum/abi](https://github.com/exthereum/abi/issues) — see `CHANGELOG.md` for cross-references.

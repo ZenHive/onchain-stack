@@ -29,6 +29,12 @@
   until they pick up this release.
 * **Verified against descripex 1.0.0.** Full suite green — 460 tests, no
   runtime code changed.
+* **Changed — repo moved into the `onchain-stack` monorepo.** Source, issue
+  tracker and release tags now live at `github.com/ZenHive/onchain-stack`,
+  under `packages/hieroglyph/`; the tag scheme is `hieroglyph-v<version>`
+  (was a bare `v<version>` in the standalone repo). The standalone
+  `ZenHive/hieroglyph` GitHub repo is archived. The Hex package name, module
+  namespace (`ABI`) and public API are unchanged.
 
 # 1.7.0 - 2026-08-22
 

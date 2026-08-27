@@ -227,6 +227,17 @@ All notable changes to this project will be documented in this file.
   reviewer can neither fix nor ignore. `AGENTS.md` freshness stays enforced by
   `precommit.full` on the landed base.
 
+- **`{:descripex, "~> 0.12"}` → `{:descripex, "~> 1.0"}`.** descripex 1.0.0 is
+  the stable major line, behaviourally equal to 0.13.0 per its own CHANGELOG
+  ("No behavioural change over 0.13.0"). A requirement narrowing, hence this
+  minor.
+
+- **Repo moved into the `onchain-stack` monorepo.** Source, issue tracker and
+  release tags now live at `github.com/ZenHive/onchain-stack`, under
+  `packages/cartouche/`; the tag scheme is `cartouche-v<version>` (was a bare
+  `v<version>` in the standalone repo). The standalone `ZenHive/cartouche`
+  GitHub repo is archived. The Hex package name and public API are unchanged.
+
 ### Fixed
 
 - **The secp256k1 signing backends accepted any binary as a payload, and a

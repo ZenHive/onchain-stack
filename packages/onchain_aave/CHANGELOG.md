@@ -114,6 +114,16 @@ unit tests rather than testnet sends.
 - Resolved the refreshed family upstreams: onchain 0.13.0, descripex 0.13.0,
   cartouche 0.7.1, hieroglyph 1.6.2, zen_websocket 0.7.1 and the dev/test-only
   onchain_evm 0.5.1.
+- **`{:descripex, "~> 0.12"}` → `{:descripex, "~> 1.0"}`.** descripex 1.0.0 is
+  the stable major line, behaviourally equal to 0.13.0 per its own CHANGELOG
+  ("No behavioural change over 0.13.0"). A requirement narrowing, hence this
+  minor.
+- **Repo moved into the `onchain-stack` monorepo.** Source, issue tracker and
+  release tags now live at `github.com/ZenHive/onchain-stack`, under
+  `packages/onchain_aave/`; the tag scheme is `onchain_aave-v<version>` (was
+  a bare `v<version>` in the standalone repo). The standalone
+  `ZenHive/onchain_aave` GitHub repo is archived. The Hex package name and
+  public API are unchanged.
 
 ---
 

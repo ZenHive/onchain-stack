@@ -14,8 +14,8 @@ end
 defmodule OnchainJs.MixProject do
   use Mix.Project
 
-  @version "0.3.1"
-  @source_url "https://github.com/ZenHive/onchain_js"
+  @version "0.4.0"
+  @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
     [
@@ -132,7 +132,10 @@ defmodule OnchainJs.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => @source_url},
+      links: %{
+        "GitHub" => "https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_js",
+        "Changelog" => "https://github.com/ZenHive/onchain-stack/blob/main/packages/onchain_js/CHANGELOG.md"
+      },
       # Explicit list because hex's default `files` ships all of `priv/`, and
       # `priv/` here holds nothing but the dialyzer PLTs that `dialyzer/0`
       # pins there (`plt_local_path`). .gitignore does not apply to
@@ -147,8 +150,15 @@ defmodule OnchainJs.MixProject do
   defp docs do
     [
       main: "OnchainJs",
-      source_ref: "v#{@version}",
-      source_url: @source_url
+      source_ref: "onchain_js-v#{@version}",
+      source_url: @source_url,
+      # ExDoc builds file links relative to the package root, but the
+      # monorepo puts the package two levels below the repo root — without
+      # this pattern every generated doc link 404s against
+      # packages/onchain_js/lib/… instead of the repo-root-relative path
+      # GitHub actually serves.
+      source_url_pattern:
+        "https://github.com/ZenHive/onchain-stack/blob/onchain_js-v#{@version}/packages/onchain_js/%{path}#L%{line}"
     ]
   end
 

@@ -15,7 +15,7 @@ defmodule OnchainEvm.MixProject do
   use Mix.Project
 
   @version "0.6.0"
-  @source_url "https://github.com/ZenHive/onchain_evm"
+  @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
     [
@@ -137,7 +137,10 @@ defmodule OnchainEvm.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => @source_url},
+      links: %{
+        "GitHub" => "https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_evm",
+        "Changelog" => "https://github.com/ZenHive/onchain-stack/blob/main/packages/onchain_evm/CHANGELOG.md"
+      },
       # Matching hosts load a GitHub-Release artifact. Unmatched hosts
       # (Windows, or `RUSTLER_PRECOMPILED_FORCE_BUILD_ALL=1`) still compile
       # from source, so the `native/` crate sources MUST ship. `checksum-*.exs`
@@ -169,8 +172,15 @@ defmodule OnchainEvm.MixProject do
   defp docs do
     [
       main: "OnchainEvm",
-      source_ref: "v#{@version}",
-      source_url: @source_url
+      source_ref: "onchain_evm-v#{@version}",
+      source_url: @source_url,
+      # ExDoc builds file links relative to the package root, but the
+      # monorepo puts the package two levels below the repo root — without
+      # this pattern every generated doc link 404s against
+      # packages/onchain_evm/lib/… instead of the repo-root-relative path
+      # GitHub actually serves.
+      source_url_pattern:
+        "https://github.com/ZenHive/onchain-stack/blob/onchain_evm-v#{@version}/packages/onchain_evm/%{path}#L%{line}"
     ]
   end
 

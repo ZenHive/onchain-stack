@@ -16,11 +16,14 @@ end
 defmodule ABI.Mixfile do
   use Mix.Project
 
+  @version "1.8.0"
+  @source_url "https://github.com/ZenHive/onchain-stack"
+
   @spec project() :: keyword()
   def project do
     [
       app: :hieroglyph,
-      version: "1.8.0",
+      version: @version,
       # 1.18 floor: `lib/` uses `Enum.sum_by/2` (added in Elixir 1.18) on the
       # tuple/array encode path, so a lower floor would compile with only a
       # warning and then die at runtime in a consumer's first encode call.
@@ -28,12 +31,19 @@ defmodule ABI.Mixfile do
       elixirc_paths: elixirc_paths(Mix.env()),
       description:
         "Solidity ABI encoder/decoder for Elixir. Maintained fork of exthereum/abi with bugfixes and Elixir 1.19+ support.",
-      source_url: "https://github.com/ZenHive/hieroglyph",
-      homepage_url: "https://github.com/ZenHive/hieroglyph",
+      source_url: @source_url,
+      homepage_url: @source_url,
       docs: [
         main: "ABI",
         extras: ["README.md", "CHANGELOG.md"],
-        skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
+        skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
+        source_ref: "hieroglyph-v#{@version}",
+        # ExDoc builds file links relative to the package root, but the
+        # monorepo puts the package two levels below the repo root — without
+        # this pattern every generated doc link 404s against packages/hieroglyph/lib/…
+        # instead of the repo-root-relative path GitHub actually serves.
+        source_url_pattern:
+          "https://github.com/ZenHive/onchain-stack/blob/hieroglyph-v#{@version}/packages/hieroglyph/%{path}#L%{line}"
       ],
       package: package(),
       build_embedded: Mix.env() == :prod,
@@ -62,8 +72,8 @@ defmodule ABI.Mixfile do
       licenses: ["MIT"],
       files: ~w(lib src skills mix.exs README.md CHANGELOG.md LICENSE.md .formatter.exs),
       links: %{
-        "GitHub" => "https://github.com/ZenHive/hieroglyph",
-        "Changelog" => "https://github.com/ZenHive/hieroglyph/blob/main/CHANGELOG.md",
+        "GitHub" => "https://github.com/ZenHive/onchain-stack/tree/main/packages/hieroglyph",
+        "Changelog" => "https://github.com/ZenHive/onchain-stack/blob/main/packages/hieroglyph/CHANGELOG.md",
         "Upstream (fork-of)" => "https://github.com/exthereum/abi"
       }
     ]

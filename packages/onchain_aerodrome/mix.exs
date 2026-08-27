@@ -15,7 +15,7 @@ defmodule OnchainAerodrome.MixProject do
   use Mix.Project
 
   @version "0.1.0"
-  @source_url "https://github.com/ZenHive/onchain_aerodrome"
+  @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
     [
@@ -117,7 +117,10 @@ defmodule OnchainAerodrome.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => @source_url},
+      links: %{
+        "GitHub" => "https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_aerodrome",
+        "Changelog" => "https://github.com/ZenHive/onchain-stack/blob/main/packages/onchain_aerodrome/CHANGELOG.md"
+      },
       # Explicit list because hex's default `files` ships all of `priv/`, and
       # `priv/plts/` holds the dialyzer PLTs this project pins there
       # (`dialyzer/0` sets `plt_local_path`). .gitignore does not apply to
@@ -130,9 +133,16 @@ defmodule OnchainAerodrome.MixProject do
   defp docs do
     [
       main: "readme",
-      source_ref: "v#{@version}",
+      source_ref: "onchain_aerodrome-v#{@version}",
       source_url: @source_url,
-      extras: ["README.md", "CHANGELOG.md"]
+      extras: ["README.md", "CHANGELOG.md"],
+      # ExDoc builds file links relative to the package root, but the
+      # monorepo puts the package two levels below the repo root — without
+      # this pattern every generated doc link 404s against
+      # packages/onchain_aerodrome/lib/… instead of the repo-root-relative
+      # path GitHub actually serves.
+      source_url_pattern:
+        "https://github.com/ZenHive/onchain-stack/blob/onchain_aerodrome-v#{@version}/packages/onchain_aerodrome/%{path}#L%{line}"
     ]
   end
 

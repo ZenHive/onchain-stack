@@ -1,14 +1,14 @@
 # Onchain JS
 
-JavaScript bridge for Ethereum — run npm packages on the BEAM via [QuickBEAM](https://hex.pm/packages/quickbeam). No Node.js required. Built on [onchain](https://github.com/ZenHive/onchain).
+JavaScript bridge for Ethereum — run npm packages on the BEAM via [QuickBEAM](https://hex.pm/packages/quickbeam). No Node.js required. Built on [onchain](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain).
 
 ## Package Family
 
 | Package | Purpose | Native Deps |
 |---------|---------|-------------|
-| [onchain](https://github.com/ZenHive/onchain) | Core Ethereum primitives, RPC, ABI, signing | None (pure Elixir) |
-| [onchain_aave](https://github.com/ZenHive/onchain_aave) | Aave V3 protocol wrappers | None (pure Elixir) |
-| [onchain_evm](https://github.com/ZenHive/onchain_evm) | Rust NIFs: revm simulation, Solidity parsing, codegen | Rustler |
+| [onchain](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain) | Core Ethereum primitives, RPC, ABI, signing | None (pure Elixir) |
+| [onchain_aave](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_aave) | Aave V3 protocol wrappers | None (pure Elixir) |
+| [onchain_evm](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_evm) | Rust NIFs: revm simulation, Solidity parsing, codegen | Rustler |
 | **onchain_js** (this) | JS bridge: npm packages on the BEAM | QuickBEAM (Zig NIF) |
 
 Pick what you need — consumers who only need `eth_call` never compile Zig or Rust.
