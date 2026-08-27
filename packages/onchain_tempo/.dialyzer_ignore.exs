@@ -1,16 +1,8 @@
-# Transitive deps via onchain (hex dep) are not resolved in the PLT under :apps_direct.
-# These are false positives — all functions exist at runtime.
+# Regenerated wholesale 2026-08-27 (root CLAUDE.md § Gates). The monorepo's
+# sibling/3 path branch resolves Jason/Req/Cartouche/Onchain/Descripex into the
+# PLT, so those standalone-era entries are gone. ExRLP stays: it is transitive
+# (onchain → cartouche → ex_rlp), used only from test/support, and transitive
+# deps are not in the :apps_direct PLT.
 [
-  # Jason (via onchain)
-  ~r/Function Jason\./,
-  # Req (via onchain)
-  ~r/Function Req\./,
-  # Cartouche (via onchain → cartouche; transitive, not in :apps_direct PLT)
-  ~r/Function Cartouche\./,
-  # Onchain modules
-  ~r/Function Onchain\./,
-  # Descripex (Discoverable macro)
-  ~r/Function Descripex\./,
-  # ExRLP (via onchain → cartouche; transitive, only surfaces in test env via test/support)
   ~r/Function ExRLP\./
 ]

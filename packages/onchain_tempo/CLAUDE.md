@@ -108,7 +108,7 @@ exception to its rule 2** — and the exception has to be stated, not assumed:
 
 ### Dialyzer Notes
 
-Dialyzer shows `unknown_function` warnings for transitive deps when using onchain via the sibling/3 path branch. This is a known issue shared with onchain_aave — the path dep's transitive deps aren't fully resolved in the PLT. These are false positives.
+`.dialyzer_ignore.exs` carries exactly one entry: `~r/Function ExRLP\./`. ExRLP is transitive (onchain → cartouche → ex_rlp), used only from `test/support`, and transitive deps are not in the `:apps_direct` PLT — a false positive. Everything else (Jason/Req/Cartouche/Onchain/Descripex) resolves via the sibling/3 path branch since the monorepo; the standalone-era suppressions for those were pruned 2026-08-27. If a new unknown-function warning appears, regenerate the file wholesale rather than appending.
 
 ### Conventions
 
