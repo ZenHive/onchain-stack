@@ -1,0 +1,57 @@
+# The directory Mix will write compiled artifacts to.
+/_build/
+
+# Dialyzer PLT files (mix.exs pins plt_*_path here so PLTs survive
+# `mix clean` / _build wipes).
+/priv/plts/
+
+# If you run "mix test --cover", coverage assets end up here.
+/cover/
+
+# The directory Mix downloads your dependencies sources to.
+/deps/
+
+# Where 3rd-party dependencies like ExDoc output generated docs.
+/doc/
+
+# Ignore .fetch files in case you like to edit your project deps locally.
+/.fetch
+
+# If the VM crashes, it generates a dump, let's ignore it too.
+erl_crash.dump
+
+# Also ignore archive artifacts (built via "mix archive.build").
+*.ez
+
+# Ignore generated code from yecc and leex
+src/*_lexer.erl
+src/*_parser.erl
+
+# Editor/LSP
+/.elixir_ls/
+/.lexical/
+
+# AI-friendly docs output
+/doc/llms.txt
+
+# Local backups (e.g. mix.bak.exs from the full-setup migration)
+*.bak.exs
+
+# Claude Code scheduling runtime lock (session-scoped PID/sessionId)
+/.claude/scheduled_tasks.lock
+
+# Per-developer hookify rules (local behavioral hooks, not project policy)
+/.claude/hookify.*.local.md
+
+# Hex docs deps cache (regenerable)
+/.hex-docs/
+
+# Hex package tarballs from `mix hex.build` (regenerated on publish)
+/*.tar
+
+
+# Byte-cache from running test/support/fixtures/ethers/vendor.py
+__pycache__/
+
+# Crash backups from `mix hieroglyph.mutants` (a leftover means an interrupted run)
+*.hieroglyph-mutants.orig

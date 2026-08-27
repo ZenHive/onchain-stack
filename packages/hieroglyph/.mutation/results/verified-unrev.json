@@ -1,0 +1,104 @@
+{
+  "campaign": ".mutation/results/unrev-input.json",
+  "results": [
+    {
+      "description": "Literal: 8 to 7 (decrement)",
+      "detail": "1 test failure(s)",
+      "file": "lib/abi.ex",
+      "line": 674,
+      "mutator": "Muex.Mutator.Literal",
+      "reported": "survived",
+      "verified": "killed"
+    },
+    {
+      "description": "Literal: 195 to 194 (decrement)",
+      "detail": "1 test failure(s)",
+      "file": "lib/abi.ex",
+      "line": 674,
+      "mutator": "Muex.Mutator.Literal",
+      "reported": "survived",
+      "verified": "killed"
+    },
+    {
+      "description": "Literal: 121 to 120 (decrement)",
+      "detail": "1 test failure(s)",
+      "file": "lib/abi.ex",
+      "line": 674,
+      "mutator": "Muex.Mutator.Literal",
+      "reported": "survived",
+      "verified": "killed"
+    },
+    {
+      "description": "Literal: 160 to 159 (decrement)",
+      "detail": "1 test failure(s)",
+      "file": "lib/abi.ex",
+      "line": 674,
+      "mutator": "Muex.Mutator.Literal",
+      "reported": "survived",
+      "verified": "killed"
+    },
+    {
+      "description": "Literal: 78 to 79 (increment)",
+      "detail": "1 test failure(s)",
+      "file": "lib/abi.ex",
+      "line": 675,
+      "mutator": "Muex.Mutator.Literal",
+      "reported": "survived",
+      "verified": "killed"
+    },
+    {
+      "description": "Literal: 72 to 73 (increment)",
+      "detail": "1 test failure(s)",
+      "file": "lib/abi.ex",
+      "line": 675,
+      "mutator": "Muex.Mutator.Literal",
+      "reported": "survived",
+      "verified": "killed"
+    },
+    {
+      "description": "Literal: 123 to 124 (increment)",
+      "detail": "1 test failure(s)",
+      "file": "lib/abi.ex",
+      "line": 675,
+      "mutator": "Muex.Mutator.Literal",
+      "reported": "survived",
+      "verified": "killed"
+    },
+    {
+      "description": "Literal: 4 to 3 (decrement)",
+      "detail": "1 test failure(s)",
+      "file": "lib/abi.ex",
+      "line": 688,
+      "mutator": "Muex.Mutator.Literal",
+      "reported": "survived",
+      "verified": "killed"
+    },
+    {
+      "description": "Literal: 1 to 0 (decrement)",
+      "detail": "1 test failure(s)",
+      "file": "lib/abi/type_decoder.ex",
+      "line": 521,
+      "mutator": "Muex.Mutator.Literal",
+      "reported": "survived",
+      "verified": "killed"
+    },
+    {
+      "description": "Arithmetic: * to /",
+      "detail": null,
+      "file": "lib/abi/type_decoder.ex",
+      "line": 533,
+      "mutator": "Muex.Mutator.Arithmetic",
+      "reported": "survived",
+      "verified": "survived"
+    },
+    {
+      "description": "Arithmetic: - to +",
+      "detail": "1 test failure(s)",
+      "file": "lib/abi/type_decoder.ex",
+      "line": 635,
+      "mutator": "Muex.Mutator.Arithmetic",
+      "reported": "survived",
+      "verified": "killed"
+    }
+  ]
+}

@@ -1,0 +1,1295 @@
+{
+  "version": "1.0",
+  "modules": [
+    {
+      "functions": [
+        {
+          "arity": 0,
+          "name": "__descripex_modules__",
+          "description": "Return the list of modules registered with this library.",
+          "signature": "__descripex_modules__()",
+          "spec": "__descripex_modules__() :: [module()]",
+          "defaults": 0,
+          "hints": {}
+        },
+        {
+          "arity": 3,
+          "name": "decode",
+          "description": "Decodes the given data based on the function or tuple\nsignature.\n\nIn place of a signature, you can also pass one of the `ABI.FunctionSelector` structs returned from `parse_specification/1`.\n\n## Options\n\n  * `:decode_structs` — when `true`, returns a map keyed by snake_case atoms\n    derived from each parameter's name (instead of the default list).\n    Field-name atoms must already exist in the VM atom table — `decode/3`\n    calls `String.to_existing_atom/1` and raises `ArgumentError` when an\n    atom has not been interned. See the README \"Pre-interning atoms for\n    `decode_structs: true`\" section for the one-liner migration.\n  * `:strict` — when `true`, rejects non-canonical bool/uint/int padding,\n    trailing bytes after the declared payload, and string/bytes length\n    prefixes that exceed the available data. Strict failures return\n    `{:error, {:strict_violation, detail}}`.\n\n## Examples\n\n    iex> ABI.decode(\"baz(uint,address)\", \"00000000000000000000000000000000000000000000000000000000000000320000000000000000000000000000000000000000000000000000000000000001\" |> Base.decode16!(case: :lower))\n    [50, <<1::160>>]\n\n    iex> ABI.decode(\"(address[])\", \"00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000\" |> Base.decode16!(case: :lower))\n    [[]]\n\n    iex> ABI.decode(\"(uint256)\", \"000000000000000000000000000000000000000000000000000000000000000a\" |> Base.decode16!(case: :lower))\n    [10]\n\n    iex> ABI.decode(\"(string)\", \"0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000\" |> Base.decode16!(case: :lower))\n    [\"Ether Token\"]\n\n    iex> ABI.decode(\"((uint256,uint256),string)\", \"000000000000000000000000000000000000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000220000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000\" |> Base.decode16!(case: :lower))\n    [{0x11, 0x22}, \"Ether Token\"]\n\n    iex> ABI.decode(\"((uint256,(uint256,uint256)),string)\", \"0000000000000000000000000000000000000000000000000000000000000011000000000000000000000000000000000000000000000000000000000000002200000000000000000000000000000000000000000000000000000000000000330000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000\" |> Base.decode16!(case: :lower))\n    [{0x11, {0x22, 0x33}}, \"Ether Token\"]\n\n    iex> File.read!(\"priv/dog.abi.json\")\n    ...> |> Jason.decode!\n    ...> |> ABI.parse_specification\n    ...> |> Enum.find(&(&1.function == \"bark\")) # bark(address,bool)\n    ...> |> ABI.decode(\"00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001\" |> Base.decode16!(case: :lower))\n    [<<1::160>>, true]\n\n    iex> ABI.decode(\"(uint256 a,bool b)\", \"000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000001\" |> Base.decode16!(case: :lower), decode_structs: true)\n    %{a: 10, b: true}",
+          "signature": "decode(function_signature, data, opts \\\\ [])",
+          "spec": "decode(binary() | ABI.FunctionSelector.t(), binary(), keyword()) ::\n  [any()] | map() | {:error, {:strict_violation, term()}}",
+          "defaults": 1,
+          "hints": {
+            "description": "Decodes the given data based on the function or tuple signature.",
+            "params": {
+              "data": {
+                "description": "ABI-encoded payload bytes (no 4-byte selector prefix). Use decode_call/3 for selector-prefixed calldata.",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "opts": {
+                "description": "Keyword options. decode_structs: true returns a map keyed by snake_case atoms derived from parameter names instead of a list. strict: true rejects non-canonical padding, trailing bytes, and dynamic length overruns with {:error, {:strict_violation, detail}}. Field-name atoms must already exist in the VM atom table — reference them in your code (e.g., a module attribute or compile-time list) before calling, otherwise decode raises ArgumentError. This bounds atom creation to your declared field set.",
+                "kind": "value"
+              },
+              "function_signature": {
+                "description": "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "union",
+              "description": "List of decoded values in argument order; or a map keyed by snake_case field atoms when decode_structs: true is set and every parameter has a non-empty name."
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_call",
+          "description": "Decodes selector-prefixed calldata (4-byte method ID followed by ABI-encoded\nargs) and verifies the prefix matches the expected selector.\n\nSymmetric counterpart to `encode/2`, which produces selector-prefixed\noutput. Use `decode/2` for payload-only data (return values, or calldata\nthat has already been routed by selector).\n\nReturns:\n\n* `{:ok, decoded}` — selector matched; `decoded` is the same shape `decode/3` returns\n* `{:error, :calldata_too_short}` — fewer than 4 bytes provided\n* `{:error, :selector_mismatch}` — first 4 bytes don't match the expected selector\n* `{:error, :no_function_name}` — the selector has `function: nil`, so there's no\n  selector to verify against; use `decode/3` with the payload directly\n* `{:error, {:strict_violation, detail}}` — `strict: true` rejected a\n  non-canonical payload\n\n> #### Note {: .info}\n>\n> Only the *selector* check is wrapped in `{:error, _}`. When the selector\n> matches but the payload is malformed (truncated or wrongly-typed bytes),\n> the underlying `decode/3` still raises — same contract as calling\n> `decode/3` directly.\n\n## Examples\n\n    iex> calldata = ABI.encode(\"transfer(address,uint256)\", [<<1::160>>, 100])\n    iex> ABI.decode_call(\"transfer(address,uint256)\", calldata)\n    {:ok, [<<1::160>>, 100]}\n\n    iex> ABI.decode_call(\"deposit()\", <<0xd0, 0xe3, 0x0d, 0xb0>>)\n    {:ok, []}\n\n    iex> ABI.decode_call(\"transfer(address,uint256)\", <<0xde, 0xad, 0xbe, 0xef>>)\n    {:error, :selector_mismatch}\n\n    iex> ABI.decode_call(\"transfer(address,uint256)\", <<0xa9, 0x05>>)\n    {:error, :calldata_too_short}\n\n    iex> ABI.decode_call(%ABI.FunctionSelector{function: nil, types: []}, <<0::32>>)\n    {:error, :no_function_name}",
+          "signature": "decode_call(signature_or_selector, calldata, opts \\\\ [])",
+          "spec": "decode_call(binary() | ABI.FunctionSelector.t(), binary(), keyword()) ::\n  {:ok, [any()] | map()} | {:error, decode_call_error()}",
+          "defaults": 1,
+          "hints": {
+            "description": "Decodes selector-prefixed calldata (4-byte method ID + ABI-encoded args) and verifies the selector matches.",
+            "params": {
+              "opts": {
+                "description": "Keyword options forwarded to decode/3, including strict: true.",
+                "kind": "value"
+              },
+              "signature_or_selector": {
+                "description": "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct. The first 4 bytes of calldata are checked against this selector.",
+                "kind": "value"
+              },
+              "calldata": {
+                "description": "Full selector-prefixed calldata bytes. Must be at least 4 bytes; first 4 bytes are the method ID and the remainder is the ABI-encoded payload.",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "errors": [
+              {
+                "name": "calldata_too_short",
+                "description": "Fewer than 4 bytes provided."
+              },
+              {
+                "name": "selector_mismatch",
+                "description": "First 4 bytes do not match the expected selector."
+              },
+              {
+                "name": "no_function_name",
+                "description": "Selector has function: nil — there is no selector to verify against; use decode/3 directly."
+              },
+              {
+                "name": "strict_violation",
+                "description": "strict: true rejected a non-canonical payload."
+              }
+            ],
+            "returns": {
+              "type": "tuple",
+              "description": "Tagged tuple. Selector match returns {:ok, decoded} where decoded matches decode/3's shape; selector errors return {:error, reason}. A malformed payload still raises (same contract as decode/3)."
+            },
+            "composes_with": [
+              "decode",
+              "method_id"
+            ]
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_error",
+          "description": "Decodes selector-prefixed revert data against a list of known custom-error\ndefinitions.\n\nSolidity 0.8.4 introduced\n[custom errors](https://soliditylang.org/blog/2021/04/21/custom-errors/);\nwhen a contract reverts with `revert MyError(arg1, arg2)`, the revert data is\n`keccak256(\"MyError(type1,type2)\")[0..3] ++ abi.encode(arg1, arg2)` — exactly\nthe same shape as a call's selector-prefixed calldata.\n\nThis helper mirrors `decode_call/3` for that shape: try each candidate error\nsignature against the revert's 4-byte prefix, decode the payload using\nwhichever matches first.\n\n## Built-in errors\n\nEvery Solidity revert path emits one of two compiler-defined errors, so they\nare recognized implicitly — no caller needs to register them, and they resolve\neven when `error_definitions` is `[]`:\n\n* `Error(string)` — selector `0x08c379a0`. The standard `require`/`revert`\n  reason string. Decodes to `%{error: \"Error\", args: [reason]}`.\n* `Panic(uint256)` — selector `0x4e487b71`. The 0.8.x `assert`/arithmetic\n  panic. Decodes to `%{error: \"Panic\", args: [code]}`, where `code` is the\n  integer panic code. The standard codes are:\n\n  | Code   | Meaning                                                     |\n  |--------|-------------------------------------------------------------|\n  | `0x01` | `assert` evaluated to `false`                               |\n  | `0x11` | arithmetic overflow or underflow                            |\n  | `0x12` | division or modulo by zero                                  |\n  | `0x32` | array access out of bounds                                  |\n\nA user-supplied definition whose selector collides with a built-in still wins:\n`error_definitions` is consulted first, and the built-ins are only a fallback.\n\nMirrors viem's `decodeErrorResult`, which resolves `Error`/`Panic` implicitly.\n\nReturns:\n\n* `{:ok, %{error: name, args: decoded}}` — the first definition matching the\n  4-byte selector, or a built-in error when none does. `name` is the error's\n  function name; `decoded` matches `decode/3`'s shape (a list of args)\n* `{:error, :calldata_too_short}` — fewer than 4 bytes provided\n* `{:error, :no_match}` — no definition or built-in selector matched\n* `{:error, {:strict_violation, detail}}` — `strict: true` rejected a\n  non-canonical payload\n\n> #### Note {: .info}\n>\n> Only the *selector* match is wrapped in `{:error, _}`. When a selector\n> matches but the payload is malformed, the underlying `decode/3` still\n> raises — same contract as `decode_call/3`.\n\n## Examples\n\n    iex> revert_data = ABI.encode(\"InsufficientBalance(uint256,uint256)\", [10, 100])\n    iex> ABI.decode_error(revert_data, [\"InsufficientBalance(uint256,uint256)\"])\n    {:ok, %{error: \"InsufficientBalance\", args: [10, 100]}}\n\n    iex> revert_data = ABI.encode(\"Unauthorized(address)\", [<<1::160>>])\n    iex> ABI.decode_error(revert_data, [\n    ...>   \"InsufficientBalance(uint256,uint256)\",\n    ...>   \"Unauthorized(address)\"\n    ...> ])\n    {:ok, %{error: \"Unauthorized\", args: [<<1::160>>]}}\n\n    iex> revert_data = ABI.encode(\"Error(string)\", [\"insufficient balance\"])\n    iex> ABI.decode_error(revert_data, [])\n    {:ok, %{error: \"Error\", args: [\"insufficient balance\"]}}\n\n    iex> revert_data = ABI.encode(\"Panic(uint256)\", [0x11])\n    iex> ABI.decode_error(revert_data, [])\n    {:ok, %{error: \"Panic\", args: [17]}}\n\n    iex> ABI.decode_error(<<0xde, 0xad, 0xbe, 0xef>>, [\"NotFound()\"])\n    {:error, :no_match}\n\n    iex> ABI.decode_error(<<0xa9, 0x05>>, [\"NotFound()\"])\n    {:error, :calldata_too_short}",
+          "signature": "decode_error(revert_data, error_definitions, opts \\\\ [])",
+          "spec": "decode_error(binary(), [binary() | ABI.FunctionSelector.t()], keyword()) ::\n  {:ok, %{error: String.t() | nil, args: [any()] | map()}} | {:error, decode_error_error()}",
+          "defaults": 1,
+          "hints": {
+            "description": "Decodes selector-prefixed revert data against known custom-error definitions, plus the Solidity built-in Error(string)/Panic(uint256) errors.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Keyword options forwarded to decode/3, including strict: true.",
+                "kind": "value"
+              },
+              "error_definitions": {
+                "description": "List of candidate error signatures, each either a raw signature string (\"InsufficientBalance(uint256,uint256)\") or a pre-parsed ABI.FunctionSelector. The first definition whose 4-byte selector matches revert_data[0..3] is used to decode the payload. The built-in Error(string) (0x08c379a0) and Panic(uint256) (0x4e487b71) errors are recognized implicitly as a fallback, so they resolve even when this list is empty; a user definition colliding with a built-in selector still wins.",
+                "kind": "value"
+              },
+              "revert_data": {
+                "description": "Selector-prefixed revert payload (4-byte error ID + ABI-encoded args), e.g. the data field returned by a Solidity 0.8.4+ custom-error revert.",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "errors": [
+              {
+                "name": "calldata_too_short",
+                "description": "Fewer than 4 bytes provided."
+              },
+              {
+                "name": "no_match",
+                "description": "No definition or built-in selector matched revert_data[0..3]."
+              },
+              {
+                "name": "strict_violation",
+                "description": "strict: true rejected a non-canonical payload."
+              }
+            ],
+            "returns": {
+              "type": "tuple",
+              "description": "Tagged tuple. {:ok, %{error: name, args: decoded}} when a definition or built-in matches; {:error, reason} otherwise. A malformed payload after a selector match still raises (same contract as decode/3)."
+            },
+            "composes_with": [
+              "decode",
+              "method_id"
+            ]
+          }
+        },
+        {
+          "arity": 4,
+          "name": "decode_event",
+          "description": "Decodes an event, including indexed and non-indexed data.\n\nReturns:\n\n* `{:ok, event_name, args_map}` on success\n* `{:error, {:event_signature_mismatch, %{expected: _, got: _}}}` — `topics[0]` did\n  not match `keccak256(canonical_signature)`\n* `{:error, {:topics_length_mismatch, %{got: _, expected: _}}}` — topic count did not\n  match the indexed-parameter count (plus the implicit `topics[0]` slot when\n  `check_event_signature: true`)\n* `{:error, {:malformed_data, message}}` — non-indexed payload failed to decode\n  (truncated, wrong types, or otherwise inconsistent with `function_selector.types`)\n\n## Examples\n\n    iex> ABI.decode_event(\n    ...>   \"Transfer(address indexed from, address indexed to, uint256 amount)\",\n    ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],\n    ...>   [\n    ...>     ~h[0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef],\n    ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n    ...>     ~h[0x0000000000000000000000007795126b3ae468f44c901287de98594198ce38ea]\n    ...>   ]\n    ...> )\n    {:ok,\n      \"Transfer\", %{\n        \"amount\" => 20000000000,\n        \"from\" => ~h[0xb2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n        \"to\" => ~h[0x7795126b3ae468f44c901287de98594198ce38ea]\n    }}\n\n    iex> ABI.decode_event(\n    ...>   \"Transfer(address indexed from, address indexed to, uint256 amount)\",\n    ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],\n    ...>   [\n    ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n    ...>     ~h[0x0000000000000000000000007795126b3ae468f44c901287de98594198ce38ea]\n    ...>   ],\n    ...>   check_event_signature: false\n    ...> )\n    {:ok,\n      \"Transfer\", %{\n        \"amount\" => 20000000000,\n        \"from\" => ~h[0xb2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n        \"to\" => ~h[0x7795126b3ae468f44c901287de98594198ce38ea]\n    }}\n\n    iex> ABI.decode_event(\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"Transfer\",\n    ...>     types: [\n    ...>       %{type: :address, name: \"from\", indexed: true},\n    ...>       %{type: :address, name: \"to\", indexed: true},\n    ...>       %{type: {:uint, 256}, name: \"amount\"},\n    ...>     ]\n    ...>   },\n    ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],\n    ...>   [\n    ...>     ~h[0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef],\n    ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n    ...>     ~h[0x0000000000000000000000007795126b3ae468f44c901287de98594198ce38ea]\n    ...>   ]\n    ...> )\n    {:ok,\n      \"Transfer\", %{\n        \"amount\" => 20000000000,\n        \"from\" => ~h[0xb2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n        \"to\" => ~h[0x7795126b3ae468f44c901287de98594198ce38ea]\n    }}",
+          "signature": "decode_event(function_signature, data, topics, opts \\\\ [])",
+          "spec": "decode_event(\n  binary() | ABI.FunctionSelector.t(),\n  binary(),\n  [binary()],\n  keyword()\n) :: {:ok, String.t() | nil, map()} | {:error, ABI.Event.decode_error()}",
+          "defaults": 1,
+          "hints": {
+            "description": "Decodes an event from raw log data and indexed topics.",
+            "params": {
+              "data": {
+                "description": "Non-indexed event data — the data field of the Ethereum log.",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "opts": {
+                "description": "Keyword options. check_event_signature: false skips the topics[0] verification (useful when topics[0] has already been stripped).",
+                "kind": "value"
+              },
+              "function_signature": {
+                "description": "Either a raw event signature string or a pre-parsed ABI.FunctionSelector struct.",
+                "kind": "value"
+              },
+              "topics": {
+                "description": "List of 32-byte topic hashes (the topics field of the log). topics[0] is verified against the event signature unless check_event_signature: false is passed.",
+                "kind": "value",
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "errors": [
+              {
+                "name": "event_signature_mismatch",
+                "description": "topics[0] did not match keccak256(canonical_signature). Payload: %{expected: <<32 bytes>>, got: <<32 bytes>>}."
+              },
+              {
+                "name": "topics_length_mismatch",
+                "description": "Number of topics did not match the indexed-parameter count (plus the implicit topics[0] slot when check_event_signature: true). Payload: %{got: integer, expected: integer}."
+              },
+              {
+                "name": "malformed_data",
+                "description": "Non-indexed payload failed to decode (truncated, wrong types, or otherwise inconsistent with function_selector.types). Payload: human-readable message string."
+              }
+            ],
+            "returns": {
+              "type": "tuple",
+              "description": "Tagged tuple. {:ok, event_name, args_map} on success; {:error, reason} on signature mismatch, topic-count mismatch, or malformed non-indexed payload. Indexed reference-type params decode as {:indexed_hash, <<32 bytes>>} per the Solidity spec."
+            },
+            "composes_with": [
+              "event_signature"
+            ]
+          }
+        },
+        {
+          "arity": 0,
+          "name": "describe",
+          "description": "Return a Level 1 overview of all modules in this library.",
+          "signature": "describe()",
+          "spec": "describe() :: [map()]",
+          "defaults": 0,
+          "hints": {}
+        },
+        {
+          "arity": 1,
+          "name": "describe",
+          "description": "Return Level 2 function list for a module (by full atom, or short name as string or atom).",
+          "signature": "describe(mod_or_short)",
+          "spec": "describe(module() | atom() | String.t()) :: [map()]",
+          "defaults": 0,
+          "hints": {}
+        },
+        {
+          "arity": 2,
+          "name": "describe",
+          "description": "Return Level 3 function detail (or `nil` if not found).",
+          "signature": "describe(mod_or_short, func_name)",
+          "spec": "describe(module() | atom() | String.t(), atom()) :: map() | nil",
+          "defaults": 0,
+          "hints": {}
+        },
+        {
+          "arity": 2,
+          "name": "encode",
+          "description": "Encodes the given data into the function signature or tuple signature.\n\nIn place of a signature, you can also pass one of the `ABI.FunctionSelector` structs returned from `parse_specification/1`.\n\n## Examples\n\n    iex> ABI.encode(\"(uint256)\", [{10}])\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000000a\"\n\n    iex> ABI.encode(\"baz(uint,address)\", [50, <<1::160>>])\n    ...> |> Base.encode16(case: :lower)\n    \"a291add600000000000000000000000000000000000000000000000000000000000000320000000000000000000000000000000000000000000000000000000000000001\"\n\n    iex> ABI.encode(\"price(string)\", [\"BAT\"])\n    ...> |> Base.encode16(case: :lower)\n    \"fe2c6198000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000034241540000000000000000000000000000000000000000000000000000000000\"\n\n    iex> ABI.encode(\"baz(uint8)\", [9999])\n    ** (RuntimeError) Data overflow encoding uint, data `9999` cannot fit in 8 bits\n\n    iex> ABI.encode(\"(uint,address)\", [{50, <<1::160>>}])\n    ...> |> Base.encode16(case: :lower)\n    \"00000000000000000000000000000000000000000000000000000000000000320000000000000000000000000000000000000000000000000000000000000001\"\n\n    iex> ABI.encode(\"(string)\", [{\"Ether Token\"}])\n    ...> |> Base.encode16(case: :lower)\n    \"0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000\"\n\n    iex> ABI.encode(\"((uint256,uint256),string)\", [{{0x11, 0x22}, \"Ether Token\"}])\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000220000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000\"\n\n    iex> ABI.encode(\"((uint256,(uint256,uint256)),string)\", [{{0x11, {0x22, 0x33}}, \"Ether Token\"}])\n    ...> |> Base.encode16(case: :lower)\n    \"0000000000000000000000000000000000000000000000000000000000000011000000000000000000000000000000000000000000000000000000000000002200000000000000000000000000000000000000000000000000000000000000330000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000\"\n\n    iex> ABI.encode(\"(string)\", [{String.duplicate(\"1234567890\", 10)}])\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000643132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393000000000000000000000000000000000000000000000000000000000\"\n\n    iex> File.read!(\"priv/dog.abi.json\")\n    ...> |> Jason.decode!\n    ...> |> ABI.parse_specification\n    ...> |> Enum.find(&(&1.function == \"bark\")) # bark(address,bool)\n    ...> |> ABI.encode([<<1::160>>, true])\n    ...> |> Base.encode16(case: :lower)\n    \"b85d0bd200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001\"",
+          "signature": "encode(function_signature, data)",
+          "spec": "encode(binary() | ABI.FunctionSelector.t(), [any()]) :: binary()",
+          "defaults": 0,
+          "hints": {
+            "description": "Encodes the given data into the function signature or tuple signature.",
+            "params": {
+              "data": {
+                "description": "List of values to encode, in argument order. Tuples or maps are accepted for struct-typed args.",
+                "kind": "value",
+                "schema": {
+                  "items": {},
+                  "type": "array"
+                }
+              },
+              "function_signature": {
+                "description": "Either a raw signature string (for example, transfer(address,uint256)) or a pre-parsed ABI.FunctionSelector struct.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "ABI-encoded calldata. Selector-prefixed when the signature has a function name; raw payload otherwise (for example, tuple-only signatures used to encode return values)."
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "encode_call",
+          "description": "Encodes args into selector-prefixed calldata for a named function.\n\nThis is the encode-side counterpart to `decode_call/3`: pass a signature or\n`ABI.FunctionSelector`, plus the argument list, and receive the full\ntransaction calldata blob.\n\n## Examples\n\n    iex> ABI.encode_call(\"transfer(address,uint256)\", [<<1::160>>, 100])\n    ...> |> Base.encode16(case: :lower)\n    \"a9059cbb00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000064\"\n\n    iex> ABI.encode_call(%ABI.FunctionSelector{function: nil, types: []}, [])\n    ** (ArgumentError) encode_call/3 requires a function name; use encode/2 for payload-only data",
+          "signature": "encode_call(signature_or_selector, data, opts \\\\ [])",
+          "spec": "encode_call(binary() | ABI.FunctionSelector.t(), [any()], keyword()) :: binary()",
+          "defaults": 1,
+          "hints": {
+            "description": "Encodes args into selector-prefixed calldata for a named function.",
+            "params": {
+              "data": {
+                "description": "List of values to encode, in argument order.",
+                "kind": "value",
+                "schema": {
+                  "items": {},
+                  "type": "array"
+                }
+              },
+              "opts": {
+                "description": "Reserved keyword options; currently unused.",
+                "kind": "value"
+              },
+              "signature_or_selector": {
+                "description": "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "Full calldata bytes: 4-byte method ID followed by ABI-encoded args."
+            },
+            "composes_with": [
+              "decode_call"
+            ]
+          }
+        },
+        {
+          "arity": 2,
+          "name": "encode_constructor",
+          "description": "Encodes constructor arguments for contract deployment.\n\nConstructors have no selector — deploy calldata is `contract_bytecode <>\nencoded_args`, so this returns the ABI-encoded args with **no** 4-byte prefix\n(unlike `encode_call/3`). The caller concatenates the bytecode. Mirrors viem's\n`encodeDeployData`, scoped to just the args blob.\n\nOnly accepts a `%ABI.FunctionSelector{function_type: :constructor}` — pass the\n`:constructor` entry from `parse_specification/1`. A non-constructor selector\nraises `ArgumentError`. Round-trips through `decode/3` against the\nconstructor's parsed types.\n\n## Examples\n\n    iex> [selector] =\n    ...>   ABI.parse_specification([%{\n    ...>     \"type\" => \"constructor\",\n    ...>     \"stateMutability\" => \"nonpayable\",\n    ...>     \"inputs\" => [%{\"name\" => \"supply\", \"type\" => \"uint256\"}]\n    ...>   }])\n    iex> ABI.encode_constructor(selector, [1000])\n    ...> |> Base.encode16(case: :lower)\n    \"00000000000000000000000000000000000000000000000000000000000003e8\"\n\n    iex> selector = %ABI.FunctionSelector{function_type: :constructor, types: []}\n    iex> ABI.encode_constructor(selector, [])\n    \"\"\n\n    iex> selector = %ABI.FunctionSelector{function: \"transfer\", function_type: :function, types: []}\n    iex> ABI.encode_constructor(selector, [])\n    ** (ArgumentError) encode_constructor/2 requires a constructor selector (function_type: :constructor)",
+          "signature": "encode_constructor(selector, data)",
+          "spec": "encode_constructor(ABI.FunctionSelector.t(), [any()]) :: binary()",
+          "defaults": 0,
+          "hints": {
+            "description": "Encodes constructor arguments for contract deployment (no selector prefix).",
+            "params": {
+              "data": {
+                "description": "List of constructor argument values, in declaration order.",
+                "kind": "value",
+                "schema": {
+                  "items": {},
+                  "type": "array"
+                }
+              },
+              "selector": {
+                "description": "A pre-parsed ABI.FunctionSelector with function_type: :constructor (constructors have no name, so no signature-string form is accepted). Typically obtained from parse_specification/1 by finding the :constructor entry.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "ABI-encoded constructor args with NO 4-byte selector prefix. Concatenate contract_bytecode <> encoded_args to form deploy calldata. Empty-args constructors return the empty binary."
+            },
+            "composes_with": [
+              "decode",
+              "parse_specification"
+            ]
+          }
+        },
+        {
+          "arity": 3,
+          "name": "encode_error",
+          "description": "Encodes args into selector-prefixed revert data for a Solidity 0.8.4+ custom error.\n\nThis is the encode-side counterpart to `decode_error/2`: pass an error signature or\n`ABI.FunctionSelector`, plus the argument list, and receive the full revert data blob.\n\n## Examples\n\n    iex> ABI.encode_error(\"InsufficientBalance(uint256,uint256)\", [10, 100])\n    ...> |> Base.encode16(case: :lower)\n    \"cf479181000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000064\"\n\n    iex> ABI.encode_error(%ABI.FunctionSelector{function: nil, types: []}, [])\n    ** (ArgumentError) encode_error/3 requires a function name; use encode/2 for payload-only data",
+          "signature": "encode_error(signature_or_selector, data, opts \\\\ [])",
+          "spec": "encode_error(binary() | ABI.FunctionSelector.t(), [any()], keyword()) :: binary()",
+          "defaults": 1,
+          "hints": {
+            "description": "Encodes args into selector-prefixed revert data for a named custom error.",
+            "params": {
+              "data": {
+                "description": "List of values to encode, in argument order.",
+                "kind": "value",
+                "schema": {
+                  "items": {},
+                  "type": "array"
+                }
+              },
+              "opts": {
+                "description": "Reserved keyword options; currently unused.",
+                "kind": "value"
+              },
+              "signature_or_selector": {
+                "description": "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "Full revert data bytes: 4-byte error selector followed by ABI-encoded args."
+            },
+            "composes_with": [
+              "decode_error"
+            ]
+          }
+        },
+        {
+          "arity": 2,
+          "name": "encode_event_topics",
+          "description": "Builds an `eth_getLogs` topic filter list for indexed event arguments.\n\nPass indexed argument values in event order. Use `:any` for an unfiltered\nindexed slot. Indexed value types encode as 32-byte topics; indexed\nreference types encode as `keccak256` hashes of their in-place event\nencoding.\n\n## Examples\n\n    iex> ABI.encode_event_topics(\n    ...>   \"Transfer(address indexed from,address indexed to,uint256 amount)\",\n    ...>   [~h[0xb2b7c1795f19fbc28fda77a95e59edbb8b3709c8], :any]\n    ...> )\n    [\n      ~h[0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef],\n      ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n      :any\n    ]",
+          "signature": "encode_event_topics(function_signature, indexed_values)",
+          "spec": "encode_event_topics(binary() | ABI.FunctionSelector.t(), [any() | :any]) :: [binary() | :any]",
+          "defaults": 0,
+          "hints": {
+            "description": "Builds an eth_getLogs topic filter list from an event signature and indexed values.",
+            "params": {
+              "function_signature": {
+                "description": "Either a raw event signature string or a pre-parsed ABI.FunctionSelector struct.",
+                "kind": "value"
+              },
+              "indexed_values": {
+                "description": "Prefix list of indexed argument values in event order. Use :any to leave a topic slot unfiltered.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "list",
+              "description": "Topic filter list for eth_getLogs. Non-anonymous events include topics[0] = event_signature/1; anonymous events parsed from JSON ABI omit that slot."
+            },
+            "composes_with": [
+              "decode_event",
+              "event_signature"
+            ]
+          }
+        },
+        {
+          "arity": 2,
+          "name": "encode_packed",
+          "description": "Encodes a list of values using Solidity's\n[non-standard packed mode](https://docs.soliditylang.org/en/stable/abi-spec.html#non-standard-packed-mode).\n\nUsed primarily for `keccak256(abi.encodePacked(...))` Merkle leaves and\nsignature schemes; never used for actual function calls (the spec defines\nno decoding function — encoding is ambiguous with multiple dynamic args).\n\nTuple/struct values and nested arrays raise `ArgumentError` — the spec\ndoes not define their packed encoding.\n\n> #### Warning {: .warning}\n>\n> If both `a` and `b` are dynamic types, `abi.encodePacked(a, b)` is\n> ambiguous: `abi.encodePacked(\"a\", \"bc\") == abi.encodePacked(\"ab\", \"c\")`.\n> Do not feed multiple dynamic args into packed-mode signature schemes\n> without controlling for that collision.\n\n## Examples\n\n    iex> ABI.encode_packed(\"foo(int16,bytes1,uint16,string)\", [-1, <<0x42>>, 3, \"Hello, world!\"])\n    ...> |> Base.encode16(case: :lower)\n    \"ffff42000348656c6c6f2c20776f726c6421\"\n\n    iex> ABI.encode_packed(\"leaf(address,uint256)\", [<<1::160>>, 100])\n    ...> |> Base.encode16(case: :lower)\n    \"00000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000064\"\n\n    iex> ABI.encode_packed(\"foo(uint8[])\", [[1, 2, 3]])\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003\"",
+          "signature": "encode_packed(signature_or_selector, values)",
+          "spec": "encode_packed(binary() | ABI.FunctionSelector.t(), [any()]) :: binary()",
+          "defaults": 0,
+          "hints": {
+            "description": "Encodes values using Solidity's non-standard packed mode (abi.encodePacked).",
+            "params": {
+              "values": {
+                "description": "List of values in argument order. Tuple/struct types and nested arrays raise ArgumentError — Solidity's spec does not define their packed encoding.",
+                "kind": "value",
+                "schema": {
+                  "items": {},
+                  "type": "array"
+                }
+              },
+              "signature_or_selector": {
+                "description": "Signature string with a function name (e.g. \"leaf(address,uint256)\") or a pre-parsed FunctionSelector. The name is ignored in packed mode but is required by the parser to flatten the type list. Paren-only signatures like \"(address,uint256)\" parse as a single struct argument and raise per the spec.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "Tightly-packed bytes per the Solidity spec — types <32 bytes concatenated without padding, dynamic types in-place without length prefix, array elements padded to 32 bytes. Never selector-prefixed; not decodable (the spec is ambiguous in the presence of multiple dynamic args)."
+            },
+            "composes_with": [
+              "method_id"
+            ]
+          }
+        },
+        {
+          "arity": 1,
+          "name": "event_signature",
+          "description": "Returns the signature for an event.\n\n## Examples\n\n    iex> ABI.event_signature(\"Transfer(address indexed from, address indexed to, uint256 amount)\")\n    ...> |> Base.encode16(case: :lower)\n    \"ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\"",
+          "signature": "event_signature(function_signature)",
+          "spec": "event_signature(binary() | ABI.FunctionSelector.t()) :: binary()",
+          "defaults": 0,
+          "hints": {
+            "description": "Returns the 32-byte topic hash for an event signature.",
+            "params": {
+              "function_signature": {
+                "description": "Either a raw event signature string or a pre-parsed ABI.FunctionSelector struct.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "32-byte keccak256(canonical_event_signature). On Ethereum logs this is the topics[0] hash."
+            },
+            "composes_with": [
+              "decode_event"
+            ]
+          }
+        },
+        {
+          "arity": 1,
+          "name": "format_abi_item",
+          "description": "Renders an `ABI.FunctionSelector` as its canonical Solidity signature string.\n\nThis is the general-purpose formatter behind `method_id/1` and\n`event_signature/1` (both hash this exact string): it reuses\n`ABI.FunctionSelector.encode/1` — the shared sig-builder — so the formatted\noutput can never drift from what gets hashed. First consumers are the\n`api_manifest.json` CI artifact and error/log messages that would otherwise\ninspect raw structs.\n\nTuple types expand to parenthesized member lists (`(uint256,address)`) and\narrays render with `[]` / `[N]` suffixes. Anonymous fragments (constructor,\nfallback) carry `function: nil` and format without a leading name. Mirrors\nviem's `formatAbiItem` and round-trips with `FunctionSelector.decode/1` — the\nproduced string re-parses to the same types.\n\n## Examples\n\n    iex> ABI.parse_specification([%{\"type\" => \"function\", \"name\" => \"transfer\", \"inputs\" => [%{\"name\" => \"to\", \"type\" => \"address\"}, %{\"name\" => \"amount\", \"type\" => \"uint256\"}]}])\n    ...> |> hd()\n    ...> |> ABI.format_abi_item()\n    \"transfer(address,uint256)\"\n\n    iex> ABI.format_abi_item(%ABI.FunctionSelector{\n    ...>   function: \"swap\",\n    ...>   types: [\n    ...>     %{type: {:tuple, [%{type: :address}, %{type: {:uint, 256}}]}},\n    ...>     %{type: {:array, {:uint, 256}}},\n    ...>     %{type: {:array, :address, 3}}\n    ...>   ]\n    ...> })\n    \"swap((address,uint256),uint256[],address[3])\"\n\n    iex> ABI.format_abi_item(%ABI.FunctionSelector{function: nil, function_type: :constructor, types: [%{type: {:uint, 8}}]})\n    \"(uint8)\"",
+          "signature": "format_abi_item(function_selector)",
+          "spec": "format_abi_item(ABI.FunctionSelector.t()) :: String.t()",
+          "defaults": 0,
+          "hints": {
+            "description": "Renders a FunctionSelector as its canonical Solidity signature string.",
+            "params": {
+              "function_selector": {
+                "description": "A pre-parsed ABI.FunctionSelector struct — a function, error, event, or anonymous (constructor/fallback) fragment.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "string",
+              "description": "Canonical \"name(type1,type2,...)\" string. Tuple types expand to parenthesized member lists ((uint256,address)) and arrays render with []/[N] suffixes. Anonymous fragments (function: nil) format without a leading name."
+            },
+            "composes_with": [
+              "parse_specification",
+              "method_id",
+              "event_signature"
+            ]
+          }
+        },
+        {
+          "arity": 3,
+          "name": "get_abi_item",
+          "description": "Finds an ABI fragment by name in a parsed specification list.\n\nOperates on the output of `parse_specification/1`. When several fragments\nshare a name (Solidity overloads, or a function and event with the same\nlabel), pass `arg_types` — a list of internal type atoms matching each\ninput's `type` field (e.g. `[:address, {:uint, 256}]`) — to select the\nintended overload. Mirrors viem's `getAbiItem`.\n\n## Examples\n\n    iex> abi =\n    ...>   ABI.parse_specification([\n    ...>     %{\"type\" => \"function\", \"name\" => \"transfer\", \"inputs\" => [\n    ...>       %{\"type\" => \"address\"},\n    ...>       %{\"type\" => \"uint256\"}\n    ...>     ]}\n    ...>   ])\n    iex> {:ok, %ABI.FunctionSelector{function: \"transfer\"}} = ABI.get_abi_item(abi, \"transfer\", nil)\n\n    iex> abi =\n    ...>   ABI.parse_specification([\n    ...>     %{\"type\" => \"function\", \"name\" => \"pick\", \"inputs\" => [%{\"type\" => \"uint256\"}]},\n    ...>     %{\"type\" => \"function\", \"name\" => \"pick\", \"inputs\" => [\n    ...>       %{\"type\" => \"uint256\"},\n    ...>       %{\"type\" => \"address\"}\n    ...>     ]}\n    ...>   ])\n    iex> {:error, {:ambiguous, _}} = ABI.get_abi_item(abi, \"pick\", nil)\n    iex> {:ok, %ABI.FunctionSelector{types: [%{type: {:uint, 256}}, %{type: :address}]}} =\n    ...>   ABI.get_abi_item(abi, \"pick\", [{:uint, 256}, :address])\n\n    iex> abi = ABI.parse_specification([%{\"type\" => \"function\", \"name\" => \"only\", \"inputs\" => []}])\n    iex> ABI.get_abi_item(abi, \"missing\", nil)\n    {:error, :not_found}",
+          "signature": "get_abi_item(abi, name, arg_types)",
+          "spec": "get_abi_item([ABI.FunctionSelector.t()], String.t(), [ABI.FunctionSelector.type()] | nil) ::\n  {:ok, ABI.FunctionSelector.t()}\n  | {:error, :not_found}\n  | {:error, {:ambiguous, [ABI.FunctionSelector.t()]}}",
+          "defaults": 0,
+          "hints": {
+            "description": "Finds an ABI fragment by name with optional input-type disambiguation for overloads.",
+            "params": {
+              "name": {
+                "description": "Fragment name to match against FunctionSelector.function.",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "arg_types": {
+                "description": "Optional list of internal input types (e.g. [:address, {:uint, 256}]) matching FunctionSelector.types type fields. Pass nil when the name is unique or to surface {:ambiguous, _} on overloads.",
+                "kind": "value"
+              },
+              "abi": {
+                "description": "Parsed ABI specification — the list returned by parse_specification/1.",
+                "kind": "value"
+              }
+            },
+            "errors": [
+              {
+                "name": "not_found",
+                "description": "No fragment matches the given name (and arg types, when provided)."
+              },
+              {
+                "name": "ambiguous",
+                "description": "Multiple fragments share the name; pass arg_types listing each input's internal type atom to pick the overload."
+              }
+            ],
+            "returns": {
+              "type": "union",
+              "description": "{:ok, %FunctionSelector{}} on a unique match (by name alone, or name + arg_types). {:error, :not_found} when nothing matches. {:error, {:ambiguous, selectors}} when multiple fragments share the name and arg_types is nil or still ambiguous."
+            },
+            "composes_with": [
+              "parse_specification"
+            ]
+          }
+        },
+        {
+          "arity": 1,
+          "name": "method_id",
+          "description": "Returns the 4-byte function selector (method ID) for a function signature.\n\nThe selector is `keccak256(canonical_signature)` truncated to its first 4\nbytes. Returns `<<>>` for selectors with no `function` name (anonymous /\nraw-tuple selectors used for return-value decoding).\n\n## Examples\n\n    iex> ABI.method_id(\"transfer(address,uint256)\") |> Base.encode16(case: :lower)\n    \"a9059cbb\"\n\n    iex> ABI.method_id(\"deposit()\") |> Base.encode16(case: :lower)\n    \"d0e30db0\"\n\n    iex> ABI.method_id(%ABI.FunctionSelector{function: \"deposit\", types: []}) |> Base.encode16(case: :lower)\n    \"d0e30db0\"\n\n    iex> ABI.method_id(%ABI.FunctionSelector{function: nil, types: [%{type: {:uint, 256}}]})\n    \"\"",
+          "signature": "method_id(signature)",
+          "spec": "method_id(binary() | ABI.FunctionSelector.t()) :: binary()",
+          "defaults": 0,
+          "hints": {
+            "description": "Returns the 4-byte function selector (method ID) for a function signature.",
+            "params": {
+              "signature": {
+                "description": "Either a raw signature string (for example, transfer(address,uint256)) or a pre-parsed ABI.FunctionSelector struct.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "First 4 bytes of keccak256(canonical_signature). Returns the empty binary for selectors with function: nil (raw-tuple selectors used for return-value decoding)."
+            },
+            "composes_with": [
+              "encode",
+              "decode_call"
+            ]
+          }
+        },
+        {
+          "arity": 1,
+          "name": "parse_specification",
+          "description": "Parses the given ABI specification document into an array of `ABI.FunctionSelector`s.\n\nEvery entry in the document is parsed — including constructor, fallback,\nreceive, error, and event entries — and returned with its `function_type`\nfield set accordingly. Filter by that field if you only want plain\nfunction entries.\n\nThis function can be used in combination with a JSON parser, e.g. [`Jason`](https://hex.pm/packages/jason), to parse ABI specification JSON files.\n\n## Examples\n\n    iex> File.read!(\"priv/dog.abi.json\")\n    ...> |> Jason.decode!\n    ...> |> ABI.parse_specification\n    [%ABI.FunctionSelector{function: \"bark\", function_type: :function, state_mutability: :nonpayable, returns: [], types: [%{name: \"at\", type: :address}, %{name: \"loudly\", type: :bool}]},\n     %ABI.FunctionSelector{function: \"rollover\", function_type: :function, state_mutability: :nonpayable, returns: [%{name: \"is_a_good_boy\", type: :bool}], types: []}]\n\n    iex> [%{\n    ...>   \"constant\" => true,\n    ...>   \"inputs\" => [\n    ...>     %{\"name\" => \"at\", \"type\" => \"address\"},\n    ...>     %{\"name\" => \"loudly\", \"type\" => \"bool\"}\n    ...>   ],\n    ...>   \"name\" => \"bark\",\n    ...>   \"outputs\" => [],\n    ...>   \"payable\" => false,\n    ...>   \"stateMutability\" => \"pure\",\n    ...>   \"type\" => \"function\"\n    ...> }]\n    ...> |> ABI.parse_specification\n    [\n      %ABI.FunctionSelector{function: \"bark\", function_type: :function, state_mutability: :pure, returns: [], types: [\n        %{type: :address, name: \"at\"},\n        %{type: :bool, name: \"loudly\"}\n      ]}\n    ]\n\n    iex> [%{\n    ...>   \"inputs\" => [\n    ...>      %{\"name\" => \"_numProposals\", \"type\" => \"uint8\"}\n    ...>   ],\n    ...>   \"payable\" => false,\n    ...>   \"stateMutability\" => \"nonpayable\",\n    ...>   \"type\" => \"constructor\"\n    ...> }]\n    ...> |> ABI.parse_specification\n    [%ABI.FunctionSelector{function: nil, function_type: :constructor, state_mutability: :nonpayable, types: [%{name: \"_numProposals\", type: {:uint, 8}}], returns: nil}]\n\n    iex> ABI.decode(\"(string)\", \"000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000643132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393000000000000000000000000000000000000000000000000000000000\" |> Base.decode16!(case: :lower))\n    [String.duplicate(\"1234567890\", 10)]\n\n    iex> [%{\n    ...>   \"payable\" => false,\n    ...>   \"stateMutability\" => \"nonpayable\",\n    ...>   \"type\" => \"fallback\"\n    ...> }]\n    ...> |> ABI.parse_specification\n    [%ABI.FunctionSelector{function: nil, function_type: :fallback, state_mutability: :nonpayable, returns: nil, types: []}]",
+          "signature": "parse_specification(doc)",
+          "spec": "parse_specification([map()]) :: [ABI.FunctionSelector.t()]",
+          "defaults": 0,
+          "hints": {
+            "description": "Parses an ABI specification document into a list of ABI.FunctionSelector structs.",
+            "params": {
+              "doc": {
+                "description": "ABI specification as a list of maps — typically produced by JSON-decoding a contract's .abi.json file. Every entry is parsed into a FunctionSelector, including non-function entries (constructor, fallback, receive, error, event) — distinguish via the :function_type field.",
+                "kind": "value",
+                "schema": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "returns": {
+              "type": "list",
+              "description": "List of ABI.FunctionSelector structs — one per entry in the input doc, regardless of :function_type."
+            }
+          }
+        }
+      ],
+      "module": "ABI",
+      "description": "Documentation for ABI, the function interface language for Solidity.\nGenerally, the ABI describes how to take binary Ethereum and transform\nit to or from types that Solidity understands.\n\n## Agent Discovery\n\nUse `ABI.describe/0..2` for progressive API discovery:\n\n    ABI.describe()                    # Level 1: all annotated modules\n    ABI.describe(:abi)                # Level 2: functions in this module\n    ABI.describe(:abi, :encode)       # Level 3: full contract for encode/2\n\nA static `api_manifest.json` covering every public function is emitted by\n`mix descripex.manifest --app hieroglyph` (a dedicated `mix\nhieroglyph.manifest` wrapper ships in 1.2.0 alongside Phase 3 of the agent\neconomy work — see CHANGELOG). Downstream consumers may diff that manifest\nacross hieroglyph version bumps as a contract-stability check.\n\n\n## API Functions\n| Function | Arity | Description | Param Kinds |\n| --- | --- | --- | --- |\n| `parse_specification` | 1 | Parses an ABI specification document into a list of ABI.FunctionSelector structs. | `doc: value` |\n| `get_abi_item` | 3 | Finds an ABI fragment by name with optional input-type disambiguation for overloads. | `abi: value`, `name: value`, `arg_types: value` |\n| `format_abi_item` | 1 | Renders a FunctionSelector as its canonical Solidity signature string. | `function_selector: value` |\n| `event_signature` | 1 | Returns the 32-byte topic hash for an event signature. | `function_signature: value` |\n| `encode_event_topics` | 2 | Builds an eth_getLogs topic filter list from an event signature and indexed values. | `function_signature: value`, `indexed_values: value` |\n| `decode_event` | 4 | Decodes an event from raw log data and indexed topics. | `function_signature: value`, `data: value`, `topics: value`, `opts: value` |\n| `encode_packed` | 2 | Encodes values using Solidity's non-standard packed mode (abi.encodePacked). | `signature_or_selector: value`, `values: value` |\n| `decode_error` | 3 | Decodes selector-prefixed revert data against known custom-error definitions, plus the Solidity built-in Error(string)/Panic(uint256) errors. | `revert_data: value`, `error_definitions: value`, `opts: value` |\n| `encode_error` | 3 | Encodes args into selector-prefixed revert data for a named custom error. | `signature_or_selector: value`, `data: value`, `opts: value` |\n| `decode_call` | 3 | Decodes selector-prefixed calldata (4-byte method ID + ABI-encoded args) and verifies the selector matches. | `signature_or_selector: value`, `calldata: value`, `opts: value` |\n| `decode` | 3 | Decodes the given data based on the function or tuple signature. | `function_signature: value`, `data: value`, `opts: value` |\n| `method_id` | 1 | Returns the 4-byte function selector (method ID) for a function signature. | `signature: value` |\n| `encode_constructor` | 2 | Encodes constructor arguments for contract deployment (no selector prefix). | `selector: value`, `data: value` |\n| `encode_call` | 3 | Encodes args into selector-prefixed calldata for a named function. | `signature_or_selector: value`, `data: value`, `opts: value` |\n| `encode` | 2 | Encodes the given data into the function signature or tuple signature. | `function_signature: value`, `data: value` |",
+      "namespace": "/abi"
+    },
+    {
+      "functions": [
+        {
+          "arity": 2,
+          "name": "canonical",
+          "description": "Returns the canonical form of this event topic. Pass in `indexed: true`\nto include \"indexed\" keywords.\n\n## Examples\n\n    iex> ABI.Event.canonical(\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"Transfer\",\n    ...>     types: [\n    ...>       %{type: :address, name: \"from\", indexed: true},\n    ...>       %{type: :address, name: \"to\", indexed: true},\n    ...>       %{type: {:uint, 256}, name: \"amount\"},\n    ...>     ]\n    ...>   }\n    ...> )\n    \"Transfer(address,address,uint256)\"\n\n    iex> ABI.Event.canonical(\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"Transfer\",\n    ...>     types: [\n    ...>       %{type: :address, name: \"from\", indexed: true},\n    ...>       %{type: :address, name: \"to\", indexed: true},\n    ...>       %{type: {:uint, 256}, name: \"amount\"},\n    ...>     ]\n    ...>   },\n    ...>   names: true\n    ...> )\n    \"Transfer(address from,address to,uint256 amount)\"\n\n    iex> ABI.Event.canonical(\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"Transfer\",\n    ...>     types: [\n    ...>       %{type: :address, name: \"from\", indexed: true},\n    ...>       %{type: :address, name: \"to\", indexed: true},\n    ...>       %{type: {:uint, 256}, name: \"amount\"},\n    ...>     ]\n    ...>   },\n    ...>   indexed: true\n    ...> )\n    \"Transfer(address indexed,address indexed,uint256)\"\n\n    iex> ABI.Event.canonical(\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"Transfer\",\n    ...>     types: [\n    ...>       %{type: :address, name: \"from\", indexed: true},\n    ...>       %{type: :address, name: \"to\", indexed: true},\n    ...>       %{type: {:uint, 256}, name: \"amount\"},\n    ...>     ]\n    ...>   },\n    ...>   indexed: true,\n    ...>   names: true\n    ...> )\n    \"Transfer(address indexed from,address indexed to,uint256 amount)\"",
+          "signature": "canonical(function_selector, opts \\\\ [])",
+          "spec": "canonical(\n  ABI.FunctionSelector.t(),\n  keyword()\n) :: String.t()",
+          "defaults": 1,
+          "hints": {
+            "description": "Render the canonical signature string of an event for hashing or display, optionally including indexed and parameter-name annotations.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Optional keyword list. Supports indexed: true to include the indexed keyword on indexed parameters, and names: true to include parameter names",
+                "kind": "value"
+              },
+              "function_selector": {
+                "description": "Event FunctionSelector with name and type metadata",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "string",
+              "description": "Canonical signature string such as Transfer(address,address,uint256) or with indexed/names annotations applied"
+            }
+          }
+        },
+        {
+          "arity": 4,
+          "name": "decode_event",
+          "description": "Decodes an event, including handling parsing out data from topics.\n\nReturns `{:ok, function_name, args_map}` on success, or `{:error, reason}` where\n`reason` is one of the variants in `t:decode_error/0`.\n\n## Examples\n\n    iex> ABI.Event.decode_event(\n    ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],\n    ...>   [\n    ...>     ~h[0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef],\n    ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n    ...>     ~h[0x0000000000000000000000007795126b3ae468f44c901287de98594198ce38ea]\n    ...>   ],\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"Transfer\",\n    ...>     types: [\n    ...>       %{type: :address, name: \"from\", indexed: true},\n    ...>       %{type: :address, name: \"to\", indexed: true},\n    ...>       %{type: {:uint, 256}, name: \"amount\"},\n    ...>     ]\n    ...>   })\n    {:ok,\n      \"Transfer\", %{\n        \"amount\" => 20000000000,\n        \"from\" => ~h[0xb2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n        \"to\" => ~h[0x7795126b3ae468f44c901287de98594198ce38ea]\n    }}\n\n    iex> ABI.Event.decode_event(\n    ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],\n    ...>   [\n    ...>     ~h[0x0000000000000000000000000000000000000000000000000000000000000001],\n    ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n    ...>     ~h[0x0000000000000000000000007795126b3ae468f44c901287de98594198ce38ea]\n    ...>   ],\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"Transfer\",\n    ...>     types: [\n    ...>       %{type: :address, name: \"from\", indexed: true},\n    ...>       %{type: :address, name: \"to\", indexed: true},\n    ...>       %{type: {:uint, 256}, name: \"amount\"},\n    ...>     ]\n    ...>   })\n    {:error,\n      {:event_signature_mismatch,\n       %{\n         expected: ~h[0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef],\n         got: ~h[0x0000000000000000000000000000000000000000000000000000000000000001]\n       }}}\n\n    iex> ABI.Event.decode_event(\n    ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],\n    ...>   [\n    ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n    ...>     ~h[0x0000000000000000000000007795126b3ae468f44c901287de98594198ce38ea]\n    ...>   ],\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"Transfer\",\n    ...>     types: [\n    ...>       %{type: :address, name: \"from\", indexed: true},\n    ...>       %{type: :address, name: \"to\", indexed: true},\n    ...>       %{type: {:uint, 256}, name: \"amount\"},\n    ...>     ]\n    ...>   })\n    {:error, {:topics_length_mismatch, %{got: 2, expected: 3}}}\n\n    iex> ABI.Event.decode_event(\n    ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],\n    ...>   [\n    ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n    ...>     ~h[0x0000000000000000000000007795126b3ae468f44c901287de98594198ce38ea]\n    ...>   ],\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"Transfer\",\n    ...>     types: [\n    ...>       %{type: :address, name: \"from\", indexed: true},\n    ...>       %{type: :address, name: \"to\", indexed: true},\n    ...>       %{type: {:uint, 256}, name: \"amount\"},\n    ...>     ]\n    ...>   },\n    ...>   check_event_signature: false\n    ...> )\n    {:ok,\n      \"Transfer\", %{\n        \"amount\" => 20000000000,\n        \"from\" => ~h[0xb2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n        \"to\" => ~h[0x7795126b3ae468f44c901287de98594198ce38ea]\n    }}\n\nWhen the non-indexed payload bytes are truncated or wrongly typed, the underlying\ndecoder previously raised; the function now wraps that path and returns\n`{:error, {:malformed_data, msg}}` with a human-readable description.\n\nInputs whose type map carries no `:name` at all — possible with hand-written\nor partial ABI JSON, since Solidity always emits the key — are keyed by their\npositional index as a string (`\"0\"`, `\"1\"`, …).",
+          "signature": "decode_event(data, topics, function_selector, opts \\\\ [])",
+          "spec": "decode_event(binary(), [binary()], ABI.FunctionSelector.t(), keyword()) ::\n  {:ok, String.t() | nil, map()} | {:error, decode_error()}",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode an Ethereum event log, splitting indexed parameters from topics and non-indexed parameters from the data blob, optionally verifying topics[0] against the event signature.",
+            "params": {
+              "data": {
+                "description": "Non-indexed event payload (binary); originates from the log's data field returned by eth_getLogs",
+                "source": "eth_getLogs",
+                "kind": "exchange_data",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "opts": {
+                "default": [],
+                "description": "Optional keyword list. Supports check_event_signature: false to skip topics[0] verification (anonymous events or pre-stripped topics), and strict: true to reject non-canonical payloads.",
+                "kind": "value"
+              },
+              "function_selector": {
+                "description": "Pre-parsed FunctionSelector with type metadata including indexed flags",
+                "kind": "value"
+              },
+              "topics": {
+                "description": "List of topic binaries (each 32 bytes). topics[0] is the event signature hash unless check_event_signature is false",
+                "source": "eth_getLogs",
+                "kind": "exchange_data",
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "errors": [
+              {
+                "name": "event_signature_mismatch",
+                "description": "topics[0] did not match keccak256(canonical_signature). Reason payload: %{expected: <<32 bytes>>, got: <<32 bytes>>}."
+              },
+              {
+                "name": "topics_length_mismatch",
+                "description": "Number of topics did not match the indexed-parameter count (plus topics[0] when check_event_signature is true). Reason payload: %{got: integer, expected: integer}."
+              },
+              {
+                "name": "malformed_data",
+                "description": "Non-indexed payload bytes failed to decode (truncated, wrong type, or otherwise inconsistent with the function_selector types). Reason payload: a human-readable string describing the underlying decode failure."
+              },
+              {
+                "name": "strict_violation",
+                "description": "strict: true rejected a non-canonical payload."
+              }
+            ],
+            "returns": {
+              "type": "tuple",
+              "description": "{:ok, function_name, %{name => value}} on success, or {:error, reason} where reason is a closed tagged-tuple set"
+            },
+            "composes_with": [
+              "event_signature"
+            ]
+          }
+        },
+        {
+          "arity": 2,
+          "name": "encode_event_topics",
+          "description": "Builds an `eth_getLogs` topic filter list for indexed event arguments.\n\nPass indexed argument values in event order. Use `:any` for an unfiltered\nindexed slot. Non-anonymous events include `topics[0]`; anonymous events\nparsed from JSON ABI omit it.\n\n## Examples\n\n    iex> ABI.Event.encode_event_topics(\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"Transfer\",\n    ...>     types: [\n    ...>       %{type: :address, name: \"from\", indexed: true},\n    ...>       %{type: :address, name: \"to\", indexed: true},\n    ...>       %{type: {:uint, 256}, name: \"amount\"}\n    ...>     ]\n    ...>   },\n    ...>   [~h[0xb2b7c1795f19fbc28fda77a95e59edbb8b3709c8], :any]\n    ...> )\n    [\n      ~h[0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef],\n      ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],\n      :any\n    ]",
+          "signature": "encode_event_topics(function_selector, indexed_values)",
+          "spec": "encode_event_topics(ABI.FunctionSelector.t(), [any() | :any]) :: [topic_filter()]",
+          "defaults": 0,
+          "hints": {
+            "description": "Build an eth_getLogs topic filter list from an event selector and indexed argument values.",
+            "params": {
+              "function_selector": {
+                "description": "Pre-parsed event FunctionSelector with type metadata including indexed flags",
+                "kind": "value"
+              },
+              "indexed_values": {
+                "description": "Prefix list of indexed argument values in event order. Use :any to leave a topic slot unfiltered.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "list",
+              "description": "Topic filter list. Non-anonymous events start with topics[0] = event_signature/1; anonymous events omit that slot. Value-type indexed args encode to one 32-byte topic, while indexed reference-type args encode to keccak256 of their in-place event encoding."
+            },
+            "composes_with": [
+              "decode_event",
+              "event_signature"
+            ]
+          }
+        },
+        {
+          "arity": 1,
+          "name": "event_signature",
+          "description": "Returns the signature of an event, i.e. the first item that appears\nin an Ethereum log for this event.\n\n## Examples\n\n    iex> ABI.Event.event_signature(\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"Transfer\",\n    ...>     types: [\n    ...>       %{type: :address, name: \"from\", indexed: true},\n    ...>       %{type: :address, name: \"to\", indexed: true},\n    ...>       %{type: {:uint, 256}, name: \"amount\"},\n    ...>     ]\n    ...>   }\n    ...> )\n    ...> |> to_hex()\n    \"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\"",
+          "signature": "event_signature(function_selector)",
+          "spec": "event_signature(ABI.FunctionSelector.t()) :: binary()",
+          "defaults": 0,
+          "hints": {
+            "description": "Compute the keccak-256 hash of the event's canonical signature, used as topics[0] in event logs.",
+            "params": {
+              "function_selector": {
+                "description": "Event FunctionSelector with name and type metadata",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "32-byte topic hash matching the first topic of an emitted log for this event"
+            },
+            "composes_with": [
+              "decode_event"
+            ]
+          }
+        }
+      ],
+      "module": "ABI.Event",
+      "description": "Decodes Ethereum event log data into Solidity-typed arguments.\n\nSplits the topic list (indexed parameters) from the data blob (non-indexed\nparameters) per the ABI specification, and optionally verifies that\n`topics[0]` matches the `keccak256` hash of the event signature.\n\n\n## API Functions\n| Function | Arity | Description | Param Kinds |\n| --- | --- | --- | --- |\n| `canonical` | 2 | Render the canonical signature string of an event for hashing or display, optionally including indexed and parameter-name annotations. | `function_selector: value`, `opts: value` |\n| `event_signature` | 1 | Compute the keccak-256 hash of the event's canonical signature, used as topics[0] in event logs. | `function_selector: value` |\n| `encode_event_topics` | 2 | Build an eth_getLogs topic filter list from an event selector and indexed argument values. | `function_selector: value`, `indexed_values: value` |\n| `decode_event` | 4 | Decode an Ethereum event log, splitting indexed parameters from topics and non-indexed parameters from the data blob, optionally verifying topics[0] against the event signature. | `data: exchange_data`, `topics: exchange_data`, `function_selector: value`, `opts: value` |",
+      "namespace": "/selector"
+    },
+    {
+      "functions": [
+        {
+          "arity": 1,
+          "name": "decode",
+          "description": "Decodes a function selector to a struct.\n\n## Examples\n\n    iex> ABI.FunctionSelector.decode(\"bark(uint256,bool)\")\n    %ABI.FunctionSelector{\n      function: \"bark\",\n      types: [\n        %{type: {:uint, 256}},\n        %{type: :bool}\n      ]\n    }\n\n    iex> ABI.FunctionSelector.decode(\"bark(uint256 name, bool loud)\")\n    %ABI.FunctionSelector{\n      function: \"bark\",\n      types: [\n        %{type: {:uint, 256}, name: \"name\"},\n        %{type: :bool, name: \"loud\"}\n      ]\n    }\n\n    iex> ABI.FunctionSelector.decode(\"bark(uint256 name,bool indexed loud)\")\n    %ABI.FunctionSelector{\n      function: \"bark\",\n      types: [\n        %{type: {:uint, 256}, name: \"name\"},\n        %{type: :bool, name: \"loud\", indexed: true}\n      ]\n    }\n\n    iex> ABI.FunctionSelector.decode(\"(uint256,bool)\")\n    %ABI.FunctionSelector{\n      function: nil,\n      types: [\n        %{type: {:uint, 256}},\n        %{type: :bool}\n      ]\n    }\n\n    iex> ABI.FunctionSelector.decode(\"growl(uint,address,string[])\")\n    %ABI.FunctionSelector{\n      function: \"growl\",\n      types: [\n        %{type: {:uint, 256}},\n        %{type: :address},\n        %{type: {:array, :string}}\n      ]\n    }\n\n    iex> ABI.FunctionSelector.decode(\"rollover()\")\n    %ABI.FunctionSelector{\n      function: \"rollover\",\n      types: []\n    }\n\n    iex> ABI.FunctionSelector.decode(\"do_playDead3()\")\n    %ABI.FunctionSelector{\n      function: \"do_playDead3\",\n      types: []\n    }\n\n    iex> ABI.FunctionSelector.decode(\"pet(address[])\")\n    %ABI.FunctionSelector{\n      function: \"pet\",\n      types: [\n        %{type: {:array, :address}}\n      ]\n    }\n\n    iex> ABI.FunctionSelector.decode(\"paw(string[2])\")\n    %ABI.FunctionSelector{\n      function: \"paw\",\n      types: [\n        %{type: {:array, :string, 2}}\n      ]\n    }\n\n    iex> ABI.FunctionSelector.decode(\"scram(uint256[])\")\n    %ABI.FunctionSelector{\n      function: \"scram\",\n      types: [\n        %{type: {:array, {:uint, 256}}}\n      ]\n    }\n\n    iex> ABI.FunctionSelector.decode(\"shake((string))\")\n    %ABI.FunctionSelector{\n      function: \"shake\",\n      types: [\n        %{type: {:tuple, [%{type: :string}]}}\n      ]\n    }",
+          "signature": "decode(signature)",
+          "spec": "decode(String.t()) :: t()",
+          "defaults": 0,
+          "hints": {
+            "description": "Parse a Solidity function or event signature string into a FunctionSelector struct exposing function name, parameter types, and (when present) named parameters.",
+            "params": {
+              "signature": {
+                "description": "Signature string such as transfer(address,uint256), or a parenthesized type list such as (uint256,bool); supports nested tuples and arrays, optional parameter names, and the indexed keyword for event parameters",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "struct",
+              "description": "ABI.FunctionSelector struct with :function, :types, optional :function_type/:state_mutability/:returns/:indexed metadata"
+            },
+            "composes_with": [
+              "encode"
+            ]
+          }
+        },
+        {
+          "arity": 1,
+          "name": "decode_raw",
+          "description": "Decodes the given type-string as a simple array of types.\n\n## Examples\n\n    iex> ABI.FunctionSelector.decode_raw(\"string,uint256\")\n    [:string, {:uint, 256}]\n\n    iex> ABI.FunctionSelector.decode_raw(\"\")\n    []",
+          "signature": "decode_raw(type_string)",
+          "spec": "decode_raw(String.t()) :: [type()]",
+          "defaults": 0,
+          "hints": {
+            "description": "Parse a comma-separated list of Solidity type names into a list of internal type representations, without function-name framing.",
+            "params": {
+              "type_string": {
+                "description": "Comma-separated type names such as string,uint256 (no surrounding parens, no function name); empty string returns []",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "list",
+              "description": "Ordered list of internal type tuples like [:string, {:uint, 256}]"
+            }
+          }
+        },
+        {
+          "arity": 1,
+          "name": "decode_type",
+          "description": "Decodes the given type-string as a single type.\n\n## Examples\n\n    iex> ABI.FunctionSelector.decode_type(\"uint256\")\n    {:uint, 256}\n\n    iex> ABI.FunctionSelector.decode_type(\"(bool,address)\")\n    {:tuple, [%{type: :bool}, %{type: :address}]}\n\n    iex> ABI.FunctionSelector.decode_type(\"address[][3]\")\n    {:array, {:array, :address}, 3}",
+          "signature": "decode_type(single_type)",
+          "spec": "decode_type(String.t()) :: type()",
+          "defaults": 0,
+          "hints": {
+            "description": "Parse a single Solidity type expression into the internal type representation. Useful for one-off type parsing without function-name framing.",
+            "params": {
+              "single_type": {
+                "description": "Single Solidity type such as uint256, (bool,address), or address[][3]; supports nested tuples and arrays",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "tuple",
+              "description": "Internal type representation such as {:uint, 256}, {:tuple, [...]}, or {:array, type, count}"
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "encode",
+          "description": "Encodes a function call signature. If `indexed=true`, returns\nthe `\"indexed\"` keyword after indexed parameters.\n\n## Example\n\n    iex> ABI.FunctionSelector.encode(%ABI.FunctionSelector{\n    ...>   function: \"bark\",\n    ...>   types: [\n    ...>     %{type: {:uint, 256}},\n    ...>     %{type: :bool, indexed: true},\n    ...>     %{type: {:array, :string}},\n    ...>     %{type: {:array, :string, 3}},\n    ...>     %{type: {:tuple, [%{type: {:uint, 256}}, %{type: :bool}]}}\n    ...>   ]\n    ...> })\n    \"bark(uint256,bool,string[],string[3],(uint256,bool))\"\n\n    iex> ABI.FunctionSelector.encode(%ABI.FunctionSelector{\n    ...>   function: \"bark\",\n    ...>   types: [\n    ...>     %{type: {:uint, 256}},\n    ...>     %{type: :bool, indexed: true},\n    ...>     %{type: {:array, :string}},\n    ...>     %{type: {:array, :string, 3}},\n    ...>     %{type: {:tuple, [%{type: {:uint, 256}}, %{type: :bool}]}}\n    ...>   ]\n    ...> }, true)\n    \"bark(uint256,bool indexed,string[],string[3],(uint256,bool))\"\n\n    iex> ABI.FunctionSelector.encode(%ABI.FunctionSelector{\n    ...>   function: \"bark\",\n    ...>   types: [\n    ...>     %{type: {:uint, 256}},\n    ...>     %{type: :bool, indexed: true},\n    ...>     %{type: {:array, :string}},\n    ...>     %{type: {:array, :string, 3}},\n    ...>     %{type: {:tuple, [%{type: {:uint, 256}}, %{type: :bool}]}}\n    ...>   ]\n    ...> }, true, true)\n    \"bark(uint256 var0,bool indexed var1,string[] var2,string[3] var3,(uint256,bool) var4)\"\n\n    iex> ABI.FunctionSelector.encode(%ABI.FunctionSelector{\n    ...>   function: \"bark\",\n    ...>   types: [\n    ...>     %{type: {:uint, 256}},\n    ...>     %{type: :bool, indexed: true},\n    ...>     %{type: {:array, :string}},\n    ...>     %{type: {:array, :string, 3}},\n    ...>     %{type: {:tuple, [%{type: {:uint, 256}}, %{type: :bool}]}}\n    ...>   ]\n    ...> }, false, true)\n    \"bark(uint256 var0,bool var1,string[] var2,string[3] var3,(uint256,bool) var4)\"\n\n    iex> ABI.FunctionSelector.encode(%ABI.FunctionSelector{\n    ...>   function: \"bark\",\n    ...>   types: [\n    ...>     %{type: {:uint, 256}, name: \"a\"},\n    ...>     %{type: :bool, indexed: true, name: \"b\"},\n    ...>     %{type: {:array, :string}, name: \"c\"},\n    ...>     %{type: {:array, :string, 3}, name: \"d\"},\n    ...>     %{type: {:tuple, [%{type: {:uint, 256}}, %{type: :bool}]}, name: \"e\"}\n    ...>   ]\n    ...> }, false, true)\n    \"bark(uint256 a,bool b,string[] c,string[3] d,(uint256,bool) e)\"",
+          "signature": "encode(function_selector, indexed \\\\ false, names \\\\ false)",
+          "spec": "encode(t(), boolean(), boolean()) :: String.t()",
+          "defaults": 2,
+          "hints": {
+            "description": "Render a FunctionSelector struct as its canonical Solidity signature string, optionally annotating indexed event params and parameter names.",
+            "params": {
+              "names": {
+                "default": false,
+                "description": "When true, append parameter names after each type (uses :name from the argument map, or var0/var1/... when missing)",
+                "kind": "value",
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "indexed": {
+                "default": false,
+                "description": "When true, append the indexed keyword after parameter types whose argument map carries indexed: true (event signatures)",
+                "kind": "value",
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "function_selector": {
+                "description": "FunctionSelector with :function and :types",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "string",
+              "description": "Canonical signature string such as transfer(address,uint256), or with indexed/names annotations applied"
+            },
+            "composes_with": [
+              "decode"
+            ]
+          }
+        },
+        {
+          "arity": 1,
+          "name": "parse_specification_item",
+          "description": "Parse a function selector, e.g. from an abi.json file.\n\n## Examples\n\n    iex> ABI.FunctionSelector.parse_specification_item(%{\"type\" => \"function\", \"name\" => \"fun\", \"inputs\" => [%{\"name\" => \"a\", \"type\" => \"uint96\", \"internalType\" => \"uint96\"}]})\n    %ABI.FunctionSelector{\n      function: \"fun\",\n      function_type: :function,\n      types: [%{type: {:uint, 96}, name: \"a\"}],\n      returns: nil\n    }\n\n    iex> ABI.FunctionSelector.parse_specification_item(%{\"type\" => \"function\", \"name\" => \"fun\", \"inputs\" => [%{\"name\" => \"s\", \"type\" => \"tuple\", \"internalType\" => \"tuple\", \"components\" => [%{\"name\" => \"a\", \"type\" => \"uint256\", \"internalType\" => \"uint256\"},%{\"name\" => \"b\", \"type\" => \"address\", \"internalType\" => \"address\"},%{\"name\" => \"c\", \"type\" => \"bytes\", \"internalType\" => \"bytes\"}]},%{\"name\" => \"d\", \"type\" => \"uint256\", \"internalType\" => \"uint256\"}],\"outputs\" => [%{\"name\" => \"\", \"type\" => \"bytes\", \"internalType\" => \"bytes\"}],\"stateMutability\" => \"view\"})\n    %ABI.FunctionSelector{\n      function: \"fun\",\n      function_type: :function,\n      state_mutability: :view,\n      types: [\n        %{\n          type:\n            {:tuple, [\n              %{type: {:uint, 256}, name: \"a\"},\n              %{type: :address, name: \"b\"},\n              %{type: :bytes, name: \"c\"}\n            ]},\n            name: \"s\"\n        }, %{\n          type: {:uint, 256},\n          name: \"d\"\n        }\n      ],\n      returns: [%{name: \"\", type: :bytes}],\n    }\n\n    iex> ABI.FunctionSelector.parse_specification_item(%{\"type\" => \"function\", \"name\" => \"fun\", \"inputs\" => [%{\"name\" => \"s\", \"type\" => \"tuple\", \"internalType\" => \"struct Contract.Struct\", \"components\" => [%{\"name\" => \"a\", \"type\" => \"uint256\", \"internalType\" => \"uint256\"},%{\"name\" => \"b\", \"type\" => \"address\", \"internalType\" => \"address\"},%{\"name\" => \"c\", \"type\" => \"bytes\", \"internalType\" => \"bytes\"}]},%{\"name\" => \"d\", \"type\" => \"uint256\", \"internalType\" => \"uint256\"}],\"outputs\" => [%{\"name\" => \"\", \"type\" => \"bytes\", \"internalType\" => \"bytes\"}],\"stateMutability\" => \"pure\"})\n    %ABI.FunctionSelector{\n      function: \"fun\",\n      function_type: :function,\n      state_mutability: :pure,\n      types: [\n        %{\n          type:\n            {:tuple, [\n              %{type: {:uint, 256}, name: \"a\"},\n              %{type: :address, name: \"b\"},\n              %{type: :bytes, name: \"c\"}\n            ]},\n            name: \"s\"\n        }, %{\n          type: {:uint, 256},\n          name: \"d\"\n        }\n      ],\n      returns: [%{name: \"\", type: :bytes}],\n    }\n\n    iex> ABI.FunctionSelector.parse_specification_item(%{\"type\" => \"function\", \"name\" => \"fun\", \"inputs\" => [%{\"name\" => \"s\", \"type\" => \"tuple\", \"internalType\" => \"struct Contract.Struct\", \"components\" => [%{\"name\" => \"a\", \"type\" => \"uint256\", \"internalType\" => \"uint256\"},%{\"type\" => \"address\", \"internalType\" => \"address\"},%{\"name\" => \"c\", \"type\" => \"bytes\", \"internalType\" => \"bytes\"}]},%{\"name\" => \"d\", \"type\" => \"uint256\", \"internalType\" => \"uint256\"}],\"outputs\" => [%{\"name\" => \"\", \"type\" => \"bytes\", \"internalType\" => \"bytes\"}],\"stateMutability\" => \"payable\"})\n    %ABI.FunctionSelector{\n      function: \"fun\",\n      function_type: :function,\n      state_mutability: :payable,\n      types: [\n        %{\n          type:\n            {:tuple, [\n              %{type: {:uint, 256}, name: \"a\"},\n              %{type: :address},\n              %{type: :bytes, name: \"c\"}\n            ]},\n            name: \"s\"\n        }, %{\n          type: {:uint, 256},\n          name: \"d\"\n        }\n      ],\n      returns: [%{name: \"\", type: :bytes}],\n    }\n\n    iex> ABI.FunctionSelector.parse_specification_item(%{\"type\" => \"fallback\"})\n    %ABI.FunctionSelector{\n      function: nil,\n      function_type: :fallback,\n      types: [],\n      returns: nil\n    }\n\n    iex> ABI.FunctionSelector.parse_specification_item(%{\"type\" => \"receive\"})\n    %ABI.FunctionSelector{\n      function: nil,\n      function_type: :receive,\n      types: [],\n      returns: nil\n    }\n\n    iex> ABI.FunctionSelector.parse_specification_item(%{\"inputs\" => [%{\"internalType\" => \"address[]\", \"name\" => \"xs\", \"type\" => \"address[]\"}, %{\"internalType\" => \"bytes[]\", \"name\" => \"ys\", \"type\" => \"bytes[]\"}, %{\"components\" => [%{\"internalType\" => \"enum Z\", \"name\" => \"za\", \"type\" => \"uint8\"}, %{\"internalType\" => \"enum Z\", \"name\" => \"zb\", \"type\" => \"uint8\"}], \"internalType\" => \"struct Z.Z[]\", \"name\" => \"zs\", \"type\" => \"tuple[]\"}, %{\"internalType\" => \"bytes[]\", \"name\" => \"zz\", \"type\" => \"bytes[]\"}], \"name\" => \"go\", \"outputs\" => [%{\"internalType\" => \"bytes[]\", \"name\" => \"\", \"type\" => \"bytes[]\"}], \"stateMutability\" => \"nonpayable\", \"type\" => \"function\"})\n    %ABI.FunctionSelector{\n      function: \"go\",\n      function_type: :function,\n      state_mutability: :nonpayable,\n      types: [\n        %{name: \"xs\", type: {:array, :address}},\n        %{name: \"ys\", type: {:array, :bytes}},\n        %{\n          name: \"zs\",\n          type:\n            {:array,\n             {:tuple,\n              [%{name: \"za\", type: {:uint, 8}}, %{name: \"zb\", type: {:uint, 8}}]}}\n        },\n        %{name: \"zz\", type: {:array, :bytes}}\n      ],\n      returns: [%{name: \"\", type: {:array, :bytes}}]\n    }\n\n    iex> ABI.FunctionSelector.parse_specification_item(%{\"anonymous\" => false, \"inputs\" => [%{\"indexed\" => true, \"internalType\" => \"address\", \"name\" => \"z0\", \"type\" => \"address\"}, %{\"indexed\" => true, \"internalType\" => \"address\", \"name\" => \"z1\", \"type\" => \"address\"}, %{\"indexed\" => false, \"internalType\" => \"address\", \"name\" => \"z2\", \"type\" => \"address\"}, %{\"indexed\" => false, \"internalType\" => \"bytes32\", \"name\" => \"z3\", \"type\" => \"bytes32\"}], \"name\" => \"z4\", \"type\" => \"event\"})\n    %ABI.FunctionSelector{\n      function: \"z4\",\n      function_type: :event,\n      state_mutability: nil,\n      types: [\n        %{name: \"z0\", type: :address, indexed: true},\n        %{name: \"z1\", type: :address, indexed: true},\n        %{name: \"z2\", type: :address, indexed: false},\n        %{name: \"z3\", type: {:bytes, 32}, indexed: false}\n      ],\n      returns: nil\n    }\n\n    iex> ABI.FunctionSelector.parse_specification_item(%{\"inputs\" => [], \"name\" => \"Abc\", \"type\" => \"error\"})\n    %ABI.FunctionSelector{function: \"Abc\", function_type: :error, state_mutability: nil, types: [], returns: nil}",
+          "signature": "parse_specification_item(item)",
+          "spec": "parse_specification_item(map()) :: t()",
+          "defaults": 0,
+          "hints": {
+            "description": "Parse a single ABI specification item (function, event, fallback, receive, error) from a decoded JSON ABI map into a FunctionSelector struct.",
+            "params": {
+              "item": {
+                "description": "Map decoded from a contract ABI JSON entry, with string keys: type (function/event/error/...), name, inputs, outputs, stateMutability, components for tuples",
+                "kind": "value",
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "returns": {
+              "type": "struct",
+              "description": "ABI.FunctionSelector populated with :function, :function_type, :state_mutability, :types, and :returns from the JSON entry"
+            }
+          }
+        }
+      ],
+      "module": "ABI.FunctionSelector",
+      "description": "Module to help parse the ABI function signatures, e.g.\n`my_function(uint64, string[])`.\n\n\n## API Functions\n| Function | Arity | Description | Param Kinds |\n| --- | --- | --- | --- |\n| `encode` | 3 | Render a FunctionSelector struct as its canonical Solidity signature string, optionally annotating indexed event params and parameter names. | `function_selector: value`, `indexed: value`, `names: value` |\n| `decode_type` | 1 | Parse a single Solidity type expression into the internal type representation. Useful for one-off type parsing without function-name framing. | `single_type: value` |\n| `parse_specification_item` | 1 | Parse a single ABI specification item (function, event, fallback, receive, error) from a decoded JSON ABI map into a FunctionSelector struct. | `item: value` |\n| `decode_raw` | 1 | Parse a comma-separated list of Solidity type names into a list of internal type representations, without function-name framing. | `type_string: value` |\n| `decode` | 1 | Parse a Solidity function or event signature string into a FunctionSelector struct exposing function name, parameter types, and (when present) named parameters. | `signature: value` |",
+      "namespace": "/selector"
+    },
+    {
+      "functions": [
+        {
+          "arity": 2,
+          "name": "encode",
+          "description": "Encodes the given data based on the function selector.\n\n## Examples\n\n    iex> [69, true]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: \"baz\",\n    ...>        types: [\n    ...>          %{type: {:uint, 32}},\n    ...>          %{type: :bool}\n    ...>        ],\n    ...>        returns: :bool\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"cdcd77c000000000000000000000000000000000000000000000000000000000000000450000000000000000000000000000000000000000000000000000000000000001\"\n\n    iex> [\"BAT\"]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: \"price\",\n    ...>        types: [\n    ...>          %{type: :string}\n    ...>        ],\n    ...>        returns: {:uint, 256}\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"fe2c6198000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000034241540000000000000000000000000000000000000000000000000000000000\"\n\n\n    iex> [Base.decode16!(\"ffffffffffffffffffffffffffffffffffffffff\", case: :lower)]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: \"price\",\n    ...>        types: [\n    ...>          %{type: :address}\n    ...>        ]\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"aea91078000000000000000000000000ffffffffffffffffffffffffffffffffffffffff\"\n\n    iex> [1]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: \"price\",\n    ...>        types: [\n    ...>          %{type: :address}\n    ...>        ]\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"aea910780000000000000000000000000000000000000000000000000000000000000001\"\n\n    iex> [\"hello world\"]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: :string},\n    ...>        ]\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000\"\n\n    iex> [{{0x11, 0x22}, \"hello world\"}]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:tuple, [\n    ...>            %{type: {:tuple, [%{type: {:uint, 256}},%{type: {:uint, 256}}]}},\n    ...>            %{type: :string},\n    ...>          ]}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000220000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000\"\n\n    iex> [{\"awesome\", true}]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:tuple, [%{type: :string}, %{type: :bool}]}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000007617765736f6d6500000000000000000000000000000000000000000000000000\"\n\n    iex> [{17, true, <<32, 64>>}]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:tuple, [%{type: {:uint, 32}}, %{type: :bool}, %{type: {:bytes, 2}}]}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000012040000000000000000000000000000000000000000000000000000000000000\"\n\n    iex> [[17, 1]]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: \"baz\",\n    ...>        types: [\n    ...>          %{type: {:array, {:uint, 32}, 2}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"3d0ec53300000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001\"\n\n    iex> [[17, 1], true]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:array, {:uint, 32}, 2}},\n    ...>          %{type: :bool}\n    ...>        ]\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001\"\n\n    iex> [[17, 1]]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:array, {:uint, 32}}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001\"\n\n    iex> [\n    ...>   <<1::160>>,\n    ...>   <<2::160>>,\n    ...>   <<3::256>>,\n    ...>   {\n    ...>     4,\n    ...>     <<5::160>>,\n    ...>     <<6>>,\n    ...>     <<7::512>>,\n    ...>     8\n    ...>   },\n    ...>   9,\n    ...>   <<0xa::256>>,\n    ...>   <<0xb::256>>\n    ...> ]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>   %ABI.FunctionSelector{\n    ...>     function: \"test\",\n    ...>     function_type: :function,\n    ...>     state_mutability: :nonpayable,\n    ...>     types: [\n    ...>       %{name: \"a\", type: :address},\n    ...>       %{name: \"b\", type: :address},\n    ...>       %{name: \"c\", type: {:bytes, 32}},\n    ...>       %{\n    ...>         name: \"d\",\n    ...>         type:\n    ...>           {:tuple,\n    ...>            [\n    ...>              %{name: \"e\", type: {:uint, 96}},\n    ...>              %{name: \"f\", type: :address},\n    ...>              %{name: \"g\", type: :bytes},\n    ...>              %{name: \"h\", type: :bytes},\n    ...>              %{name: \"i\", type: {:uint, 256}}\n    ...>            ]}\n    ...>       },\n    ...>       %{name: \"j\", type: {:uint, 8}},\n    ...>       %{name: \"k\", type: {:bytes, 32}},\n    ...>       %{name: \"l\", type: {:bytes, 32}}\n    ...>     ],\n    ...>     returns: [%{name: \"\", type: :bytes}]\n    ...>   }\n    ...> )\n    ...> |> Base.encode16(case: :lower)\n    \"19c9d90a00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000000009000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000b0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000010600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007\"\n\n    iex> [%{x: 42, flag: true}]\n    ...> |> ABI.TypeEncoder.encode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:tuple, [\n    ...>            %{name: \"x\", type: {:uint, 32}},\n    ...>            %{name: \"flag\", type: :bool}\n    ...>          ]}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000001\"\n\n    iex> [-255]\n    ...> |> ABI.TypeEncoder.encode(%ABI.FunctionSelector{function: nil, types: [%{type: {:int, 16}}]})\n    ...> |> Base.encode16(case: :lower)\n    \"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff01\"",
+          "signature": "encode(data, function_selector)",
+          "spec": "encode([any()], ABI.FunctionSelector.t()) :: binary()",
+          "defaults": 0,
+          "hints": {
+            "description": "Encode a list of values into ABI calldata using the given FunctionSelector, prefixing the 4-byte selector when the function name is set.",
+            "params": {
+              "data": {
+                "description": "List of values in argument order; tuples may be passed as Elixir tuples, lists for arrays, and named maps for tuple/struct types whose argument metadata carries :name",
+                "kind": "value",
+                "schema": {
+                  "items": {},
+                  "type": "array"
+                }
+              },
+              "function_selector": {
+                "description": "Pre-parsed FunctionSelector. When :function is non-nil, the 4-byte method id is prepended; when nil, the head/tail body is emitted without prefix",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "ABI-encoded calldata (selector-prefixed when the function name is set, raw payload otherwise)"
+            },
+            "composes_with": [
+              "encode_raw"
+            ]
+          }
+        },
+        {
+          "arity": 2,
+          "name": "encode_packed",
+          "description": "Encodes a list of values using Solidity's\n[non-standard packed mode](https://docs.soliditylang.org/en/stable/abi-spec.html#non-standard-packed-mode).\n\nUsed primarily for `keccak256(abi.encodePacked(...))` Merkle leaves and\nsignature schemes; never used for actual function calls (the spec defines\nno decoding function — encoding is ambiguous with multiple dynamic args).\n\nTuple/struct values and nested arrays raise `ArgumentError` — Solidity's\nspec does not define their packed encoding.\n\n## Examples\n\n    iex> ABI.TypeEncoder.encode_packed(\n    ...>   [-1, <<0x42>>, 3, \"Hello, world!\"],\n    ...>   [\n    ...>     %{type: {:int, 16}},\n    ...>     %{type: {:bytes, 1}},\n    ...>     %{type: {:uint, 16}},\n    ...>     %{type: :string}\n    ...>   ]\n    ...> ) |> Base.encode16(case: :lower)\n    \"ffff42000348656c6c6f2c20776f726c6421\"",
+          "signature": "encode_packed(data, types)",
+          "spec": "encode_packed([any()], [ABI.FunctionSelector.argument_type()]) :: binary()",
+          "defaults": 0,
+          "hints": {
+            "description": "Encodes values using Solidity's non-standard packed mode (abi.encodePacked) — types <32 bytes concatenated tight, dynamic types in-place without length prefix, array elements padded to 32 bytes.",
+            "params": {
+              "data": {
+                "description": "List of values in argument order; same value shapes accepted as encode_raw/2 (numbers, binaries, lists for arrays)",
+                "kind": "value",
+                "schema": {
+                  "items": {},
+                  "type": "array"
+                }
+              },
+              "types": {
+                "description": "List of FunctionSelector argument-type maps (each %{type: ...}) describing the parameter sequence. Tuple/struct types and nested arrays raise — the spec does not define their packed encoding.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "Tightly-packed bytes per the Solidity spec — never selector-prefixed and not decodable (the spec is ambiguous in the presence of multiple dynamic args)."
+            },
+            "composes_with": [
+              "encode_raw"
+            ]
+          }
+        },
+        {
+          "arity": 2,
+          "name": "encode_raw",
+          "description": "Simiar to `ABI.TypeEncoder.encode/2` except we accept\nan array of types instead of a function selector. We also\ndo not pre-pend the method id.\n\n## Examples\n\n    iex> [{\"awesome\", true}]\n    ...> |> ABI.TypeEncoder.encode_raw([%{type: {:tuple, [%{type: :string}, %{type: :bool}]}}])\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000007617765736f6d6500000000000000000000000000000000000000000000000000\"",
+          "signature": "encode_raw(data, types)",
+          "spec": "encode_raw([any()], [ABI.FunctionSelector.argument_type()]) :: binary()",
+          "defaults": 0,
+          "hints": {
+            "description": "Encode a list of values directly against an explicit type list, without prepending a method-id selector. Used for return values, event data, or pre-routed calldata payloads.",
+            "params": {
+              "data": {
+                "description": "List of values in type order; same shapes accepted as encode/2 (tuples, lists, named maps)",
+                "kind": "value",
+                "schema": {
+                  "items": {},
+                  "type": "array"
+                }
+              },
+              "types": {
+                "description": "List of FunctionSelector argument-type maps (each %{type: ...} optionally with :name) describing the parameter sequence",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "ABI-encoded payload with no selector prefix"
+            },
+            "composes_with": [
+              "encode"
+            ]
+          }
+        }
+      ],
+      "module": "ABI.TypeEncoder",
+      "description": "`ABI.TypeEncoder` is responsible for encoding types to the format\nexpected by Solidity. We generally take a function selector and an\narray of data and encode that array according to the specification.\n\n\n## API Functions\n| Function | Arity | Description | Param Kinds |\n| --- | --- | --- | --- |\n| `encode_packed` | 2 | Encodes values using Solidity's non-standard packed mode (abi.encodePacked) — types <32 bytes concatenated tight, dynamic types in-place without length prefix, array elements padded to 32 bytes. | `data: value`, `types: value` |\n| `encode_raw` | 2 | Encode a list of values directly against an explicit type list, without prepending a method-id selector. Used for return values, event data, or pre-routed calldata payloads. | `data: value`, `types: value` |\n| `encode` | 2 | Encode a list of values into ABI calldata using the given FunctionSelector, prefixing the 4-byte selector when the function name is set. | `data: value`, `function_selector: value` |",
+      "namespace": "/codec"
+    },
+    {
+      "functions": [
+        {
+          "arity": 3,
+          "name": "decode",
+          "description": "Decodes the given data based on the function selector.\n\nNote, we don't currently try to guess the function name?\n\n## Examples\n\n    iex> \"00000000000000000000000000000000000000000000000000000000000000450000000000000000000000000000000000000000000000000000000000000001\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: \"baz\",\n    ...>        types: [\n    ...>          %{type: {:uint, 32}},\n    ...>          %{type: :bool}\n    ...>        ],\n    ...>        returns: :bool\n    ...>      }\n    ...>    )\n    [69, true]\n\n    iex> \"000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: :string}\n    ...>        ]\n    ...>      }\n    ...>    )\n    [\"hello world\"]\n\n    iex> \"00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:tuple, [%{type: {:uint, 32}, name: \"a\"}, %{type: :bool, name: \"b\"}]}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    [{17, true}]\n\n    iex> \"00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:tuple, [%{type: {:uint, 32}, name: \"a\"}, %{type: :bool, name: \"b\"}]}}\n    ...>        ]\n    ...>      },\n    ...>      decode_structs: true\n    ...>    )\n    [%{a: 17, b: true}]\n\n    iex> \"00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:tuple, [%{type: {:uint, 32}}, %{type: :bool}]}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    [{17, true}]\n\n    iex> \"00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:array, {:uint, 32}, 2}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    [[17, 1]]\n\n    iex> \"000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:array, {:uint, 32}}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    [[17, 1]]\n\n    iex> \"0000000000000000000000000000000000000000000000000000000000000011000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000011020000000000000000000000000000000000000000000000000000000000000\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:array, {:uint, 32}, 2}},\n    ...>          %{type: :bool},\n    ...>          %{type: {:bytes, 2}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    [[17, 1], true, <<16, 32>>]\n\n    iex> \"000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000007617765736f6d6500000000000000000000000000000000000000000000000000\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:tuple, [%{type: :string}, %{type: :bool}]}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    [{\"awesome\", true}]\n\n    iex> \"00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [\n    ...>          %{type: {:tuple, [%{type: {:array, :address}}]}}\n    ...>        ]\n    ...>      }\n    ...>    )\n    [{[]}]\n\n    iex> \"00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000c556e617574686f72697a656400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000204a2bf2ff0a4eaf1890c8d8679eaa446fb852c4000000000000000000000000861d9af488d5fa485bb08ab6912fff4f7450849a\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: nil,\n    ...>        types: [%{type: {:tuple,[\n    ...>          %{type: :string},\n    ...>          %{type: {:array, {:uint, 256}}}\n    ...>        ]}}]\n    ...>      }\n    ...>    )\n    [{\n      \"Unauthorized\",\n      [\n        184341788326688649239867304918349890235378717380,\n        765664983403968947098136133435535343021479462042,\n      ]\n    }]\n\n    iex> \"000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000034241540000000000000000000000000000000000000000000000000000000000\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode(\n    ...>      %ABI.FunctionSelector{\n    ...>        function: \"price\",\n    ...>        types: [\n    ...>          %{type: :string}\n    ...>        ],\n    ...>        returns: {:uint, 256}\n    ...>      }\n    ...>    )\n    [\"BAT\"]",
+          "signature": "decode(encoded_data, function_selector, opts \\\\ [])",
+          "spec": "decode(binary(), ABI.FunctionSelector.t(), keyword()) :: [any()]",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode an ABI-encoded payload into a list of values, using a FunctionSelector to drive type interpretation.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Optional keyword list. Supports decode_structs: true to render named tuples as maps with snake_case atom keys",
+                "kind": "value"
+              },
+              "function_selector": {
+                "description": "Pre-parsed FunctionSelector. When :function is non-nil, the payload is interpreted as a single tuple (call-args shape); otherwise types are read sequentially",
+                "kind": "value"
+              },
+              "encoded_data": {
+                "description": "Raw ABI payload (selector prefix already stripped); pass the binary that follows the 4-byte method id",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "list",
+              "description": "List of decoded values in argument order"
+            },
+            "composes_with": [
+              "decode_raw"
+            ]
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_bytes",
+          "description": "Reads `size_in_bytes` of content out of `data`, skipping the 32-byte-slot\npadding on whichever side matches `padding_direction` (`:left` for\nleft-padded types like `address` and `uint`/`int`, `:right` for\nright-padded types like `bytes<M>` and `string`). Returns `{value, rest}`.",
+          "signature": "decode_bytes(data, size_in_bytes, padding_direction)",
+          "spec": "decode_bytes(binary(), integer(), atom()) :: {binary(), binary()}",
+          "defaults": 0,
+          "hints": {
+            "description": "Read size_in_bytes of content from a 32-byte-aligned ABI word, skipping padding on the matching side. Used to extract address, uint/int, bytes<M>, and string payloads from their slots.",
+            "params": {
+              "data": {
+                "description": "Binary containing one padded ABI word followed by remaining bytes",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "size_in_bytes": {
+                "description": "Logical field width to extract from the padded slot",
+                "kind": "value",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "padding_direction": {
+                "description": "Side that was padded — :left for address/uint/int, :right for bytes<M>/string",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "tuple",
+              "description": "Two-tuple {value, rest} where value is the unpadded content and rest is whatever follows the padded word"
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_raw",
+          "description": "Similar to `ABI.TypeDecoder.decode/2` except accepts a list of types instead\nof a function selector.\n\n## Examples\n\n    iex> \"000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000007617765736f6d6500000000000000000000000000000000000000000000000000\"\n    ...> |> Base.decode16!(case: :lower)\n    ...> |> ABI.TypeDecoder.decode_raw([%{type: {:tuple, [%{type: :string}, %{type: :bool}]}}])\n    [{\"awesome\", true}]",
+          "signature": "decode_raw(encoded_data, types, opts \\\\ [])",
+          "spec": "decode_raw(binary(), [ABI.FunctionSelector.argument_type()], keyword()) :: [any()]",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode an ABI-encoded payload directly against an explicit type list, without consulting a FunctionSelector.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Optional keyword list. Supports decode_structs: true to render named tuples as maps with snake_case atom keys",
+                "kind": "value"
+              },
+              "types": {
+                "description": "List of FunctionSelector argument-type maps (each %{type: ...} optionally with :name) describing the expected sequence",
+                "kind": "value"
+              },
+              "encoded_data": {
+                "description": "Raw ABI payload — for example return values, event log data, or pre-routed calldata",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "list",
+              "description": "List of decoded values in type order"
+            },
+            "composes_with": [
+              "decode"
+            ]
+          }
+        },
+        {
+          "arity": 3,
+          "name": "tuple_value",
+          "description": "Combines a list of ABI argument types with a list of decoded element values\ninto either a tuple or (when `decode_structs` is true and every type carries\na non-empty `:name`) a map keyed by the existing snake_case atom for each\nfield name.\n\nField-name atoms must already exist in the VM atom table — `decode_structs:\ntrue` calls `String.to_existing_atom/1` on `Macro.underscore(name)` and\nraises `ArgumentError` if the atom has not been interned. This bounds atom\ncreation to the set of field names the caller has explicitly referenced in\ntheir code, closing a DoS surface for consumers that ingest ABIs from\narbitrary sources.\n\nUsed internally by `decode_type({:tuple, types}, ...)` to render the\nsecond-pass result; exposed because event-log decoding in `ABI.Event`\nreuses the same shape.",
+          "signature": "tuple_value(types, elements, decode_structs)",
+          "spec": "tuple_value([ABI.FunctionSelector.argument_type()], [any()], boolean()) :: map() | tuple()",
+          "defaults": 0,
+          "hints": {
+            "description": "Combine a list of ABI argument types with decoded element values, returning either a tuple or, when decode_structs is enabled and every type carries a non-empty :name, a map keyed by snake_case atom field names.",
+            "params": {
+              "types": {
+                "description": "List of FunctionSelector argument-type maps; each must carry :name for the struct branch to apply",
+                "kind": "value"
+              },
+              "decode_structs": {
+                "description": "Boolean flag. When true and every type has a non-empty :name, returns a map; otherwise returns a tuple",
+                "kind": "value",
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "elements": {
+                "description": "Decoded values in the same order as types",
+                "kind": "value",
+                "schema": {
+                  "items": {},
+                  "type": "array"
+                }
+              }
+            },
+            "returns": {
+              "type": "union",
+              "description": "Map keyed by atom field names when decode_structs is true and all names are present; otherwise a tuple of the elements in order"
+            }
+          }
+        }
+      ],
+      "module": "ABI.TypeDecoder",
+      "description": "`ABI.TypeDecoder` is responsible for decoding types to the format\nexpected by Solidity. We generally take a function selector and binary\ndata and decode that into the original arguments according to the\nspecification.\n\n\n## API Functions\n| Function | Arity | Description | Param Kinds |\n| --- | --- | --- | --- |\n| `decode_bytes` | 3 | Read size_in_bytes of content from a 32-byte-aligned ABI word, skipping padding on the matching side. Used to extract address, uint/int, bytes<M>, and string payloads from their slots. | `data: value`, `size_in_bytes: value`, `padding_direction: value` |\n| `tuple_value` | 3 | Combine a list of ABI argument types with decoded element values, returning either a tuple or, when decode_structs is enabled and every type carries a non-empty :name, a map keyed by snake_case atom field names. | `types: value`, `elements: value`, `decode_structs: value` |\n| `decode_raw` | 3 | Decode an ABI-encoded payload directly against an explicit type list, without consulting a FunctionSelector. | `encoded_data: value`, `types: value`, `opts: value` |\n| `decode` | 3 | Decode an ABI-encoded payload into a list of values, using a FunctionSelector to drive type interpretation. | `encoded_data: value`, `function_selector: value`, `opts: value` |",
+      "namespace": "/codec"
+    },
+    {
+      "functions": [
+        {
+          "arity": 1,
+          "name": "kec",
+          "description": "Returns the keccak sha256 of a given input.\n\n## Examples\n\n    iex> ABI.Math.kec(\"hello world\")\n    <<71, 23, 50, 133, 168, 215, 52, 30, 94, 151, 47, 198, 119, 40, 99,\n      132, 248, 2, 248, 239, 66, 165, 236, 95, 3, 187, 250, 37, 76, 176,\n      31, 173>>\n\n    iex> ABI.Math.kec(<<0x01, 0x02, 0x03>>)\n    <<241, 136, 94, 218, 84, 183, 160, 83, 49, 140, 212, 30, 32, 147, 34,\n      13, 171, 21, 214, 83, 129, 177, 21, 122, 54, 51, 168, 59, 253, 92,\n      146, 57>>",
+          "signature": "kec(data)",
+          "spec": "kec(binary()) :: binary()",
+          "defaults": 0,
+          "hints": {
+            "description": "Compute the keccak-256 hash of a binary input. The hash function used throughout Ethereum and the ABI spec for selector and event-topic derivation.",
+            "params": {
+              "data": {
+                "description": "Binary input of any length",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "32-byte keccak-256 digest"
+            }
+          }
+        },
+        {
+          "arity": 2,
+          "name": "mod",
+          "description": "Simple function to compute modulo function to work on integers of any sign.\n\n## Examples\n\n    iex> ABI.Math.mod(5, 2)\n    1\n\n    iex> ABI.Math.mod(-5, 1337)\n    1332\n\n    iex> ABI.Math.mod(1337 + 5, 1337)\n    5\n\n    iex> ABI.Math.mod(0, 1337)\n    0\n\n    iex> ABI.Math.mod(-7, 5)\n    3\n\n    iex> ABI.Math.mod(-1338, 1337)\n    1336",
+          "signature": "mod(x, n)",
+          "spec": "mod(integer(), pos_integer()) :: non_neg_integer()",
+          "defaults": 0,
+          "hints": {
+            "description": "Compute integer modulo with sign-aware behavior, returning a non-negative result for negative dividends.",
+            "params": {
+              "x": {
+                "description": "Integer dividend (any sign)",
+                "kind": "value",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "n": {
+                "description": "Positive integer divisor",
+                "kind": "value",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            },
+            "returns": {
+              "type": "integer",
+              "description": "Non-negative remainder in the range 0..n-1"
+            }
+          }
+        },
+        {
+          "arity": 4,
+          "name": "pad",
+          "description": "Pads a binary up to the next 32-byte ABI word boundary.\n\n`size_in_bytes` is the **logical field width** used to compute the word\nboundary — not necessarily `byte_size(bin)`. The output is always rounded\nup from `size_in_bytes` to a 32-byte multiple. `bin` may be shorter than\n`size_in_bytes` (callers like `encode_int`/`encode_uint` pass a target\nslot size and let padding absorb the difference); `encode_bytes` passes\n`byte_size(bin)` directly.\n\n`direction` is `:left` for left-aligned types like `uint`/`int`/`address`,\n`:right` for right-padded types like `bytes<M>` and `string`. Pass\n`fill_byte: <<0xFF>>` for signed sign-extension; defaults to `<<0x00>>`.\n\n## Examples\n\n    iex> ABI.Math.pad(<<1, 2, 3>>, 3, :left)\n    <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3>>\n\n    iex> ABI.Math.pad(<<1, 2, 3>>, 3, :right)\n    <<1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0>>",
+          "signature": "pad(bin, size_in_bytes, direction, opts \\\\ [])",
+          "spec": "pad(binary(), non_neg_integer(), :left | :right, keyword()) :: binary()",
+          "defaults": 1,
+          "hints": {
+            "description": "Pad a binary up to the next 32-byte ABI word boundary, with side and fill byte chosen by argument.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Optional keyword list. Supports fill_byte: <<0xFF>> for signed sign-extension; defaults to <<0x00>>",
+                "kind": "value"
+              },
+              "bin": {
+                "description": "The binary content to pad",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "direction": {
+                "description": "Padding side — :left for left-aligned types like uint/int/address, :right for right-padded types like bytes<M> and string",
+                "kind": "value",
+                "schema": {
+                  "enum": [
+                    "left",
+                    "right"
+                  ],
+                  "type": "string"
+                }
+              },
+              "size_in_bytes": {
+                "description": "Logical field width used to compute the word boundary; output is rounded up to the next 32-byte multiple from this value",
+                "kind": "value",
+                "schema": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              }
+            },
+            "returns": {
+              "type": "binary",
+              "description": "Padded binary aligned to a 32-byte multiple"
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "unpad",
+          "description": "Inverse of `pad/4`. Reads `size_in_bytes` of content out of `data`,\nskipping 32-byte-slot padding on the side matching `padding_direction`\n(`:left` for left-padded types like `address`, `:right` for right-padded\ntypes like `bytes<M>` and `string`). Returns `{value, rest}`, where\n`rest` is whatever follows the padded word in `data`.\n\n## Examples\n\n    iex> ABI.Math.unpad(\n    ...>   <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n    ...>     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3>>,\n    ...>   3,\n    ...>   :left\n    ...> )\n    {<<1, 2, 3>>, <<>>}\n\n    iex> ABI.Math.unpad(\n    ...>   <<1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n    ...>     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n    ...>     9, 9>>,\n    ...>   3,\n    ...>   :right\n    ...> )\n    {<<1, 2, 3>>, <<9, 9>>}",
+          "signature": "unpad(data, size_in_bytes, padding_direction)",
+          "spec": "unpad(binary(), non_neg_integer(), :left | :right) :: {binary(), binary()}",
+          "defaults": 0,
+          "hints": {
+            "description": "Inverse of pad/4. Reads size_in_bytes of content out of data, skipping 32-byte-slot padding on the matching side.",
+            "params": {
+              "data": {
+                "description": "Binary containing one padded ABI word followed by remaining bytes",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "size_in_bytes": {
+                "description": "Logical field width to extract from the padded slot",
+                "kind": "value",
+                "schema": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "padding_direction": {
+                "description": "Side that was padded — :left for address/uint/int, :right for bytes<M>/string",
+                "kind": "value",
+                "schema": {
+                  "enum": [
+                    "left",
+                    "right"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "tuple",
+              "description": "Two-tuple {value, rest} where value is the unpadded content and rest is whatever follows the padded word"
+            }
+          }
+        }
+      ],
+      "module": "ABI.Math",
+      "description": "Helper functions for ABI's math functions.\n\n\n## API Functions\n| Function | Arity | Description | Param Kinds |\n| --- | --- | --- | --- |\n| `unpad` | 3 | Inverse of pad/4. Reads size_in_bytes of content out of data, skipping 32-byte-slot padding on the matching side. | `data: value`, `size_in_bytes: value`, `padding_direction: value` |\n| `pad` | 4 | Pad a binary up to the next 32-byte ABI word boundary, with side and fill byte chosen by argument. | `bin: value`, `size_in_bytes: value`, `direction: value`, `opts: value` |\n| `kec` | 1 | Compute the keccak-256 hash of a binary input. The hash function used throughout Ethereum and the ABI spec for selector and event-topic derivation. | `data: value` |\n| `mod` | 2 | Compute integer modulo with sign-aware behavior, returning a non-negative result for negative dividends. | `x: value`, `n: value` |",
+      "namespace": "/math"
+    }
+  ],
+  "generated_at": "2026-08-22T07:02:14.219010Z"
+}

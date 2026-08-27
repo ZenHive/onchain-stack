@@ -1,0 +1,519 @@
+{
+  "_comment": [
+    "Survivors argued equivalent (or equivalent on the type's specified domain)",
+    "for roadmap task 46, criterion 4. This is the ARGUED tier: the machine-checked",
+    "tier is .mutation/results/equivalent.json, produced by .mutation/equivalence.exs,",
+    "and it wins wherever the two overlap.",
+    "",
+    "Each group carries one argument covering every selector under it. A selector is",
+    "{file, line, mutator} plus an optional exact description; disposition.py fails if",
+    "a selector matches no surviving mutant, so an argument cannot outlive the mutant",
+    "it was written for.",
+    "",
+    "Nothing here is dismissed for being 'only a refactor'. Each argument names the",
+    "reason no test CAN distinguish the mutant, not the reason nobody bothered."
+  ],
+  "groups": [
+    {
+      "id": "opts-default-list",
+      "argument": "`opts \\\\ []` mutated to `opts \\\\ [:mutated]`. Every opts consumer in this library reads exclusively through `Keyword.get/3` or `opts[:key]` (ABI.TypeDecoder strict?/1 and :decode_structs; ABI.Event :indexed, :names, event-signature checking; ABI.Parser :as). `Keyword.get/3` bottoms out in :lists.keyfind/3, which skips a non-tuple element silently, and `opts[:key]` returns nil for one. Nothing in the library calls Keyword.validate!/2, enumerates opts, or merges it -- the three operations that would notice the stray atom. Observed: Keyword.get([:mutated], :k, :default) => :default; [:mutated][:as] => nil; Keyword.has_key?([:mutated], :x) => false. So [:mutated] is indistinguishable from [] on every reachable path.",
+      "selectors": [
+        {
+          "file": "lib/abi.ex",
+          "line": 160,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 370,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 472,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 539,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 681,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 915,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi/event.ex",
+          "line": 254,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi/event.ex",
+          "line": 617,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi/parser.ex",
+          "line": 8,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi/math.ex",
+          "line": 120,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 221,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 268,
+          "mutator": "Literal"
+        }
+      ]
+    },
+    {
+      "id": "bodiless-head-argument-swap",
+      "argument": "`FunctionCall: swap arguments` applied to a BODILESS multi-clause declaration head (`def f(a, b, opts \\\\ [])` with no `do`). Such a head binds nothing and executes nothing; it exists to attach @doc/@spec and to declare defaults. Swapping its parameter NAMES renames unused variables. The compiler-generated default-arity clause forwards positionally, so the forwarding is unchanged too. Confirmed by compiling both spellings over identical bodies.",
+      "selectors": [
+        {
+          "file": "lib/abi.ex",
+          "line": 160,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 231,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 370,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 472,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 539,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 681,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 791,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 915,
+          "mutator": "FunctionCall"
+        }
+      ]
+    },
+    {
+      "id": "bodiless-head-deletion",
+      "argument": "`StatementDeletion` applied to the same bodiless declaration heads. Deleting `def encode_constructor(selector, data)` (line 231) or `def encode_packed(signature_or_selector, values)` (line 791) removes a declaration that emits no code -- the following clauses define the function, neither head declares a default, and no runtime behaviour is attached to it.",
+      "selectors": [
+        {
+          "file": "lib/abi.ex",
+          "line": 231,
+          "mutator": "StatementDeletion"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 791,
+          "mutator": "StatementDeletion"
+        }
+      ]
+    },
+    {
+      "id": "bitstring-modifier-order",
+      "argument": "`FunctionCall: swap arguments in -()`, where the `-` node muex sees is not subtraction but the bitstring type-specifier list of `<<x::binary-size(4), _::binary>>`. Specifier members are order-independent by the language definition: `::size(4)-binary` and `::binary-size(4)` describe the same segment. Confirmed by compiling both.",
+      "selectors": [
+        {
+          "file": "lib/abi.ex",
+          "line": 287,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 488,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 688,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/math.ex",
+          "line": 192,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/math.ex",
+          "line": 193,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/math.ex",
+          "line": 197,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/math.ex",
+          "line": 198,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 470,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 479,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 618,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 619,
+          "mutator": "FunctionCall"
+        }
+      ]
+    },
+    {
+      "id": "map-literal-key-order",
+      "argument": "`FunctionCall: swap arguments in %{}()` -- the first two entries of a map literal or struct pattern exchanged. A map is unordered, so the constructed term is identical; in pattern position the match set is identical. This is the same class the bytecode prover certifies in .mutation/results/equivalent.json; these entries are the ones whose instruction streams differ in evaluation order without that order being observable (all keys and values here are literals or already-bound variables, so no side effect can be reordered). The three ABI.TypeDecoder sites (24, 505, 644) are the same shape. Note the sibling `remove %{}() call` at 505 and 644 is a different mutation entirely -- it replaces the map with nil -- and both are killed.",
+      "selectors": [
+        {
+          "file": "lib/abi.ex",
+          "line": 673,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi.ex",
+          "line": 707,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/event.ex",
+          "line": 294,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/event.ex",
+          "line": 314,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/event.ex",
+          "line": 415,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/event.ex",
+          "line": 499,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/function_selector.ex",
+          "line": 372,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 24,
+          "mutator": "FunctionCall",
+          "description": "FunctionCall: swap arguments in %{}()"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 505,
+          "mutator": "FunctionCall",
+          "description": "FunctionCall: swap arguments in %{}()"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 644,
+          "mutator": "FunctionCall",
+          "description": "FunctionCall: swap arguments in %{}()"
+        }
+      ]
+    },
+    {
+      "id": "clause-shadowed-array-length",
+      "argument": "`def dynamic?({:array, type, len}) when len > 0` weakened to `len >= 0` (spelled `> -1` by the Literal mutator). The only value the weakened guard newly admits is 0, and `def dynamic?({:array, _type, 0}), do: false` is declared on the line immediately above and matches first. No input reaches the mutated clause that did not already reach the shadowing one. (The separate `replace guard with true` mutant at this line is NOT covered here: it also admits negative lengths, is distinguishable, and is killed by test/abi/function_selector_test.exs \"negative fixed array length has no dynamic? answer\".)",
+      "selectors": [
+        {
+          "file": "lib/abi/function_selector.ex",
+          "line": 595,
+          "mutator": "Literal"
+        },
+        {
+          "file": "lib/abi/function_selector.ex",
+          "line": 595,
+          "mutator": "Comparison"
+        }
+      ]
+    },
+    {
+      "id": "mod-zero-branch",
+      "argument": "The three guard mutants on ABI.Math.mod/2 (`x > 0` weakened to `x >= 0`, `x < 0` weakened to `x <= 0`, and `x < 0` replaced by `true`). Each newly admits exactly one input, x = 0, and for every n >= 1 all four spellings return 0: rem(0, n) = 0 and rem(rem(0, n) + n, n) = rem(n, n) = 0, which is what the `mod(0, _n), do: 0` clause returns. The mutants therefore agree with the original on the whole of the declared domain -- `@spec mod(integer(), pos_integer())`. The single distinguishing input is n = 0, where the original returns 0 via the literal clause and the mutants raise ArithmeticError; pos_integer() excludes it, and all four internal call sites (type_decoder.ex 468/478/634-635, type_encoder.ex 579) pass a literal 32 or 256. Recorded as domain-restricted equivalence rather than unconditional: a caller who ignores the spec CAN tell them apart. The Comparison and Literal mutators both reach this shape -- `x >= 0` and `x > -1` are the same guard -- so five selectors carry the one argument. The third Literal mutant at line 41, `x < -1`, is NOT equivalent: it drops x = -1 into no clause at all, and test/abi/math_test.exs kills it with `mod(-1, 5) == 4`.",
+      "selectors": [
+        {
+          "file": "lib/abi/math.ex",
+          "line": 40,
+          "mutator": "Comparison"
+        },
+        {
+          "file": "lib/abi/math.ex",
+          "line": 41,
+          "mutator": "Comparison"
+        },
+        {
+          "file": "lib/abi/math.ex",
+          "line": 41,
+          "mutator": "Guard"
+        },
+        {
+          "file": "lib/abi/math.ex",
+          "line": 40,
+          "mutator": "Literal",
+          "description": "Literal: 0 to -1 (decrement)"
+        },
+        {
+          "file": "lib/abi/math.ex",
+          "line": 41,
+          "mutator": "Literal",
+          "description": "Literal: 0 to 1 (increment)"
+        }
+      ]
+    },
+    {
+      "id": "discarded-return-value",
+      "argument": "Mutants that change a value nothing reads. parser.ex:26 and parser.ex:56 turn `Enum.each` into `Enum.map`: both traverse the same list in the same order and propagate the same raise, and the result is discarded at both sites (line 26 is a non-final statement in parse!/2; line 56's value flows only into another discarded position). parser.ex:58 changes `reject_unsupported!(_other)`'s return from :ok to :error, and no caller inspects it -- the function exists for its raise. parser.ex:28 deletes the `nil -> :ok` clause of a `case` whose value is discarded; nil then falls to `returns -> reject_unsupported!(nil)`, which matches the same `_other` clause and returns without raising.",
+      "selectors": [
+        {
+          "file": "lib/abi/parser.ex",
+          "line": 26,
+          "mutator": "EnumSemantics"
+        },
+        {
+          "file": "lib/abi/parser.ex",
+          "line": 56,
+          "mutator": "EnumSemantics"
+        },
+        {
+          "file": "lib/abi/parser.ex",
+          "line": 58,
+          "mutator": "ReturnValue"
+        },
+        {
+          "file": "lib/abi/parser.ex",
+          "line": 28,
+          "mutator": "CaseClause"
+        }
+      ]
+    },
+    {
+      "id": "unreachable-default",
+      "argument": "`Map.get(selector_parts, :types, [])` mutated to a `[:mutated]` default. The default is unreachable: every `{selector, ...}` production in src/ethereum_abi_parser.yrl (lines 23, 26, 29, 30, 31) sets :types, so the key is always present. A dead default cannot be observed -- and the mutation is what proved it dead.",
+      "selectors": [
+        {
+          "file": "lib/abi/parser.ex",
+          "line": 26,
+          "mutator": "Literal"
+        }
+      ]
+    },
+    {
+      "id": "vestigial-filter",
+      "argument": "`Pipe: drop pipe stage` removing `|> Enum.filter(& &1)` from parse_specification/1. The stage is dead code: FunctionSelector.parse_specification_item/1 has a single clause returning a %FunctionSelector{} struct and can never return nil or false -- an unknown \"type\" raises FunctionClauseError in get_function_type/1, and a missing \"type\" raises on the head. Nothing can be filtered out, so removing the filter is unobservable. This is a genuine discovery rather than a dismissal: the filter should be deleted, tracked separately so a measurement task does not quietly edit lib/.",
+      "selectors": [
+        {
+          "file": "lib/abi.ex",
+          "line": 1240,
+          "mutator": "Pipe"
+        }
+      ]
+    },
+    {
+      "id": "guard-conjunct-unreachable",
+      "argument": "`bits <= 256` widened to `bits <= 257` in pack_uint/2 and pack_int/2. The widened bound admits exactly one new value, 257, and the conjunct `rem(bits, 8) == 0` in the same guard rejects it. No input reaches the clause that did not already reach it. Note the sibling mutant at the same site is the opposite: `256 -> 255` narrows the guard and IS killable, and test/abi/type_encoder_test.exs now kills it with a packed int256 -- a reminder that the direction of the edit, not the site, decides.",
+      "selectors": [
+        {
+          "file": "lib/abi/type_encoder.ex",
+          "line": 584,
+          "mutator": "Literal",
+          "description": "Literal: 256 to 257 (increment)"
+        },
+        {
+          "file": "lib/abi/type_encoder.ex",
+          "line": 614,
+          "mutator": "Literal",
+          "description": "Literal: 256 to 257 (increment)"
+        }
+      ]
+    },
+    {
+      "id": "identical-accumulator-seeds",
+      "argument": "`initial_acc = {<<>>, <<>>, data_to_list(types, data), tail_start}` with its first two elements swapped. Both are the same literal empty binary, so the swap produces an identical tuple. The head and tail accumulators only diverge after the first reduction, which the mutation does not touch.",
+      "selectors": [
+        {
+          "file": "lib/abi/type_encoder.ex",
+          "line": 430,
+          "mutator": "FunctionCall"
+        }
+      ]
+    },
+    {
+      "id": "discarded-range-values",
+      "argument": "`Enum.map(1..element_count, fn _ -> %{type: type} end)` with the range endpoints swapped. The mapper ignores its argument, so only the range's LENGTH is observable, and `element_count..1` has the same length as `1..element_count` for every element_count >= 1. element_count = 0 would differ (`1..0` is empty in step-inferring form while `0..1` has two elements), but a zero-length fixed array never reaches this call -- it is handled before the expansion. The identical construct appears in ABI.TypeDecoder at line 349 and carries the same argument.",
+      "selectors": [
+        {
+          "file": "lib/abi/type_encoder.ex",
+          "line": 442,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 349,
+          "mutator": "FunctionCall"
+        }
+      ]
+    },
+    {
+      "id": "pad-rounds-to-word",
+      "argument": "`desired_size_bytes = ceil(desired_size_bits / 8)` perturbed three ways: the division inverted (`8 / bits`), the divisor incremented (`/ 9`), and the whole division replaced by the literal 1 (`ceil(1)`, which is what muex's `Arithmetic: / to 1 (identity)` emits -- confirmed by printing the generated source). The result feeds ABI.Math.pad/4, whose first act is `total_size = size_in_bytes + mod(32 - mod(size_in_bytes, 32), 32)` -- it rounds UP to a 32-byte multiple. Every value in 1..32 therefore produces the identical 32-byte word, and all three mutants stay inside that band for every in-spec integer width. This is the one group where an agent's reasoned kill claim did not survive measurement: `/ to 1` was claimed killed by an int64/int256 word-layout assertion, on the reading that it escapes the band. It does not -- ceil(1) is 1, which pad rounds straight back to 32.",
+      "selectors": [
+        {
+          "file": "lib/abi/type_encoder.ex",
+          "line": 631,
+          "mutator": "FunctionCall"
+        },
+        {
+          "file": "lib/abi/type_encoder.ex",
+          "line": 631,
+          "mutator": "Literal",
+          "description": "Literal: 8 to 9 (increment)"
+        },
+        {
+          "file": "lib/abi/type_encoder.ex",
+          "line": 631,
+          "mutator": "Arithmetic",
+          "description": "Arithmetic: / to 1 (identity)"
+        }
+      ]
+    },
+    {
+      "id": "read-width-identity",
+      "argument": "`decode_uint(data, 8, opts)` with the width widened to 9. The bool path reads a full 32-byte word either way: the read width is `bits + Math.mod(256 - bits, 256)`, which is 256 for both 8 and 9, and the strict padding window is `div(bits, 8)`, which is 1 for both. Neither the bytes consumed nor the bytes checked change. The sibling `8 -> 7` at this site is NOT equivalent -- `div(7, 8)` is 0, which widens the padding window to the whole slot and disables the check -- and test/abi/type_decoder_test.exs kills it with a strict decode of a canonical bool.",
+      "selectors": [
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 309,
+          "mutator": "Literal",
+          "description": "Literal: 8 to 9 (increment)"
+        }
+      ]
+    },
+    {
+      "id": "shadowed-zero-size-bytes",
+      "argument": "`defp decode_type({:bytes, size}, ...) when size > 0 and size <= 32` weakened to `size > -1`. The only value newly admitted is 0, and a `{:bytes, 0}` clause is declared above it and matches first. The sibling mutant at this site, `32 -> 33`, widens the guard into genuinely unsupported territory and IS killed: `{:bytes, 33}` must raise \"Unsupported decoding type\".",
+      "selectors": [
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 335,
+          "mutator": "Literal",
+          "description": "Literal: 0 to -1 (decrement)"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 335,
+          "mutator": "Comparison",
+          "description": "Comparison: > to >="
+        }
+      ]
+    },
+    {
+      "id": "disjunct-collapses-to-true",
+      "argument": "`min_words == 0 or element_count * min_words <= available_words` with the first comparand decremented to `min_words == -1`. min_words is a word count and is never negative, so the first disjunct goes from sometimes-true to never-true. That only matters when min_words IS 0 -- and there the second disjunct becomes `element_count * 0 <= available_words`, i.e. `0 <= available_words`, which is unconditionally true. The guard's truth value is unchanged for every input. The two Arithmetic mutants at this same line (`* to /`, `* to 1`) do change it and are killed by a static-tuple bound test.",
+      "selectors": [
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 499,
+          "mutator": "Literal",
+          "description": "Literal: 0 to -1 (decrement)"
+        }
+      ]
+    },
+    {
+      "id": "redundant-word-size-fast-path",
+      "argument": "`defp validate_left_padding!(_data, @word_size_bits, _mode, _type, _opts), do: :ok` -- a fast path for the case where the value already fills the whole word. It is redundant: falling through to the general clause with size 256 computes value_size = 32 and padding_size = 0, so the expected padding is <<>> for both :zero and :sign mode and the check passes unconditionally. All four mutants at this line are therefore unobservable. Deleting the clause and changing its return to :error are unobservable because no caller reads the value -- decode_uint/decode_int discard it and the function exists to raise. Swapping its parameters makes the head unmatchable. `remove @() call` needs its own note, because the obvious reading of it is wrong: muex's FunctionCall mutator replaces a removed call with `nil`, NOT with its argument, so the head becomes `validate_left_padding!(_data, nil, ...)` -- also unmatchable, not the catch-all that would disable strict padding validation. Read as a catch-all it looks like a serious live defect; read correctly it is the delete case again. Verified by printing the source muex actually generates rather than by assuming the edit.",
+      "selectors": [
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 582,
+          "mutator": "StatementDeletion"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 582,
+          "mutator": "ReturnValue"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 582,
+          "mutator": "FunctionCall",
+          "description": "FunctionCall: swap arguments in validate_left_padding!()"
+        },
+        {
+          "file": "lib/abi/type_decoder.ex",
+          "line": 582,
+          "mutator": "FunctionCall",
+          "description": "FunctionCall: remove @() call"
+        }
+      ]
+    },
+    {
+      "id": "literal-rewrite-is-identity",
+      "argument": "`max = Bitwise.bsl(1, bits - 1)` under `Literal: 1 to 2`. muex's Literal mutator rewrites EVERY occurrence of the literal in the expression rather than one at a time, so both 1s move together and the result is `Bitwise.bsl(2, bits - 2)`. That is 2 * 2^(bits-2) = 2^(bits-1) -- arithmetically identical to the original, for every bits. The mutant is equivalent by construction, not by anything about this codebase. muex also emits it twice, byte-identical, once per occurrence of the literal it rewrites globally, so the site contributes two guaranteed-equivalent survivors to the denominator. The sibling `1 to 0` at the same sites is not equivalent -- it yields `bsl(0, ...)` = 0, collapsing the signed range to nothing -- and is killed. Both sites (pack_int at 615, encode_int at 632) are the same expression.",
+      "selectors": [
+        {
+          "file": "lib/abi/type_encoder.ex",
+          "line": 615,
+          "mutator": "Literal",
+          "description": "Literal: 1 to 2 (increment)"
+        },
+        {
+          "file": "lib/abi/type_encoder.ex",
+          "line": 632,
+          "mutator": "Literal",
+          "description": "Literal: 1 to 2 (increment)"
+        }
+      ]
+    }
+  ]
+}
