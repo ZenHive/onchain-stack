@@ -35,7 +35,7 @@ defmodule Onchain.Aerodrome.ContractsTest do
   describe "cl_factories/1" do
     test "returns all three Slipstream factories" do
       assert {:ok, factories} = Contracts.cl_factories()
-      assert length(factories) == 3
+      assert [_, _, _] = factories
       assert Contracts.address!(:cl_factory) in factories
     end
 
