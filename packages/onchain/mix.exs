@@ -122,6 +122,7 @@ defmodule Onchain.MixProject do
       {:dialyzer_json, "~> 0.2.0", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.0", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:doctor, "~> 0.23.0", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.15", only: [:dev, :test], runtime: false},
