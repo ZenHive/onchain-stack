@@ -5,7 +5,7 @@ defmodule Mix.Tasks.Hieroglyph.Mutants do
   Applies each planted mutant in `test/support/mutants/mutants.exs` to `lib/`,
   runs the suite, and reverts the file byte-exactly.
 
-  A mutant is **killed** when the assertions added by roadmap task 44 — the
+  A mutant is **killed** when the assertions added by roadmap task 1044 — the
   independent ethers.js vector corpus and the spec-anchored assertions — fail
   on it. A mutant that only the pre-existing suite catches is a **survivor**,
   because the pre-existing suite is largely self-consistency (`decode(encode(x))`)

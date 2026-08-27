@@ -1,7 +1,7 @@
 # Decides, by compiling, which surviving mutants are PROVABLY EQUIVALENT --
 # they produce byte-identical BEAM code, so no test can ever kill them.
 #
-# Why this is not just `mix muex --tce` (roadmap task 46, 2026-08-27):
+# Why this is not just `mix muex --tce` (roadmap task 1046, 2026-08-27):
 # Muex.Tce.compile_binary/2 keeps only the FIRST module the compiler returns
 # (`[{module, binary} | _]` in deps/muex/lib/muex/tce.ex). Nested modules
 # compile first, so for a file whose top-level module contains a nested
@@ -78,11 +78,14 @@ fingerprint = fn ast, alias_ast ->
                 {:beam_file, _m, _e, _a, _c, code} = :beam_disasm.file(bin)
                 # The probe name is shared by both sides, so only the SUFFIX
                 # after it identifies a nested module.
-                {mod |> Atom.to_string() |> String.split(".") |> Enum.drop(2),
-                 strip_lines.(strip_lines, code)}
+                {mod |> Atom.to_string() |> String.split(".") |> Enum.drop(2), strip_lines.(strip_lines, code)}
               end)
 
-            Enum.each(mods, fn {mod, _} -> :code.purge(mod); :code.delete(mod) end)
+            Enum.each(mods, fn {mod, _} ->
+              :code.purge(mod)
+              :code.delete(mod)
+            end)
+
             {:ok, Enum.sort(prints)}
           rescue
             _ -> :error

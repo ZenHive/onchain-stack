@@ -19,8 +19,8 @@ defmodule Onchain.RPC.Helpers do
   # Cartouche.RPC.send_rpc/3 errors are a union of rpc_error map, invalid-params,
   # Req.Response.t(), and a transport-error String.t() — but a returned revert map
   # can still surface non-map values at runtime. Tracked upstream as cartouche
-  # ROADMAP Phase 2, Tasks 14+15+35 — error-shape widening + JSON-encode rescue
-  # (see ../cartouche/ROADMAP.md). Re-probed 2026-06-24 against cartouche 0.5.0
+  # ROADMAP Phase 2, Tasks 2014+2015+2035 — error-shape widening + JSON-encode
+  # rescue (see the root ROADMAP.md). Re-probed 2026-06-24 against cartouche 0.5.0
   # (Req transport); keep the suppression until the upstream union fully narrows
   # the non-map case away.
   @dialyzer {:no_match, do_rpc: 3}

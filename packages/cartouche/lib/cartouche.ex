@@ -14,8 +14,8 @@ defmodule Cartouche do
       Cartouche.describe(:transaction_v1)    # nested Transaction.V1 helpers
       Cartouche.describe(:transaction_v2)    # nested Transaction.V2 helpers
 
-  The registered module list is built up as Phase 12 lands; see
-  `ROADMAP.md` Phase 12 for the annotation pass.
+  The registered module list is built up as Phase 12 lands; see the root
+  `ROADMAP.md` Phase 2012 for the annotation pass.
   """
 
   use Descripex, namespace: "/cartouche"

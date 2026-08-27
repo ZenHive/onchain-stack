@@ -1,6 +1,6 @@
 # Re-grades reported SURVIVORS against the FULL test suite.
 #
-# Why this exists (roadmap task 46, 2026-08-27): muex picks the test files for
+# Why this exists (roadmap task 1046, 2026-08-27): muex picks the test files for
 # a mutation with Muex.DependencyAnalyzer, and that analyzer builds malformed
 # module atoms -- `Enum.join(["Elixir" | parts])` with no dot separator yields
 # :ElixirABITypeEncoder, never :"Elixir.ABI.TypeEncoder". Every lookup misses,
@@ -169,7 +169,7 @@ end
           end
       end
 
-    bad = if verdict != want_status, do: bad + 1, else: bad
+    bad = if verdict == want_status, do: bad, else: bad + 1
 
     if verdict != want_status or rem(i, 25) == 0 do
       IO.puts(
@@ -198,6 +198,7 @@ out =
     "campaign" -> ".mutation/results/verified.json"
     other -> ".mutation/results/verified-#{String.replace(other, "-input", "")}.json"
   end
+
 File.write!(out, Jason.encode!(%{"campaign" => campaign, "results" => results}, pretty: true))
 
 IO.puts("\nwrote #{out}")

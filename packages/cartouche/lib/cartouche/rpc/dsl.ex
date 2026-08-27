@@ -24,7 +24,7 @@ defmodule Cartouche.RPC.DSL do
   stay hand-written — folding them in would grow more knobs than the
   duplication it removes.
 
-  Prototype for ROADMAP Task 110 (defrpc), proving the `api()` introspection
+  Prototype for ROADMAP Task 2110 (defrpc), proving the `api()` introspection
   stays byte-identical across the conversion.
   """
 

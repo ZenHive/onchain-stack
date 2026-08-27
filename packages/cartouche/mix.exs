@@ -221,7 +221,7 @@ defmodule Cartouche.MixProject do
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
       {:reach, "~> 2.7", only: [:dev, :test], runtime: false},
-      # Mutation-adequacy measurement (ROADMAP task 114). Not a CI gate —
+      # Mutation-adequacy measurement (ROADMAP task 2114). Not a CI gate —
       # campaigns are run on demand; the record lives in
       # docs/verification-ledger.md.
       #
@@ -241,11 +241,11 @@ defmodule Cartouche.MixProject do
       # verified here against a survivor that the suite in fact kills.
       # Oeditus/muex#24: mutations are keyed by their reported line, so
       # `StatementDeletion` never applies at all and bare-boolean flips mostly
-      # do not, regardless of scheduling. ROADMAP task 119 is blocked on a
+      # do not, regardless of scheduling. ROADMAP task 2119 is blocked on a
       # release carrying both; its first acceptance criterion is a per-defect
       # gate, not #20's reproduction alone.
       #
-      # `no_coverage` is decided before any mutation is applied and its task 114
+      # `no_coverage` is decided before any mutation is applied and its task 2114
       # result stands. `equivalent` does NOT: Trivial Compiler Equivalence runs
       # after the line-keyed application #24 breaks, so a no-op mutation compiles
       # to identical bytecode and is classified `equivalent` without reaching a

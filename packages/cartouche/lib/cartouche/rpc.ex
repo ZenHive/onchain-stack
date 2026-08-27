@@ -1079,7 +1079,7 @@ defmodule Cartouche.RPC do
   - `:include_transaction_details` — when `true`, the node returns full transaction
     objects in `transactions`; when `false` (default), just hashes. Forwarded to
     `eth_getBlockByNumber` as the second wire param. Note: `Cartouche.Block.deserialize/1`
-    currently returns `transactions: []` regardless — see ROADMAP Task 66.
+    currently returns `transactions: []` regardless — see ROADMAP Task 2066.
 
   Plus any option accepted by `send_rpc/3` (e.g. `:ethereum_node`, `:timeout`, `:req_options`).
   """
@@ -1171,7 +1171,7 @@ defmodule Cartouche.RPC do
     objects in `transactions`; when `false` (default), just hashes. Forwarded to
     `eth_getBlockByHash` as the second wire param (real nodes reject single-param
     calls with `-32602 Invalid params`). Note: `Cartouche.Block.deserialize/1`
-    currently returns `transactions: []` regardless — see ROADMAP Task 66.
+    currently returns `transactions: []` regardless — see ROADMAP Task 2066.
 
   Plus any option accepted by `send_rpc/3` (e.g. `:ethereum_node`, `:timeout`, `:req_options`).
   """
