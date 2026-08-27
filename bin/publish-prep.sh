@@ -334,7 +334,11 @@ cmd_check() {
       # Pushing is a monorepo-root action and covers all eight at once, so
       # gluing it onto a per-package publish line would push seven other
       # packages' commits as a side effect of releasing this one.
-      printf '    cd %s && ONCHAIN_PUBLISH=1 mix hex.publish\n' "$dir"
+      # deps.get first: this script restores the DEV mix.lock on exit, and the
+      # dev lock has no Hex entries for the siblings — hex.publish then fails
+      # with "the dependency is not locked". Re-resolve in publish mode, publish,
+      # and put the dev lock back afterwards.
+      printf '    cd %s \\\n      && ONCHAIN_PUBLISH=1 mix deps.get \\\n      && ONCHAIN_PUBLISH=1 mix hex.publish \\\n      && git checkout -- mix.lock && mix deps.get\n' "$dir"
       printf '\n%sONCHAIN_PUBLISH=1 is not optional — without it hex.publish packages the\n' "$c_dim"
       printf 'path deps away and the tarball ships without its sibling requirements.\n'
       printf 'Push from the monorepo root (%s) separately; it covers every package.%s\n' "$STACK_DIR" "$c_rst"
