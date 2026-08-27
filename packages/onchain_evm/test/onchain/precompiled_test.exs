@@ -57,7 +57,7 @@ defmodule Onchain.PrecompiledTest do
       assert evm[:nif_versions] == ["2.15"]
 
       assert evm[:base_url] ==
-               "https://github.com/ZenHive/onchain_evm/releases/download/v#{version}"
+               "https://github.com/ZenHive/onchain-stack/releases/download/onchain_evm-v#{version}"
 
       assert sol[:crate] == "onchain_solidity"
       assert sol[:base_url] == evm[:base_url]

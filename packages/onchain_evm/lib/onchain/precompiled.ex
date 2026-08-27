@@ -51,7 +51,10 @@ defmodule Onchain.Precompiled do
     maybe_force_build(
       otp_app: :onchain_evm,
       crate: crate,
-      base_url: "https://github.com/ZenHive/onchain_evm/releases/download/v#{version}",
+      # Monorepo era: release assets live on onchain-stack under the per-package
+      # tag schema `onchain_evm-v<ver>`. Versions <= 0.5.x keep downloading from
+      # the archived ZenHive/onchain_evm repo — never delete it.
+      base_url: "https://github.com/ZenHive/onchain-stack/releases/download/onchain_evm-v#{version}",
       version: version,
       targets: @targets,
       nif_versions: @nif_versions
