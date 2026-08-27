@@ -569,20 +569,27 @@ analyzer; a green publish-parity report says nothing about that.
    *more* likely than the standalone era, not less, because everyone now
    shares one `.git`.
 3. `git fetch && git status` — clean tree; note local-vs-Hex version delta.
-4. Set `ONCHAIN_PUBLISH=1`, `mix deps.get` to pull the freshly published
+4. **Dep currency, before anything else ships:** `mix hex.outdated --all`
+   must show no "Update possible" row (`--all` matters — a plain
+   `hex.outdated` hides transitive deps). Bump, re-test, commit first if it
+   does; "Update not possible" rows mean a bound caps the dep — widen it
+   deliberately or document why it stays. `bin/publish-prep.sh check` hard-
+   fails on this since 2026-08-27, but run the sweep at the *start* of a
+   cascade, across all packages at once — not as a surprise mid-gauntlet.
+5. Set `ONCHAIN_PUBLISH=1`, `mix deps.get` to pull the freshly published
    upstream (or confirm sibling/3 already resolves it in Hex mode).
-5. Compile + full suite (incl. integration where the package has it). Green
+6. Compile + full suite (incl. integration where the package has it). Green
    is the gate.
-6. Bump `@version`/`version:` per semver against the **published** baseline,
+7. Bump `@version`/`version:` per semver against the **published** baseline,
    not the local tree.
-7. Update `CHANGELOG.md` (and `README.md`/`SKILL.md` if surface changed).
-8. Commit path-scoped to `packages/<name>/...`, push.
-9. **Hand off to the human:** state the exact `mix hex.publish` command
+8. Update `CHANGELOG.md` (and `README.md`/`SKILL.md` if surface changed).
+9. Commit path-scoped to `packages/<name>/...`, push.
+10. **Hand off to the human:** state the exact `mix hex.publish` command
    (run from inside `packages/<name>`) and that 2FA is required. Do **not**
    run it yourself.
-10. After the human confirms, `mix hex.info <pkg>` should show the new
+11. After the human confirms, `mix hex.info <pkg>` should show the new
     version before starting the next downstream package.
-11. Tag: `git tag -a <pkg>-v<ver> -m "<pkg> <ver>"`, pushed separately, by the
+12. Tag: `git tag -a <pkg>-v<ver> -m "<pkg> <ver>"`, pushed separately, by the
     human, after the publish. A missing tag says nothing about whether a
     version shipped — tags lag, they don't gate.
 

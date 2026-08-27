@@ -287,6 +287,30 @@ cmd_check() {
   if printf '%s' "$ha" | grep -qi "No retired"; then ok "hex.audit clean"
   else warn "hex.audit flagged retired deps (review)"; fi
 
+  # 4b. dependency currency — every lib updated before a release, no exceptions
+  #
+  # Added 2026-08-27 after a cascade in which package after package turned out
+  # to carry stale deps mid-publish. `--all` includes transitive deps (a plain
+  # `hex.outdated` hid hex_solver in onchain_js). "Update possible" is a hard
+  # fail: run `mix deps.update <dep>` (or --all), re-test, commit, then re-run
+  # this gauntlet. "Update not possible" (capped by a requirement) is a
+  # warning — widen the bound deliberately or document why it stays.
+  local od od_possible od_capped
+  od="$(mix hex.outdated --all 2>/dev/null)"
+  od_possible="$(printf '%s\n' "$od" | grep 'Update possible' || true)"
+  od_capped="$(printf '%s\n' "$od" | grep 'Update not possible' || true)"
+  if [ -n "$od_possible" ]; then
+    bad "outdated deps (update possible — bump before release):"
+    printf '%s\n' "$od_possible" | sed 's/^/      /'
+    fail=1
+  else
+    ok "deps current (hex.outdated --all)"
+  fi
+  if [ -n "$od_capped" ]; then
+    warn "deps capped below latest (widen the bound or document why):"
+    printf '%s\n' "$od_capped" | sed 's/^/      /'
+  fi
+
   # 5. compile warnings-as-errors
   if mix compile --warnings-as-errors >/dev/null 2>&1; then ok "compile --warnings-as-errors"
   else bad "compile failed (warnings-as-errors)"; fail=1; fi
