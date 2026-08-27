@@ -91,10 +91,13 @@ defmodule Onchain.MixProject do
       # fixes (`send_message/2` takes an encoded binary, `heartbeat_interval` is
       # not a connect option, non-`connect/2` start paths need an explicit
       # `:handler`) are all things `Onchain.Subscription` already did correctly.
-      # Three-segment (caps at < 0.9.0) because zen_websocket keeps shipping
-      # minors it labels breaking for consumers — a two-segment `~> 0.8` would
-      # absorb the next one silently.
-      {:zen_websocket, "~> 0.8.0"},
+      # Three-segment (caps at < 1.0.0) because zen_websocket keeps shipping
+      # minors it labels breaking for consumers — a two-segment `~> 0.9` would
+      # absorb the next one silently. 0.9.0 is a pure bound widening
+      # (`descripex ~> 0.12` -> `~> 1.0`, "No runtime code changed"), and it is
+      # *required* here: hieroglyph 1.8.0 declares `descripex ~> 1.0`, so
+      # zen_websocket 0.8.0's `< 1.0.0` ceiling makes this graph unresolvable.
+      {:zen_websocket, "~> 0.9.0"},
 
       # Dev/test tooling
       # Req.Test plug-based transport stubbing (req's :plug is optional);
