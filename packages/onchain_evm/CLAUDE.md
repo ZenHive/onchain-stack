@@ -1,0 +1,118 @@
+# Onchain EVM
+
+EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Elixir via Rust NIFs. Depends on `onchain` core for RPC, ABI, signing, and address utilities.
+
+<!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
+     harness-driven — the OTP dispatch→review→land loop is the active workflow). onchain-workspace
+     is the harness workspace add-on (7-repo roster + dependency shape), eager family-wide.
+     ethereum-rpc stays eager (host-specific node access, no skill mirror). Everything else previously imported
+     here (across-instances, worktree, task-prioritization/writing, workflow-philosophy, web-command,
+     elixir-setup, ex-unit-json, dialyzer-json, code-style, development-commands/philosophy,
+     agent-economy) is skill-on-demand via the elixir / task-driver / dev-lifecycle plugins.
+     Re-add an @-import per-surface only if Opus visibly degrades on it. See ~/.claude/setup-guide.md. -->
+@~/.claude/includes/critical-rules.md
+@~/.claude/includes/harness-workflow.md
+@~/.claude/includes/onchain-workspace.md
+@~/.claude/includes/ethereum-rpc.md
+@~/.claude/includes/node-portability.md
+
+## Delegation roster
+
+Portfolio default — carried by `harness-workflow.md` § "Delegation roster — opus last" (`@`-imported above): assign dispatchable tasks **cursor / codex / grok first, opus only if needed** (opus tokens are precious). onchain_evm takes the family default; no project override.
+
+## Toolchain & check commands
+
+Self-contained so it survives into `AGENTS.md` on regen — cross-family reviewers (codex / cursor / grok) read `AGENTS.md`, not the Claude skill set.
+
+- **Canonical gate:** `mix precommit.full` (alias `mix ci`) — the landed-base / Architect-QA pass. Dispatch-scale hint for harness reviewers: `mix check.dispatch` (static checks only; the reviewer adds focused `mix test.json` for touched behavior). Fast local loop: `mix precommit` (skips the cold-PLT dialyzer + full coverage). Aliases are defined in `mix.exs` and pinned to `MIX_ENV=test` via `def cli` where they run tests.
+- `mix precommit.full` runs, in order: `compile --warnings-as-errors`, `format --check-formatted`, `credo --strict` (ignoring TODO/FIXME tags; ExSlop plugin enabled in `.credo.exs`), `doctor --raise`, `ex_dna --max-clones 0` (zero-clone budget), `reach.check --arch --smells` (policy in `.reach.exs`), `sobelow --skip`, `deps.audit.gated`, `test.json --cover --cover-threshold 85 --exclude integration`, `cargo test` and `cargo clippy --all-targets -- -D warnings` over both native crates (`clippy::unwrap_used` denied in production; `expect_used` not denied; absent `cargo`/clippy skip with a message rather than failing the gate), `dialyzer`, `agents.check`. Nothing runs it for you — the GitHub Actions workflows were removed family-wide on 2026-08-22, so a local green is the only green there is. Do not add the cargo steps to `mix check.dispatch` — a harness worktree has no `target/`, so a cold Rust build would be paid on every dispatch.
+- **`mix test.json` (`ex_unit_json`) and `mix dialyzer.json` (`dialyzer_json`) emit JSON by design — this is NOT a build failure.** Parse the JSON for real failures; never flag the envelope itself. Plain `mix dialyzer` is the authoritative dialyzer check when the JSON encoder can't serialize a warning shape (it's what the gate runs).
+- **`reach.check --arch --smells` gates from `.reach.exs`** (`smells: [strict: true]`). Smell findings must be fixed for real; the `smells.ignore.paths` entry already present is scoped to a metaprogramming-inherent finding (see the comment in `.reach.exs`) — never add to that list to make a new finding disappear.
+- **`deps.audit.gated` proves the local mix_audit advisory mirror is fresh (`bin/advisory-freshness.sh` in `onchain-stack`) before running `mix deps.audit --ignore-file .mix_audit_ignore`** — `mix_audit` discards its own sync exit status (`mirego/mix_audit#61`), so a frozen mirror would otherwise report a false "No vulnerabilities found." `.mix_audit_ignore` carries exactly one verified false positive (GHSA-w4f7-4cxr-rv3c on `gun`); do not add other advisory ids there — a real finding gets reported, never suppressed.
+- **The gate's dialyzer runs under `MIX_ENV=test`, so it compiles and analyzes `test/support/` and `:ex_unit`.** Reproduce the gate's view with `MIX_ENV=test mix dialyzer`; a clean dev-env dialyzer does not imply a clean `mix ci`.
+- **Rustler NIF + `cover` incompatibility (read before touching coverage).** `cover` recompiles each instrumented module's `.beam`, which re-fires a Rustler NIF's `on_load` as an unsupported "upgrade" — so the two NIF-backed modules (`Onchain.EVM`, `Onchain.Solidity`) cannot be cover-instrumented (it fails non-deterministically by load order). Their pure-Elixir logic lives in cover-able sibling modules — `Onchain.EVM.Params` (validation + NIF-param assembly) and `Onchain.Solidity.Resolver` (import/remapping resolution) — and only the thin NIF shells are excluded via `test_coverage: [ignore_modules: …]` in `mix.exs`. A residual cosmetic "coverage data may be incomplete" warning about those two modules can surface inside the full pipeline; it does not affect the threshold (the report set is the 6 non-NIF modules, deterministically).
+- **Sobelow baseline (`.sobelow-skips`, tracked).** The hook honors `mix sobelow --skip`, not inline comments. The skip set is the codegen's `String.to_atom` calls in `lib/onchain/contract/generator.ex` (it creates not-yet-defined identifiers — `to_existing_atom` is impossible) plus operator-supplied `File.read` paths in `solidity.ex` / `solidity/resolver.ex` (caller-derived `.sol` paths, not web input). Regenerate from live state with `mix sobelow --mark-skip-all` after fixing a finding or when line shifts invalidate the hashes; never hand-edit.
+
+## Architecture
+
+- All modules use `Onchain.*` namespace (e.g., `Onchain.EVM`) — same as when they lived in the monolith
+- Rust NIFs via Rustler: `otp_app: :onchain_evm` (not `:onchain`)
+- Two native crates: `native/onchain_evm/` (revm) and `native/onchain_solidity/` (Alloy + solar-parse)
+- Hex dependency: `{:onchain, "~> 0.12"}`
+- Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`
+
+## Node Portability
+
+The family-wide law is `node-portability.md` (`@`-imported above). This repo owns the
+family's **best existing example of rule 3** — reuse it rather than inventing a new
+pattern:
+
+- **`Onchain.Trace.available?/1` is the capability probe.** One cheap `debug_traceCall`
+  against the zero address, returning a boolean, so a consumer can branch instead of
+  failing deep in a pipeline. Any new surface that depends on a namespace a hosted plan
+  may gate gets a probe of the same shape — not a bare call that explodes at runtime.
+- **`Onchain.Trace`'s moduledoc is the wording to copy:** it names the clients that serve
+  `debug_*` (reth, geth, Erigon, Nethermind — any full node with debug APIs enabled) and
+  states plainly that the module is *not* a core dependency. Name the clients and the
+  consumer-visible error; don't write "requires a compatible node."
+- **The integration tests already flunk with setup instructions** naming the Alchemy
+  Growth plan (`test/onchain/trace_integration_test.exs`) — that is the house pattern for
+  a credentialed suite: a real result or its real refusal, never a skip.
+- **Forked simulation has a *different* requirement from tracing.** A fork pulls state via
+  standard `eth_getStorageAt`/`eth_getCode`/`eth_getBalance`, so it needs no `debug_*` —
+  but forking a historical block needs an **archive** node. Don't collapse the two into
+  one "needs a good node" caveat; they fail differently and on different endpoints.
+
+## Module Layout
+
+```
+lib/onchain/
+  bang_helper.ex              # defbang macro: generates bang (!) wrappers for ok/error functions
+  cargo.ex                    # mix ci gate: cargo test + clippy over both native crates
+  evm.ex                      # Rustler NIF: revm local EVM execution
+  evm/
+    params.ex                 # cover-able sibling: pure-Elixir input validation + NIF-param assembly
+  solidity.ex                 # Rustler NIF: Alloy-powered Solidity ABI parser
+  solidity/
+    resolver.ex               # cover-able sibling: import/remapping resolution
+  trace.ex                    # debug/trace APIs (trace_transaction, trace_call, storage_at)
+  contract/
+    generator.ex              # macro: .sol → typed Elixir module at compile time
+native/
+  onchain_evm/                # Rust crate (revm, alloy)
+  onchain_solidity/           # Rust crate (alloy-json-abi, solar-parse)
+priv/
+  abis/
+    chainlink_aggregator.json
+    aave_pool.json            # test fixture for parser tests
+  contracts/
+    test_interface.sol        # test fixture
+    real/                     # vendored upstream Solidity for import resolution tests
+```
+
+## Dependencies from onchain core
+
+| Module | Used for |
+|--------|----------|
+| `Onchain.Address` | Validation |
+| `Onchain.Hex` | Hex encoding/decoding |
+| `Onchain.RPC.Helpers` | Shared RPC helpers (Trace + EVM: `ensure_hex_address`, `ensure_hex_data`, `normalize_block`) |
+| `Onchain.Contract` | Generic contract call (Generator runtime) |
+| `Onchain.ABI` | ABI encoding (Generator runtime) |
+| `Onchain.Signer` | Transaction signing (Generator runtime) |
+
+## Testing
+
+```bash
+mix test.json --quiet                          # Unit tests only
+mix test.json --quiet --include integration    # Unit + integration (requires RPC)
+```
+
+Integration tests require `ETHEREUM_API_URL` or `ETH_RPC_URL` env var.
+
+**Note:** `priv_dir` references in tests use `:onchain_evm` (not `:onchain`).
+
+## Related Packages
+
+- **onchain** — Core Ethereum primitives: `{:onchain, "~> 0.12"}`
+- **onchain_aave** — Aave V3 wrappers: `{:onchain_aave, "~> 0.1"}`

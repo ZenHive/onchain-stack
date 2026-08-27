@@ -1,0 +1,31 @@
+[package]
+name = "onchain_evm"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+name = "onchain_evm"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.38"
+revm = { version = "42", features = ["std", "optional_no_base_fee"] }
+revm-database = { version = "42", features = ["alloydb"] }
+alloy-eips = "2.1"
+alloy-primitives = "1.6"
+alloy-provider = { version = "2.1", features = ["reqwest"] }
+alloy-rpc-client = "2.1"
+alloy-transport-http = "2.1"
+reqwest = "0.13"
+tokio = { version = "1", features = ["rt"] }
+serde_json = "1"
+hex = "0.4"
+
+[dev-dependencies]
+revm = { version = "42", features = ["optional_balance_check"] }
+
+[lints.clippy]
+# Production has zero unwrap() and nine infallible expect()s (Task 31).
+# Denying expect_used would only add allows; unwrap_used catches the next
+# fallible one. Test code is exempted at the crate root via cfg(test).
+unwrap_used = "deny"

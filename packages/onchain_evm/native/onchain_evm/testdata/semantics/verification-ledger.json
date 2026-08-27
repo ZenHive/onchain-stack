@@ -1,0 +1,165 @@
+{
+  "schema": 1,
+  "repository_binding": {
+    "base_commit": "7e76fb7c7cd52898ea210109cc916af05e24aca5",
+    "policy": "The ledger, exact fixtures, test-only revm runner, and verifier are committed as one change. The verifier reports the checked-out commit and rejects a missing negative-control failure.",
+    "verification_command": "native/onchain_evm/verify-semantics.sh"
+  },
+  "provider": {
+    "name": "ethereum/tests",
+    "release": "v7.0.0",
+    "commit": "5e4539b1b50747e699a5990b3f8696c9267e6c31",
+    "repository": "https://github.com/ethereum/tests"
+  },
+  "tools": {
+    "revm": "42.0.1",
+    "revm_database": "42.0.0",
+    "kontrol": "1.0.255",
+    "kevm": "1.0.678",
+    "forge": "1.5.1-v1.5.1",
+    "oracle_image": "runtimeverificationinc/kontrol@sha256:858f004144d61b005997f56bb8b7cd15673850286c96e0e5ec0502d9c9a9e204",
+    "oracle_platform": "linux/amd64"
+  },
+  "vectors": [
+    {
+      "id": "call-output-1",
+      "fixture": "official/call_output_1.json",
+      "source_path": "BlockchainTests/GeneralStateTests/stCallCreateCallCodeTest/callOutput1.json",
+      "upstream_git_blob": "b9b260d972d176a0c7b764a17f2d3c2ffe01dadc",
+      "filler_source_hash": "c5d9b96a9faa6ce7841c1c5a808be205ea739b77cddbb642d5fa30b662eea25c",
+      "case": "callOutput1_d0g0v0_Istanbul",
+      "fork": "Istanbul",
+      "oracle_mode": "NORMAL",
+      "checked_keys": ["status", "output", "gasUsed", "logs", "postState"],
+      "fixture_keccak256": "0x2b75bb8ac95ab869b3d73c1c952f7da2fe24378a3d27494cb5b42c0c650fd429",
+      "initial_state_keccak256": "0x05479bbe785952782c4ec711472512b11b8ecd5cec07c3d1a1258f42fd111f2a",
+      "bytecode_keccak256": {
+        "0x095e7baea6a6c7c4c2dfeb977efac326af552d87": "0x017a39166c7312e35e19bde7fee529d7cd117739f1779c64a37f1b3bec0f9589",
+        "0xaaae7baea6a6c7c4c2dfeb977efac326af552d87": "0x26f2efc495c911157816d2b02d22feacd28743fe387a91a6452394556bba2f88"
+      },
+      "configuration": "Exact pre-state and signed transaction; revm compares transaction gas, status, output, logs, and every post-state account except the block beneficiary reward.",
+      "expected": "success; empty top-level output; callee return word and storage effects committed",
+      "revm": "pass",
+      "kevm": "pass"
+    },
+    {
+      "id": "create-empty-contract-with-storage",
+      "fixture": "official/create_empty_contract_with_storage.json",
+      "source_path": "BlockchainTests/GeneralStateTests/stCreateTest/CREATE_EmptyContractWithStorage.json",
+      "upstream_git_blob": "d81e3b9f5806a8d9bb13c2c28f6e4e17839ff96b",
+      "filler_source_hash": "3b4b2b466fd670a476efa481c7b83a33b6c87d84a51ee73c3557cd1bb86daeb0",
+      "case": "CREATE_EmptyContractWithStorage_d0g0v0_Istanbul",
+      "fork": "Istanbul",
+      "oracle_mode": "NORMAL",
+      "checked_keys": ["status", "output", "gasUsed", "logs", "postState"],
+      "fixture_keccak256": "0xfa17fdf4f3ccaed957c65cd4a25283dfc69f658dc61b4059c3153f00c1fa3cb0",
+      "initial_state_keccak256": "0xfca8787b5ad31713edf7958089cfeec723471100a8cb19ece56732977dadb2f3",
+      "bytecode_keccak256": {
+        "0xb94f5374fce5edbc8e2a8697c15331677e6ebf0b": "0xc3128415cf427266c9a1a2d94272396228771677714e74f6b9a1e338dbeb2641",
+        "0xc94f5374fce5edbc8e2a8697c15331677e6ebf0b": "0xdfdc5855089c45b7e4ee79e043b21a15daefbc02e4f1c0c929348af391a86478"
+      },
+      "configuration": "Exact pre-state and signed transaction; revm compares transaction gas, status, output, logs, created account, and relevant post-state excluding the block beneficiary reward. CREATE runs inside a CALL, not as a create transaction.",
+      "expected": "success; CREATE returns a new address; constructor storage survives with empty runtime code",
+      "revm": "pass",
+      "kevm": "pass"
+    },
+    {
+      "id": "create-empty000-create-in-initcode-transaction",
+      "fixture": "official/create_empty000_create_in_initcode_transaction.json",
+      "source_path": "BlockchainTests/GeneralStateTests/stCreateTest/CREATE_empty000CreateinInitCode_Transaction.json",
+      "upstream_git_blob": "be8b2d1104fa944caafa66498cfd4d97e6ebe505",
+      "filler_source_hash": "c7cecd78af96af7979e759f009576ffb440690f6aa26488c3ec10231f7e10474",
+      "case": "CREATE_empty000CreateinInitCode_Transaction_d0g0v0_Istanbul",
+      "fork": "Istanbul",
+      "oracle_mode": "NORMAL",
+      "checked_keys": ["status", "output", "gasUsed", "logs", "postState"],
+      "fixture_keccak256": "0x5a990e81bc31a39dc4cdcc6e07938695c92937303ac2bcafe5b9cd82b2c14d2a",
+      "initial_state_keccak256": "0x224e84263027d5aa8ce9b8909b773906d88e9b720750ffcd679befa2e800db54",
+      "bytecode_keccak256": {
+        "0xc94f5374fce5edbc8e2a8697c15331677e6ebf0b": "0xdfdc5855089c45b7e4ee79e043b21a15daefbc02e4f1c0c929348af391a86478"
+      },
+      "configuration": "Exact pre-state and signed create transaction (empty to). Distinct from CREATE_EmptyContractWithStorage, which exercises the CREATE opcode from inside a CALL. revm compares transaction gas, status, empty deployed output, logs, the transaction-created account, the inner CREATE, and relevant post-state excluding the block beneficiary reward.",
+      "expected": "success; empty deployed code from initcode that CALLs then CREATEs; nested empty contract; exact gasUsed and post-state",
+      "revm": "pass",
+      "kevm": "pass"
+    },
+    {
+      "id": "revert-opcode",
+      "fixture": "official/revert_opcode.json",
+      "source_path": "BlockchainTests/GeneralStateTests/stRevertTest/RevertOpcode.json",
+      "upstream_git_blob": "679623333bf6671e3ceabf366a49c764ffb7de6a",
+      "filler_source_hash": "bd9c0de7e30b4451462a4386efc3bcb0ca69bc109ee2ec07e1ab4413035d2e85",
+      "case": "RevertOpcode_d0g0v0_Istanbul",
+      "fork": "Istanbul",
+      "oracle_mode": "NORMAL",
+      "checked_keys": ["status", "output", "gasUsed", "logs", "postState"],
+      "fixture_keccak256": "0xf67a8e7549644f44f523f9c31912f3dd894fd2cdd6d3258eb5824302c85e613e",
+      "initial_state_keccak256": "0x48cf9c23b473f15c605f4ce1fddb689b34ac78c9c090e456682551eda6b1e148",
+      "bytecode_keccak256": {
+        "0xa000000000000000000000000000000000000000": "0xf4c43829a9d835909557d1ea7cc47c4ccae7ff2f757879c7ab9c09eea254cb75"
+      },
+      "configuration": "Exact pre-state and signed transaction; receipt-root validation binds KEVM status/logs while revm also compares the one-byte revert output and reverted storage.",
+      "expected": "revert; output 0x00; pre-revert SSTORE rolled back; no logs",
+      "revm": "pass",
+      "kevm": "pass"
+    },
+    {
+      "id": "log1-non-empty-mem",
+      "fixture": "official/log1_non_empty_mem.json",
+      "source_path": "VMTests/vmLogTest/log1_nonEmptyMem.json",
+      "upstream_git_blob": "65885963f81a0f3531423331bc31eb3c7011a69d",
+      "filler_source_hash": "c5dfd1c14f86ad9ec283cf490d2541b5fc2606d228091ddf89ae1637de0ea5ea",
+      "case": "log1_nonEmptyMem",
+      "fork": "Frontier",
+      "oracle_mode": "VMTESTS",
+      "checked_keys": ["out", "gas", "logs", "post"],
+      "fixture_keccak256": "0x6bce1576352b64aa33aab3a77948702765811c46a18302250313d58ef0c09a86",
+      "initial_state_keccak256": "0x31f6a39f755cf961cd7545852de7ba87e7431474a6dace770e2113737cce4fb7",
+      "bytecode_keccak256": {
+        "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6": "0xb5b558e05847f8e9aecc18d024dbd513bff41a9d9c599f7d637f4c6b5fc9d36a"
+      },
+      "configuration": "Exact VMTest pre-state and message parameters. The test-only revm adapter disables transaction balance validation and subtracts the 21000 intrinsic charge; VMTest balances are intentionally outside comparison. Assertion set is derived from the fixture: every KEVM VMTEST key the case declares (out, gas, logs, post) is checked.",
+      "expected": "success; empty return data; one LOG1 at the execution address, zero topic, 32 bytes of 0xff; exact remaining gas; post-state code/nonce/storage unchanged",
+      "revm": "pass",
+      "kevm": "pass"
+    },
+    {
+      "id": "sstore-load-1",
+      "fixture": "official/sstore_load_1.json",
+      "source_path": "VMTests/vmIOandFlowOperations/sstore_load_1.json",
+      "upstream_git_blob": "3efe34af852226438f058c5eee6acd6ac890d412",
+      "filler_source_hash": "765047074018a481f0c988024c0b5ce28ab9f266c464f745e1c5d4405edd2f20",
+      "case": "sstore_load_1",
+      "fork": "Frontier",
+      "oracle_mode": "VMTESTS",
+      "checked_keys": ["out", "gas", "logs", "post"],
+      "fixture_keccak256": "0x4285c6c6d7aee24fd88009c891ba1af81b1a2dfe1a399126cf3d2e9c6e6686be",
+      "initial_state_keccak256": "0xd79f06b53e0dc8b30428b6569525ca33b88ac02618f0442772f399c43ffb39cb",
+      "bytecode_keccak256": {
+        "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6": "0x69a89f2fd6eb7e846527b803d4be83efbd1c92e717166373bddff742da84b8be"
+      },
+      "configuration": "Exact VMTest pre-state and message parameters. The test-only revm adapter disables transaction balance validation and subtracts the 21000 intrinsic charge; VMTest balances are intentionally outside comparison. Assertion set is derived from the fixture: every KEVM VMTEST key the case declares (out, gas, logs, post) is checked.",
+      "expected": "success; empty return data; slots 0 and 10 contain 0xff and 0xee; exact remaining gas; empty logs",
+      "revm": "pass",
+      "kevm": "pass"
+    }
+  ],
+  "negative_control": {
+    "fixture": "negative/sstore_load_1_bad_storage.json",
+    "derivation": "sstore-load-1 with slot 0 deliberately changed from 0xff to 0xfe",
+    "required_kevm_result": "nonzero exit with pending account-state check",
+    "required_revm_result": "one explicit storage mismatch: expected 0xfe, got 0xff",
+    "additional_revm_controls": [
+      "log1_nonEmptyMem out corrupted to 0x00 is rejected",
+      "log1_nonEmptyMem post nonce corrupted to 0x01 is rejected"
+    ],
+    "observed": "expected failure",
+    "observed_on": "2026-08-22"
+  },
+  "verification": {
+    "revm_command": "cargo test --manifest-path native/onchain_evm/Cargo.toml semantics_verification -- --nocapture",
+    "kevm_command": "native/onchain_evm/verify-semantics.sh",
+    "outcome": "all positive vectors passed; revm rejected corrupted out, post, and storage; KEVM rejected the storage control",
+    "observed_on": "2026-08-22"
+  }
+}
