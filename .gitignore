@@ -1,0 +1,10 @@
+# Root project (mix onchain.bounds + the ci orchestration alias) build output.
+# Each package under packages/ carries its own .gitignore for its _build/deps.
+/_build/
+/deps/
+/cover/
+/doc/
+/.elixir_ls/
+/.lexical/
+erl_crash.dump
+*.ez
