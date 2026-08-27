@@ -1,0 +1,74 @@
+{
+  "authority": {
+    "v3": "aave-v3-origin@1e3d70c4151a94166ebc59e2eaa4aff6e6ba6978",
+    "v4": "aave/aave-v4@2524fe4018a42750300e114f2a8c4355df62a878"
+  },
+  "bytecode": {
+    "v3": "c2e9cf2427264e6e06df480d3835a22df199de5b2a4b5ee3591f96f1bd3580ff",
+    "v4": "3f5989ba6090609407ad15174649eee01741b393faa0619c530ef827c63d5573"
+  },
+  "compiler": {
+    "v3": {
+      "evm_version": "london",
+      "metadata_hash": "none",
+      "optimizer": true,
+      "optimizer_runs": 100000,
+      "solc_version": "0.8.10+commit.fc410830"
+    },
+    "v4": {
+      "evm_version": "cancun",
+      "metadata_hash": "none",
+      "optimizer": true,
+      "optimizer_runs": 44444444,
+      "solc_version": "0.8.28+commit.7893614a",
+      "via_ir": false
+    }
+  },
+  "invariants": [
+    {
+      "claim": "V3 WadRayMath and MathUtils ports match official Solidity round-half-up formulas bit-exactly on the reachable non-overflow domain.",
+      "id": "MATH-V3-WADRAY"
+    },
+    {
+      "claim": "V4 WadRayMath and MathUtils ports match official Solidity explicit down/up formulas bit-exactly on the reachable non-overflow domain.",
+      "id": "MATH-V4-WADRAY"
+    },
+    {
+      "claim": "V4 calculate_liquidation_bonus matches LiquidationLogic, including the inclusive max-bonus boundary.",
+      "id": "MATH-V4-LIQ-BONUS"
+    },
+    {
+      "claim": "V3 display conversions use documented Aave scales (1e8 USD, 1e4 LTV, 1e18 health factor, 1e27 ray, 1e18 wad).",
+      "id": "MATH-DISPLAY-SCALES"
+    }
+  ],
+  "mutation": {
+    "survivors": [
+      {
+        "bucket": "equivalent",
+        "description": "calculate_liquidation_bonus uses < instead of <= at the max-bonus boundary",
+        "evidence": "at health == health_factor_for_max_bonus the interpolation term is exact (numerator == denominator), so < vs <= both return max_bonus",
+        "id": "domain.v4.liq.exclusive_max_bonus",
+        "kind": "comparison"
+      }
+    ],
+    "totals": {
+      "domain": 14,
+      "generated": 48,
+      "killed": 61,
+      "survived": 1
+    }
+  },
+  "negative_control": {
+    "id": "canary.v3.ray_mul.floor_instead_of_half_up",
+    "verdict": "killed"
+  },
+  "tools": {
+    "elixir": "1.20.2",
+    "mutator": "Onchain.Aave.MathMutator",
+    "onchain_evm": "0.5.0",
+    "otp": "29",
+    "sourceror": "1.12.2"
+  },
+  "reviewed_at": "2026-08-22"
+}

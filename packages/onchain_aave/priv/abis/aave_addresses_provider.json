@@ -1,0 +1,15 @@
+[
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getPriceOracle",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
