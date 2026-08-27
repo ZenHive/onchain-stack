@@ -276,7 +276,15 @@ cmd_check() {
   fi
 
   # 4. retired deps
-  if mix hex.audit 2>&1 | grep -qi "No retired"; then ok "hex.audit clean"
+  #
+  # Capture first, grep second. `mix hex.audit | grep -q` under `set -o
+  # pipefail` is a race: grep -q exits on the first match, mix dies on
+  # SIGPIPE, and the pipeline reports failure even though the output said
+  # "No retired ..." — hex.audit's trailing ignore_advisories warnings made
+  # that race a near-certain loss.
+  local ha
+  ha="$(mix hex.audit 2>&1)"
+  if printf '%s' "$ha" | grep -qi "No retired"; then ok "hex.audit clean"
   else warn "hex.audit flagged retired deps (review)"; fi
 
   # 5. compile warnings-as-errors
