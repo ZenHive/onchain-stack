@@ -254,7 +254,7 @@ defmodule Onchain.RPC.IntegrationTest do
 
     test "default reward_percentiles ([50]) returns single-column reward rows" do
       assert {:ok, history} = RPC.fee_history(3, rpc_opts())
-      assert Enum.all?(history.reward, fn row -> length(row) == 1 end)
+      assert Enum.all?(history.reward, &match?([_], &1))
     end
 
     test "composes with Onchain.Fees.suggest_fees/2 for end-to-end recommendation" do

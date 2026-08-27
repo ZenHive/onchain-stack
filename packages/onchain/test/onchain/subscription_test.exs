@@ -331,7 +331,7 @@ defmodule Onchain.SubscriptionTest do
 
       # Buffer is capped at 100; oldest ("0x1") was dropped
       pending = Agent.get(ctx.agent, & &1.pending)
-      assert length(pending["0xbuf"]) == 100
+      assert Enum.count_until(pending["0xbuf"], 101) == 100
       assert hd(pending["0xbuf"]) == "0x101"
       refute "0x1" in pending["0xbuf"]
     end

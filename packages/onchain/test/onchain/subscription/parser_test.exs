@@ -109,7 +109,7 @@ defmodule Onchain.Subscription.ParserTest do
     test "preserves topics and data as-is" do
       {:ok, log} = Parser.parse_event(:logs, @raw_log)
 
-      assert length(log.topics) == 3
+      assert [_, _, _] = log.topics
       assert log.data == @raw_log["data"]
       assert log.transaction_hash == @raw_log["transactionHash"]
     end

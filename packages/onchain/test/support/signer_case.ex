@@ -10,6 +10,7 @@ defmodule Onchain.SignerCase do
   @max_poll_attempts 20
 
   @doc false
+  @spec signer_key!() :: String.t()
   def signer_key! do
     System.get_env("ETH_SEPOLIA_PRIVATE_KEY") ||
       ExUnit.Assertions.flunk("""
@@ -23,6 +24,7 @@ defmodule Onchain.SignerCase do
   end
 
   @doc false
+  @spec signer_address!() :: String.t()
   def signer_address! do
     key_binary = Onchain.Hex.decode!(signer_key!())
     {:ok, addr_binary} = Curvy.get_address(key_binary)
@@ -30,6 +32,7 @@ defmodule Onchain.SignerCase do
   end
 
   @doc false
+  @spec sepolia_rpc_url!() :: String.t()
   def sepolia_rpc_url! do
     System.get_env("ETH_SEPOLIA_RPC_URL") ||
       ExUnit.Assertions.flunk("""
@@ -44,6 +47,7 @@ defmodule Onchain.SignerCase do
 
   @doc false
   # Polls get_transaction_receipt until it returns a non-nil result or times out.
+  @spec wait_for_receipt(String.t(), keyword()) :: {:ok, term()} | {:error, term()}
   def wait_for_receipt(tx_hash, opts \\ []) do
     rpc_url = Keyword.fetch!(opts, :rpc_url)
     interval = Keyword.get(opts, :interval_ms, @poll_interval_ms)
@@ -52,6 +56,8 @@ defmodule Onchain.SignerCase do
     do_poll(tx_hash, rpc_url, interval, max_attempts, 0)
   end
 
+  @spec do_poll(String.t(), String.t(), non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
+          {:ok, term()} | {:error, term()}
   defp do_poll(_tx_hash, _rpc_url, _interval, max, attempt) when attempt >= max do
     {:error, :receipt_timeout}
   end

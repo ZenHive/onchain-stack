@@ -74,7 +74,7 @@ defmodule Onchain.TransferTest do
   describe "transfer_topics/0" do
     test "returns 3 valid hex topic hashes" do
       topics = Transfer.transfer_topics()
-      assert length(topics) == 3
+      assert [_, _, _] = topics
       assert Enum.all?(topics, &String.starts_with?(&1, "0x"))
       assert Enum.all?(topics, &(String.length(&1) == 66))
     end
@@ -176,7 +176,7 @@ defmodule Onchain.TransferTest do
 
       assert {:ok, transfers} = Transfer.parse_log(log)
       assert is_list(transfers)
-      assert length(transfers) == 3
+      assert [_, _, _] = transfers
 
       assert Enum.map(transfers, & &1.token_id) == [1, 2, 3]
       assert Enum.map(transfers, & &1.amount) == [100, 200, 300]
@@ -246,7 +246,7 @@ defmodule Onchain.TransferTest do
         )
 
       assert {:ok, transfers} = Transfer.parse_logs([erc20_log, non_transfer_log])
-      assert length(transfers) == 1
+      assert [_] = transfers
       assert hd(transfers).amount == 1000
     end
 
@@ -269,7 +269,7 @@ defmodule Onchain.TransferTest do
 
       assert {:ok, transfers} = Transfer.parse_logs([erc20_log, batch_log])
       # 1 ERC-20 + 2 from batch = 3 total
-      assert length(transfers) == 3
+      assert [_, _, _] = transfers
     end
   end
 
@@ -302,7 +302,7 @@ defmodule Onchain.TransferTest do
 
       assert {:ok, transfers} = Transfer.parse_logs([bad_log, good_log])
       # Bad log skipped, good log parsed
-      assert length(transfers) == 1
+      assert [_] = transfers
       assert hd(transfers).amount == 500
     end
   end

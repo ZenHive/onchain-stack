@@ -63,7 +63,7 @@ defmodule Onchain.ERC1155.IntegrationTest do
                )
 
       assert is_list(balances)
-      assert length(balances) == 2
+      assert [_, _] = balances
       assert Enum.all?(balances, &is_integer/1)
     end
   end
@@ -79,7 +79,7 @@ defmodule Onchain.ERC1155.IntegrationTest do
         )
 
       assert is_list(balances)
-      assert length(balances) == 1
+      assert [_] = balances
     end
   end
 

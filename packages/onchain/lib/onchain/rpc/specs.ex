@@ -3,8 +3,8 @@ defmodule Onchain.RPC.Specs do
   Compile-time lookup table for the vendored Ethereum OpenRPC method specs.
   """
 
-  @openrpc_spec_path Path.expand("../../../priv/specs/openrpc-v1.0.0-beta.4.json", __DIR__)
-  @erigon_spec_path Path.expand("../../../priv/specs/erigon-methods.json", __DIR__)
+  @openrpc_spec_path Application.app_dir(:onchain, "priv/specs/openrpc-v1.0.0-beta.4.json")
+  @erigon_spec_path Application.app_dir(:onchain, "priv/specs/erigon-methods.json")
   @external_resource @openrpc_spec_path
   @external_resource @erigon_spec_path
 

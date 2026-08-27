@@ -137,10 +137,7 @@ defmodule Onchain.Multicall do
   # Decodes a single multicall result against its call spec.
   @spec decode_result(tuple(), {boolean(), String.t()}) :: {:ok, list()} | {:error, term()}
   defp decode_result({_addr, _sig, _params, return_type}, {true, data_hex}) do
-    case ABI.decode_response(return_type, data_hex) do
-      {:ok, values} -> {:ok, values}
-      error -> error
-    end
+    ABI.decode_response(return_type, data_hex)
   end
 
   defp decode_result(_call, {false, data_hex}), do: {:error, data_hex}
@@ -199,9 +196,6 @@ defmodule Onchain.Multicall do
   # Decodes 0x-prefixed calldata hex to binary.
   @spec decode_calldata(String.t()) :: {:ok, binary()} | {:error, term()}
   defp decode_calldata(hex) do
-    case Hex.decode(hex) do
-      {:ok, bin} -> {:ok, bin}
-      error -> error
-    end
+    Hex.decode(hex)
   end
 end

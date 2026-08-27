@@ -130,7 +130,7 @@ defmodule Onchain.DEX.RouterTest do
 
       assert {:ok, route} = Router.route(@usdc, @weth, 1000, pools)
       assert route.hops == 2
-      assert length(route.pools) == 2
+      assert [_, _] = route.pools
       assert [a, b, c] = route.path
       assert Onchain.Address.equal?(a, @usdc)
       assert Onchain.Address.equal?(b, @dai)

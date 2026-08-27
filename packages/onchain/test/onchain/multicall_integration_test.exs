@@ -21,7 +21,7 @@ defmodule Onchain.Multicall.IntegrationTest do
       ]
 
       assert {:ok, results} = Multicall.call_many(calls, rpc_opts())
-      assert length(results) == 3
+      assert [_, _, _] = results
 
       assert {:ok, ["USDC"]} = Enum.at(results, 0)
       assert {:ok, [6]} = Enum.at(results, 1)
@@ -38,7 +38,7 @@ defmodule Onchain.Multicall.IntegrationTest do
       ]
 
       assert {:ok, results} = Multicall.call_many(calls, rpc_opts())
-      assert length(results) == 2
+      assert [_, _] = results
 
       # First call should succeed
       assert {:ok, ["USDC"]} = Enum.at(results, 0)

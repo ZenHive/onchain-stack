@@ -340,7 +340,10 @@ defmodule Onchain.DEX.Router do
   @spec expand([String.t()], String.t(), String.t(), [{Pool.t(), String.t(), String.t()}], integer()) ::
           [[String.t()]]
   defp expand(visited, current, target, _edges, _max_hops) when current == target do
-    if length(visited) > 1, do: [Enum.reverse(visited)], else: []
+    case visited do
+      [_, _ | _] -> [Enum.reverse(visited)]
+      _ -> []
+    end
   end
 
   defp expand(visited, _current, _target, _edges, max_hops) when length(visited) > max_hops do

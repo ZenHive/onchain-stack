@@ -31,6 +31,7 @@ defmodule Onchain.EthCallStub do
   end
 
   @doc false
+  @spec call(Plug.Conn.t()) :: Plug.Conn.t()
   def call(conn) do
     %{"id" => id} = conn |> Req.Test.raw_body() |> IO.iodata_to_binary() |> Jason.decode!()
 
