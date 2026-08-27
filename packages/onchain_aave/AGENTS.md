@@ -540,62 +540,95 @@ The two blind classes, both real-correctness, both passing every per-task check:
 | Manual session/PR/audit chain | `dev-lifecycle.md`, `worktree-workflow.md` |
 
 <!-- @-import: ~/.claude/includes/onchain-workspace.md -->
-# Onchain Stack Workspace — Harness
+# Onchain Stack Workspace — Monorepo
 
-Workspace-specific layout for the seven onchain repos under ZenHive, driven by the **harness** OTP loop (implement → review → land). Pairs with `harness-workflow.md` (the portfolio-wide contract): that file carries the loop shape; this file carries only the onchain-stack specifics — repo roster, on-disk paths, and cross-repo dependency coordination.
+Workspace layout for the onchain package family. **Since 2026-08-27 the eight
+library repos are one monorepo:** `~/_DATA/code/onchain-stack`, packages under
+`packages/<name>/`, absorbed with full git history. Each package remains its own
+Hex package with its own version, CHANGELOG, and publish cycle. Pairs with
+`harness-workflow.md` (loop shape); this file carries only the stack specifics.
 
-Imported family-wide by the seven repos below. The retired Linear-as-queue + Codex/Cursor cloud-delegation workspace lives in `onchain-workspace-delegation.md` (DORMANT).
+The old standalone checkouts (`~/_DATA/code/hieroglyph`, `.../cartouche`, …) are
+retired — GitHub repos archived (never deleted; `ZenHive/onchain_evm` hosts NIF
+release assets). Do not work in them.
 
-### Repo Roster
+### Layout
 
-| On-disk path | Repo | Role | Native deps |
+| Package (`packages/…`) | Hex package | Role | Native |
 |---|---|---|---|
-| `~/_DATA/code/hieroglyph` | hieroglyph | ABI encode/decode library (`ABI.*`) | none (yecc/leex) |
-| `~/_DATA/code/cartouche` | cartouche | Ethereum substrate: signing, tx encoding, raw RPC, crypto | none |
-| `~/_DATA/code/onchain` | onchain | Core primitives on top of cartouche: RPC wrappers, ABI, ERC standards, signing | none |
-| `~/_DATA/code/onchain_aave` | onchain_aave | Aave V3 protocol wrappers | none |
-| `~/_DATA/code/onchain_evm` | onchain_evm | EVM simulation, Solidity parsing, trace, codegen | Rust NIFs (Rustler) |
-| `~/_DATA/code/onchain_js` | onchain_js | npm packages on the BEAM via QuickBEAM | Zig NIFs |
-| `~/_DATA/code/onchain_tempo` | onchain_tempo | Tempo chain primitives (0x76 tx, TIP-20) | none |
+| hieroglyph | `hieroglyph` | ABI encode/decode (`ABI.*`) | yecc/leex |
+| cartouche | `cartouche` | Substrate: signing, tx encoding, raw RPC, crypto | — |
+| onchain | `onchain` | Core primitives: RPC, ABI, ERC, signing | — |
+| onchain_aave | `onchain_aave` | Aave V3 + V4 wrappers | — |
+| onchain_aerodrome | `onchain_aerodrome` | Aerodrome Finance (Base) bindings | — |
+| onchain_evm | `onchain_evm` | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
+| onchain_js | `onchain_js` | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
+| onchain_tempo | `onchain_tempo` | Tempo chain primitives (0x76 tx, TIP-20) | — |
 
-### Dependency Shape (drives cross-repo coordination)
+**Still standalone repos** (not absorbed): `descripex`, `zen_websocket` (shared
+upstreams, consumed beyond this family) and `mpp` (leaf app). They live at
+`~/_DATA/code/<name>` as before.
 
-```
-hieroglyph (ABI)
-    ↑
-cartouche (substrate: signing, RPC, crypto)
-    ↑
-onchain (core primitives)
-    ↑
-  ┌─────────────┬──────────────┬──────────────┐
-onchain_aave  onchain_evm   onchain_js   onchain_tempo
-```
+Dependency cascade (unchanged): hieroglyph → cartouche → onchain →
+{aave, aerodrome, evm, js, tempo}; descripex feeds everything, zen_websocket
+feeds onchain. Publish order stays upstream-first.
 
-- **hieroglyph release → cartouche bump → onchain bump → downstream bumps.** A new hieroglyph minor cascades up the chain. Sequence the harness tasks: land the upstream bump first, then dispatch the dependent bump against the updated `development`.
-- **onchain core API change → onchain_aave / onchain_evm / onchain_js / onchain_tempo cascading bumps.** Loose coupling — downstream bumps can land in any order once `onchain` ships. File one rmap task per downstream repo.
-- **cartouche-as-dep change** affects the whole EVM stack identically — same upstream-first ordering as a hieroglyph release.
-- **Same-function collisions across repos don't exist** (separate codebases), but a single conceptual change spanning repos is still N tasks, one per repo — not one bundled task. See `harness-workflow.md` § "Parallel Dispatch".
+### The sibling/3 mechanism (dual-mode deps)
 
-### Branch & Workflow Conventions
+In-family deps are declared in each package's `mix.exs` as
+`sibling(:cartouche, "~> 0.7")`:
 
-- **No PRs for routine work** — completed harness runs ff-merge directly to each repo's `development` branch (the default). Manual hand-build work commits/merges to `development` directly too. (hieroglyph additionally files PRs *upstream* to `exthereum/abi` — orthogonal to harness, see its `upstream-pr-workflow.md`.)
-- **Run branches** are `harness/<run-id>` per repo, created off the dispatch branch's `HEAD`. Approved work keeps the branch after worktree teardown.
-- **Per-repo task source** is each repo's `roadmap/tasks.toml` (rmap renders `ROADMAP.md`). Harness ingests it as the run queue.
+- **Path branch** — when the marker file `.onchain-monorepo-root` is found by
+  walking up from the package (i.e. inside the monorepo): resolves to
+  `{name, path: "../<name>", override: true, …}`. Day-to-day dev needs no Hex
+  round-trips.
+- **Hex branch** — no marker (a consumer's `deps/` layout), or
+  `ONCHAIN_PUBLISH=1` set: resolves to `{name, "~> x.y", …}`.
 
-### Harness Specifics — TODO (stubs)
+**Publish trap:** Hex ≥2.5 does NOT abort on path deps — it silently drops them
+from the tarball ("Dependencies excluded from the package"). Every publish runs
+with `ONCHAIN_PUBLISH=1` and greps `hex.build` output for that phrase
+(`bin/publish-prep.sh` does this). After publish-mode `deps.get`, restore the
+lock with `git checkout -- mix.lock`.
 
-These firm up as the harness conventions for the stack settle. Fill in from the running harness node rather than guessing:
+### Gates
 
-- **TODO: Project registry.** Which of the seven repos are registered in `Harness.ProjectRegistry`, their registered names, dispatch branches, and `check_command` hints. Pull live via `mcp__harness__project_registry-list`.
-- **TODO: Landing policy per repo.** Which repos run `landing_policy: :auto` (ff-merge + post-merge audit) vs manual landing. Onchain repo's "no PRs / merge to development" stance suggests `:auto` once trusted.
-- **TODO: Reviewer pairing.** Cross-family reviewer adapter assignment per repo, if stack-specific (the portfolio default — "opus last," prefer cursor/codex/grok — lives in `harness-workflow.md` § "Portfolio Conventions").
-- **TODO: rmap roadmap paths.** Confirm each repo's `roadmap/tasks.toml` location and any per-repo D/B/U scoring conventions.
+- **Root gate:** `cd ~/_DATA/code/onchain-stack && mix ci` = `mix onchain.bounds`
+  (checks every literal `sibling/2,3` requirement against the sibling's live
+  `@version`) then each package's own `mix ci`, **strictly serial** (shared
+  advisory-mirror clone; parallel runs corrupt its `git pull --rebase`).
+- **Per-package:** unchanged — each package keeps its own `.reach.exs`,
+  `.doctor.exs`, sobelow config, coverage threshold. `cd packages/<name> && mix ci`
+  for focused work. Shared gate helpers: `shared/mix_helpers.exs`
+  (`OnchainMonorepo.MixHelpers`), loaded defensively so tarballs build without it.
+- **Roadmap:** one root rmap project (`roadmap/tasks.toml`, 342 tasks). Old
+  per-package task IDs are offset: hieroglyph +1000, cartouche +2000, onchain
+  +3000, aave +4000, aerodrome +5000, evm +6000, js +7000, tempo +8000. Tasks
+  carry `target_repo`; `touches` paths are `packages/<name>/…`-prefixed.
+
+### Harness
+
+One registered project, `onchain_stack`, source `~/_DATA/code/onchain-stack`
+(server mirror `/data/postgresql/code/onchain-stack`), `check_command:
+"mix check.dispatch"`, `target_branch: main`, warm paths for onchain_evm's Rust
+targets (`packages/onchain_evm/{native/*/target,priv/native}`). The eight
+per-repo harness registrations are retired with the repos. Write-set collision
+now happens naturally inside one repo — harness serializes overlapping waves.
+
+### Releases
+
+Per-package semver against the **published** Hex baseline; version bumps,
+CHANGELOG, and `mix hex.publish` (human, 2FA) all happen inside
+`packages/<name>/`. Tags in the monorepo are `<pkg>-v<ver>`. Cross-package
+cascades are now single-repo commits, but the Hex publish order is still
+upstream-first, one published version at a time.
 
 ### Cross-References
 
-- `harness-workflow.md` — the portfolio-wide implement→review→land contract (loop shape, verdict table, parallel dispatch, landing)
-- `onchain-workspace-delegation.md` — DORMANT Linear/cloud-delegation workspace (pre-harness)
-- Each repo's `CLAUDE.md` — module layout, architecture, testing specifics
+- `~/_DATA/code/onchain-stack/CLAUDE.md` — the coordination doc (cascade state,
+  operating rules, tooling)
+- `harness-workflow.md` — the portfolio implement→review→land contract
+- `onchain-workspace-delegation.md` — DORMANT pre-harness delegation workspace
 
 <!-- @-import: ~/.claude/includes/ethereum-rpc.md -->
 ## Ethereum RPC (Full Archive Node)
@@ -687,11 +720,20 @@ assumptions. The failure is invisible here — it works — and lands on the con
 
 ### The four rules
 
-1. **Establish that a method is standard** — present in the vendored OpenRPC spec.
-   Erigon/Geth/provider extensions are not standard however reliably our node answers.
+1. **Establish that a method is standard** — present in a **tagged release** of the
+   OpenRPC spec, not in `main`. Erigon/Geth/provider extensions are not standard however
+   reliably our node answers. **Read the tag, never the branch:** a method can sit on
+   `execution-apis@main` for months before any release carries it, and re-vendoring from
+   `main` would silently reclassify it as standard — that is exactly how `eth_baseFee`
+   would flip (see the worked example). Spec residency also proves nothing about
+   *availability*: a method merged to the spec and implemented by every major client can
+   still be refused by the endpoint your consumer uses, because hosted providers gate
+   their method allowlists independently. Rule 1 bounds the claim; only rule 4 tests it.
    (Note: `Onchain.RPC.Codegen.ensure_known_method!/1` reads the *merged* OpenRPC +
-   `erigon-methods.json` map, so it does **not** enforce this distinction. Rule 1 is
-   currently a judgment call, not a compile-time gate.)
+   `erigon-methods.json` map, so it does **not** enforce this distinction — and
+   `erigon-methods.json` is a 21-entry `ots_*`/`trace_*` scrape, not an Erigon method
+   census, so it does not carry `eth_*` extensions at all. Rule 1 is currently a judgment
+   call, not a compile-time gate.)
 2. **Prefer the portable construction.** If a value is reachable from a standard method,
    read it that way — `base_fee` via the pending block header's `baseFeePerGas`, not via
    `eth_baseFee`.
@@ -702,12 +744,24 @@ assumptions. The failure is invisible here — it works — and lands on the con
    `localhost:8545` alone proves nothing. A hosted endpoint's *real refusal* is evidence;
    our node's `{:ok, _}` is not.
 
-### The worked example (2026-08-25)
+### The worked example (2026-08-25, sharpened 2026-08-27)
 
-cartouche 0.8.0's `base_fee/1` calls `eth_baseFee`, an **Erigon extension** absent from
-the vendored OpenRPC spec. Our reth node serves it; Alchemy mainnet answers
+cartouche 0.8.0's `base_fee/1` calls `eth_baseFee` — an **Erigon-origin method**
+(erigontech/erigon#11992, 2024-09-18), adopted by reth, Nethermind and go-ethereum
+(v1.17.4) in mid-2026 and **merged into `ethereum/execution-apis` `main` on 2026-06-15**
+(PR #795) — but present in **no tagged spec release** (latest is `v1.0.0-beta.7`,
+2026-06-10, five days *before* the merge), absent from the vendored
+`openrpc-v1.0.0-beta.4.json`, and documented as supported by **neither Alchemy nor
+Infura**. Our reth node serves it; Alchemy mainnet answers
 `-32600 "eth_baseFee is not available on the ETH_MAINNET"`. It was caught only by
-hand-probing both endpoints. `Onchain.RPC.base_fee/1` therefore reads `baseFeePerGas`
+hand-probing both endpoints.
+
+**Why this example is worth more than "extension ⇒ not portable".** Spec residency is a
+*lagging* indicator of node availability and a leading indicator of nothing. Reading the
+spec today gives the **wrong** answer here — `main` says standard, the consumer's endpoint
+says `-32600`. Only the hand-probe gives the right one. That is rule 4's whole case.
+
+`Onchain.RPC.base_fee/1` therefore reads `baseFeePerGas`
 from the **pending** block header — portable to any EIP-1559 node, and verified
 equivalent against reth v2.5.1 in a single batch request (`eth_baseFee` == pending
 `baseFeePerGas` == 71_739_926, while `latest` was 68_871_658 — the pending header, not
