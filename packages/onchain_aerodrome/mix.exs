@@ -63,7 +63,11 @@ defmodule OnchainAerodrome.MixProject do
   defp deps do
     [
       sibling(:onchain, "~> 0.13"),
-      {:descripex, "~> 0.13"},
+      # Widened to `~> 1.0` family-wide: descripex 1.0.0 is behaviourally equal
+      # to 0.13.0 (its own CHANGELOG: "No behavioural change over 0.13.0"), and
+      # hieroglyph already declares `~> 1.0`. With hieroglyph in the graph as a
+      # path dep a `< 1.0.0` ceiling here makes the family unresolvable.
+      {:descripex, "~> 1.0"},
       {:decimal, "~> 3.1"},
 
       # Dev/test tooling

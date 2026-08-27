@@ -83,7 +83,11 @@ defmodule OnchainEvm.MixProject do
       # lands only through a deliberate `mix deps.update` behind `mix ci`. The
       # break-on-minor history that earned the cap (0.12.0 turned `short_name`
       # from atom to string) is being retired at descripex, not paid for here.
-      {:descripex, "~> 0.12"},
+      # Widened to `~> 1.0` family-wide: descripex 1.0.0 is behaviourally equal
+      # to 0.13.0 (its own CHANGELOG: "No behavioural change over 0.13.0"), and
+      # hieroglyph already declares `~> 1.0`. With hieroglyph in the graph as a
+      # path dep a `< 1.0.0` ceiling here makes the family unresolvable.
+      {:descripex, "~> 1.0"},
       {:rustler_precompiled, "~> 0.9.0"},
       # Optional so Hex consumers with a matching artifact don't need a Rust
       # toolchain. Required when `force_build` is set (Windows, unmatched
