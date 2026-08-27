@@ -19,7 +19,7 @@ This library is pre-1.0; only the current release line receives security fixes.
 
 Report privately through GitHub's **Security** tab on this repository:
 **Security → Advisories → "Report a vulnerability"**
-(<https://github.com/ZenHive/onchain_js/security/advisories/new>).
+(<https://github.com/ZenHive/onchain-stack/security/advisories/new>).
 
 This opens a private advisory visible only to you and the maintainers.
 

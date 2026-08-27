@@ -20,7 +20,7 @@ Only the current release line receives security fixes.
 
 Report privately through GitHub's **Security** tab on this repository:
 **Security → Advisories → "Report a vulnerability"**
-(<https://github.com/ZenHive/hieroglyph/security/advisories/new>).
+(<https://github.com/ZenHive/onchain-stack/security/advisories/new>).
 
 This opens a private advisory visible only to you and the maintainers.
 
