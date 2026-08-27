@@ -4,41 +4,66 @@ EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Eli
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
      harness-driven — the OTP dispatch→review→land loop is the active workflow). onchain-workspace
-     is the harness workspace add-on (7-repo roster + dependency shape), eager family-wide.
-     ethereum-rpc stays eager (host-specific node access, no skill mirror). Everything else previously imported
-     here (across-instances, worktree, task-prioritization/writing, workflow-philosophy, web-command,
-     elixir-setup, ex-unit-json, dialyzer-json, code-style, development-commands/philosophy,
-     agent-economy) is skill-on-demand via the elixir / task-driver / dev-lifecycle plugins.
-     Re-add an @-import per-surface only if Opus visibly degrades on it. See ~/.claude/setup-guide.md. -->
+     is the harness workspace add-on (monorepo layout + sibling/3 + dependency shape), eager
+     family-wide. ethereum-rpc stays eager (host-specific node access, no skill mirror). Everything
+     else previously imported here (across-instances, worktree, task-prioritization/writing,
+     workflow-philosophy, web-command, elixir-setup, ex-unit-json, dialyzer-json, code-style,
+     development-commands/philosophy, agent-economy) is skill-on-demand via the elixir / task-driver
+     / dev-lifecycle plugins. Re-add an @-import per-surface only if Opus visibly degrades on it.
+     See ~/.claude/setup-guide.md. -->
 @~/.claude/includes/critical-rules.md
 @~/.claude/includes/harness-workflow.md
 @~/.claude/includes/onchain-workspace.md
 @~/.claude/includes/ethereum-rpc.md
 @~/.claude/includes/node-portability.md
 
-## Delegation roster
-
-Portfolio default — carried by `harness-workflow.md` § "Delegation roster — opus last" (`@`-imported above): assign dispatchable tasks **cursor / codex / grok first, opus only if needed** (opus tokens are precious). onchain_evm takes the family default; no project override.
+See the root `CLAUDE.md` for the family layout, the sibling/3 mechanism, and
+the shared gate adjudications (reach #36, cowlib/gun, sobelow). This file
+carries only what's specific to this package — the one with native Rust
+builds in the family, which is the source of most of what follows.
 
 ## Toolchain & check commands
 
-Self-contained so it survives into `AGENTS.md` on regen — cross-family reviewers (codex / cursor / grok) read `AGENTS.md`, not the Claude skill set.
+Canonical gate: **`mix ci`** (= `mix precommit.full`), same shape as every
+other package (root `CLAUDE.md` § Gates) **plus a native Rust step**:
+`cargo test` and `cargo clippy --all-targets -- -D warnings` over both
+native crates (`clippy::unwrap_used` denied in production; `expect_used` not
+denied; if `cargo`/clippy is absent, the step skips with a message rather
+than failing the gate). Coverage floor is **85%**.
 
-- **Canonical gate:** `mix precommit.full` (alias `mix ci`) — the landed-base / Architect-QA pass. Dispatch-scale hint for harness reviewers: `mix check.dispatch` (static checks only; the reviewer adds focused `mix test.json` for touched behavior). Fast local loop: `mix precommit` (skips the cold-PLT dialyzer + full coverage). Aliases are defined in `mix.exs` and pinned to `MIX_ENV=test` via `def cli` where they run tests.
-- `mix precommit.full` runs, in order: `compile --warnings-as-errors`, `format --check-formatted`, `credo --strict` (ignoring TODO/FIXME tags; ExSlop plugin enabled in `.credo.exs`), `doctor --raise`, `ex_dna --max-clones 0` (zero-clone budget), `reach.check --arch --smells` (policy in `.reach.exs`), `sobelow --skip`, `deps.audit.gated`, `test.json --cover --cover-threshold 85 --exclude integration`, `cargo test` and `cargo clippy --all-targets -- -D warnings` over both native crates (`clippy::unwrap_used` denied in production; `expect_used` not denied; absent `cargo`/clippy skip with a message rather than failing the gate), `dialyzer`, `agents.check`. Nothing runs it for you — the GitHub Actions workflows were removed family-wide on 2026-08-22, so a local green is the only green there is. Do not add the cargo steps to `mix check.dispatch` — a harness worktree has no `target/`, so a cold Rust build would be paid on every dispatch.
-- **`mix test.json` (`ex_unit_json`) and `mix dialyzer.json` (`dialyzer_json`) emit JSON by design — this is NOT a build failure.** Parse the JSON for real failures; never flag the envelope itself. Plain `mix dialyzer` is the authoritative dialyzer check when the JSON encoder can't serialize a warning shape (it's what the gate runs).
-- **`reach.check --arch --smells` gates from `.reach.exs`** (`smells: [strict: true]`). Smell findings must be fixed for real; the `smells.ignore.paths` entry already present is scoped to a metaprogramming-inherent finding (see the comment in `.reach.exs`) — never add to that list to make a new finding disappear.
-- **`deps.audit.gated` proves the local mix_audit advisory mirror is fresh (`bin/advisory-freshness.sh` in `onchain-stack`) before running `mix deps.audit --ignore-file .mix_audit_ignore`** — `mix_audit` discards its own sync exit status (`mirego/mix_audit#61`), so a frozen mirror would otherwise report a false "No vulnerabilities found." `.mix_audit_ignore` carries exactly one verified false positive (GHSA-w4f7-4cxr-rv3c on `gun`); do not add other advisory ids there — a real finding gets reported, never suppressed.
-- **The gate's dialyzer runs under `MIX_ENV=test`, so it compiles and analyzes `test/support/` and `:ex_unit`.** Reproduce the gate's view with `MIX_ENV=test mix dialyzer`; a clean dev-env dialyzer does not imply a clean `mix ci`.
-- **Rustler NIF + `cover` incompatibility (read before touching coverage).** `cover` recompiles each instrumented module's `.beam`, which re-fires a Rustler NIF's `on_load` as an unsupported "upgrade" — so the two NIF-backed modules (`Onchain.EVM`, `Onchain.Solidity`) cannot be cover-instrumented (it fails non-deterministically by load order). Their pure-Elixir logic lives in cover-able sibling modules — `Onchain.EVM.Params` (validation + NIF-param assembly) and `Onchain.Solidity.Resolver` (import/remapping resolution) — and only the thin NIF shells are excluded via `test_coverage: [ignore_modules: …]` in `mix.exs`. A residual cosmetic "coverage data may be incomplete" warning about those two modules can surface inside the full pipeline; it does not affect the threshold (the report set is the 6 non-NIF modules, deterministically).
-- **Sobelow baseline (`.sobelow-skips`, tracked).** The hook honors `mix sobelow --skip`, not inline comments. The skip set is the codegen's `String.to_atom` calls in `lib/onchain/contract/generator.ex` (it creates not-yet-defined identifiers — `to_existing_atom` is impossible) plus operator-supplied `File.read` paths in `solidity.ex` / `solidity/resolver.ex` (caller-derived `.sol` paths, not web input). Regenerate from live state with `mix sobelow --mark-skip-all` after fixing a finding or when line shifts invalidate the hashes; never hand-edit.
+- **Do not add the cargo steps to `mix check.dispatch`** — a harness worktree
+  has no `target/`, so a cold Rust build would be paid on every dispatch.
+- **`reach.check --arch --smells`'s `smells.ignore.paths` entry is scoped to
+  one metaprogramming-inherent finding** (see the comment in `.reach.exs`) —
+  never add to that list to make a new finding disappear.
+- **Rustler NIF + `cover` incompatibility (read before touching coverage).**
+  `cover` recompiles each instrumented module's `.beam`, which re-fires a
+  Rustler NIF's `on_load` as an unsupported "upgrade" — so the two NIF-backed
+  modules (`Onchain.EVM`, `Onchain.Solidity`) cannot be cover-instrumented
+  (it fails non-deterministically by load order). Their pure-Elixir logic
+  lives in cover-able sibling modules — `Onchain.EVM.Params` (validation +
+  NIF-param assembly) and `Onchain.Solidity.Resolver` (import/remapping
+  resolution) — and only the thin NIF shells are excluded via
+  `test_coverage: [ignore_modules: …]` in `mix.exs`. A residual cosmetic
+  "coverage data may be incomplete" warning about those two modules can
+  surface inside the full pipeline; it does not affect the threshold (the
+  report set is the 6 non-NIF modules, deterministically).
+- **Sobelow baseline (`.sobelow-skips`, tracked, 5 lines).** The skip set is
+  the codegen's `String.to_atom` calls in `lib/onchain/contract/generator.ex`
+  (it creates not-yet-defined identifiers — `to_existing_atom` is impossible)
+  plus operator-supplied `File.read` paths in `solidity.ex` /
+  `solidity/resolver.ex` (caller-derived `.sol` paths, not web input).
+  Regenerate from live state with `mix sobelow --mark-skip-all` after fixing
+  a finding or when line shifts invalidate the hashes; never hand-edit.
+- `deps.audit.gated` runs against `.mix_audit_ignore` (symlinked from the
+  root file — see root `CLAUDE.md` § Adjudicated findings).
 
 ## Architecture
 
-- All modules use `Onchain.*` namespace (e.g., `Onchain.EVM`) — same as when they lived in the monolith
+- All modules use `Onchain.*` namespace (e.g., `Onchain.EVM`) — same as when it lived in the monolith
 - Rust NIFs via Rustler: `otp_app: :onchain_evm` (not `:onchain`)
 - Two native crates: `native/onchain_evm/` (revm) and `native/onchain_solidity/` (Alloy + solar-parse)
-- Hex dependency: `{:onchain, "~> 0.12"}`
+- `sibling(:onchain, "~> 0.12")`
 - Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`
 
 ## Node Portability
@@ -80,7 +105,7 @@ lib/onchain/
     generator.ex              # macro: .sol → typed Elixir module at compile time
 native/
   onchain_evm/                # Rust crate (revm, alloy)
-  onchain_solidity/           # Rust crate (alloy-json-abi, solar-parse)
+  onchain_solidity/            # Rust crate (alloy-json-abi, solar-parse)
 priv/
   abis/
     chainlink_aggregator.json
@@ -112,7 +137,12 @@ Integration tests require `ETHEREUM_API_URL` or `ETH_RPC_URL` env var.
 
 **Note:** `priv_dir` references in tests use `:onchain_evm` (not `:onchain`).
 
+Warm the harness dispatch worktree's Rust build via
+`packages/onchain_evm/{native/*/target,priv/native}` (registered as a harness
+warm path against the `onchain_stack` project — see root `CLAUDE.md` §
+Harness) so a fresh dispatch doesn't pay a cold `cargo build`.
+
 ## Related Packages
 
-- **onchain** — Core Ethereum primitives: `{:onchain, "~> 0.12"}`
-- **onchain_aave** — Aave V3 wrappers: `{:onchain_aave, "~> 0.1"}`
+- **onchain** — Core Ethereum primitives: `sibling(:onchain, "~> 0.12")`
+- **onchain_aave** — Aave V3 wrappers: `sibling(:onchain_aave, "~> 0.1")` consumer, dev/test-only

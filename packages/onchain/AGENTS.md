@@ -11,8 +11,8 @@ Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) a
      ex-unit-json, dialyzer-json, agent-economy, reach) is skill-on-demand via the elixir /
      task-driver / dev-lifecycle plugins. Re-add an @-import per-surface only if Opus visibly
      degrades on it. See ~/.claude/setup-guide.md § "Skills vs Includes".
-     NOTE: onchain-workspace.md is now the HARNESS workspace add-on (7-repo roster + dependency
-     shape), eager family-wide. The retired Linear/cloud-delegation add-on is
+     NOTE: onchain-workspace.md is the HARNESS workspace add-on (monorepo layout + sibling/3 +
+     dependency shape), eager family-wide. The retired Linear/cloud-delegation add-on is
      onchain-workspace-delegation.md (DORMANT). -->
 <!-- @-import: ~/.claude/includes/critical-rules.md -->
 ## 🚨 ANSWER IN SHORT TEXT — ALWAYS
@@ -793,70 +793,35 @@ paraphrasing:
   `AGENTS.md`.
 
 
-<!-- Harness driver contract: onchain is registered with the harness OTP node
+<!-- Harness driver contract: this package is dispatched through the single
+     `onchain_stack` harness project registered against the monorepo root
      (~/_DATA/code/harness, config/dev.local.exs). The harness MCP server
      (mcp__harness__dispatch__*, port 4018) is the primary surface for dispatching
-     onchain roadmap tasks to headless agents gated by a cross-family reviewer AI;
-     mcp__harness_eval__project_eval is the escape hatch. See .mcp.json.
+     roadmap tasks targeting this package to headless agents gated by a cross-family
+     reviewer AI; mcp__harness_eval__project_eval is the escape hatch. See .mcp.json.
 
      On-demand, NOT eager: the harness-driver SKILL.md is 55.8k chars (over the
      40k eager-import limit) — loading it every session is wasteful. Read it only
      when actually driving harness dispatch:
        Read ~/_DATA/code/harness/skills/harness-driver/SKILL.md -->
 
-
-## Stack boundary — hieroglyph / cartouche / onchain
-
-**Cut on what defines the bytes, not on who calls the node.** Canonical statement lives in
-`cartouche/ROADMAP.md` § "Scope principle"; this is the binding summary.
-
-| Layer | Owns |
-|---|---|
-| **hieroglyph** | The ABI codec. Pure functions over types and bytes. No I/O, no chain identity, no node. |
-| **cartouche** | Everything defined by the **node's wire format**: the JSON-RPC transport, and one wrapper **plus one decoded struct** for every method in a **tagged release** of the `execution-apis` OpenRPC spec — plus transaction envelopes, signing, crypto, hex, and chain ids. |
-| **onchain** (and `onchain_*` siblings) | Everything defined by a **contract, a standard, or an off-node protocol**: ERC-*, ENS, AA, MEV, DEX, Multicall, subscriptions, vendor/bundler/relay namespaces. It **re-presents** cartouche's structs; it never re-derives them. |
-
-Routing, in one read:
-
-- **New `eth_*` / `net_*` wrapper** → cartouche, iff the method is in a **tagged** OpenRPC
-  release. Not in the spec → cartouche only with a `@doc` naming who serves it *and* a
-  capability probe. Vendor/bundler/relay namespace (`eth_sendUserOperation`,
-  `eth_sendBundle`, `eth_sendPrivateTransaction`) → onchain.
-- **Response decoding** → cartouche, always, into a cartouche struct. onchain never
-  re-derives a JSON shape the node emits.
-- **ERC standard** → onchain, or a sibling when domain-heavy (`onchain_aave`).
-- **Chain constants** → cartouche (`Cartouche.Chain`). A chain with a different tx envelope
-  gets its own package (`onchain_tempo`).
-- **Non-EVM chain** → its own package. Not cartouche, not onchain.
-
-**Why the previous rule was reversed (2026-08-27).** The old rule sent "RPC method
-wrappers" to onchain while leaving the transport and the response structs in cartouche.
-That is not a separable cut — `send_rpc/3` takes a `:decode` function, so a wrapper is
-*method string + param normalizer + pointer to a cartouche struct*, two of three parts
-already cartouche's. onchain could not own the decode without owning the struct, so it
-wrote its own. Measured cost: two mutually-incompatible `Block` representations
-(`Cartouche.Block` → struct with raw binaries; `Onchain.RPC.Helpers.parse_block_response/1`
-→ plain map with `0x` strings), ~500 LOC of duplicate decoders, twelve methods wrapped at
-both layers, a `@dialyzer {:no_match, do_rpc: 3}` suppression as the receipt, and
-`Onchain.HTTP` (34 LOC) existing only to escape cartouche's config key. No test can catch
-that class, because no module consumes both. **The old rule did not prevent the
-duplication — it caused it.**
-
-**Migrate lazily, never as a campaign.** When a task ports a method down into cartouche,
-the same task converts onchain's copy into a facade. Do not open a migration project.
+See the root `CLAUDE.md` for the hieroglyph/cartouche/onchain stack-boundary
+routing rule, the sibling/3 mechanism, and the shared gate adjudications. This
+file carries only what's specific to this package.
 
 ## Portfolio Context
 
-This repo is part of a multi-library portfolio. The boundary is **ephemeral vs durable**, not read vs write. Each native runtime gets its own package.
+This package is part of a multi-library portfolio (root `CLAUDE.md` §
+Layout). The boundary is **ephemeral vs durable**, not read vs write.
 
-- **onchain** (this repo) — core Ethereum primitives, RPC, ABI, signing (pure Elixir, no native deps)
-- **onchain_aave** — Aave V3 protocol wrappers (depends on onchain, pure Elixir)
-- **onchain_evm** — Rust NIFs: revm simulation, Solidity parsing, debug/trace, codegen (depends on onchain + Rustler)
-- **onchain_js** — JS bridge: npm packages on the BEAM via QuickBEAM (depends on onchain + Zig NIFs)
-- **onchain_tempo** — Tempo blockchain primitives: 0x76 transactions, TIP-20 encoding, RPC, TransferWithMemo parsing (depends on onchain, pure Elixir)
-- **onchain_agents** *(planned)* — EIP-8004 Trustless Agents: Identity / Reputation / Validation registries, plus Descripex manifest bridge for trustless verification (depends on onchain, pure Elixir). Triggered when a consumer needs agent-economy registration; see `ROADMAP.md` "EIP Tracking"
-- **rexex** — chain indexing, storing durable facts (ExEx ingestion, Postgres, reorg-safe history, dashboards)
-- **hologram** — JS runtimes, npm access, headless/edge execution (Elixir interpreter in any JS runtime)
+- **onchain** (this package) — core Ethereum primitives, RPC, ABI, signing (pure Elixir, no native deps)
+- **onchain_aave** / **onchain_aerodrome** — protocol wrappers (depend on onchain, pure Elixir)
+- **onchain_evm** — Rust NIFs: revm simulation, Solidity parsing, debug/trace, codegen
+- **onchain_js** — JS bridge: npm packages on the BEAM via QuickBEAM
+- **onchain_tempo** — Tempo blockchain primitives (0x76 transactions, TIP-20, depends on onchain)
+- **onchain_agents** *(planned)* — EIP-8004 Trustless Agents: Identity / Reputation / Validation registries, plus a Descripex manifest bridge for trustless verification. Triggered when a consumer needs agent-economy registration; see `ROADMAP.md` "EIP Tracking" (task offset +3000)
+- **rexex** *(separate, unabsorbed repo)* — chain indexing, durable facts (ExEx ingestion, Postgres, reorg-safe history)
+- **hologram** *(separate, unabsorbed repo)* — JS runtimes, npm access, headless/edge execution
 
 **Where does this feature go?**
 
@@ -868,8 +833,6 @@ This repo is part of a multi-library portfolio. The boundary is **ephemeral vs d
 6. Registers / queries / validates agents via EIP-8004 registries? → **onchain_agents** (when built)
 7. Composes those capabilities into a user-facing workflow? → **separate consumer repo**
 
-**Scope split with cartouche (substrate layer).** cartouche = Ethereum primitives (key management, signing, transaction encoding, raw RPC, hex/ABI/typed-data). onchain (and its siblings) = everything buildable on top of `Cartouche.*` from outside cartouche. **Rule:** if the feature requires cartouche internals (new tx type, signer extension, primitive encoding), it's a cartouche-PR candidate. Otherwise — including RPC method wrappers, ERC standards, protocol parsers, telemetry facades, retry/backoff, fee helpers, EIP-8004 registries — it lives in this portfolio. See `../signet/ROADMAP.md` "Scope principle" for the full classification and EIP triage rubric (the sibling design-discussion repo retains its historical name).
-
 **Watch boundary:** onchain Phase 8 (eth_subscribe, Transfer parser) overlaps rexex territory. The distinction: onchain returns results to the caller (ephemeral); rexex writes facts to Postgres (durable). If a consumer needs historical queries over indexed data, that's rexex.
 
 **Agent consumers:** AI agents are first-class consumers of this library. See [AGENT_WISHLIST.md](AGENT_WISHLIST.md) for use cases and scenarios. EIP-8004 registration / reputation / validation lives in `onchain_agents` — see `ROADMAP.md` "EIP Tracking".
@@ -877,13 +840,12 @@ This repo is part of a multi-library portfolio. The boundary is **ephemeral vs d
 ## Architecture
 
 - **Pure Elixir** — no native deps, no Rustler, no compilation of C/Rust
-- **cartouche** is the primary Ethereum dep — RPC, ABI encoding, signing, crypto all in one (transitively pulls in `hieroglyph` for ABI)
-- **zen_websocket** for WebSocket transport (eth_subscribe real-time subscriptions)
+- **cartouche** is the primary Ethereum dep — RPC, ABI encoding, signing, crypto all in one (transitively pulls in `hieroglyph` for ABI), resolved via `sibling(:cartouche, ...)`
+- **zen_websocket** for WebSocket transport (eth_subscribe real-time subscriptions) — a standalone (unabsorbed) dep, plain Hex requirement, no sibling/3 involved
 - Cartouche wraps **curvy** (pure Elixir secp256k1) internally for signing/key ops — never add curvy as a direct dep
 - Consumers configure RPC URL via `config :cartouche` or pass URL per-call
 - Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`
 - Plain structs with `defstruct` + `@enforce_keys`, no private macro deps
-- Path dependency in consumers: `{:onchain, path: "../onchain"}`
 
 ## Node Portability
 
@@ -921,23 +883,15 @@ users run Alchemy, Infura, or a pruned Geth. What is specific to this repo:
 
 ## Toolchain & check commands
 
-Canonical gate: **`mix ci`** (= `precommit.full`) — compile `--warnings-as-errors`,
-`format --check-formatted`, `credo --strict`, `doctor --raise`, `ex_dna --max-clones 0`,
-`reach.check --arch --smells`, `sobelow --skip`, `deps.audit.gated`, `test.json --cover
---cover-threshold 70`, `dialyzer`, `agents.check`. `mix precommit` is the fast local loop
-(no dialyzer/coverage). A clean `mix ci` is the merge bar.
+Canonical gate: **`mix ci`** (= `precommit.full`), same shape as every other
+package (root `CLAUDE.md` § Gates). Coverage floor here is **70%**. `mix
+precommit` is the fast local loop (no dialyzer/coverage).
 
-- **`mix test.json` / `mix dialyzer.json` emit JSON by design** — parse for real failures,
-  never flag the envelope itself as a problem. When the JSON encoder can't serialize a
-  warning shape, plain `mix dialyzer` (MIX_ENV=dev) is authoritative.
-- **`mix reach.check --arch --smells` gates from `.reach.exs`** (`smells: [strict: true]`),
-  scanned across `roots=dev, lib, src` — do not narrow that scope. Smell findings must be
-  fixed, never added to an ignore list.
-- **`deps.audit.gated`** runs `bin/advisory-freshness.sh` (in `onchain-stack`) before
-  `mix deps.audit --ignore-file .mix_audit_ignore` — `mix_audit` discards its own sync exit
-  status, so a frozen advisory DB would otherwise still report green. The one ignore entry
-  (`GHSA-w4f7-4cxr-rv3c`) is a verified false positive for `gun` — see `.mix_audit_ignore`
-  for the full rationale. Do not add any other advisory id to that file.
+- **`reach.check --arch --smells` is scanned across `roots=dev, lib, src`** —
+  do not narrow that scope.
+- **`deps.audit.gated`** runs against `.mix_audit_ignore` (symlinked from the
+  root file — see root `CLAUDE.md` § Adjudicated findings for the gun/cowlib
+  false-positive rationale). Do not add any other advisory id to it.
 
 ## Module Layout
 
@@ -983,25 +937,8 @@ lib/onchain/
     user_operation.ex # ERC-4337 UserOperation struct (unpacked, version-agnostic)
 ```
 
-**Moved to onchain_aave:** `aave/` (math, contracts, pool, oracle, faucet, ui_pool_data_provider, types/)
-**Moved to onchain_evm:** `evm.ex`, `solidity.ex`, `trace.ex`, `contract/generator.ex`, `native/`
-
-## Git Workflow (current)
-
-- **Harness-driven.** As of 2026-06 this repo's active workflow is the harness OTP loop (`@~/.claude/includes/harness-workflow.md`): rmap task → implementer AI in a `harness/<run-id>` worktree → cross-family reviewer (THE GATE) → ff-merge/land to `development`. The retired Linear-as-queue + Codex/Cursor delegation flow (`onchain-workspace`) no longer applies.
-- **No PRs for routine work.** Completed work commits and merges **directly to `development`** (the default branch). Don't open `gh pr create` — harness lands via ff-merge; manual work commits/merges to `development` directly. (Overrides the global PR-based / GH-native-auto-merge flow for this repo.)
-- **Manual worktrees: ask first.** Harness manages its own per-run worktrees automatically. For *hand-build* sessions outside harness, the global worktree-workflow auto-allows a worktree when a tracking ID exists; in this repo, **ask first** — don't auto-create one.
-
-## After Every Task
-
-Update **all affected `.md` files** after completing any roadmap task. This is part of every task, not a separate step.
-
-- **ROADMAP.md** — Mark status (⬜ → ✅), update Current Focus section
-- **CHANGELOG.md** — Add entry under latest section with what was done
-- **README.md** — Update if new modules, changed APIs, or user-facing functionality
-- **CLAUDE.md** — Update Module Layout if files were added/removed/renamed, update Architecture if conventions changed
-
-**Code reviewers**: Verify all four files were checked. Reject reviews where task completion didn't include doc updates.
+**Lives in onchain_aave:** `aave/` (math, contracts, pool, oracle, faucet, ui_pool_data_provider, types/)
+**Lives in onchain_evm:** `evm.ex`, `solidity.ex`, `trace.ex`, `contract/generator.ex`, `native/`
 
 ## Testing
 
@@ -1037,7 +974,10 @@ mix test.json --quiet --include integration --include differential
 
 **Differential only — `ocdiff` shell helper** (in `~/.zshrc`): runs the differential suite against the Alchemy archive (no SSH tunnel needed); pass a URL to override (`ocdiff http://localhost:8545`).
 
-**This is now the only way the differential suite ever runs.** It used to also run nightly and non-gating via `.github/workflows/differential.yml`, removed with every other workflow on 2026-08-22 — so archive-node drift no longer surfaces on its own. Run `ocdiff` deliberately when touching RPC decoding or block/receipt shapes.
+**This is now the only way the differential suite ever runs** — there is no
+scheduled/nightly run any more (removed with every workflow, family-wide,
+2026-08-22), so archive-node drift no longer surfaces on its own. Run
+`ocdiff` deliberately when touching RPC decoding or block/receipt shapes.
 
 ### Quick Commands
 
@@ -1053,7 +993,7 @@ mix credo --strict --format json               # Static analysis (JSON output)
 
 ## Related Packages
 
-- **onchain_aave** — Aave V3 wrappers: `{:onchain_aave, path: "../onchain_aave"}`
-- **onchain_evm** — Rust NIFs + codegen: `{:onchain_evm, path: "../onchain_evm"}`
-- **onchain_js** — JS bridge (QuickBEAM): `{:onchain_js, path: "../onchain_js"}`
-- **onchain_tempo** — Tempo chain primitives: `{:onchain_tempo, path: "../onchain_tempo"}`
+- **onchain_aave** — Aave V3 wrappers: `sibling(:onchain, ...)` consumer
+- **onchain_evm** — Rust NIFs + codegen: `sibling(:onchain, ...)` consumer
+- **onchain_js** — JS bridge (QuickBEAM): `sibling(:onchain, ...)` consumer
+- **onchain_tempo** — Tempo chain primitives: `sibling(:onchain, ...)` consumer

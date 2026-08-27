@@ -5,101 +5,79 @@
 <!--
   Selective-load (Opus 4.8): eager floor is `critical-rules`; `harness-workflow` is eager
   because internal roadmap work here is harness-driven (OTP dispatch→review→land loop).
-  `onchain-workspace` is the harness workspace add-on (7-repo roster + dependency shape),
-  eager family-wide. `upstream-pr-workflow` was demoted to skill-on-demand
+  `onchain-workspace` is the harness workspace add-on (monorepo layout + sibling/3 +
+  dependency shape), eager family-wide. `upstream-pr-workflow` was demoted to skill-on-demand
   (workflow:upstream-pr-workflow) once upstream contribution was closed out — see
   "Upstream Divergence"; re-import only if we resume filing PRs to `exthereum/abi`.
   Everything else is skill-on-demand — task-prioritization → tasks:roadmap-planning,
   task-writing → tasks:task-writing, workflow-philosophy → workflow:workflow-philosophy,
   worktree-workflow → workflow:git-worktrees, web-command/ex-unit-json/dialyzer-json/code-style/
   development-commands/development-philosophy/elixir-setup/agent-economy → elixir:*.
-  Delegation + across-instances intentionally omitted (work/library repo, no cloud-agent usage).
+  Delegation + across-instances intentionally omitted (work/library package, no cloud-agent usage).
   Re-add an `@`-import only if Opus quality drops on that surface.
 -->
 
-
-# ABI
+# hieroglyph
 
 Pure Elixir library for encoding/decoding the Solidity ABI. No runtime processes — `ABI.encode/2`, `ABI.decode/2`, and the `TypeEncoder`/`TypeDecoder`/`FunctionSelector`/`Event` modules under `lib/abi/` are all stateless functions.
 
-## Stack boundary — hieroglyph / cartouche / onchain
-
-**Cut on what defines the bytes, not on who calls the node.** Canonical statement lives in
-`cartouche/ROADMAP.md` § "Scope principle"; this is the binding summary.
-
-| Layer | Owns |
-|---|---|
-| **hieroglyph** | The ABI codec. Pure functions over types and bytes. No I/O, no chain identity, no node. |
-| **cartouche** | Everything defined by the **node's wire format**: the JSON-RPC transport, and one wrapper **plus one decoded struct** for every method in a **tagged release** of the `execution-apis` OpenRPC spec — plus transaction envelopes, signing, crypto, hex, and chain ids. |
-| **onchain** (and `onchain_*` siblings) | Everything defined by a **contract, a standard, or an off-node protocol**: ERC-*, ENS, AA, MEV, DEX, Multicall, subscriptions, vendor/bundler/relay namespaces. It **re-presents** cartouche's structs; it never re-derives them. |
-
-Routing, in one read:
-
-- **New `eth_*` / `net_*` wrapper** → cartouche, iff the method is in a **tagged** OpenRPC
-  release. Not in the spec → cartouche only with a `@doc` naming who serves it *and* a
-  capability probe. Vendor/bundler/relay namespace (`eth_sendUserOperation`,
-  `eth_sendBundle`, `eth_sendPrivateTransaction`) → onchain.
-- **Response decoding** → cartouche, always, into a cartouche struct. onchain never
-  re-derives a JSON shape the node emits.
-- **ERC standard** → onchain, or a sibling when domain-heavy (`onchain_aave`).
-- **Chain constants** → cartouche (`Cartouche.Chain`). A chain with a different tx envelope
-  gets its own package (`onchain_tempo`).
-- **Non-EVM chain** → its own package. Not cartouche, not onchain.
-
-**Why the previous rule was reversed (2026-08-27).** The old rule sent "RPC method
-wrappers" to onchain while leaving the transport and the response structs in cartouche.
-That is not a separable cut — `send_rpc/3` takes a `:decode` function, so a wrapper is
-*method string + param normalizer + pointer to a cartouche struct*, two of three parts
-already cartouche's. onchain could not own the decode without owning the struct, so it
-wrote its own. Measured cost: two mutually-incompatible `Block` representations
-(`Cartouche.Block` → struct with raw binaries; `Onchain.RPC.Helpers.parse_block_response/1`
-→ plain map with `0x` strings), ~500 LOC of duplicate decoders, twelve methods wrapped at
-both layers, a `@dialyzer {:no_match, do_rpc: 3}` suppression as the receipt, and
-`Onchain.HTTP` (34 LOC) existing only to escape cartouche's config key. No test can catch
-that class, because no module consumes both. **The old rule did not prevent the
-duplication — it caused it.**
-
-**Migrate lazily, never as a campaign.** When a task ports a method down into cartouche,
-the same task converts onchain's copy into a facade. Do not open a migration project.
+Root of the family's dependency cascade (below `descripex`). See the root
+`CLAUDE.md` for the stack-boundary routing rule between hieroglyph / cartouche
+/ onchain, the sibling/3 mechanism, and the shared gate adjudications
+(reach #36, cowlib/gun, sobelow) — this file carries only what's specific to
+this package.
 
 ## Toolchain & check commands (read before judging a build)
 
-Canonical gate: **`mix ci`** (= `precommit.full`) — `precommit` (format `--check-formatted` + compile `--warnings-as-errors` + `credo --strict` + `doctor --raise` + a **95%** coverage gate via `test.json --cover --cover-threshold 95 --exclude integration` + `sobelow --skip`), then `ex_dna --max-clones 0`, `reach.check --arch --smells`, `deps.audit.gated`, `dialyzer.json --quiet`, `agents.check`, `hieroglyph.manifest --check`. A clean `mix ci` is the merge bar. (`mix precommit` = the base steps only, no dialyzer/ex_dna/reach/audit. `mix check.fast` = format + compile + credo only.) Coverage is 95%, not 85% — this is a wire-format/crypto encoder (critical business logic). The commit hook does **not** run `precommit`; per-edit hooks grade touched files.
+Canonical gate: **`mix ci`** (= `precommit.full`), same shape as every other
+package in the monorepo (see root `CLAUDE.md` § Gates) with one difference
+worth calling out: **coverage is a 95% floor, not the family's usual
+70–85%**, folded directly into the `precommit` alias (not a separate step) —
+this is a wire-format/crypto encoder, critical business logic, and the
+tighter bar is deliberate. `mix precommit` = format + compile
+`--warnings-as-errors` + `credo --strict` + `doctor --raise` + the 95%
+coverage gate (`test.json --cover --cover-threshold 95 --exclude integration`)
++ `sobelow --skip`. `mix ci` adds `ex_dna --max-clones 0`, `reach.check --arch
+--smells`, `deps.audit.gated`, `dialyzer.json --quiet`, `agents.check`, and
+**`hieroglyph.manifest --check`** (below). `mix check.fast` = format + compile
++ credo only, for a quick loop.
 
-**Releases are manual: `mix hex.publish`, then `git tag v<version> && git push origin v<version>` (the tag is cut *after* a successful publish).** Before publishing, check by hand that `CHANGELOG.md` has no entries left under `[Unreleased]`, that its newest `# X.Y.Z` section matches the `mix.exs` version, that the tree is clean and `HEAD` is pushed, and that `v<version>` does not already exist. There is no hosted CI in this repo — `a3a1d14` removed the GitHub Actions workflows, and two `mix ci` steps (`deps.audit.gated`, `agents.check`) shell out to scripts outside the repo, so the canonical gate only runs on a developer host.
+- **`mix hieroglyph.manifest [path]`** (`lib/mix/tasks/hieroglyph.manifest.ex`)
+  emits `api_manifest.json` from `ABI.__descripex_modules__/0`; `--check`
+  regenerates in memory and fails on drift (ignoring `generated_at`).
+  Downstream cartouche/onchain treat this as a contract-stability artifact —
+  it is a `mix ci` step here specifically because this package is the one
+  that would silently break that contract.
+- **`mix hieroglyph.mutants` is NOT part of `mix ci`** — it mutates `lib/` in
+  place and spawns a full `mix test` per mutant. Run
+  `MIX_ENV=test mix hieroglyph.mutants` when the encoder, decoder, selector or
+  event paths change, and update the mutant table in
+  `docs/abi-verification-ledger.md`. It runs a control pass over the vector
+  files on unmutated `lib/` first (otherwise an already-failing vector suite
+  makes every mutant read as killed), reverts every file byte-exactly, and
+  exits non-zero on a surprise (a mutant that should die and didn't, a
+  survivor that unexpectedly died, an anchor that no longer matches its site
+  exactly once, or a file that didn't come back byte-exact). The `after`
+  clause covers exceptions but not signals, so the original bytes also go to
+  a `.hieroglyph-mutants.orig` sidecar; a leftover sidecar means an
+  interrupted run and the task refuses to start until cleared
+  (`git checkout -- lib/ && rm lib/**/*.hieroglyph-mutants.orig`).
+- **`reach.check --arch --smells` needs `.reach.exs` scoped to
+  `source_paths: ["lib", "test/support"]`** — this package is one of the two
+  reach #36 workarounds (root `CLAUDE.md` § Adjudicated findings): without
+  the scope, reach's smell pass crashes on the yecc/leex-generated Erlang
+  under `src/`, which is unfixable-by-definition anyway.
+- **`.sobelow-skips` here has only 2 lines and suppresses nothing** (this
+  package sits at zero sobelow findings even without `--skip`) — it's
+  vestigial; deleting it is the cheaper fix if you're ever touching it,
+  per root `CLAUDE.md`'s open item on the drift-check replacement.
+- This package's dep tree audits clean — no `.mix_audit_ignore` needed here
+  (hieroglyph doesn't pull `gun`).
 
-**Nothing runs `mix ci` automatically — this repo has no CI.** The GitHub Actions
-workflows were deleted in `a3a1d14`; `.github/` now holds only `dependabot.yml`, and
-the `.circleci/config.yml` in the tree is inherited from the `exthereum/abi` fork
-parent (last touched upstream in 2018, `working_directory: ~/abi`, installs
-libsecp256k1 build deps this fork does not use) — treat it as an unconnected
-artifact, not a gate. `mix ci` is therefore enforced by whoever runs it: the
-developer host and the harness reviewer agent in its run worktree. Two of its steps
-cannot run anywhere else at all — `deps.audit.gated` shells out to
-`bin/advisory-freshness.sh` in the sibling `onchain-stack` checkout, and
-`agents.check` shells out to `~/_DATA/code/claude-marketplace/scripts/sync-agents-md.sh`
-— so both are developer-host-only by construction. A reviewer that cannot reach those
-paths is running a strictly smaller gate than the one described above and should say
-so rather than report a clean `mix ci`.
-
-**The `.json` mix tasks emit JSON BY DESIGN — that is expected output, never an error or a broken setup:**
-
-- **`mix test.json`** (from the `ex_unit_json` dep) — ExUnit results as a JSON document for machine parsing; identical run to `mix test`. Parse it for failures; the JSON envelope itself is never a failure signal. `--cover` can emit a large per-module coverage blob — pipe to a file (`--output /tmp/cov.json`) and `jq` the summary, don't dump it to the transcript.
-- **`mix dialyzer.json`** (from the `dialyzer_json` dep) — dialyzer warnings as JSON. Read the JSON array for *real* warnings; do NOT flag the JSON output as a problem. If the encoder cannot serialize a warning shape, plain `mix dialyzer` (MIX_ENV=dev) is the authoritative dialyzer check. Zero real warnings = pass.
-
-The other gate tools are plain-text: `mix credo --strict`, `mix doctor --raise`, `mix sobelow --skip` (the `--skip` honors `.sobelow-skips`; inline `# sobelow_skip` comments are NOT honored by the commit hook — see § Sobelow in `~/.claude/CLAUDE.md`).
-
-- **`mix reach.check --arch --smells` gates from `.reach.exs`** (`smells: [strict: true]`).
-  Smell findings must be fixed, never added to an ignore list. `deps/reach` here carries a
-  deliberate local 3-line patch (filed upstream as elixir-vibe/reach#36) without which
-  `--smells` crashes on this repo's yecc/leex-generated Erlang — never touch `deps/`.
-- **`deps.audit.gated`** runs `bin/advisory-freshness.sh` (in `onchain-stack`) before
-  `mix deps.audit` — `mix_audit` discards its own sync exit status, so a frozen advisory DB
-  would otherwise still report green. This repo carries no `.mix_audit_ignore` (audit is clean).
-
-**`mix hieroglyph.mutants` is NOT part of `mix ci`** — it mutates `lib/` in place and spawns a full `mix test` per mutant, which does not belong in a per-commit gate. Run `MIX_ENV=test mix hieroglyph.mutants` when the encoder, decoder, selector or event paths change, and update the mutant table in `docs/abi-verification-ledger.md`. It runs a control pass over the vector files on unmutated `lib/` first (without it a already-failing vector suite makes every mutant read as killed), reverts every file byte-exactly, and exits non-zero on a surprise (a mutant that should die and didn't, a survivor that unexpectedly died, an anchor that no longer matches its site exactly once, or a file that did not come back byte-exact). The `after` clause covers exceptions but not signals, so the original bytes also go to a `.hieroglyph-mutants.orig` sidecar; a leftover sidecar means an interrupted run and the task refuses to start until it is cleared (`git checkout -- lib/ && rm lib/**/*.hieroglyph-mutants.orig`).
-
-(Claude-family agents with the user's global skills can invoke `elixir:ex-unit-json` and `elixir:dialyzer-json` for the full flag/jq reference. For every other agent — the cross-family harness reviewers — the notes above are self-contained.)
+(Claude-family agents with the user's global skills can invoke
+`elixir:ex-unit-json` and `elixir:dialyzer-json` for the full flag/jq
+reference. For every other agent — the cross-family harness reviewers — the
+notes above are self-contained.)
 
 ## Layout
 
@@ -110,7 +88,7 @@ The other gate tools are plain-text: `mix credo --strict`, `mix doctor --raise`,
 - `lib/abi/parser.ex` — `@moduledoc false` walker; wraps `:ethereum_abi_parser.parse/1`, normalizes the AST, and rejects unsupported types (`fixed`/`ufixed`) at parse time (`:function` rejection lifted in 1.3.0 — it now encodes/decodes as a 24-byte payload)
 - `lib/abi/math.ex` — shared 32-byte padding helpers (`pad/4`, `unpad/3`) plus `mod/2` and `kec/1` (keccak256). Encoder/decoder delegate here instead of duplicating the byte-domain padding formula.
 - `src/*.xrl` / `src/*.yrl` — leex/yecc grammar; compiled by the `:yecc, :leex` Mix compilers (see `mix.exs:18`). Edit the `.xrl`/`.yrl`, never the generated `.erl`.
-- `lib/mix/tasks/hieroglyph.manifest.ex` — `mix hieroglyph.manifest [path]` task that emits `api_manifest.json` from `ABI.__descripex_modules__/0`; `--check` regenerates in memory and fails on drift (ignoring `generated_at`). Consumed by downstream cartouche/onchain CI as a contract-stability artifact; the check is a `mix ci` step.
+- `lib/mix/tasks/hieroglyph.manifest.ex` — see above.
 - `test/support/fixtures/ethers/` — vendored `@ethersproject/testcases` 5.8.0 vectors (MIT), recorded from `solc` output. The **independent oracle**: `test/abi/ethers_corpus_test.exs` asserts against them byte-for-byte with no `decode(encode(x))` step. Provenance + filter criteria in `PROVENANCE.md`; re-vendor with `vendor.py`.
 - `test/abi/abi_spec_test.exs` — spec-anchored assertions, each citing its ABI-spec section: the head/tail offset VALUE (which the decoder never reads back), the length word, and padding direction.
 - `test/support/mutants/` + `test/support/mix/tasks/hieroglyph.mutants.ex` — the planted-mutant corpus and its runner. Deliberately under `test/support/` (not `lib/`) so the runner stays out of the 95% coverage gate.
@@ -124,11 +102,11 @@ The other gate tools are plain-text: `mix credo --strict`, `mix doctor --raise`,
 
 ## Open Work
 
-See [ROADMAP.md](ROADMAP.md) for the current punch list (bugs, test debt, feature gaps).
+See [ROADMAP.md](../../ROADMAP.md) (root, task IDs offset +1000 for this package) for the current punch list (bugs, test debt, feature gaps).
 
 ## Package Identity
 
-Published on hex.pm as [`hieroglyph`](https://hex.pm/packages/hieroglyph) (fork-of `exthereum/abi`); repo lives at `github.com/ZenHive/hieroglyph`. The module namespace is unchanged — consumers still call `ABI.encode/2`, `ABI.decode/2`, etc. Only the hex dep name differs (`{:hieroglyph, "~> 1.0"}`). Name chosen to mirror the `signet → cartouche` Egyptian-naming pattern (a cartouche literally contains hieroglyphs); the `ABI` module name was kept deliberately because Solidity's own term is the correct one — renaming it would hurt callsite discoverability. See CHANGELOG entry for 1.0.0 (2026-04-24) for the version-reset rationale.
+Published on hex.pm as [`hieroglyph`](https://hex.pm/packages/hieroglyph) (fork-of `exthereum/abi`); repo history lives at `github.com/ZenHive/hieroglyph` (archived — the live checkout is `packages/hieroglyph/` in this monorepo). The module namespace is unchanged — consumers still call `ABI.encode/2`, `ABI.decode/2`, etc. Only the hex dep name differs (`{:hieroglyph, "~> 1.0"}`). Name chosen to mirror the `signet → cartouche` Egyptian-naming pattern (a cartouche literally contains hieroglyphs); the `ABI` module name was kept deliberately because Solidity's own term is the correct one — renaming it would hurt callsite discoverability. See CHANGELOG entry for 1.0.0 (2026-04-24) for the version-reset rationale.
 
 ## Upstream Divergence (reference — not a work queue)
 

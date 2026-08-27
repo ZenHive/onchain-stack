@@ -4,9 +4,9 @@ Aerodrome Finance (Base, chain id 8453) bindings, Sugar-backed reads, and pure a
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
      harness-driven — the OTP dispatch→review→land loop is the active workflow). onchain-workspace
-     is the harness workspace add-on (family roster + dependency shape), eager family-wide.
-     ethereum-rpc stays eager (host-specific node access, no skill mirror). node-portability is the
-     family law and this package is the interesting case, not the easy one — see below. Everything
+     is the harness workspace add-on (monorepo layout + sibling/3 + dependency shape), eager
+     family-wide. ethereum-rpc stays eager (host-specific node access, no skill mirror). node-portability
+     is the family law and this package is the interesting case, not the easy one — see below. Everything
      else (across-instances, worktree, task-prioritization/writing, workflow-philosophy, web-command,
      elixir-setup, ex-unit-json, dialyzer-json, code-style, development-commands/philosophy,
      agent-economy) is skill-on-demand via the elixir / task-driver / dev-lifecycle plugins.
@@ -17,20 +17,30 @@ Aerodrome Finance (Base, chain id 8453) bindings, Sugar-backed reads, and pure a
 @~/.claude/includes/ethereum-rpc.md
 @~/.claude/includes/node-portability.md
 
+See the root `CLAUDE.md` for the family layout, the sibling/3 mechanism, and
+the shared gate adjudications (reach #36, cowlib/gun, sobelow). This file
+carries only what's specific to this package.
+
 ## Toolchain & check commands (read before judging a build)
 
-Cross-family harness reviewers read **AGENTS.md** (auto-generated from this file), not the user's Claude skills. **`mix ci`** (= `mix precommit.full`) is the canonical gate — run it before judging a build green or red. It chains: `compile --warnings-as-errors`, `format --check-formatted`, `credo --strict`, `doctor --raise`, `ex_dna --max-clones 0`, `reach.check --arch --smells`, `sobelow --skip`, `deps.audit.gated`, `test.json --cover --exclude integration`, `dialyzer`, `agents.check`. `mix precommit` is the fast local loop (no dialyzer, no coverage). `mix check.dispatch` is the per-dispatch reviewer gate (static checks only) and is what this repo registers as its harness `check_command`.
+Canonical gate: **`mix ci`** (= `mix precommit.full`), same shape as every
+other package (root `CLAUDE.md` § Gates). `mix check.dispatch` is the
+per-dispatch reviewer gate (static checks only) and is what this package
+registers as its harness `check_command` reference.
 
-- `mix reach.check --arch --smells` gates from `.reach.exs` (`smells: [strict: true]`). Smell findings must be **fixed, never added to an ignore list**.
-- `deps.audit.gated` proves the local advisory mirror is fresh (`bin/advisory-freshness.sh` in the onchain-stack coordination home) before running `deps.audit --ignore-file .mix_audit_ignore` — `mix_audit` silently discards its own sync failure, so a stale mirror would otherwise report false-green.
-- `agents.check` fails when `AGENTS.md` has drifted from this file (`sync-agents-md.sh --check`).
-- **The coverage floor lives in `mix.exs` (`--cover-threshold`) — read the current value there, never from prose; it was set from a measured baseline and roadmap task 22 replaces it with a tiered per-module gate.** Per `critical-rules.md` § coverage tiers, `Analytics.*` and `Math.*` are critical-path (95% target) because they are pure and there is no excuse; read/binding layers target 80%.
-- `sobelow` is declared even though this package has **no Plug or web surface**. It is not there for security value — the `elixir` plugin's post-edit hook aborts its *entire* check stack (format, compile, credo, doctor, dialyzer) when sobelow is missing from `mix.exs`. Removing it silently disables per-edit checking. Leave it.
-
-**The `.json` mix tasks emit JSON BY DESIGN — that is expected output, never an error or a broken setup:**
-
-- **`mix test.json`** (`ex_unit_json` dep) — ExUnit results as JSON; identical run to `mix test`. Parse it for failures; the JSON envelope itself is never a failure signal. `--cover` can emit a large per-module blob — pipe to a file (`--output /tmp/cov.json`) and `jq` the summary, don't dump it to the transcript.
-- **`mix dialyzer.json`** (`dialyzer_json` dep) — dialyzer warnings as JSON. Read the array for *real* warnings; do NOT flag the JSON output as a problem. If the encoder cannot serialize a warning shape, plain `mix dialyzer` is the authoritative check.
+- **The coverage floor lives in `mix.exs` (`--cover-threshold`) — read the
+  current value there, never from prose**; it was set from a measured
+  baseline and a roadmap task (offset +5000) replaces it with a tiered
+  per-module gate. Per `critical-rules.md` § coverage tiers, `Analytics.*`
+  and `Math.*` are critical-path (95% target) because they are pure and
+  there is no excuse; read/binding layers target 80%.
+- `sobelow` is declared even though this package has **no Plug or web
+  surface**. It is not there for security value — the `elixir` plugin's
+  post-edit hook aborts its *entire* check stack (format, compile, credo,
+  doctor, dialyzer) when sobelow is missing from `mix.exs`. Removing it
+  silently disables per-edit checking. Leave it.
+- `deps.audit.gated` runs against `.mix_audit_ignore` (symlinked from the
+  root file — see root `CLAUDE.md` § Adjudicated findings).
 
 ## 🚨 Base simulation is blocked — do not write revm fork tests
 
@@ -43,7 +53,7 @@ Consequences, all of them load-bearing:
 - `onchain_evm` is still a legitimate dev/test dependency here — for `Onchain.Solidity` ABI parsing and `Onchain.Contract.Generator` codegen, **not** for simulation.
 - **Determinism comes from golden fixtures plus a pinned block number**, not from a local EVM. Capture real `eth_call` return data once, commit it, and decode against it offline.
 
-**Un-block condition:** an upstream `onchain_evm` change adding an OP-Stack/Base `spec_id` mapping, or a caller-supplied `:spec_id` option. A task for that is filed in the `onchain_evm` roadmap. When it lands, simulation-backed write tests become possible and this section should be rewritten, not deleted.
+**Un-block condition:** an upstream `onchain_evm` change adding an OP-Stack/Base `spec_id` mapping, or a caller-supplied `:spec_id` option. A task for that is filed in the root roadmap (offset +6000 for onchain_evm). When it lands, simulation-backed write tests become possible and this section should be rewritten, not deleted.
 
 ## 🚨 Sugar drift is the standing hazard
 
@@ -105,7 +115,7 @@ Layer order in `.reach.exs` matters — reach's `*` crosses name segments, so sp
 
 - All modules use the `Onchain.Aerodrome.*` namespace; the root discovery module is `OnchainAerodrome`.
 - Pure Elixir, no native deps in the runtime dependency set.
-- All dependencies resolve from hex.pm — no path or git deps, so the package is publishable as-is.
+- All dependencies resolve from hex.pm (or the monorepo's sibling/3 mechanism) — no raw path or git deps, so the package is publishable as-is.
 - Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`.
 - **Writes return calldata by default.** Signing is opt-in and requires an explicit signer; no module reads a private key from the environment on its own.
 
@@ -127,7 +137,7 @@ lib/onchain/aerodrome/
 priv/abis/                      # Sourcify-captured deployed ABIs + provenance README
 ```
 
-The remaining layers (`types/`, `bindings/`, `analytics/`, `sugar/`, `write/`) are scoped in `roadmap/tasks.toml` and not yet implemented. `.reach.exs` already declares them, so the gate is in place before the first module lands.
+The remaining layers (`types/`, `bindings/`, `analytics/`, `sugar/`, `write/`) are scoped in the root `roadmap/tasks.toml` (offset +5000) and not yet implemented. `.reach.exs` already declares them, so the gate is in place before the first module lands.
 
 ## Dependencies from onchain core
 
@@ -169,7 +179,7 @@ There is no Basescan/Etherscan API key on this host — Sourcify v2 is the ABI s
 
 ## Related Packages
 
-- **onchain** — Core Ethereum primitives: `{:onchain, "~> 0.13"}`
+- **onchain** — Core Ethereum primitives: `sibling(:onchain, "~> 0.13")`
 - **onchain_aave** — The sibling protocol wrapper this package's shape is modelled on
-- **onchain_evm** — Rust NIFs + codegen: `{:onchain_evm, "~> 0.6", only: [:dev, :test]}` (ABI parsing and codegen only — **simulation against Base is blocked**, see above)
+- **onchain_evm** — Rust NIFs + codegen: `sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])` (ABI parsing and codegen only — **simulation against Base is blocked**, see above)
 - **descripex** — Runtime API discovery (`OnchainAerodrome.describe/0..2`)

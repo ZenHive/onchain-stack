@@ -24,7 +24,9 @@ defmodule OnchainStack.MixProject do
   defp deps do
     [
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:doctor, "~> 0.22", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.15", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.12", only: [:dev, :test], runtime: false}
     ]
   end
@@ -35,7 +37,19 @@ defmodule OnchainStack.MixProject do
       # class the monorepo introduces — a Hex requirement that has rotted because
       # locally the path dep always wins. No point spending eight package gates
       # to discover it afterwards.
-      ci: ["onchain.bounds", &packages_ci/1]
+      ci: ["onchain.bounds", &packages_ci/1],
+      # Harness registers `check_command: "mix check.dispatch"` free-text, and a
+      # reviewer that runs it at the ROOT must not get a silent "task not found"
+      # or — worse — a cheap green. Fail loudly with the actual instruction:
+      # the dispatch-scale gate lives in each package.
+      "check.dispatch": [
+        fn _ ->
+          Mix.raise(
+            "check.dispatch runs per package, not at the monorepo root — " <>
+              "cd packages/<name> && mix check.dispatch for each package the task touches."
+          )
+        end
+      ]
     ]
   end
 
