@@ -3146,7 +3146,7 @@ id = 2119
 phase = 2000
 bundle = "cartouche_coverage_pushes"
 title = "Re-run the mutation-adequacy campaign once muex can report survivors"
-status = "blocked"
+status = "pending"
 target_repo = "cartouche"
 scores = { d = 5, b = 7, u = 3 }
 markers = ["security"]
@@ -3168,7 +3168,6 @@ Two open upstream defects cause that, both unfixed in 0.8.3. Oeditus/muex#23: `S
 
 `--concurrency 1` removes #23's race and `.mutation/run.sh` is pinned to it with the reasoning in its header, but #24 stays regardless of scheduling, so the campaign was stopped rather than run to a partly-invalid result. Blocked until a muex release carries #23 and #24; the first acceptance criterion is now a per-defect gate rather than #20 alone. Task 114's `no_coverage` result remains unaffected — that class is decided before any mutation is applied. Its `equivalent` result is NOT: Trivial Compiler Equivalence runs after the line-keyed application #24 breaks (`WorkerPool.run_mutation_worker/4` -> `Compiler.compile_to_source/3` -> `Tce.equivalent_source?/2`), so a #24 no-op compiles to identical bytecode and is scored `equivalent` without reaching a sandbox, and `--no-optimize` does not disable TCE. Both recorded `equivalent` counts are upper bounds; the re-run has to re-derive that class too.
 """
-blocked_reason = "muex 0.8.3 fixes survivor reporting (Oeditus/muex#20) but Oeditus/muex#23 (sandboxes share the project _build, so a mutant can be graded on unmutated code) and Oeditus/muex#24 (mutations keyed by reported line, so StatementDeletion and bare-boolean flips are never applied) are open; a 2026-08-24 campaign was run and discarded. Unblocks when a muex release carries both fixes and the per-defect gate in the first acceptance criterion passes"
 created_at = "2026-08-23"
 scored_at = "2026-08-23"
 

@@ -174,7 +174,7 @@
 | Task 2116 | ✅ | 🎁 **cartouche_signer_backends** · 🔒 Enforce the Signer.Backend contract at the boundary — payload length, curve, DER parse [D:3/B:6/U:6 → Eff:2.0] 🎯 |
 | Task 2117 | ✅ | 🎁 **cartouche_phase9_tx** · 🔒 Encode must not emit wire-non-conformant RLP — close the encode/decode conformance gap across V2/V3/V4 [D:3/B:8/U:7 → Eff:2.5] 🎯 |
 | Task 2118 | ✅ | 🎁 **cartouche_signer_backends** · 🔒 Low-s is a library-wide invariant, not a per-backend convention — close the sign_direct/4 bypass [D:3/B:7/U:7 → Eff:2.33] 🎯 |
-| Task 2119 | 🔶 | 🎁 **cartouche_coverage_pushes** · 🔒 Re-run the mutation-adequacy campaign once muex can report survivors [D:5/B:7/U:3 → Eff:1.0] 📋 ⛔ muex 0.8.3 fixes survivor reporting (Oeditus/muex#20) but Oeditus/muex#23 (sandboxes share the project _build, so a mutant can be graded on unmutated code) and Oeditus/muex#24 (mutations keyed by reported line, so StatementDeletion and bare-boolean flips are never applied) are open; a 2026-08-24 campaign was run and discarded. Unblocks when a muex release carries both fixes and the per-defect gate in the first acceptance criterion passes |
+| Task 2119 | ⬜ | 🎁 **cartouche_coverage_pushes** · 🔒 Re-run the mutation-adequacy campaign once muex can report survivors [D:5/B:7/U:3 → Eff:1.0] 📋 |
 | Task 2120 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC.create_access_list/2 — eth_createAccessList [D:3/B:7/U:6 → Eff:2.17] 🎯 |
 | Task 2121 | ✅ | 🎁 **cartouche_rpc_correctness** · Complete the Cartouche.Filter lifecycle — uninstall, getFilterLogs, and the block/pending filter kinds [D:4/B:7/U:7 → Eff:1.75] 🚀 |
 | Task 2122 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC fee reads — eth_baseFee and eth_blobBaseFee [D:2/B:6/U:5 → Eff:2.75] 🎯 |
