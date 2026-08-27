@@ -302,7 +302,7 @@ defmodule ABITest do
         ])
 
       assert {:error, {:ambiguous, matches}} = ABI.get_abi_item(abi, "pick", nil)
-      assert length(matches) == 2
+      assert [_, _] = matches
       assert Enum.all?(matches, &match?(%FunctionSelector{function: "pick"}, &1))
     end
 

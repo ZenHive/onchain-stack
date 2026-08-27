@@ -83,7 +83,7 @@ defmodule Mix.Tasks.Hieroglyph.Manifest do
   end
 
   @spec diff_hunk({:eq | :del | :ins, [String.t()]}) :: [String.t()]
-  defp diff_hunk({:eq, lines}) when length(lines) > 6 do
+  defp diff_hunk({:eq, [_, _, _, _, _, _, _ | _] = lines}) do
     prefix = Enum.map(Enum.take(lines, 3), &(" " <> &1))
     suffix = Enum.map(Enum.take(lines, -3), &(" " <> &1))
     prefix ++ [" ..."] ++ suffix
