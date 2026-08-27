@@ -1,0 +1,33 @@
+# The directory Mix will write compiled artifacts to.
+/_build/
+
+# Dialyzer PLT files (mix.exs pins plt_*_path here so PLTs survive
+# `mix clean` / _build wipes).
+/priv/plts/
+
+# If you run "mix test --cover", coverage assets end up here.
+/cover/
+
+# The directory Mix downloads your dependencies sources to.
+/deps/
+
+# Where third-party dependencies like ExDoc output generated docs.
+/doc/
+
+# Temporary files
+/tmp/
+
+# If the VM crashes, it generates a dump, let's ignore it too.
+erl_crash.dump
+
+# Also ignore archive artifacts (built via "mix archive.build").
+*.ez
+
+# Library tarball
+onchain_tempo-*.tar
+
+# Hex docs cache
+/.hex-docs/
+
+# Test failure tracking
+.mix_test_failures
