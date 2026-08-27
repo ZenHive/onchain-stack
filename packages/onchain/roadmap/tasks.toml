@@ -1,0 +1,1025 @@
+schema_version = 2
+project = "onchain"
+default_branch = "main"
+vision = "Pure Elixir Ethereum library — read + write primitives, no native deps. RPC method wrappers, ABI encode/decode, signing, token reads/writes, chain-intelligence primitives, and real-time subscriptions over Cartouche's public surface. Core of the five-package onchain family (onchain, onchain_aave, onchain_evm, onchain_js, onchain_tempo). Completed work lives in CHANGELOG.md; this file tracks the actionable pending backlog harness dispatches."
+
+# ----------------------------------------------------------------------------
+# Phases — only those carrying pending work (completed phases live in CHANGELOG)
+# ----------------------------------------------------------------------------
+
+[phases.7]
+name = "DEX Infrastructure"
+order = 7
+status = "pending"
+
+[phases.9]
+name = "Account Abstraction (ERC-4337)"
+order = 9
+status = "pending"
+
+[phases.10]
+name = "RPC Composition Layer"
+order = 10
+status = "pending"
+
+[phases.12]
+name = "Code Health"
+order = 12
+status = "pending"
+
+# ----------------------------------------------------------------------------
+# Bundles
+# ----------------------------------------------------------------------------
+
+[bundles.dex]
+phase = 7
+order = 1
+description = "On-chain DEX trading support: swap routing across liquidity pools and MEV protection."
+
+[bundles.account_abstraction]
+phase = 9
+order = 1
+description = "ERC-4337 UserOperation construction, signing, and bundler RPC."
+
+[bundles.rpc_composition]
+phase = 10
+order = 1
+description = "RPC method wrappers, observability facades, and helpers over Cartouche structs — small, batchable, no consumer blocking."
+
+[bundles.rpc_shapes]
+phase = 12
+order = 1
+description = "Unify RPC return-shape inconsistencies (decoded structs vs raw hex maps)."
+
+[bundles.rpc_codegen]
+phase = 12
+order = 2
+description = "defrpc macro + OpenRPC/Erigon spec vendoring to codegen named JSON-RPC wrappers."
+
+[bundles.ens]
+phase = 12
+order = 3
+description = "ENS resolution enhancements: CCIP-Read, ENSIP-10 wildcard, UTS-46 normalization, multi-coin."
+
+[bundles.differential_testing]
+phase = 12
+order = 4
+description = "Differential test harness comparing Onchain.RPC against reference implementations."
+
+[bundles.subscription_hardening]
+phase = 12
+order = 5
+description = "Harden Onchain.Subscription against unsolicited sub_id key growth."
+
+[bundles.erc_standards]
+phase = 12
+order = 6
+description = "ERC standard parsers/evaluators (ERC-7730 clear-signing descriptors)."
+
+[bundles.abi_decode_hardening]
+phase = 12
+order = 7
+description = "Thread hieroglyph decode options (strict mode) through the ABI/Contract/Log decode surface."
+
+[bundles.signer_backend_contract]
+phase = 12
+order = 8
+description = "Adopt cartouche 0.8.0's enforced signer-backend contracts on the transaction signing path."
+
+[bundles.node_portability]
+phase = 12
+order = 9
+description = "Make the library legible on the nodes consumers actually run — hosted, pruned, namespace-limited — rather than only on this repo's full archive node."
+
+# ============================================================================
+# Phase 7 — DEX Infrastructure
+# ============================================================================
+
+[[task]]
+id = 28
+phase = 7
+bundle = "dex"
+status = "done"
+title = "DEX swap routing (optimal path across pools)"
+scores = { d = 7, b = 8, u = 7 }
+markers = ["parallel"]
+acceptance_criteria = [
+  "Approach (a/b/c) chosen with a documented rationale in CHANGELOG + module @moduledoc",
+  "Onchain.DEX.Router returns an optimal-path result for at least Uniswap v2/v3-style pools given token in/out + amount",
+  "Unit tests cover path selection; integration test (env-gated) against a real pool set",
+  "Public functions carry Descripex api() annotations + @spec",
+]
+domains = ["dex", "rpc"]
+assignee = "claude"
+module = "Onchain.DEX.Router"
+model = "claude-opus-4-8"
+body = """
+Find optimal swap paths across DEX pools (Uniswap, Curve, Balancer). Three approaches to evaluate before committing: (a) Rust routing libs via onchain_evm, (b) Elixir with revm for local simulation of candidate routes, (c) QuickBEAM + Uniswap v3 SDK (see onchain_js Task 3). Primary consumer: ccxt_ex when it adds DEX trading. High design surface — the approach choice is the core judgment call; prototype before building out. Include tests.
+"""
+implemented = "Onchain.DEX.Router: route/5 (optimal path), quote_pool/4, amount_out_v2/4. All three scoped approaches (a Rust/onchain_evm, b revm, c QuickBEAM) rejected — each pulls a native dep onchain can't take and inverts the dep graph. Chosen: pure-Elixir analytic v2 (canonical getAmountOut) + on-chain v3 QuoterV2 quoteExactInputSingle eth_call. Pure graph path enumeration, greedy per-hop pool choice (globally optimal: output monotonic in input). No split routing (documented). api()+@spec on all public fns. test/onchain/dex/router_test.exs (24 unit + doctests), router_integration_test.exs (@tag :integration, real v2 pair + v3 QuoterV2; not run this session — RPC tunnel down)."
+delivered_by = "claude"
+verified = true
+created_at = "2026-04-23"
+started_at = "2026-06-05"
+scored_at = "2026-04-23"
+done_at = "2026-06-05"
+shipped_in = "f231c2ee3bafe1ee39b2140b08a04dcaca5e3fc7"
+
+[[task]]
+id = 29
+phase = 7
+bundle = "dex"
+status = "done"
+title = "MEV protection (private transaction submission)"
+scores = { d = 6, b = 8, u = 7 }
+markers = ["parallel"]
+acceptance_criteria = [
+  "Onchain.MEV submits a transaction (or bundle) via a Flashbots-style private endpoint, returning the protect/bundle response",
+  "Endpoint URL + auth are caller-configurable (no hardcoded RPC)",
+  "Unit tests cover request shaping + error envelopes; integration test env-gated",
+  "Public functions carry Descripex api() annotations + @spec",
+]
+domains = ["dex", "rpc"]
+assignee = "claude"
+module = "Onchain.MEV"
+model = "claude-sonnet-4-6"
+body = """
+Private transaction submission via Flashbots-style APIs to prevent front-running on DEX trades. Lower priority until DEX trading is active (gated by real Task 28 consumer pressure). Include tests.
+"""
+implemented = "lib/onchain/mev.ex — Onchain.MEV.send_private_transaction/2 + send_bundle/2 via Flashbots-style JSON-RPC (eth_sendPrivateTransaction / eth_sendBundle) over Cartouche.RPC.send_rpc; caller-supplied :endpoint (no public-node fallback) + :headers auth. Unit tests (request shaping + error envelopes) + env-gated integration test."
+delivered_by = "claude"
+verified = true
+created_at = "2026-04-23"
+scored_at = "2026-04-23"
+done_at = "2026-06-05"
+shipped_in = "986a545f9617f9c7e6cb9c39fca817ba9420e0eb"
+
+# ============================================================================
+# Phase 9 — Account Abstraction (ERC-4337)
+# ============================================================================
+
+[[task]]
+id = 69
+phase = 9
+bundle = "account_abstraction"
+status = "done"
+title = "ERC-4337 UserOperation construction, signing, and bundler RPC"
+scores = { d = 7, b = 8, u = 7 }
+markers = ["parallel"]
+acceptance_criteria = [
+  "Onchain.AA builds + signs a UserOperation for at least the v0.7 EntryPoint (v0.6 too if still relevant)",
+  "Bundler RPC wrappers: eth_sendUserOperation, eth_estimateUserOperationGas, eth_getUserOperationByHash, eth_getUserOperationReceipt, eth_supportedEntryPoints",
+  "UserOp hashing matches the EntryPoint spec (verified against a reference vector)",
+  "Unit tests for construction/signing/hashing; integration test env-gated against a real bundler; api() + @spec on public functions",
+]
+domains = ["account_abstraction", "signing", "rpc"]
+assignee = "claude"
+module = "Onchain.AA"
+model = "claude-opus-4-8"
+body = """
+Add ERC-4337 support: UserOperation construction, signing, and bundler RPC (eth_sendUserOperation, eth_estimateUserOperationGas, eth_getUserOperationByHash, eth_getUserOperationReceipt, eth_supportedEntryPoints). Cover both v0.6 and v0.7 EntryPoint shapes if both are still relevant when picked up — the wire-format differences between EntryPoint versions are the trap. Include tests.
+"""
+implemented = "Onchain.AA (lib/onchain/aa.ex) + Onchain.AA.UserOperation struct. Both EntryPoint versions: v0.6 (UserOperation) and v0.7 (PackedUserOperation — accountGasLimits/gasFees high‖low-128 packing, initCode/paymasterAndData derived from unpacked factory*/paymaster* fields). user_op_hash/4 = keccak256(abi.encode(keccak256(packed), entryPoint, chainId)) computed by primitive 32-byte-word concatenation via Cartouche.Hash.keccak — verified exact against viem reference vectors (v0.6 0xe331…fcba, v0.7 0x1903…40d). sign_user_operation/5 with :eip191 (SimpleAccount toEthSignedMessageHash) + :raw schemes, r‖s‖v(27/28). Bundler RPC via Onchain.RPC.call/3: send/estimate/getByHash/getReceipt/supportedEntryPoints; :bundler_url opt. Added :curvy to dialyzer plt_add_apps. test/onchain/aa_test.exs (31 tests) + aa_integration_test.exs (env-gated BUNDLER_RPC_URL). Dialyzer 0, credo strict 0, doctor 100%."
+delivered_by = "claude"
+verified = true
+created_at = "2026-05-07"
+started_at = "2026-06-05"
+scored_at = "2026-05-07"
+done_at = "2026-06-05"
+shipped_in = "222f3c08cb1f99f9455c1384c82681366ff317ef"
+
+# ============================================================================
+# Phase 10 — RPC Composition Layer
+# ============================================================================
+
+[[task]]
+id = 51
+phase = 10
+bundle = "rpc_composition"
+status = "done"
+title = "Onchain.RPC.batch/2 — JSON-RPC 2.0 array-batched requests"
+scores = { d = 4, b = 6, u = 5 }
+domains = ["rpc"]
+assignee = "codex"
+module = "Onchain.RPC"
+body = """
+JSON-RPC 2.0 allows array-batched requests; currently each Signet.RPC.send_rpc/3 is a separate HTTP round-trip. For indexers doing N eth_calls this is a real latency win — single round-trip over N method calls. Composition over signet's primitive transport. Include tests.
+"""
+implemented = "Onchain.RPC.batch/2 JSON-RPC array batch: one HTTP POST for [{method, params}], results in request order, {:rpc_error, map} on first item error. Uses Cartouche.RPC.get_body/3 + Finch transport. test/onchain/rpc_batch_test.exs (2 tests)."
+delivered_by = "codex+reviewer"
+verified = true
+created_at = "2026-04-23"
+started_at = "2026-06-05"
+scored_at = "2026-04-23"
+done_at = "2026-06-05"
+shipped_in = "8a7e1cde884f6992245c4fa9fcaea9bb3d965bd6"
+
+[[task]]
+id = 52
+phase = 10
+bundle = "rpc_composition"
+status = "done"
+title = "Telemetry events around Onchain.RPC request path"
+scores = { d = 3, b = 5, u = 5 }
+domains = ["rpc", "observability"]
+assignee = "codex"
+module = "Onchain.RPC"
+body = """
+Emit [:onchain, :rpc, :request] telemetry events (start/stop/exception) around the RPC request path. Zero runtime cost when no handler is attached — standard Elixir telemetry lib pattern. Lets consumers measure RPC latency / error rates without patching signet. Well-bounded, mechanical. Include tests.
+"""
+implemented = "Telemetry :telemetry.span around Onchain.RPC.do_rpc (shadows Helpers.do_rpc, wraps all RPC call sites). Salvaged from OOM'd run-1780547484818: rebased onto current dev (cartouche 0.2.2 dialyzer fix), added :telemetry as direct dep so dialyzer resolves span/3. Verified: compile --warnings-as-errors clean, 2/2 telemetry tests pass, dialyzer 0 warnings (peak 0.87 GB)."
+verified = true
+created_at = "2026-04-23"
+started_at = "2026-06-04"
+scored_at = "2026-04-23"
+done_at = "2026-06-04"
+shipped_in = "8701bb9"
+
+[[task]]
+id = 54
+phase = 10
+bundle = "rpc_composition"
+status = "done"
+title = "Opt-in retry/backoff wrapper over Signet.RPC.send_rpc/3"
+scores = { d = 4, b = 5, u = 4 }
+domains = ["rpc"]
+assignee = "codex"
+module = "Onchain.RPC"
+body = """
+Opt-in retry/backoff wrapper over Signet.RPC.send_rpc/3 with configurable policy (default: no retry — preserves current behavior). Opt-in via keyword policy; changing send_rpc default upstream would silently change every consumer, so a downstream wrapper is the correct posture per the scope principle. Include tests.
+"""
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1780623029806-ebf4f7f6, de6524918ccf21712599d900c0f3eaf7ead178ee)."
+delivered_by = "codex"
+verified = true
+created_at = "2026-04-23"
+started_at = "2026-06-05"
+scored_at = "2026-04-23"
+done_at = "2026-06-05"
+shipped_in = "de6524918ccf21712599d900c0f3eaf7ead178ee"
+
+# ============================================================================
+# Phase 12 — Code Health
+# ============================================================================
+
+[[task]]
+id = 57
+phase = 12
+bundle = "rpc_shapes"
+status = "done"
+title = "Unify get_block_* / get_transaction_* RPC return shapes"
+scores = { d = 4, b = 6, u = 6 }
+acceptance_criteria = [
+  "Both get_block_* and get_transaction_* return the same shape family (decoded structs OR raw maps — one choice, documented)",
+  "Breaking change noted in CHANGELOG with a migration snippet",
+  "Existing callers and tests updated; suite green",
+]
+domains = ["rpc"]
+assignee = "claude"
+module = "Onchain.RPC"
+model = "claude-sonnet-4-6"
+body = """
+get_transaction_by_hash/2 returns an atom-keyed struct with integers decoded; get_block_by_number/2 returns a raw string-keyed map with hex-string values. Callers must remember which returns which, and the second shape forces manual String.to_integer/2. Pick one: both decode to atom-keyed structs (Onchain.Block.t() / Onchain.Transaction.t()), or both surface raw string-keyed maps. Leaning toward decoded structs — matches the Phase 8 transfer-parser direction and the Onchain.Transfer pattern. Breaking change for get_block_by_number/2 consumers; justify with a minor-version bump and a CHANGELOG migration note.
+"""
+implemented = "RPC.get_block_by_number decodes block maps (hex→int fields, tx list) via Helpers.parse_block_response/1 + parse_transaction_map/1"
+delivered_by = "feat/task-57 branch (PR #3)"
+created_at = "2026-04-23"
+scored_at = "2026-04-23"
+done_at = "2026-06-04"
+shipped_in = "PR #3"
+
+[[task]]
+id = 63
+phase = 12
+bundle = "rpc_codegen"
+status = "done"
+title = "defrpc macro — codegen named JSON-RPC wrappers from declarative specs"
+scores = { d = 4, b = 6, u = 5 }
+acceptance_criteria = [
+  "Macro lives in Onchain.RPC (or a private helper module); NimbleOptions schema documents the public contract",
+  "Existing 11 wrappers reimplemented through it with byte-identical public behavior (returns, error shapes, descripex hints, dialyzer story unchanged)",
+  "Test suite green without changes; CHANGELOG entry explains the refactor and notes no API change",
+  "Kill the prototype if the option schema balloons past ~10 keys or 3+ wrappers need bespoke escape hatches",
+]
+domains = ["rpc", "macros"]
+assignee = "claude"
+module = "Onchain.RPC"
+model = "claude-opus-4-8"
+body = """
+The 11 existing Onchain.RPC.* wrappers follow a near-identical shape: per-arg validation + param construction + do_rpc(method, params, to_signet_opts(opts)) + an identical bang variant + a Descripex api() annotation. A defrpc macro expands a declaration like `defrpc :block_number, \"eth_blockNumber\", decode: :hex_unsigned, description: \"...\"` into the full function + bang + api() + @spec. Precedents that disprove the macros-are-scary objection: Phoenix.Router, Ecto.Schema, Absinthe.Schema — defrpc faces strictly less variance. The knob-growth failure mode is solved by NimbleOptions: the validate!/2 schema IS the macro's contract; adding a knob requires changing the schema, making drift visible. Variance to handle: per-arg validators, nested-map params, literal extra params, filter-key whitelist (eth_get_logs), :decode pass-through, descripex returns: variation. If a case doesn't fit, follow Ecto and add a sibling macro (defrpc_with_filter) rather than overloading defrpc.
+"""
+implemented = "Landed by claude via merge-train; reviewer-approved (run run-1780622112912-a0ae3c31, a4d9d64d3139f12cd6b1666461741f72927f5a5e)."
+delivered_by = "claude"
+verified = true
+created_at = "2026-04-23"
+scored_at = "2026-04-23"
+done_at = "2026-06-05"
+shipped_in = "a4d9d64d3139f12cd6b1666461741f72927f5a5e"
+
+[[task]]
+id = 64
+phase = 12
+bundle = "rpc_codegen"
+status = "done"
+title = "Vendor openrpc.json + emit Onchain.RPC.Specs lookup feeding defrpc"
+scores = { d = 4, b = 6, u = 5 }
+depends_on = [63]
+acceptance_criteria = [
+  "Vendored JSON + version pin documented in CHANGELOG",
+  "Onchain.RPC.Specs.lookup(\"eth_blockNumber\") returns the parsed spec",
+  "If Task 63 has landed, at least 3 existing wrappers reimplemented through defrpc with byte-identical behavior",
+]
+domains = ["rpc", "codegen"]
+assignee = "codex"
+module = "Onchain.RPC.Specs"
+body = """
+Vendor a pinned openrpc.json built from ethereum/execution-apis (make build resolves all $refs into one self-contained JSON) under priv/specs/openrpc-v1.0.0-betaN.json — covers 93 methods across eth_* (57), engine_* (26), debug_* (5), txpool_* (3), net_* (1), testing_* (1). Write a Mix.Task (or Onchain.RPC.SpecLoader) that parses it with Jason at compile time and emits a compile-time map %{\"eth_blockNumber\" => %{params, returns, description}, ...}. Optionally wire into Task 63's defrpc so `defrpc :block_number, \"eth_blockNumber\"` pulls params/returns/description from the spec. Refresh procedure: wget latest tagged release, diff, bump pin, re-run tests (~once per hardfork cycle).
+"""
+implemented = "Vendored priv/specs/openrpc-v1.0.0-beta.4.json (78 methods) + Onchain.RPC.Specs compile-time lookup (all/0, lookup/1). Onchain.RPC.Codegen.defrpc/2 now validates declared method names against the spec at compile time (raises on unknown). block_number/syncing/chain_id expand through the macro. priv/specs added to package files (mix.exs). specs_test.exs."
+delivered_by = "codex"
+verified = true
+created_at = "2026-04-23"
+scored_at = "2026-04-23"
+done_at = "2026-06-05"
+shipped_in = "2dfd0c6"
+
+[[task]]
+id = 66
+phase = 12
+bundle = "rpc_codegen"
+status = "done"
+title = "Tree-sitter scrape of Erigon Go source for trace_* / ots_* method enumeration"
+scores = { d = 5, b = 4, u = 3 }
+depends_on = [64]
+acceptance_criteria = [
+  "mix onchain.scrape_erigon_methods produces priv/specs/erigon-methods.json from a pinned Erigon commit",
+  "CHANGELOG documents the pinned Erigon commit",
+  "Resulting JSON is consumable by Task 63's defrpc (or hand-mapped if 63 hasn't shipped); the scrape stays a dev-only Mix.Task — runtime stays pure-Elixir",
+]
+domains = ["rpc", "codegen", "tooling"]
+assignee = "codex"
+module = "Mix.Task (dev-only)"
+body = """
+OpenRPC doesn't cover Erigon-specific namespaces (trace_* ~18 methods, ots_* ~12). Vendor a pinned commit of erigon/turbo/jsonrpc/ under priv/specs/erigon-COMMIT/; tree-sitter grammar matches function defs on *TraceAPIImpl / *OtterscanAPIImpl receivers; emit a JSON list to priv/specs/erigon-methods.json. Tree-sitter is a NIF — violates the pure-Elixir invariant, so run the scrape as a DEV-ONLY Mix.Task producing vendored JSON; runtime stays pure-Elixir reading the JSON. Only worth pursuing if (a) Task 64 ships and the OpenRPC pipeline is proven, (b) consumers actually call trace_*/ots_* enough to motivate named wrappers, (c) hand-maintenance produced >=1 staleness bug. Gated on Task 64 + actual consumer demand.
+"""
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1780652779951-776c26e2, 2b688079347143e83a93cc1cc331424dc551591d)."
+delivered_by = "codex"
+verified = true
+created_at = "2026-04-23"
+started_at = "2026-06-05"
+scored_at = "2026-04-23"
+done_at = "2026-06-05"
+shipped_in = "2b688079347143e83a93cc1cc331424dc551591d"
+
+[[task]]
+id = 41
+phase = 12
+bundle = "ens"
+status = "done"
+title = "ENS enhancements: CCIP-Read, ENSIP-10 wildcard, UTS-46/ENSIP-15 normalization, multi-coin"
+scores = { d = 6, b = 6, u = 5 }
+markers = ["parallel"]
+assignee = "claude"
+module = "Onchain.ENS"
+model = "claude-opus-4-8"
+domains = ["ens", "rpc"]
+created_at = "2026-04-19"
+started_at = "2026-06-05"
+scored_at = "2026-04-19"
+done_at = "2026-06-05"
+shipped_in = "6795b9732c83a3ba1d042717117cc94c6e523ac9"
+verified = true
+implemented = "Onchain.ENS gains normalize/1+! (UTS-46/ENSIP-15 deterministic subset via Onchain.ENS.Normalize: case-fold + NFC + ignored/disallowed code points — namehash/1 now normalizes first), dns_encode/1+! (ENSIP-10 DNS wire format), evm_coin_type/1 (ENSIP-11), and address/3+! (ENSIP-9 multi-coin) routed through a resolver engine that does ENSIP-10 wildcard discovery + extended resolve(bytes,bytes) + EIP-3668 CCIP-Read. Onchain.ENS.CCIP holds the pure EIP-3668 helpers + injectable round-trip loop. Tests: ens_normalize_test (16), ens_ccip_test (14), expanded ens_test, live address/3 integration. dialyzer 0 warnings. NOTE: ENSIP-15 confusable/script-mixing/NSM security filters intentionally out of scope (need generated data tables) — documented in Onchain.ENS.Normalize."
+delivered_by = "claude-opus-4-8"
+body = """
+Extend ENS beyond the current ETH-only addr(bytes32) resolution: CCIP-Read / EIP-3668 off-chain lookups, ENSIP-10 wildcard resolution, full UTS-46 / ENSIP-15 Unicode normalization, and multi-coin address resolution. The Unicode normalization (UTS-46/ENSIP-15) and the EIP-3668 off-chain-gateway round-trip are the spec-heavy, easy-to-get-wrong parts — research the reference implementations (ensjs, eth-ens-namehash) before asserting byte behavior. Include tests covering each new resolution path.
+"""
+acceptance_criteria = [
+  "CCIP-Read / EIP-3668 off-chain lookups resolve via the gateway round-trip (OffchainLookup revert -> gateway call -> callback)",
+  "ENSIP-10 wildcard resolution supported for subdomains under a wildcard resolver",
+  "UTS-46 / ENSIP-15 normalization applied to names before namehash (verified against reference vectors)",
+  "Multi-coin address resolution beyond ETH-only addr(bytes32); unit tests per resolution path; api() + @spec on public functions",
+]
+
+[[task]]
+id = 65
+phase = 12
+bundle = "differential_testing"
+status = "done"
+title = "Differential test harness: Onchain.RPC vs reference impl (signet first)"
+scores = { d = 6, b = 5, u = 3 }
+markers = ["parallel"]
+acceptance_criteria = [
+  "Harness runs >=10 methods against signet as oracle",
+  "Documents any divergences as either Onchain bugs (fix) or signet differences (annotate)",
+  "Gated behind env var + @tag :differential so the default suite is unaffected",
+]
+domains = ["rpc", "testing"]
+assignee = "codex"
+module = "test/onchain/differential/"
+body = """
+Unit tests don't catch protocol-level mistakes: wrong param ordering vs spec, wrong map-param nesting, wrong block-tag handling (safe/finalized/earliest), wrong response decoding for sparse fields. A differential harness runs the same RPC method against the same node via Onchain.RPC AND a reference implementation, then asserts equality. Reference candidates by cost: (1) signet itself — already in deps, pure Elixir, zero new infra, weakest oracle but cheapest, do first; (2) Web3.py via external Python; (3) viem via elixir-volt. Scope: test/onchain/differential/, @tag :differential, gated behind an env var, runs against ETHEREUM_API_URL. Pick ~10 methods covering map-param construction, block-tag variance, and decoding edge cases. Defer 65b/65c (Web3.py, viem) until signet-as-oracle finds >=1 bug.
+"""
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1780624113579-03fa4366, 5248d61451421deb3938bd7363b74cb8bba8f1dd)."
+delivered_by = "codex"
+verified = true
+created_at = "2026-04-23"
+started_at = "2026-06-05"
+scored_at = "2026-04-23"
+done_at = "2026-06-05"
+shipped_in = "5248d61451421deb3938bd7363b74cb8bba8f1dd"
+
+[[task]]
+id = 70
+phase = 12
+bundle = "subscription_hardening"
+status = "done"
+title = "Harden Onchain.Subscription.lookup_or_buffer/3 against unsolicited sub_id keys"
+scores = { d = 3, b = 4, u = 3 }
+markers = ["parallel"]
+domains = ["subscription"]
+assignee = "cursor"
+module = "Onchain.Subscription"
+body = """
+The pending map has a per-key cap of 100 but an unbounded distinct-keys count. A server emitting notifications for never-subscribed sub_ids grows the key set until the connection closes (per-connection Agent dies with the conn, so blast radius is bounded — but worth fixing). Fix: buffer only sub_ids in an in-flight subscribe state, or add a global key cap with eviction. Well-bounded hardening on an existing module. Include a test exercising the unsolicited-sub_id path.
+"""
+implemented = "Onchain.Subscription.lookup_or_buffer/3 now bounds the distinct pending sub_id key count with @max_pending_distinct_sub_ids (16): a never-before-seen sub_id is buffered only while map_size(pending) < cap, otherwise the oldest key is evicted (with a warning log) before insert. Existing keys still honor the per-key @max_pending_per_sub_id (100) cap. Tests in subscription_test.exs exercise the unsolicited-sub_id eviction path."
+delivered_by = "cursor"
+verified = true
+created_at = "2026-05-07"
+started_at = "2026-06-05"
+scored_at = "2026-05-07"
+done_at = "2026-06-05"
+shipped_in = "058fd1de83bdc71221a0f7469d3beed187c2448f"
+
+[[task]]
+id = 74
+phase = 12
+bundle = "erc_standards"
+status = "done"
+title = "ERC-7730 clear-signing descriptor parser + binding evaluator"
+scores = { d = 6, b = 7, u = 6 }
+markers = ["parallel"]
+acceptance_criteria = [
+  "Onchain.ERC7730.load/1 accepts a JSON string or Path; returns {:ok, descriptor} / {:error, {tag, reason}}",
+  "Onchain.ERC7730.format/2 takes a descriptor + {:calldata, address, chain_id, hex_data} (or {:eip712, payload}, {:user_op, ...}); returns {:ok, [%{label, value, formatted_value, raw}]} or {:error, {tag, reason}}",
+  "Fixtures: a descriptor each for ERC-20 transfer, a Uniswap V3 router call, an EIP-712 permit message",
+  "All public functions have Descripex api() annotations + @spec; unit tests for parser/binding/each formatter + one integration test against real calldata",
+]
+domains = ["abi", "erc_standards"]
+assignee = "claude"
+module = "Onchain.ERC7730"
+model = "claude-opus-4-8"
+body = """
+ERC-7730 (eips.ethereum.org/EIPS/eip-7730) standardizes a JSON descriptor that binds calldata / EIP-712 typed messages / ERC-4337 UserOps to human-readable display rules. Three pieces (pure Elixir, no native deps): (1) descriptor loader/validator — parse the JSON schema, validate structural rules; (2) binding evaluator — given {chain_id, contract_address, calldata} (or EIP-712 payload, or UserOp), resolve which descriptor applies via the binding context (chain ID, address, EIP-712 domain separator, proxy detection); (3) display rule engine — apply field formatters (token amount w/ decimals, address w/ checksum/ENS, date, enum, interpolated strings) to decoded ABI/EIP-712 fields, producing {label, value, formatted_value}. Deps already in onchain: ABI decoding, EIP-712 hashing (Cartouche), ERC-20 metadata, Address checksum, proxy detection. Registry side (fetching curated descriptors from Ledger's repo/IPFS/CDN) stays OUT — start with caller-provided descriptors. Module layout: lib/onchain/erc7730.ex (load/1, format/2, format!/2) + descriptor.ex / binding.ex / formatter.ex. First pass covers common formatters; defer rare ones (NFT URI, recursive sub-message). Survey how Ledger/Uniswap reference impls handle proxy detection before implementing.
+"""
+implemented = "Onchain.ERC7730 (load/1, format/2, format!/2) over three modules: Descriptor (parse/validate JSON into a struct, contract + eip712 contexts), Binding (resolve which display format applies via chain_id+address+selector for calldata, domain+primaryType for EIP-712, callData unwrap for UserOps), Formatter (path resolution #./@./$., coercion across calldata-binary and eip712-string sources, formatters: raw, amount, tokenAmount w/ threshold + tokenPath + RPC/opts/metadata decimals, addressName, date, duration, unit, enum). Selectors via Cartouche.Hash.keccak; named-signature decode via ABI.FunctionSelector. Three fixtures (ERC-20 transfer, Uniswap V3 SwapRouter02, EIP-712 ERC-2612 permit) under test/support/fixtures/erc7730/. 82 unit tests + 1 RPC integration test (live USDC decimals). Proxy/addressMatcher + registry fetch + includes/$ref + calldata/nftName sub-formatters deferred (documented). Verified: compile --warnings-as-errors clean, credo --strict clean, dialyzer 0 warnings, doctor 100%, coverage 84-88% per module, full offline suite 600/0."
+delivered_by = "claude"
+verified = true
+created_at = "2026-05-07"
+started_at = "2026-06-05"
+scored_at = "2026-05-07"
+done_at = "2026-06-05"
+shipped_in = "a82235d44775f0e9a925d466c03710abd0048a9f"
+
+[[task]]
+id = 75
+phase = 12
+bundle = "rpc_shapes"
+status = "done"
+title = "Stop dialyzer cold-building the PLT per harness worktree (it OOM'd the host twice)"
+scores = { d = 2, b = 3, u = 5 }
+acceptance_criteria = ["A `mix dialyzer.json` run started in a freshly-created git worktree (no priv/plts present) reuses an existing core PLT instead of rebuilding the OTP+deps PLT from cold — verified by timing/log: cold-build path is not entered when a seed PLT is reachable.", "The chosen mechanism is concurrency-safe under concurrency_cap=4: multiple simultaneous dialyzer runs across worktrees must not corrupt or race on a shared PLT file (either each worktree gets its own copy seeded read-only from a shared core, or builds are serialized — document which).", "Main-checkout `mix dialyzer.json` behavior is unchanged (still finds priv/plts).", "mix.exs dialyzer config documents WHY the path strategy changed (the harness-worktree cold-build OOM), referencing the existing OOM-mitigation comment."]
+out_of_scope = ["Not changing plt_add_deps/plt_add_apps tuning (the apps_direct mitigation stays).", "Not a harness-side change — harness's general per-run memory watchdog is tracked separately (harness task 200); this is the onchain-side targeted fix so the common case never approaches the limit.", "Not adding a CI workflow."]
+files_to_modify = ["mix.exs"]
+touches = ["mix.exs", ".gitignore"]
+domains = ["tooling"]
+assignee = "claude"
+body = """
+Root cause of the 2026-06-04 double host-OOM (kernel watchdog panic 13:10 + jetsam OOM 13:41 -> reboot 13:48): the onchain reviewer check_command ends in `mix dialyzer.json`, and the PLT path is worktree-relative (plt_core_path/plt_local_path = "priv/plts"). priv/plts is gitignored, so it is ABSENT in every fresh harness run worktree. Each dispatched run therefore cold-builds the entire core+deps PLT from zero (all of OTP plus plt_add_apps [:mix, :hieroglyph]) in one mix/dialyzer beam -> the 12-27 GB runaway process (PID 16184 in the worktree run-1780547484818-438b5f97). Proof it was killed mid-build: the worktree's deps-dev.plt was truncated at 1.84 MB (core-PLT size) vs the complete 5.43 MB in the main checkout. Oban crash-only retry re-dispatched after reboot -> a second cold build (14:02-14:09 timestamps) -> second OOM. The harness node itself was calm at 30 MB; this was entirely the spawned check_command's dialyzer.
+
+mix.exs already carries an "OOM mitigation: skip transitive deps" comment (plt_add_deps: :apps_direct) — but that only helps once a PLT exists; the cold build from zero in a throwaway worktree pays full cost every run.
+
+Fix direction (implementer picks, must satisfy the concurrency-safety AC): either (a) point plt_core_path at an absolute shared path outside the worktree so the expensive cold OTP/core PLT is built once and reused read-mostly (deps PLT can stay worktree-local), or (b) have the check seed priv/plts into the worktree by copying from a known-good shared PLT before invoking dialyzer. (a) is cheapest but needs a guard against concurrent cold-build races under concurrency_cap=4.
+
+RESOLUTION (2026-06-05) — premise was wrong; fix was upstream, not the PLT path. Measurement falsified the cold-build hypothesis: a single dialyzer run peaked at ~30 GB even with a fully cached PLT (the main checkout did too), and trimming plt_add_apps didn't lower it. The real culprit was in cartouche: `Cartouche.Assembly.compile/1` had seven fixed-arity tuple heads ({op,a}..{op,a,b,c,d,e,f,g}), each guarded by a large opcode atom-union — a 7-shape tuple_set product type whose success-typing fixpoint under compile/1's self-recursion exploded to ~30 GB peak RSS on OTP 29 (cartouche Task 103). cartouche 0.2.2 collapses those into one `def compile(op) when is_tuple(op) and tuple_size(op) >= 2` clause. Bumping onchain to `{:cartouche, "~> 0.2.2"}` drops a cold dialyzer build from ~30 GB to 0.94 GB peak RSS (measured on development, total: 0, warnings: []). No onchain-side PLT-path change, seeding, or serialization lock is needed — those were stopgaps for an irreducible-30-GB premise that turned out false. The earlier serialization-lock PR (#4, branch task-75-plt-seed) was closed unmerged.
+"""
+implemented = 'Bumped {:cartouche, "~> 0.2.2"} — the Assembly.compile/1 tuple_set fix (cartouche Task 103) drops a cold onchain dialyzer build from ~30 GB to 0.94 GB peak RSS. No onchain-side PLT-path/seeding/lock change. PR #4 (serialization stopgap) closed unmerged.'
+delivered_by = "claude (opus-4-8)"
+verified = true
+created_at = "2026-06-04"
+started_at = "2026-06-04"
+scored_at = "2026-06-04"
+done_at = "2026-06-04"
+
+[[task]]
+id = 76
+phase = 12
+bundle = "rpc_codegen"
+status = "done"
+title = "Audit-surfaced: Task 63 defrpc macro is unused — wrappers still hand-written"
+scores = { d = 4, b = 5, u = 5 }
+domains = ["rpc", "macros"]
+assignee = "codex"
+module = "Onchain.RPC"
+body = """
+Task 63's acceptance criterion #2 — "Existing 11 wrappers reimplemented through it with byte-identical public behavior" — is UNMET. `grep -rn 'defrpc' lib/` returns zero call sites outside lib/onchain/rpc/codegen.ex: every wrapper (block_number, chain_id, syncing, get_balance, get_transaction_count, get_code, eth_send_raw_transaction, and all `!` variants) is still a hand-written `def`. The `Onchain.RPC.Codegen` macro module, the `nimble_options` dep, and the `.doctor.exs` ignore entry were all added to support a macro that is never invoked — dead code.
+
+The CHANGELOG (b67f5cc/a4d9d64, "### Changed — defrpc macro codegen") claims the wrappers "now expand from declarative specs" — materially false. `roadmap/tasks.toml` task 63 carries `verified = true`, also inaccurate. The audit corrected the CHANGELOG claim in this commit; this task tracks the actual decision: either (a) wire the uniform wrappers through `defrpc`/`defrpc_bang` as the task intended, or (b) per acceptance criterion #4 ("Kill the prototype if 3+ wrappers need bespoke escape hatches"), remove the unused macro + nimble_options dep + doctor ignore.
+
+Corroborated by Claude (grep verification) + Codex. Filed by audit-review against commits b67f5cc/a4d9d64 on 2026-06-05; see .audit/b67f5cc-*.md.
+"""
+implemented = "Onchain.RPC now imports Onchain.RPC.Codegen and declares the uniform wrappers (eth_send_raw_transaction, get_balance, block_number, syncing, chain_id, get_transaction_count, eth_get_code + bangs) via defrpc/2 + defrpc_bang/2 instead of hand-written bodies; api/3, @doc, @spec stay hand-authored. rpc_codegen_test.exs asserts the macro call sites exist (catches the dead-macro regression)."
+delivered_by = "cursor"
+verified = true
+created_at = "2026-06-05"
+scored_at = "2026-06-05"
+done_at = "2026-06-05"
+shipped_in = "6390517"
+
+[[task]]
+id = 77
+phase = 12
+bundle = "erc_standards"
+status = "done"
+title = "Audit-surfaced: ERC-7730 tokenAmount renders wrong token symbol (clear-signing safety)"
+scores = { d = 4, b = 7, u = 6 }
+domains = ["erc", "security"]
+assignee = "codex"
+module = "Onchain.ERC7730.Formatter"
+body = """
+`Onchain.ERC7730.Formatter.from_metadata/2` (lib/onchain/erc7730/formatter.ex:314) ignores its `_token` argument and unconditionally returns the descriptor's `metadata.token` decimals/symbol whenever `metadata.token.decimals` is present. When a `tokenAmount` field references a different token than the descriptor's `metadata.token` (e.g. via `tokenPath`, and the token is absent from `opts[:tokens]`), the amount is rendered with the WRONG token's symbol — e.g. a DAI amount shown as "1 USDC". For a clear-signing engine whose entire purpose is showing users what they sign, displaying the wrong token is a safety-relevant correctness bug.
+
+Fix: `from_metadata` should only apply when the requested token matches `metadata.token`'s `address` (ERC-7730 `metadata.token` carries `name/ticker/decimals/address`), or only when the field has no explicit token reference (the implicit single-token case the resolution order documents). Add a guard + tests covering the explicit-token-mismatch path.
+
+Corroborated by Codex + Claude (read formatter.ex, confirmed `_token` unused). Filed by audit-review against commit a82235d on 2026-06-05; see .audit/a82235d-*.md.
+"""
+implemented = "Onchain.ERC7730.Formatter.from_metadata/2 now only applies descriptor metadata.token decimals/ticker when the metadata token address matches the tokenPath-resolved token (Address.equal?/2); a tokenAmount pointing at a different token falls back to raw rendering instead of mislabeling with the wrong symbol (clear-signing safety). Test asserts DAI amount with USDC metadata renders raw (formatter_test.exs)."
+delivered_by = "cursor"
+verified = true
+created_at = "2026-06-05"
+scored_at = "2026-06-05"
+done_at = "2026-06-05"
+shipped_in = "b54359e"
+
+[[task]]
+id = 78
+phase = 12
+bundle = "erc_standards"
+status = "done"
+title = "Audit-surfaced: ERC-7730 binding/descriptor hardening (domain match, EIP-712 type, malformed input)"
+scores = { d = 5, b = 5, u = 5 }
+domains = ["erc"]
+assignee = "codex"
+module = "Onchain.ERC7730.Binding"
+body = """
+Codex second-opinion surfaced a cluster of ERC-7730 binding/descriptor robustness gaps (Claude verified the first two against source):
+
+1. **Domain match too lax** — `Binding.match_domain/2` (binding.ex:167) skips any constrained domain key the payload omits (`not is_nil(actual_value)` guard), so a descriptor constraining `domain.name`/`verifyingContract` still matches a payload that omits that field. Decide whether a missing constrained field should be a `:domain_mismatch`.
+2. **EIP-712 format-key matching reuses ABI selector parsing** — `find_format_by_type/2` (binding.ex:198) parses the format key via `ABI.FunctionSelector.decode/1` and matches `.function`; for EIP-712 the key is the `primaryType` and types should come from the payload's `types`/`encodeType`, not an ABI signature. `types_from_selector(fs)` yields `%{}` for a bare type name, so the Formatter loses type-aware coercion on EIP-712 messages. Nested `encodeType` keys (`Mail(...)Person(...)`) return `:no_format_match`.
+3. **Duplicate format keys** — `find_format_by_selector/2` (binding.ex:184) silently picks the first of two formats sharing a selector instead of flagging the descriptor as invalid.
+4. **Descriptor parse crashes on malformed input** — Codex reports `descriptor.ex` raises (FunctionClauseError / BadMapError / Protocol.UndefinedError) instead of returning `{:error, {:invalid_field, ...}}` for `"format": 1`, `"excluded": "#.x"`, `"params": "bad"`, and loads `{:ok}` for `"deployments": []`. Verify each against descriptor.ex and add validation + tests.
+
+Corroborated: Codex (all) + Claude (items 1-2 verified in source). Filed by audit-review against commit a82235d on 2026-06-05; see .audit/a82235d-*.md.
+"""
+implemented = "Onchain.ERC7730 binding/descriptor hardening: domain constraints fail :domain_mismatch when a constrained field is missing; EIP-712 formats match by primaryType/encodeType (not ABI selector) with field types derived from payload types/descriptor schemas; duplicate calldata format selectors return {:invalid_descriptor,{:duplicate_format_selector,_}}; Descriptor returns validation errors (not crashes) for non-string format, non-list excluded, non-map params, empty deployments (binding_test.exs, descriptor_test.exs)."
+delivered_by = "cursor"
+verified = true
+created_at = "2026-06-05"
+scored_at = "2026-06-05"
+done_at = "2026-06-05"
+shipped_in = "e8b084d"
+
+[[task]]
+id = 79
+phase = 9
+bundle = "account_abstraction"
+status = "done"
+title = "Audit-surfaced: ERC-4337 to_rpc_params validation can diverge from user_op_hash"
+scores = { d = 4, b = 5, u = 5 }
+domains = ["account_abstraction"]
+assignee = "codex"
+module = "Onchain.AA"
+body = """
+`Onchain.AA` derives the v0.7 packed `initCode`/`paymasterAndData` independently in two places — the hash path (`resolve_init_code`/`resolve_paymaster_and_data` in `pack/2`) and the RPC path (`maybe_put_factory_fields`/`maybe_put_paymaster_fields` in `rpc_map/3`). They handle invalid/malformed input inconsistently:
+
+- `user_op_hash/4` rejects an invalid `factory`/`paymaster` address; `to_rpc_params/2` emits them verbatim with no validation (returns `{:ok, map}` with a malformed `"factory"`).
+- An `init_code`/`paymaster_and_data` shorter than the 20-/52-byte split is hashed verbatim by the hash path but silently dropped by the RPC path (the `<<bin::binary-size(20), …>>` match fails → fields omitted), so the signed hash and the bundler payload can commit to different data.
+
+Valid inputs agree (verified by the reference-vector + derivation-equivalence tests); the divergence is on malformed/invalid input. Extract one shared validator/derivation used by both paths so `to_rpc_params` and `user_op_hash` cannot disagree, and validate factory/paymaster addresses in `to_rpc_params`. Add tests for the mismatch cases.
+
+Codex-flagged; Claude verified the inconsistency in aa.ex. Filed by audit-review against commits 3e58c57/222f3c0 on 2026-06-05; see .audit/3e58c57-*.md.
+"""
+implemented = "Onchain.AA v0.7 to_rpc_params and pack now single-source factory/paymaster fields through derive_v0_7_fields/1, so RPC params can no longer diverge from the hashed PackedUserOperation. Malformed factory/paymaster addresses and short init_code/paymaster_and_data surface identical {:invalid_*} errors from both user_op_hash and to_rpc_params (aa_test.exs)."
+delivered_by = "cursor"
+verified = true
+created_at = "2026-06-05"
+scored_at = "2026-06-05"
+done_at = "2026-06-05"
+shipped_in = "7a87ad0"
+
+[[task]]
+id = 80
+phase = 7
+bundle = "dex"
+status = "done"
+title = "Audit-surfaced: Onchain.MEV accepts block tags where a concrete block is required"
+assignee = "cursor"
+scores = { d = 3, b = 4, u = 4 }
+domains = ["dex", "rpc"]
+module = "Onchain.MEV"
+body = """
+`Onchain.MEV` validates `max_block_number` (send_private_transaction) and `block_number` (send_bundle) through `Onchain.RPC.Helpers.normalize_block/1`, which permits block TAGS (`"latest"`, `"pending"`, `"finalized"`, …). Flashbots `eth_sendBundle` `blockNumber` and `eth_sendPrivateTransaction` `maxBlockNumber` require a concrete hex block-number quantity; passing `block_number: "latest"` shapes an invalid `"blockNumber": "latest"` the relay rejects, rather than failing fast with a clear error.
+
+Add a stricter `normalize_block_number/1` (integer or 0x-hex quantity only; reject tags) for these fields and route MEV through it; keep `normalize_block/1` for tag-accepting call sites. Add tests asserting tags are rejected.
+
+Codex-flagged; Claude concurs (normalize_block accepts tags by design). Filed by audit-review against commit 986a545 on 2026-06-05; see .audit/986a545-*.md.
+"""
+implemented = "Onchain.RPC.Helpers.normalize_block_number/1 added (non-neg integer→hex or valid 0x-hex quantity; rejects block tags). Onchain.MEV.build_bundle_params and normalize_optional_block now route blockNumber/maxBlockNumber through it instead of tag-accepting normalize_block/1 (still used by tag call sites). Tests assert tags rejected (mev_test.exs, rpc/helpers_test.exs)."
+delivered_by = "cursor"
+verified = true
+created_at = "2026-06-05"
+scored_at = "2026-06-05"
+started_at = "2026-06-05"
+done_at = "2026-06-05"
+shipped_in = "5fce6fcd44844e77892cb7f3db226f89acb145fd"
+
+[[task]]
+id = 81
+phase = 10
+bundle = "rpc_composition"
+status = "done"
+title = "Audit-surfaced: RPC batch + block decode crash on malformed node responses"
+assignee = "cursor"
+scores = { d = 2, b = 3, u = 4 }
+domains = ["rpc"]
+module = "Onchain.RPC"
+body = """
+Two defensive-coding gaps where a non-spec node response raises instead of returning an error tuple (compliant nodes never trigger these; a buggy/hostile node can):
+
+1. **batch** — `Onchain.RPC.decode_batch_responses/2` runs `Map.new(responses, &{&1["id"], &1})` before the graceful `other`/`nil` handling in `collect_batch_results/1`. A 200-body array containing a non-map element (e.g. `[1]`) raises on `1["id"]`. Guard `Map.new` to map items only so the existing "missing/unexpected batch item" error path is reachable.
+2. **block decode** — `Onchain.RPC.Helpers.parse_block_transactions/1` and `parse_withdrawals/1` raise `FunctionClauseError` on a non-binary/non-map list member (`"transactions": [123]`); `parse_block_response` decodes an invalid hex `"number"` (`"0xZZ"`) to `nil`, masking it as a pending-like block. Add catch-all handling / surface a decode error.
+
+Codex-flagged (3 items); Claude verified items 1-2 in source. Low severity (malformed-input only). Filed by audit-review against commits 3c39dd1/b3cc9b0 on 2026-06-05; see the corresponding .audit reports.
+"""
+implemented = "Two malformed-node-response guards. (1) Onchain.RPC.decode_batch_responses/2 filters non-map items before Map.new, restoring the graceful missing/unexpected-batch-item error path (rpc_batch_test.exs). (2) Onchain.RPC.Helpers.parse_block_response/1 now returns {:ok,_}|{:error,_}; parse_block_transactions/parse_withdrawals catch-all on non-binary/non-map members; invalid hex \"number\" surfaces a decode error instead of nil-masking as pending; decode_get_block_result threads the error tuple (helpers_test.exs)."
+delivered_by = "cursor"
+verified = true
+created_at = "2026-06-05"
+scored_at = "2026-06-05"
+started_at = "2026-06-05"
+done_at = "2026-06-05"
+shipped_in = "1a316e3c4e5eb64cae751de55adbfd2990549998"
+
+[[task]]
+id = 82
+phase = 10
+bundle = "rpc_composition"
+status = "done"
+title = "Add eth_estimateGas RPC helper + auto-estimate gas in send_transaction"
+scores = { d = 3, b = 5, u = 6 }
+acceptance_criteria = ["An eth_estimateGas RPC wrapper exists and returns {:ok, gas} for a transaction-params map (to/from/data/value)", "Signer.send_transaction auto-estimates gas (with a headroom multiplier) when :gas_limit is omitted", "An explicit :gas_limit is still honored unchanged (no estimation call)", "Integration test against a live node confirms a cold TIP-20 transfer is sized correctly and does not OOG-revert"]
+out_of_scope = ["Changing the onchain_tempo Builder default (tracked in onchain_tempo's roadmap)", "Per-chain gas-price oracle / EIP-1559 fee estimation (this task is gas LIMIT estimation only)"]
+body = """
+Onchain exposes no `eth_estimateGas`. Every caller that builds a transaction — `Onchain.ERC20.transfer`, `Onchain.Signer.send_transaction`, and the downstream `onchain_tempo` Builder — must hardcode `:gas_limit`. Those constants go silently stale when on-chain gas accounting shifts: Moderato now charges a TIP-20 protocol fee (a Transfer to the `0xfeec…` collector) that pushed a cold-storage TIP-20 transfer from the old ~272k estimate to a measured ~560k, OOG-reverting at the hardcoded 400k/500k ceilings (`gas_used == gas_limit` exactly). The reference MPP SDKs (mppx) size every transaction via `eth_estimateGas` instead of a constant — see refs/mppx Session.ts / Charge.ts.
+
+Add an `eth_estimateGas` wrapper at the RPC layer returning `{:ok, gas}` for a tx-params map. Then have `Signer.send_transaction` auto-estimate (apply a safety headroom multiplier, e.g. 1.25×) when `:gas_limit` is omitted, while still honoring an explicit `:gas_limit`. This is the foundational capability the onchain_tempo Builder will consume to stop hardcoding its own default.
+"""
+implemented = "eth_estimate_gas/2 + bang wrapper in Onchain.RPC; Signer.send_transaction auto-estimates gas (1.25x headroom) when :gas_limit omitted, honors explicit limit verbatim. Unit + integration tests; Signer 97% / RPC 88% coverage."
+delivered_by = "claude-opus-4-8"
+verified = true
+created_at = "2026-06-24"
+scored_at = "2026-06-24"
+done_at = "2026-06-24"
+
+[[task]]
+id = 83
+phase = 12
+bundle = "rpc_composition"
+status = "done"
+title = "Migrate HTTP transport off cartouche's removed Finch seams (cartouche 0.5.0)"
+scores = { d = 4, b = 8, u = 8 }
+acceptance_criteria = ["mix.exs requires cartouche ~> 0.5 and the suite compiles", "Onchain.RPC and Onchain.ENS no longer read :cartouche, :client / :finch_name and no longer dispatch against CartoucheFinch", "No call to the removed Cartouche.HTTP.normalize_finch_result/1 remains (use the surviving normalize_response/1) — onchain compiles clean against cartouche 0.5.0", "A live-node integration RPC call succeeds (no missing-pool crash)", "onchain exposes its own transport-stub seam; the 6 listed test files stub via that seam and pass", "Full offline suite green; dialyzer 0 warnings (drop the now-moot @dialyzer nowarn_function Finch suppressions in rpc.ex/ens.ex)"]
+out_of_scope = ["onchain_tempo's builder_estimate_test.exs :cartouche,:client stub — tracked in onchain_tempo's own roadmap, depends on this task shipping first", "Any change to cartouche itself (already shipped in 0.5.0)"]
+domains = ["rpc"]
+assignee = "cursor"
+module = "Onchain.RPC"
+model = "composer-2.5"
+body = """
+cartouche 0.5.0 swaps its HTTP transport from Finch to Req and, as part of that, **stops starting the `CartoucheFinch` connection pool** and removes the `config :cartouche, :client | :finch_name | :start_finch` seams. onchain has no Finch supervision of its own — `Onchain.RPC` (lib/onchain/rpc.ex, the `Finch.build/4` + `client.request(.., finch_name, ..)` path around the batch/single-request helper) and `Onchain.ENS` (lib/onchain/ens.ex, same pattern) both read `Application.get_env(:cartouche, :client, Finch)` / `Application.get_env(:cartouche, :finch_name, CartoucheFinch)` and dispatch against the now-unstarted `CartoucheFinch` pool. After the cartouche bump every onchain RPC and ENS call **raises at runtime** (no such pool).
+
+Migrate onchain's transport off the removed seams. Preferred: move `Onchain.RPC` and `Onchain.ENS` to Req, mirroring `Cartouche.RPC.send_rpc/3`'s new approach (`Req.request/1` + the `Cartouche.HTTP.req_options/3`-style precedence merge, transport-error mapping). Alternatively, start and supervise onchain's own Finch pool from an `Onchain.Application` and stop reading cartouche's config. Either way, define onchain's own transport-override seam (a `config :onchain, :req_options` or per-module key) so consumers and tests stop depending on `:cartouche, :client`.
+
+Bump `{:cartouche, "~> 0.5"}` in mix.exs. Update the test files that stub the old `:cartouche, :client` seam to onchain's new mechanism (Req.Test / function plug if Req, or the new onchain seam): onchain/test/onchain/signer_gas_estimate_test.exs, rpc_batch_test.exs, rpc_revert_test.exs, rpc_retry_test.exs, rpc_telemetry_test.exs, rpc_estimate_gas_test.exs.
+
+REFINED SCOPE (2026-06-24, after reading cartouche 0.5.0 + onchain source) — three corrections to the above:
+
+1. Production blast radius is exactly TWO functions, not "all RPC/ENS calls". The single-call path (`do_rpc` -> `Onchain.RPC.Helpers.do_rpc/3`, helpers.ex:29) ALREADY delegates to `Cartouche.RPC.send_rpc/3`, which is Req-based in 0.5.0 — single calls are production-safe after the bump with no code change. Only these drive Finch directly and must be rewritten to Req: `Onchain.RPC.send_batch_request/2` (rpc.ex:1033-1047, the JSON-RPC array-batch POST) and `Onchain.ENS.gateway_http/4` (ens.ex:783-803, the CCIP-read gateway).
+
+2. Extra HARD COMPILE break, independent of the runtime-pool issue: both functions call `Cartouche.HTTP.normalize_finch_result/1`, but cartouche 0.5.0's `Cartouche.HTTP` exposes only `normalize_response/1` + `req_options/3` — `normalize_finch_result/1` is GONE. onchain will fail to compile on bump until both callsites move to `normalize_response/1` (or onchain's own normalizer). Also drop the two `@dialyzer {:nowarn_function, ...}` Finch suppressions (rpc.ex:1032, ens.ex:780).
+
+3. The test-seam break is BROADER than the 2-function lib change. All 6 test files stub via a Finch-shaped StubClient + `Application.put_env(:cartouche, :client, ...)`. After the bump cartouche's `send_rpc` no longer reads `:cartouche, :client`, so even the SINGLE-CALL tests (rpc_revert, rpc_retry, rpc_estimate_gas, rpc_telemetry, signer_gas_estimate) break via a dead stub seam despite their production path being unchanged. All 6 migrate regardless of which lib path they exercise.
+
+Concrete impl: add `Onchain.HTTP.req_options/3` mirroring `Cartouche.HTTP.req_options/3` (merge base <- `config :onchain, <owner>` <- `config :onchain, :req_options` <- per-call `:req_options`); reuse the still-public `Cartouche.HTTP.normalize_response/1`. Rewrite the 2 functions to `Req.request/1` (`method: :post, decode_body: false, retry: false`). Migrate the 6 tests to the Req.Test plug seam — copy cartouche's proven pattern verbatim from cartouche/test/filter_test.exs:16,38,136 and sleuth_test.exs: a plug fn doing `conn |> Req.Test.raw_body() |> Jason.decode!()` then `Req.Test.json(conn, resp)`, injected via `req_options: [plug: &StubClient.call/1]`.
+"""
+implemented = "Bumped cartouche ~> 0.5. Rewrote Onchain.RPC.send_batch_request/2 + Onchain.ENS.gateway_http/4 to Req.request/1 (decode_body: false, retry: false) via new Onchain.HTTP.req_options/3 (:onchain transport seam) + Cartouche.HTTP.normalize_response/1. Dropped @default_finch_name, :cartouche,:client/:finch_name reads, normalize_finch_result calls, and the Finch @dialyzer nowarn suppressions. Migrated 6 stub tests to Req.Test plugs via owner-config seams; added {:plug, only: [:dev,:test]}. Offline 808 pass, RPC integration 30/30, dialyzer 0."
+delivered_by = "claude-opus-4-8"
+verified = true
+created_at = "2026-06-24"
+scored_at = "2026-06-24"
+done_at = "2026-06-24"
+
+[[task]]
+id = 84
+phase = 12
+bundle = "differential_testing"
+status = "pending"
+title = "Mutation-grade RPC construction and DEX math invariants"
+scores = { d = 6, b = 9, u = 7 }
+markers = ["security"]
+acceptance_criteria = ["RPC properties and the existing differential suite pin parameter ordering/nesting, block tags, hex decoding and sparse response semantics against a live node plus provider-owned JSON-RPC specifications", "DEX properties pin integer rounding, fee application, path monotonicity, minimum-output/slippage behavior and quote semantics against official protocol formulas or deployed calls at the same block", "A reproducible mutation campaign changes RPC construction/decoding and DEX arithmetic/boundaries; every survivor is classified with evidence", "Wrong RPC parameter order and wrong DEX rounding/slippage canaries are detected and make the verification run fail", "A ledger records authorities, live block/evidence, configurations, mutations and survivor review; touched critical modules remain at least 95% covered and mix ci passes"]
+touches = ["lib/onchain/rpc.ex", "lib/onchain/rpc/", "lib/onchain/dex/", "test/onchain/rpc", "test/onchain/differential/", "test/onchain/dex/"]
+assignee = "codex"
+model = "gpt-5.6-sol"
+body = """
+Extend the existing RPC differential evidence and DEX tests with property and mutation adequacy. The live node plus provider-owned RPC/protocol contracts define semantics; Cartouche or self-built fixtures alone are not independent authorities. Challenge both wire construction and money-sensitive integer math with deliberate faults while preserving current public behavior.
+"""
+created_at = "2026-08-17"
+scored_at = "2026-08-17"
+
+[[task]]
+id = 85
+phase = 12
+bundle = "rpc_composition"
+status = "done"
+title = "Onchain.RPC block-level reads — receipts, transaction counts, transactions by index, and the block access list"
+scores = { d = 4, b = 7, u = 6 }
+markers = ["parallel"]
+acceptance_criteria = ["All six methods are exposed on Onchain.RPC through the existing codegen/specs path, with the api/3 declarations and bang variants the module's conventions require", "get_block_receipts returns the same receipt representation as get_transaction_receipt, proven by a live test that fetches one block's receipts in bulk and asserts a specific transaction's receipt is byte-identical to the one returned by the single-receipt call for the same hash", "The two transaction-count methods and the two by-index methods are pinned by live tests against a known mainnet block, asserting concrete counts and a specific transaction hash at a specific index, not merely shape", "A by-index call with an out-of-range index pins the node's actual observed response", "eth_getBlockAccessList is verified against the live node and its real response shape is pinned; if the node does not implement it the test flunks naming the method and the node's error rather than skipping", "Any Onchain.Block convenience added on top of these reads is documented in the module's moduledoc table", "mix ci passes"]
+out_of_scope = ["eth_createAccessList — call simulation, filed against cartouche", "A block-indexing or caching layer", "Changing the existing get_block_by_number/get_block_by_hash surface"]
+files_to_modify = ["lib/onchain/rpc.ex", "lib/onchain/block.ex"]
+assignee = "codex"
+model = "gpt-5.6-sol"
+body = """
+A completeness sweep of the whole stack against `ethereum/execution-apis` found six block-level reads that neither cartouche nor onchain implements. They form one surface — every one of them answers a question about a block — and onchain is the layer that owns block reads (`Onchain.Block`, `Onchain.RPC.get_block_by_number/2`), so they belong here rather than in the substrate.
+
+- `eth_getBlockReceipts` returns every receipt in a block in one call. Today a caller fetches the block and then issues one `eth_getTransactionReceipt` per transaction, which for a full block is a few hundred round trips where one would do. This is the highest-value entry of the six.
+- `eth_getBlockTransactionCountByHash` and `eth_getBlockTransactionCountByNumber` return a transaction count without transferring the block body.
+- `eth_getTransactionByBlockHashAndIndex` and `eth_getTransactionByBlockNumberAndIndex` fetch a single transaction positionally, without the surrounding block.
+- `eth_getBlockAccessList` returns the EIP-7928 block access list. This is a block read and unrelated to `eth_createAccessList`, which is a call-simulation method filed against cartouche; do not conflate the two.
+
+All six are present in the vendored `priv/specs/openrpc-v1.0.0-beta.4.json`, so they should go through the existing `Onchain.RPC.Codegen` / `Onchain.RPC.Specs` path like their neighbours rather than being hand-rolled. Reuse the receipt and transaction deserializers the module already has; `eth_getBlockReceipts` in particular must produce the same receipt representation as `eth_getTransactionReceipt` so the two are interchangeable to a caller.
+
+`eth_getBlockAccessList` is recent and client support is uneven — verify against the live node what it actually returns before pinning a shape, and record the observation.
+"""
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1787623789150-bfda45c6, fce343cefaa9eada19900ef931056ff0bfe9376a)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1787623789150-bfda45c6"
+created_at = "2026-08-23"
+started_at = "2026-08-25"
+scored_at = "2026-08-23"
+done_at = "2026-08-25"
+shipped_in = "fce343cefaa9eada19900ef931056ff0bfe9376a"
+
+[[task]]
+id = 86
+phase = 12
+bundle = "rpc_composition"
+status = "pending"
+title = "Onchain.RPC.get_storage_values — eth_getStorageValues batched multi-account slot reads"
+scores = { d = 3, b = 6, u = 5 }
+markers = ["parallel"]
+acceptance_criteria = ["The wrapper is portable or explicitly marked node-privileged: a hosted endpoint's refusal of eth_getStorageValues is pinned by a test, and the task either builds the batched read on a method consumers can actually call or documents in the moduledoc and CHANGELOG that this read requires a node serving it, naming the observed hosted-provider error. Shipping a wrapper that only works on this repo's node without saying so is a failure of this criterion", "Onchain.RPC.get_storage_values is exposed through the existing codegen/specs path with the api/3 declaration and bang variant the module's conventions require", "A live test reads several slots across at least two mainnet contracts at a pinned block and asserts each returned value equals what get_storage_at returns for the same account and slot, proving the batched and single-slot routes agree", "The representation of a never-written slot is established against the live node and pinned by a test", "A request naming an account with no code pins the node's actual observed response", "If the node does not implement the method the test flunks naming the method and the node's error rather than skipping", "mix ci passes"]
+out_of_scope = ["EIP-1967 proxy-slot helpers or any storage-layout decoding built on top of this read", "Changing eth_getStorageAt", "eth_getProof"]
+files_to_modify = ["lib/onchain/rpc.ex"]
+assignee = "grok"
+model = "grok-4.6"
+body = """
+onchain implements `eth_getStorageAt`, which reads one slot of one account per call. `eth_getStorageValues` reads many slots across many accounts in a single request, and is absent from the whole stack.
+
+The natural consumers already exist here: proxy-implementation detection reads EIP-1967 slots, and any multi-slot storage layout read (a packed struct, a mapping bucket) currently costs one round trip per slot. A caller reading five slots from three contracts issues fifteen requests today.
+
+The method is present in the vendored `priv/specs/openrpc-v1.0.0-beta.4.json`, so it should go through the existing `Onchain.RPC.Codegen` / `Onchain.RPC.Specs` path rather than being hand-rolled. It is a recent spec addition and client support is uneven — establish what the live node actually returns, including how it represents a slot that has never been written, before pinning a shape.
+
+Keep `eth_getStorageAt` as it is; this is an addition beside it, not a replacement, and the two must agree slot-for-slot.
+
+Portability finding (2026-08-25, orchestrator QA pass — read this before choosing the construction). This task's premise that spec presence implies availability does not hold. `eth_getStorageValues` IS in the vendored `openrpc-v1.0.0-beta.4.json`, and it is still refused by the endpoint most consumers use:
+
+- Alchemy mainnet -> `-32600` `"Unsupported method: eth_getStorageValues on ETH_MAINNET"` (an `eth_blockNumber` sanity call on the same URL in the same session succeeded, so this is a method refusal, not transport)
+- our reth archive node -> `-32602` `"Invalid params"` for the `[account, [slot], block]` shape, i.e. it knows the method but takes a different signature — establish the real signature against the node before pinning anything
+
+So OpenRPC membership satisfies rule 1 of `node-portability.md` and buys nothing for rule 2. This is the same trap `base_fee/1` already sidestepped by reading `baseFeePerGas` from the pending block header instead of calling Erigon's `eth_baseFee`, and the same one `eth_getBlockAccessList` walked into when task 85 landed a wrapper Alchemy will not serve.
+
+The portable construction exists and should be preferred: `eth_getStorageAt` is universally served, and many slots across many accounts can be read in one round trip via a JSON-RPC batch or via `Onchain.Multicall`, which is what the "fifteen requests today" motivation in this body actually needs. Treat `eth_getStorageValues` as an optional fast path behind a capability check rather than the primary route — and note that task 91 (typed refusals) and task 92 (`eth_capabilities`) in this same bundle are the machinery for that check.
+"""
+created_at = "2026-08-23"
+scored_at = "2026-08-23"
+
+[[task]]
+id = 87
+phase = 12
+bundle = "differential_testing"
+status = "pending"
+title = "Mutation-adequacy campaign over the signing, key and address surface"
+scores = { d = 5, b = 8, u = 3 }
+markers = ["security"]
+acceptance_criteria = ["The Oeditus/muex#20 reproduction reports survived=2 and a 0% score on the installed muex version, recorded with that version alongside the campaign result. No survivor triage is started until this passes", "A single-invocation campaign covers lib/onchain/signer.ex, private_key.ex, address.ex, hex.ex and abi.ex with all 18 mutators, no filtering and no sampling, from a reproducible script committed under .mutation/", "Every survivor is dispositioned in writing as one of: killed by a new test added in this task, provably equivalent with the argument, or an accepted gap with the reason. None is left unclassified", "Every no_coverage result is dispositioned too: either a new test reaches the line, or the line is justified in writing as unreachable from the public surface", "A ledger under docs/ records muex version, mutator set, per-module counts and each disposition", "mix ci passes and the touched modules stay at or above their current coverage"]
+out_of_scope = ["RPC construction, DEX arithmetic and the live-node differential evidence. Task 84 owns those", "Adopting muex as a mix ci gate. This stays an on-demand measurement plus the tests it produces", "Patching muex under deps/ to work around #20. A measurement produced by a hand-patched tool is not a durable verification record", "The subscription, ENS, ERC-7730 and account-abstraction surfaces"]
+cross_repo = [{ repo = "cartouche", task_id = 119, relation = "related" }]
+assignee = "human"
+body = """
+Task 84 puts RPC construction and DEX arithmetic under mutation. It does not touch the other money-critical surface in this library, and nothing else does either: lib/onchain/signer.ex (416 lines), private_key.ex, address.ex, hex.ex and abi.ex are local implementations, not thin wrappers - grep reports zero defdelegate in signer.ex, private_key.ex and address.ex - so cartouche campaign over its own signing modules does not reach them. This task covers that gap.
+
+Why this surface specifically: a signing fault is silent. A wrong recovery bit, a mis-derived address, a hex encoder that drops a leading zero - each produces well-formed output that a round-trip test accepts and only a counterparty rejects. Cartouche campaign on the equivalent surface found exactly that shape: V3.sign/1, the default-signer route, had no test reaching it at all. The coverage class exposed it; a mutation score never would have.
+
+Blocked on the tool, not on the work. muex 0.8.2 cannot report a surviving mutant on Elixir 1.20: Muex.TestRunner.Port.count_failures/2 matches the pre-1.20 ExUnit summary wording (N tests, M failures), while 1.20 prints Result: N passed / Failed: N test. The regex misses, the fallback returns 1 failure, and the only path to :survived is unreachable - every survivor comes back killed and a suite that asserts nothing scores 100%. Filed as Oeditus/muex#20 (2026-08-23) with a four-file reproduction and a patch; upstream acknowledged it the same morning. Verified against cartouche task 114, which hit this and could not produce its central deliverable. Do not start the survivor half until an installed release passes the reproduction.
+
+Note what is NOT blocked, because it is the half that already paid off elsewhere. The no_coverage and equivalent classes are decided before or without running a test - no_coverage from the coverage index in select_tests/2, equivalent by Trivial Compiler Equivalence bytecode comparison - so the defect does not touch them, and in cartouche they produced the campaign single most useful finding. If the upstream fix stalls, a coverage-class-only pass over this surface is still worth running, and the ledger must then say plainly that the survivor axis was not measured.
+
+Add the dep in the same change (only: [:dev, :test], runtime: false, matching cartouche) at whatever release carries the #20 fix. Do not pin 0.8.2.
+
+Copy the campaign mechanics rather than re-deriving them: ~/_DATA/code/cartouche/.mutation/run.sh runs ONE invocation over the whole surface with all 18 mutators and --no-filter --no-optimize --coverage-guided. Per-module invocations are not equivalent in cost - muex rebuilds its coverage line index by running the suite once per test file, serially, with no cache, so N invocations pay that N times over. In cartouche that is what exhausted a harness run lifetime budget.
+
+Routing is left open on purpose. The surface is a dispatch trigger and the tool now works, so this is genuinely dispatchable - but rmap freezes assignee at creation, and nobody has yet measured what a campaign over this surface costs in wall-clock or in survivor-triage judgement. Decide the routing when the campaign is actually scheduled, not here.
+
+Confirmed 2026-08-24 on muex 0.8.3 (released the same day; Oeditus/muex#20 closed 09:42Z): the four-file reproduction reports survived=2 and a 0.0% score on Elixir 1.20.2 / OTP 29, and the converse check - the same two mutants against a value-asserting test - reports killed=2 and 100%, so the tool is not simply calling everything survived now. Re-run the reproduction against whatever version is installed when the campaign actually starts; this note records that a working release exists, not that the installed one is it.
+"""
+created_at = "2026-08-23"
+scored_at = "2026-08-23"
+
+[[task]]
+id = 88
+phase = 12
+bundle = "abi_decode_hardening"
+status = "done"
+title = "Expose hieroglyph's strict decode mode through the Onchain.ABI, Contract and Log decode surface"
+scores = { d = 4, b = 7, u = 6 }
+markers = ["security"]
+acceptance_criteria = ["Onchain.ABI.decode_response, decode_types, decode_error and their bang variants accept an optional trailing keyword list forwarded to hieroglyph; existing arity call sites compile and behave unchanged", "Onchain.Contract.call and Onchain.Log.decode_event accept and forward decode options the same way", "With strict: true, each violation class hieroglyph documents — non-zero high padding on bool/uint/int, trailing bytes after the declared payload, length prefix exceeding available data — surfaces as a tagged error tuple consistent with each module's documented error table, asserted by unit tests with hand-built non-canonical payloads", "Default behavior without opts is byte-identical to today, demonstrated by the existing suites passing unmodified", "api() blocks and moduledoc error tables document the option", "mix ci passes"]
+out_of_scope = ["Making strict decoding a default anywhere — defaults stay permissive", "onchain_aave's adoption of strict decoding — its own roadmap tracks that", "New strict semantics beyond what hieroglyph implements"]
+touches = ["lib/onchain/abi.ex", "lib/onchain/contract.ex", "lib/onchain/log.ex", "test/onchain/abi_test.exs", "test/onchain/contract_test.exs", "test/onchain/log_test.exs", "CHANGELOG.md"]
+cross_repo = [{ repo = "onchain_aave", task_id = 65, relation = "related" }]
+assignee = "grok"
+model = "grok-4.6"
+body = """
+hieroglyph has shipped a strict decode mode since 1.5.0: `strict: true` rejects non-canonical ABI payloads — non-zero high padding on bool/uint/int, trailing bytes after the declared payload, string/bytes length prefixes exceeding the available data — as `{:error, {:strict_violation, detail}}` from ABI.decode/3, ABI.decode_call/3, ABI.decode_event/4 and ABI.decode_error/3. Through this library's wrappers the mode is unreachable except via decode_call: Onchain.ABI.decode_response/2 and decode_error/2 take no options and call hieroglyph without any, and Onchain.Contract.call and Onchain.Log.decode_event give the caller no way to pass options either (verified by reading lib/onchain/abi.ex and lib/onchain/log.ex, 2026-08-25; decode_call/3 already forwards opts).
+
+This is a published package whose consumers decode bytes they do not control: responses from whatever RPC endpoint they configure, revert blobs, third-party calldata, and event logs. Thread an optional trailing options keyword through the decode surface as additive arities, forwarding to hieroglyph unchanged. Strict violations surface as tagged tuples consistent with each module's documented error table; bang variants raise. Nothing about the permissive default may change.
+
+Dispatch trigger: public API change on the family's core package, on the decode path every money-handling consumer sits on.
+"""
+implemented = "Landed by grok via merge-train; reviewer-approved (run run-1787623766261-0173b997, 3d7513524dd57489eeb3064c119612fe5bcb0277)."
+delivered_by = "grok"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1787623766261-0173b997"
+created_at = "2026-08-25"
+started_at = "2026-08-25"
+scored_at = "2026-08-25"
+done_at = "2026-08-25"
+shipped_in = "3d7513524dd57489eeb3064c119612fe5bcb0277"
+
+[[task]]
+id = 89
+phase = 12
+bundle = "signer_backend_contract"
+status = "pending"
+title = "Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA"
+scores = { d = 3, b = 7, u = 6 }
+markers = ["security"]
+acceptance_criteria = ["mix.lock resolves cartouche 0.8.0", "sign_transaction/3 dispatches through a {Cartouche.Signer.Curvy, key_bin} carrier rather than {Curvy, :sign, [key_bin]} plus sign_direct/4", "The existing signer tests still recover the expected signer address from the signed V2, demonstrating the signed digest did not change", "A unit test substituting a backend whose algorithm/1 reports :ed25519 fails with a tagged error and produces no signature", "Onchain.AA.sign_user_operation stays on sign_digest/2 and its :raw and :eip191 suites pass unchanged", "mix ci passes"]
+out_of_scope = ["CloudKMS, AWS KMS or any non-Curvy backend as a supported Onchain.Signer option", "Changing Onchain.AA's digest scheme, or rescuing FunctionClauseError on a short digest — no public path can feed one", "Cartouche.Transaction.V4 and EIP-7702", "hieroglyph strict decode — task 88 owns that"]
+assignee = "human"
+body = """
+cartouche 0.8.0 turned two signer-backend contracts from documentation into enforced code: `sign_payload/2` matches an exact 32-byte digest in its function head (Curvy and CloudKMS both), and `Backend.expect_algorithm/3` runs before dispatch so a backend whose `algorithm/1` reports a different curve fails instead of mis-signing.
+
+Neither contract reaches this library's transaction signing, and that is the point of this task. `Onchain.Signer.sign_transaction/3` builds `mfa = {Curvy, :sign, [key_bin]}` and calls `Cartouche.Signer.sign_direct/4` (lib/onchain/signer.ex:205-215). Read against cartouche 0.8.0 on 2026-08-25: `sign_direct/4` does `apply(mod, fun, [message] ++ args)` and emits from there (cartouche lib/cartouche/signer.ex:241-246) — it never calls `expect_algorithm/3` and never calls `sign_payload/2`. Only the `{backend, config}` branch of `backend_sign/4` does both (same file, around 277-283). So bumping the lock to cartouche 0.8.0 buys this path nothing: the new guarantees are structurally unreachable from it.
+
+`Onchain.AA` is already on the new-style path — it calls `CurvySigner.sign_digest/2` on a keccak digest (lib/onchain/aa.ex:596) — but its digests are themselves keccak output, so the 32-byte match is not observable there either. Note the failure mode if a short payload ever did arrive: because the check is a function head and not a guard returning an error tuple, it raises `FunctionClauseError` out of the `with`, it does not surface as `{:error, {:sign_error, _}}`.
+
+Move `sign_transaction/3` onto the `{Cartouche.Signer.Curvy, key_bin}` carrier so cartouche does the keccak, `expect_algorithm/3` runs, and `sign_payload/2` is what signs. The public API does not change: private key in, signed `%V2{}` out. The existing recovery assertions in the signer suite are the oracle that the digest is unchanged — if the recovered address still matches, the message being signed is the same one as before.
+
+This task also carries the `mix deps.update cartouche` that lands 0.8.0 in the lock, because the carrier does not exist below it. Note that `mix deps.update cartouche` alone leaves hieroglyph at 1.6.2; update both if 1.7.0 is wanted in the same pass.
+"""
+created_at = "2026-08-25"
+scored_at = "2026-08-25"
+
+[[task]]
+id = 90
+phase = 12
+bundle = "subscription_hardening"
+status = "pending"
+title = "HTTP log/block/pending polling over Cartouche.Filter, so subscribers work on the RPC URL this library defaults to"
+scores = { d = 5, b = 6, u = 5 }
+depends_on = [89]
+acceptance_criteria = ["A poller can be started with kind: :log | :block | :pending and delivers the matching payloads to its subscriber", "Stopping the poller uninstalls the node-side filter — asserted rather than assumed, since the leak this closes is per-restart", "A kind: :log poller substitutes for a Subscription {:logs, filter} consumer against an HTTP rpc_url on a known mainnet Transfer log, asserted on address and topic0 rather than on shape", "kind: :block and kind: :pending each have a test that receives a hash list", "The delivered message shapes are documented next to Onchain.Subscription's, so a caller can see which transport gives which", "mix ci passes"]
+out_of_scope = ["Modifying or replacing Onchain.Subscription — the WebSocket path is unchanged", "Named Onchain.RPC wrappers for cartouche 0.8.0's node-custody methods (accounts, coinbase, fill_transaction, sign, sign_transaction, send_transaction) — Onchain.RPC.call/3 already passes any method through, so wrappers are ergonomics with no capability behind them; file separately if a caller actually wants them", "eth_createAccessList, eth_baseFee, eth_blobBaseFee, eth_config and eth_capabilities — other 0.8.0 additions, unrelated to filters", "hieroglyph strict decode — task 88 owns that"]
+assignee = "human"
+body = """
+`Onchain.Subscription` is WebSocket-only — it documents `:new_heads`, `:pending_transactions` and `{:logs, filter_map}` and drives them through `eth_subscribe` (lib/onchain/subscription.ex:3 and 205). The default RPC URL this library ships is HTTP Infura (lib/onchain/rpc.ex:121). So a caller who takes the default and follows the subscription docs has no working path, and the only log retrieval left is `Transfer.fetch/2`, a one-shot `eth_get_logs` (lib/onchain/transfer.ex:247-254) rather than anything that keeps delivering.
+
+cartouche 0.8.0 completed the HTTP sibling for exactly this: `Cartouche.Filter` takes `kind: :log | :block | :pending`, delivers `{:event, :log}` for log filters and `{:hashes, hashes}` for the other two, recovers from an expired filter on all three kinds, and uninstalls the node-side filter in `terminate/2` so a supervised restart no longer registers an abandoned filter per cycle. Nothing in this repo starts it.
+
+Add an HTTP polling facade over `Cartouche.Filter` covering the same three kinds, delivering messages the way `Subscription` delivers its `eth_subscribe` notifications so a consumer can move between transports without rewriting its receive loop. Lean on cartouche's `terminate/2` for the uninstall rather than tracking filter ids here — the leak it closes is the reason to delegate. `Onchain.Subscription` itself is not modified; the WebSocket path stays exactly as it is.
+
+Depends on task 89 only for the lock: `Cartouche.Filter`'s block and pending kinds do not exist below cartouche 0.8.0, and 89 is what lands that bump.
+"""
+created_at = "2026-08-25"
+scored_at = "2026-08-25"
+
+[[task]]
+id = 91
+phase = 12
+bundle = "node_portability"
+status = "done"
+title = "Normalize node-capability refusals into typed errors instead of passing the raw JSON-RPC code through"
+scores = { d = 3, b = 7, u = 7 }
+acceptance_criteria = ["A method the node does not implement returns a distinct, documented error term rather than the raw {:rpc_error, map} — verified by a live call to a real endpoint that genuinely refuses the method, with the observed code and message recorded in the test", "A method whose namespace the provider has disabled and a call whose historical state has been pruned are each pinned against a real endpoint that actually produces them; if the response for one of these is indistinguishable from another case at the wire level, the task records that finding and does not invent a distinction the node does not make", "An RPC error code the classifier does not recognize reaches the caller byte-identical to today, proven by a test asserting the existing shape is unchanged", "The classification happens once on the shared result path, so a codegen'd wrapper, a hand-written wrapper and Onchain.RPC.call/3 all return the same classified term for the same refusal — asserted for one method through all three routes", "Tests that need a limited endpoint flunk with the exact env var and setup instructions when it is not configured, and never silently skip", "The moduledoc documents each classified error term and what a caller should do about it", "mix ci passes"]
+out_of_scope = ["Retrying, falling back to another endpoint, or any automatic degradation — this task only makes the refusal legible, it does not react to it", "Probing what the node supports ahead of a call — that is the eth_config / eth_capabilities task in this bundle", "Changing the success-path return shape of any existing method"]
+files_to_modify = ["lib/onchain/rpc.ex"]
+touches = ["lib/onchain/rpc.ex", "lib/onchain/rpc/helpers.ex", "test/onchain/rpc_test.exs"]
+assignee = "cursor"
+model = "cursor-grok-4.6-high"
+body = """
+This library develops and tests against a full archive node reachable at `localhost:8545` (see the `ethereum-rpc` section of CLAUDE.md), which serves the `trace`, `debug`, `eth`, `net` and `web3` namespaces and retains all historical state. That node is not representative of what consumers run. Someone taking this package as a dependency is typically pointed at Alchemy, Infura, a public endpoint, or a self-hosted pruned node, where three things routinely differ: a method is not implemented at all, an entire namespace is disabled by the provider's plan, or the method exists but the state it needs was pruned.
+
+Today none of those are distinguishable to a caller. `grep` over `lib/` finds no handling of `-32601`, no `:method_not_found`, and no `:unsupported` anywhere, so every one of these surfaces as an opaque `{:error, {:rpc_error, %{code: -32601, message: "the method ... does not exist/is not available"}}}` that a caller has to string-match on. CLAUDE.md already records the concrete consequence for the pruned case: a hosted endpoint answers `-32001 Unable to complete request` for a historical-block `eth_feeHistory` at block 20,000,000, depending on plan and load, and that is documented as prose rather than as something the library reports in a form a caller can branch on.
+
+Give `Onchain.RPC` a single place where a node refusal is classified before it reaches the caller, so the three cases above become distinct, matchable error terms rather than one raw map. The classification belongs on the shared `do_rpc` result path so every wrapper — the codegen'd ones, the hand-written ones, and the `call/3` passthrough — inherits it without each having to opt in. `-32601` is the JSON-RPC 2.0 standard "Method not found" code; the others are node-specific, so treat the standard code as the reliable signal and pin the non-standard ones from observed responses rather than from assumption. A code this library does not recognize must keep passing through unchanged — the goal is to name the cases that are actually distinguishable, never to flatten every error into a guess.
+
+Then document the resulting contract in the module's moduledoc, because the point of this task is that a consumer on a weaker node can write a branch instead of a string match.
+
+Measured evidence (2026-08-25, orchestrator QA pass) — three real refusals observed while reviewing the RPC surface. Each was taken against Alchemy mainnet with an `eth_blockNumber` sanity call succeeding on the same URL in the same session, so these are method refusals, not transport failures:
+
+- `eth_getBlockAccessList` -> `-32600` `"Unsupported method: eth_getBlockAccessList on ETH_MAINNET"`
+- `eth_getStorageValues` -> `-32600` `"Unsupported method: eth_getStorageValues on ETH_MAINNET"`
+- `eth_baseFee` -> `-32600` (already recorded in the `base_fee/1` portability note in `lib/onchain/rpc.ex`)
+
+Note the code. Alchemy answers `-32600` (JSON-RPC "Invalid Request"), NOT the `-32601` "Method not found" this body names as the reliable standard signal. A classifier keyed only on `-32601` would be blind on the most common consumer endpoint. This is an observation to pin, not a licence to read `-32600` as universally meaning "unsupported": it is a generic code other nodes use for genuinely malformed requests, so the message has to carry part of the signal. Our own reth node answers `-32602` `"Invalid params"` for `eth_getStorageValues` — a third code for the same underlying "you cannot use this here". Pin what each endpoint actually returns rather than unifying them by assumption.
+"""
+implemented = "Onchain.RPC.do_rpc/3 classifies node-capability refusals into {:method_not_found,_} / {:namespace_unavailable,_} / {:unavailable,_}; -32601 unconditional, -32600 and -32001 message-scoped from live Alchemy+reth responses; -32602 deliberately unclassified. Adds Onchain.RPCCase.limited_rpc_url!/0 and a hosted-endpoint refusal integration suite."
+delivered_by = "cursor"
+verified = true
+verified_by = "grok"
+verification_ref = "harness-run:run-1787626360342-a74c77ae"
+created_at = "2026-08-25"
+started_at = "2026-08-25"
+scored_at = "2026-08-25"
+done_at = "2026-08-25"
+shipped_in = "88197ebd7fd4cae1dcc71a4c70e4caa25aad853c"
+
+[[task]]
+id = 92
+phase = 12
+bundle = "node_portability"
+status = "pending"
+title = "Onchain.RPC node introspection — eth_config and eth_capabilities so a consumer can discover what their node actually serves"
+scores = { d = 4, b = 7, u = 6 }
+acceptance_criteria = ["eth_config/1 and eth_capabilities/1 are exposed on Onchain.RPC following the module's existing conventions, returning cartouche's Configuration and Capabilities structs rather than onchain-local re-decodings", "Both are verified against the live archive node with a test that asserts domain meaning — a specific known chain id and fork identifier from eth_config, and a concrete retention boundary from eth_capabilities — not merely that a struct came back", "Both are also exercised against a second, non-archive endpoint, and the real observed response is pinned: a genuine capabilities report if the node serves one, or its actual refusal if it does not. A node that does not implement the method is recorded as such rather than skipped", "A documented, tested example shows a caller reading the retention window from eth_capabilities and deciding whether a historical query is servable before issuing it — this is the consumer-facing point of the task and a test asserts the decision is correct for both a servable and an unservable block", "The README and the module's moduledoc table cover both methods and the pre-flight retention check", "Tests requiring an endpoint flunk with the exact env vars and setup instructions when it is unset, never skip silently", "mix ci passes"]
+out_of_scope = ["base_fee/1 and blob_base_fee/1 \u2014 delivered inline 2026-08-25, before this task. base_fee/1 deliberately does not wrap Erigon's eth_baseFee (Alchemy rejects it -32600); it reads baseFeePerGas from the pending block header instead. That decision is evidence FOR this task, not a substitute: it was made by hand-probing two endpoints, which is exactly the pre-flight check eth_capabilities/eth_config should make programmatic", "Automatically routing, retrying or degrading based on what the node reports — this task exposes the facts, it does not act on them", "Caching the capability report across calls", "Cartouche.Filter and the filter-lifecycle methods — task 90 owns those"]
+files_to_modify = ["lib/onchain/rpc.ex"]
+touches = ["lib/onchain/rpc.ex", "test/onchain/rpc_test.exs", "README.md"]
+assignee = "codex"
+model = "gpt-5.6-sol"
+body = """
+cartouche 0.8.0 added `Cartouche.RPC.eth_config/1` and `Cartouche.RPC.eth_capabilities/1`, both already deserializing into structs (`Cartouche.RPC.Configuration`, `Cartouche.RPC.Capabilities`) and both ignoring unknown fields so a newer node revision does not break the decoder. Neither is exposed through `Onchain.RPC`. Expose them, and treat the consumer's node — not ours — as the case that matters.
+
+`eth_config` is EIP-7910: the node's current, next and last fork configuration, with `activationTime`, `chainId`, `forkId`, and the named precompile and system-contract addresses. `eth_capabilities` reports the node's effective historical-data retention — its head, `oldestBlock`, and `deleteStrategy` per resource. Together they answer the two questions a consumer of this library cannot currently ask before making a call: which fork rules is this node on, and how far back can it actually serve.
+
+That second question is the load-bearing one here. This repo's own integration suites depend on an archive node and CLAUDE.md records what happens without one — a hosted endpoint answering `-32001 Unable to complete request` for a historical-block `eth_feeHistory` at block 20,000,000, depending on plan and load. A consumer hitting that has no way to distinguish "this node cannot serve block 20,000,000" from "this call is wrong". `eth_capabilities` is the method that makes it answerable in advance, so the wrappers must come with a documented way to use them for exactly that: read the retention window, compare it against the block you are about to query, and decide before you spend the round trip.
+
+Follow the module's existing conventions — the codegen/specs path where the method is in the vendored spec, the `api/3` declarations, and the bang variants its neighbours have. Return cartouche's structs rather than re-deserializing into onchain-local shapes; the substrate already owns that decoding and duplicating it would give the family two representations to keep in sync.
+
+Both methods are recent and support is uneven, which is the situation this task exists to make legible: verify against more than one endpoint and pin what each actually does, including a node that does not implement them at all.
+"""
+created_at = "2026-08-25"
+scored_at = "2026-08-25"
+depends_on = [91]
+
+[[task]]
+id = 93
+phase = 12
+bundle = "rpc_composition"
+status = "pending"
+title = "Onchain.RPC.create_access_list — compute the EIP-2930 access list that Signer.build_transaction already accepts but cannot produce"
+scores = { d = 4, b = 6, u = 5 }
+acceptance_criteria = ["create_access_list is exposed on Onchain.RPC following the module's existing conventions, including the api/3 declaration and bang variant its neighbours have", "A live call against the archive node returns an access list for a call that touches known storage, and a test asserts the specific addresses and storage keys returned — not merely that a non-empty list came back", "The returned list is passed unmodified into Onchain.Signer.build_transaction/3 as :access_list in a test, producing a valid signed transaction — proving the shapes line up without caller-side reshaping", "The gas saving is demonstrated rather than asserted: a test compares eth_estimateGas for the same call with and without the access list and records both numbers", "The case where the node returns both an access list and an execution error is pinned against a live reverting call, and the documented return shape for it is asserted", "What a second, non-archive endpoint does with the method is recorded — a real result or its real refusal, never a skip", "The moduledoc documents the method, the partial-failure shape, and the build_transaction handoff", "mix ci passes"]
+out_of_scope = ["eth_getBlockAccessList — the EIP-7928 block-level read, owned by task 85; do not conflate the two methods", "Automatically computing an access list inside build_transaction or send_transaction — the caller decides whether the extra round trip is worth it", "Adding EIP-2930 type-1 transaction support; the access list here rides on the existing EIP-1559 V2 transaction"]
+files_to_modify = ["lib/onchain/rpc.ex"]
+touches = ["lib/onchain/rpc.ex", "lib/onchain/signer.ex", "test/onchain/rpc_test.exs"]
+assignee = "grok"
+model = "grok-4.6"
+body = """
+`Onchain.Signer.build_transaction/3` already takes an `:access_list` option and passes it straight into `Cartouche.Transaction.V2.new/…`, so a transaction carrying an access list is constructible today. Nothing in this package can compute one. A caller wanting the gas saving on a storage-heavy call has to hand-assemble the `{address, storage_keys}` pairs or go find another tool, which in practice means the option is there and unused.
+
+cartouche 0.8.0 closed the upstream half: `Cartouche.RPC.create_access_list/2` wraps `eth_createAccessList`, reuses the existing call-object encoding, and returns a `V_2930`-ready `{address, storage_keys}` list plus `gas_used`, retaining an optional execution-error string for the case where the node still produced a usable list despite the call reverting. Task 85 explicitly deferred this method to a separate filing (its out_of_scope names it, distinguishing it from the block-level `eth_getBlockAccessList`), and that upstream dependency is now satisfied — this is the onchain-side wrapper that makes the round trip usable end to end.
+
+Expose it on `Onchain.RPC` following the module's conventions, and make the connection to the signer real rather than implied: the returned list must be directly usable as `build_transaction`'s `:access_list` without the caller reshaping it. If it is not directly usable, that mismatch is the actual finding and the task should reconcile the two shapes rather than paper over it with a conversion helper nobody asked for.
+
+The partial-failure case deserves deliberate treatment. `eth_createAccessList` can return both an access list and an execution error at once, which is not a shape the rest of this module's error handling expects. Decide and document what a caller gets in that case, and pin it against a live call that actually produces it — a call that reverts is straightforward to construct against a real contract.
+
+Support for this method varies by provider, so verify it against the archive node and record what a second endpoint does with it, rather than assuming availability. Note that `Onchain.RPC` is gaining a typed classification of node refusals in the node_portability bundle; if that has landed, an unsupported `eth_createAccessList` should surface through it rather than growing a second convention.
+"""
+created_at = "2026-08-25"
+scored_at = "2026-08-25"

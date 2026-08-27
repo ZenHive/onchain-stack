@@ -1,0 +1,58 @@
+{
+  "$schema": "https://eips.ethereum.org/assets/eip-7730/erc7730-v1.schema.json",
+  "context": {
+    "contract": {
+      "deployments": [
+        { "chainId": 1, "address": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45" }
+      ]
+    }
+  },
+  "metadata": {
+    "owner": "Uniswap Labs",
+    "info": { "legalName": "Uniswap Labs", "url": "https://uniswap.org" },
+    "contractName": "SwapRouter02"
+  },
+  "display": {
+    "formats": {
+      "unwrapWETH9(uint256 amountMinimum, address recipient)": {
+        "intent": "Unwrap WETH to ETH",
+        "fields": [
+          { "path": "#.amountMinimum", "label": "Minimum received", "format": "amount", "visible": "always" },
+          {
+            "path": "#.recipient",
+            "label": "Recipient",
+            "format": "addressName",
+            "params": { "types": ["eoa", "wallet"], "sources": ["local", "ens"] },
+            "visible": "always"
+          }
+        ]
+      },
+      "sweepToken(address token, uint256 amountMinimum, address recipient)": {
+        "intent": "Sweep token from router",
+        "fields": [
+          {
+            "path": "#.token",
+            "label": "Token",
+            "format": "addressName",
+            "params": { "types": ["token"], "sources": ["local"] },
+            "visible": "always"
+          },
+          {
+            "path": "#.amountMinimum",
+            "label": "Minimum amount",
+            "format": "tokenAmount",
+            "params": { "tokenPath": "#.token" },
+            "visible": "always"
+          },
+          {
+            "path": "#.recipient",
+            "label": "Recipient",
+            "format": "addressName",
+            "params": { "types": ["eoa", "wallet"], "sources": ["local", "ens"] },
+            "visible": "always"
+          }
+        ]
+      }
+    }
+  }
+}

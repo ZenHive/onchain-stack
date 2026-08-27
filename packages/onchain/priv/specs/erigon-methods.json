@@ -1,0 +1,149 @@
+[
+  {
+    "go_method": "GetApiLevel",
+    "method": "ots_getApiLevel",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_api.go"
+  },
+  {
+    "go_method": "GetBlockDetails",
+    "method": "ots_getBlockDetails",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_block_details.go"
+  },
+  {
+    "go_method": "GetBlockDetailsByHash",
+    "method": "ots_getBlockDetailsByHash",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_block_details.go"
+  },
+  {
+    "go_method": "GetBlockTransactions",
+    "method": "ots_getBlockTransactions",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_api.go"
+  },
+  {
+    "go_method": "GetContractCreator",
+    "method": "ots_getContractCreator",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_contract_creator.go"
+  },
+  {
+    "go_method": "GetInternalOperations",
+    "method": "ots_getInternalOperations",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_api.go"
+  },
+  {
+    "go_method": "GetTransactionBySenderAndNonce",
+    "method": "ots_getTransactionBySenderAndNonce",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_transaction_by_sender_and_nonce.go"
+  },
+  {
+    "go_method": "GetTransactionError",
+    "method": "ots_getTransactionError",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_transaction_error.go"
+  },
+  {
+    "go_method": "HasCode",
+    "method": "ots_hasCode",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_has_code.go"
+  },
+  {
+    "go_method": "SearchTransactionsAfter",
+    "method": "ots_searchTransactionsAfter",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_api.go"
+  },
+  {
+    "go_method": "SearchTransactionsBefore",
+    "method": "ots_searchTransactionsBefore",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_api.go"
+  },
+  {
+    "go_method": "TraceTransaction",
+    "method": "ots_traceTransaction",
+    "namespace": "ots",
+    "receiver": "OtterscanAPIImpl",
+    "source": "otterscan_trace_transaction.go"
+  },
+  {
+    "go_method": "Block",
+    "method": "trace_block",
+    "namespace": "trace",
+    "receiver": "TraceAPIImpl",
+    "source": "trace_filtering.go"
+  },
+  {
+    "go_method": "Call",
+    "method": "trace_call",
+    "namespace": "trace",
+    "receiver": "TraceAPIImpl",
+    "source": "trace_adhoc.go"
+  },
+  {
+    "go_method": "CallMany",
+    "method": "trace_callMany",
+    "namespace": "trace",
+    "receiver": "TraceAPIImpl",
+    "source": "trace_adhoc.go"
+  },
+  {
+    "go_method": "Filter",
+    "method": "trace_filter",
+    "namespace": "trace",
+    "receiver": "TraceAPIImpl",
+    "source": "trace_filtering.go"
+  },
+  {
+    "go_method": "Get",
+    "method": "trace_get",
+    "namespace": "trace",
+    "receiver": "TraceAPIImpl",
+    "source": "trace_filtering.go"
+  },
+  {
+    "go_method": "RawTransaction",
+    "method": "trace_rawTransaction",
+    "namespace": "trace",
+    "receiver": "TraceAPIImpl",
+    "source": "trace_adhoc.go"
+  },
+  {
+    "go_method": "ReplayBlockTransactions",
+    "method": "trace_replayBlockTransactions",
+    "namespace": "trace",
+    "receiver": "TraceAPIImpl",
+    "source": "trace_adhoc.go"
+  },
+  {
+    "go_method": "ReplayTransaction",
+    "method": "trace_replayTransaction",
+    "namespace": "trace",
+    "receiver": "TraceAPIImpl",
+    "source": "trace_adhoc.go"
+  },
+  {
+    "go_method": "Transaction",
+    "method": "trace_transaction",
+    "namespace": "trace",
+    "receiver": "TraceAPIImpl",
+    "source": "trace_filtering.go"
+  }
+]

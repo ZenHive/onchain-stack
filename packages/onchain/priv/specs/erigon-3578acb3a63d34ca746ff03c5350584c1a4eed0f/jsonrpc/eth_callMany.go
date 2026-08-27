@@ -1,0 +1,266 @@
+// Copyright 2024 The Erigon Authors
+// This file is part of Erigon.
+//
+// Erigon is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Erigon is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with Erigon. If not, see <http://www.gnu.org/licenses/>.
+
+package jsonrpc
+
+import (
+	"context"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"sync/atomic"
+	"time"
+
+	"github.com/erigontech/erigon/common"
+	"github.com/erigontech/erigon/common/hexutil"
+	"github.com/erigontech/erigon/common/log/v3"
+	"github.com/erigontech/erigon/common/math"
+	"github.com/erigontech/erigon/execution/protocol"
+	"github.com/erigontech/erigon/execution/state"
+	"github.com/erigontech/erigon/execution/types"
+	"github.com/erigontech/erigon/execution/types/accounts"
+	"github.com/erigontech/erigon/execution/vm"
+	"github.com/erigontech/erigon/execution/vm/evmtypes"
+	"github.com/erigontech/erigon/rpc"
+	"github.com/erigontech/erigon/rpc/ethapi"
+	"github.com/erigontech/erigon/rpc/rpchelper"
+)
+
+type Bundle struct {
+	Transactions  []ethapi.CallArgs
+	BlockOverride ethapi.BlockOverrides
+}
+
+type StateContext struct {
+	BlockNumber      rpc.BlockNumberOrHash
+	TransactionIndex *int
+}
+
+func (api *APIImpl) CallMany(ctx context.Context, bundles []Bundle, simulateContext StateContext, stateOverride *ethapi.StateOverrides, timeoutMilliSecondsPtr *int64) ([][]map[string]any, error) {
+	var (
+		hash               common.Hash
+		replayTransactions types.Transactions
+		evm                *vm.EVM
+		blockCtx           evmtypes.BlockContext
+		txCtx              evmtypes.TxContext
+		overrideBlockHash  map[uint64]common.Hash
+	)
+
+	overrideBlockHash = make(map[uint64]common.Hash)
+	tx, err := api.db.BeginTemporalRo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	chainConfig, err := api.chainConfig(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	if len(bundles) == 0 {
+		return nil, errors.New("empty bundles")
+	}
+	empty := true
+	for _, bundle := range bundles {
+		if len(bundle.Transactions) != 0 {
+			empty = false
+		}
+	}
+
+	if empty {
+		return nil, errors.New("empty bundles")
+	}
+
+	defer func(start time.Time) { log.Trace("Executing EVM callMany finished", "runtime", time.Since(start)) }(time.Now())
+
+	blockNum, hash, _, err := rpchelper.GetBlockNumber(ctx, simulateContext.BlockNumber, tx, api._blockReader, api.filters)
+	if err != nil {
+		return nil, err
+	}
+
+	err = api.BaseAPI.checkPruneHistory(ctx, tx, blockNum)
+	if err != nil {
+		return nil, err
+	}
+
+	err = rpchelper.CheckBlockExecuted(api.filters.WithOverlay(tx), blockNum)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := api.blockWithSenders(ctx, tx, hash, blockNum)
+	if err != nil {
+		return nil, err
+	}
+
+	// -1 is a default value for transaction index.
+	// If it's -1, we will try to replay every single transaction in that block
+	transactionIndex := -1
+
+	if simulateContext.TransactionIndex != nil {
+		transactionIndex = *simulateContext.TransactionIndex
+	}
+
+	if transactionIndex == -1 {
+		transactionIndex = len(block.Transactions())
+	}
+
+	replayTransactions = block.Transactions()[:transactionIndex]
+
+	stateReader, err := rpchelper.CreateStateReader(ctx, tx, api._blockReader, rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(blockNum-1)), 0, api.filters, api.stateCache, api._txNumReader)
+
+	if err != nil {
+		return nil, err
+	}
+
+	st := state.New(stateReader)
+
+	header := block.Header()
+
+	if header == nil {
+		return nil, fmt.Errorf("block %d(%x) not found", blockNum, hash)
+	}
+
+	getHash := func(i uint64) (common.Hash, error) {
+		if hash, ok := overrideBlockHash[i]; ok {
+			return hash, nil
+		}
+		hash, ok, err := api._blockReader.CanonicalHash(ctx, tx, i)
+		if err != nil || !ok {
+			log.Debug("Can't get block hash by number", "number", i, "only-canonical", true, "err", err, "ok", ok)
+		}
+		return hash, err
+	}
+
+	blockCtx = protocol.NewEVMBlockContext(header, getHash, api.engine(), accounts.NilAddress /* author */, chainConfig)
+
+	// Get a new instance of the EVM
+	evm = vm.NewEVM(blockCtx, txCtx, st, chainConfig, vm.Config{})
+	signer := types.MakeSigner(chainConfig, blockNum, blockCtx.Time)
+	rules := evm.ChainRules()
+
+	// evmPtr is updated atomically each time evm is recreated in the loop,
+	// so the AfterFunc callback always cancels the current instance.
+	var evmPtr atomic.Pointer[vm.EVM]
+	evmPtr.Store(evm)
+
+	timeout := api.evmCallTimeout
+
+	if timeoutMilliSecondsPtr != nil && *timeoutMilliSecondsPtr > 0 {
+		timeout = time.Duration(*timeoutMilliSecondsPtr) * time.Millisecond
+	}
+
+	// Setup context so it may be cancelled the call has completed
+	// or, in case of unmetered gas, setup a context with a timeout.
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
+	}
+	// Make sure the context is cancelled when the call has completed
+	// this makes sure resources are cleaned up.
+	defer cancel()
+
+	stop := context.AfterFunc(ctx, func() { evmPtr.Load().Cancel() })
+	defer stop()
+
+	// Setup the gas pool (also for unmetered requests)
+	// and apply the message.
+	gp := new(protocol.GasPool).AddGas(math.MaxUint64).AddBlobGas(math.MaxUint64)
+	for idx, txn := range replayTransactions {
+		st.SetTxContext(blockNum, idx)
+		msg, err := txn.AsMessage(*signer, block.BaseFee(), rules)
+		if err != nil {
+			return nil, err
+		}
+		txCtx = protocol.NewEVMTxContext(msg)
+		evm = vm.NewEVM(blockCtx, txCtx, evm.IntraBlockState(), chainConfig, vm.Config{})
+		evmPtr.Store(evm)
+		// Execute the transaction message
+		_, err = protocol.ApplyMessage(evm, msg, gp, true /* refunds */, false /* gasBailout */, api.engine())
+		if err != nil {
+			return nil, err
+		}
+
+		_ = st.FinalizeTx(rules, state.NewNoopWriter())
+
+		if evm.Cancelled() {
+			return nil, fmt.Errorf("execution aborted (timeout = %v)", timeout)
+		}
+	}
+
+	// after replaying the txns, we want to overload the state
+	// overload state
+	if stateOverride != nil {
+		err = stateOverride.Override(evm.IntraBlockState(), nil, blockCtx.Rules(chainConfig))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	ret := make([][]map[string]any, 0)
+
+	for _, bundle := range bundles {
+		// first change blockContext
+		bundle.BlockOverride.OverrideBlockContext(&blockCtx, ethapi.BlockHashOverrides(overrideBlockHash))
+		results := []map[string]any{}
+		for _, txn := range bundle.Transactions {
+			if txn.Gas == nil || *(txn.Gas) == 0 {
+				txn.Gas = (*hexutil.Uint64)(&api.GasCap)
+			}
+			msg, err := txn.ToMessage(api.GasCap, &blockCtx.BaseFee)
+			if err != nil {
+				return nil, err
+			}
+			txCtx = protocol.NewEVMTxContext(msg)
+			evm = vm.NewEVM(blockCtx, txCtx, evm.IntraBlockState(), chainConfig, vm.Config{})
+			evmPtr.Store(evm)
+			result, err := protocol.ApplyMessage(evm, msg, gp, true /* refunds */, false /* gasBailout */, api.engine())
+			if err != nil {
+				return nil, err
+			}
+
+			_ = st.FinalizeTx(rules, state.NewNoopWriter())
+
+			// If the timer caused an abort, return an appropriate error message
+			if evm.Cancelled() {
+				return nil, fmt.Errorf("execution aborted (timeout = %v)", timeout)
+			}
+			jsonResult := make(map[string]any)
+			if result.Err != nil {
+				if len(result.Revert()) > 0 {
+					revertErr := ethapi.NewRevertError(result)
+					jsonResult["error"] = map[string]any{
+						"message": revertErr.Error(),
+						"data":    revertErr.ErrorData(),
+					}
+				} else {
+					jsonResult["error"] = result.Err.Error()
+				}
+			} else {
+				jsonResult["value"] = hex.EncodeToString(result.Return())
+			}
+
+			results = append(results, jsonResult)
+		}
+
+		blockCtx.BlockNumber++
+		blockCtx.Time++
+		ret = append(ret, results)
+	}
+
+	return ret, err
+}

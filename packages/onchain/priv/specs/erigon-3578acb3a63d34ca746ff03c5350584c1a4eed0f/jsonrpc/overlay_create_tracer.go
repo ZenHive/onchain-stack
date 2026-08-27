@@ -1,0 +1,67 @@
+// Copyright 2024 The Erigon Authors
+// This file is part of Erigon.
+//
+// Erigon is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Erigon is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with Erigon. If not, see <http://www.gnu.org/licenses/>.
+
+package jsonrpc
+
+import (
+	"github.com/holiman/uint256"
+
+	"github.com/erigontech/erigon/execution/protocol/mdgas"
+	"github.com/erigontech/erigon/execution/tracing"
+	"github.com/erigontech/erigon/execution/tracing/tracers"
+	"github.com/erigontech/erigon/execution/types/accounts"
+	"github.com/erigontech/erigon/execution/vm"
+)
+
+type OverlayCreateTracer struct {
+	contractAddress accounts.Address
+	isCapturing     bool
+	code            []byte
+	gasCap          uint64
+	err             error
+	resultCode      []byte
+	evm             *vm.EVM
+}
+
+func (ct *OverlayCreateTracer) Tracer() *tracers.Tracer {
+	return &tracers.Tracer{
+		Hooks: &tracing.Hooks{
+			OnTxStart: nil,
+			OnEnter:   ct.OnEnter,
+		},
+	}
+}
+
+// Rest of the frames
+func (ct *OverlayCreateTracer) OnEnter(depth int, typ byte, from accounts.Address, to accounts.Address, precompile bool, input []byte, gas uint64, value uint256.Int, code []byte) {
+	if ct.isCapturing {
+		return
+	}
+
+	if (vm.OpCode(typ) == vm.CREATE || vm.OpCode(typ) == vm.CREATE2) && to == ct.contractAddress {
+		ct.isCapturing = true
+		_, _, _, _, err := ct.evm.OverlayCreate(from, vm.NewCodeAndHash(ct.code), mdgas.MdGas{Regular: ct.gasCap}, value, to, vm.OpCode(typ), true /* incrementNonce */)
+		if err != nil {
+			ct.err = err
+		} else {
+			if result, err := ct.evm.IntraBlockState().GetCode(ct.contractAddress); err != nil {
+				ct.resultCode = result
+			} else {
+				ct.err = err
+			}
+		}
+	}
+}

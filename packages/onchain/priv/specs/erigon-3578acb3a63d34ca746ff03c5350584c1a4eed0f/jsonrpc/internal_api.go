@@ -1,0 +1,116 @@
+package jsonrpc
+
+import (
+	"context"
+	"encoding/binary"
+	"fmt"
+
+	"github.com/erigontech/erigon/db/kv"
+	"github.com/erigontech/erigon/db/rawdb/rawdbhelpers"
+)
+
+// Defines the `internal_` JSON-RPC namespace.
+//
+// The methods defined here are for exposing internal Erigon info and meant to serve as development support if you are
+// working on Erigon code. They can be added/changed/removed without further notice.
+type InternalAPI interface {
+	GetTxNumInfo(ctx context.Context, txNum uint64) (*TxNumInfo, error)
+	GetStepsInDB(ctx context.Context) (float64, error)
+	GetPruningProgress(ctx context.Context) ([]*PruningProgress, error)
+}
+
+type TxNumInfo struct {
+	BlockNum uint64 `json:"blockNum"`
+	Idx      uint64 `json:"idx"`
+}
+
+type PruningProgress struct {
+	Table string `json:"table"`
+	Step  uint64 `json:"step"`
+}
+
+type InternalAPIImpl struct {
+	*BaseAPI
+	db kv.TemporalRoDB
+}
+
+func NewInternalAPI(base *BaseAPI, db kv.TemporalRoDB) *InternalAPIImpl {
+	return &InternalAPIImpl{
+		BaseAPI: base,
+		db:      db,
+	}
+}
+
+func (api *InternalAPIImpl) GetTxNumInfo(ctx context.Context, txNum uint64) (*TxNumInfo, error) {
+	tx, err := api.db.BeginTemporalRo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	bn, ok, err := api._txNumReader.FindBlockNum(ctx, tx, txNum)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("block not found by txnID=%d", txNum)
+	}
+	minTxNum, err := api._txNumReader.Min(ctx, tx, bn)
+	if err != nil {
+		return nil, err
+	}
+	txIndex := int(txNum) - int(minTxNum) - 1 /* system-tx */
+	if txIndex == -1 {
+		return nil, nil
+	}
+
+	return &TxNumInfo{
+		BlockNum: bn,
+		Idx:      uint64(txIndex),
+	}, nil
+}
+
+func (api *InternalAPIImpl) GetStepsInDB(ctx context.Context) (float64, error) {
+	tx, err := api.db.BeginTemporalRo(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	steps := rawdbhelpers.IdxStepsCountV3(tx, tx.Debug().StepSize())
+	return steps, nil
+}
+
+func (api *InternalAPIImpl) GetPruningProgress(ctx context.Context) ([]*PruningProgress, error) {
+	tx, err := api.db.BeginTemporalRo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	cursor, err := tx.Cursor(kv.TblPruningProgress)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close()
+
+	prog := make([]*PruningProgress, 0)
+	k, v, err := cursor.First()
+	if err != nil {
+		return nil, err
+	}
+	for k != nil {
+		step := uint64(0)
+		if !(len(v) == 1 && v[0] == 0) {
+			step = binary.BigEndian.Uint64(v)
+		}
+		prog = append(prog, &PruningProgress{Table: string(k), Step: step})
+
+		k, v, err = cursor.Next()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return prog, nil
+}

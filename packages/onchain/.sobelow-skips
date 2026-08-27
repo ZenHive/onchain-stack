@@ -1,0 +1,7 @@
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/log.ex:208,17CEF60
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/log.ex:206,2F157F7
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/log.ex:205,327D251
+SQL.Query: SQL injection,lib/onchain/sleuth.ex:105,69FB414
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/log.ex:207,6B307F8
+Traversal.FileModule: Directory Traversal in `File.read`,lib/onchain/erc7730.ex:166,6451FB2
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/log.ex:273,D394E3

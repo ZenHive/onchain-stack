@@ -1,0 +1,48 @@
+{
+  "$schema": "https://eips.ethereum.org/assets/eip-7730/erc7730-v1.schema.json",
+  "context": {
+    "contract": {
+      "deployments": [
+        { "chainId": 1, "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" }
+      ],
+      "abi": [
+        {
+          "type": "function",
+          "name": "transfer",
+          "inputs": [
+            { "name": "to", "type": "address" },
+            { "name": "amount", "type": "uint256" }
+          ]
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "owner": "Circle",
+    "info": { "legalName": "Circle Internet Financial", "url": "https://www.circle.com" },
+    "token": { "name": "USD Coin", "ticker": "USDC", "decimals": 6 }
+  },
+  "display": {
+    "formats": {
+      "transfer(address to, uint256 amount)": {
+        "intent": "Send USDC",
+        "fields": [
+          {
+            "path": "#.to",
+            "label": "To",
+            "format": "addressName",
+            "params": { "types": ["eoa", "wallet"], "sources": ["local", "ens"] },
+            "visible": "always"
+          },
+          {
+            "path": "#.amount",
+            "label": "Amount",
+            "format": "tokenAmount",
+            "params": { "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
+            "visible": "always"
+          }
+        ]
+      }
+    }
+  }
+}

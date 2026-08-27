@@ -1,0 +1,1212 @@
+// Copyright 2024 The Erigon Authors
+// This file is part of Erigon.
+//
+// Erigon is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Erigon is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with Erigon. If not, see <http://www.gnu.org/licenses/>.
+
+package jsonrpc
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"runtime"
+	"sync"
+	"time"
+
+	jsoniter "github.com/json-iterator/go"
+
+	"github.com/erigontech/erigon/common"
+	"github.com/erigontech/erigon/common/hexutil"
+	"github.com/erigontech/erigon/common/log/v3"
+	"github.com/erigontech/erigon/db/consensuschain"
+	"github.com/erigontech/erigon/db/kv"
+	"github.com/erigontech/erigon/db/kv/order"
+	"github.com/erigontech/erigon/db/kv/rawdbv3"
+	"github.com/erigontech/erigon/db/kv/stream"
+	"github.com/erigontech/erigon/db/rawdb"
+	"github.com/erigontech/erigon/execution/chain"
+	"github.com/erigontech/erigon/execution/protocol"
+	protocolrules "github.com/erigontech/erigon/execution/protocol/rules"
+	"github.com/erigontech/erigon/execution/protocol/rules/ethash"
+	"github.com/erigontech/erigon/execution/state"
+	"github.com/erigontech/erigon/execution/tracing/tracers/config"
+	"github.com/erigontech/erigon/execution/types"
+	"github.com/erigontech/erigon/execution/types/accounts"
+	"github.com/erigontech/erigon/execution/vm"
+	"github.com/erigontech/erigon/execution/vm/evmtypes"
+	"github.com/erigontech/erigon/node/shards"
+	bortypes "github.com/erigontech/erigon/polygon/bor/types"
+	"github.com/erigontech/erigon/rpc"
+	"github.com/erigontech/erigon/rpc/jsonstream"
+	"github.com/erigontech/erigon/rpc/rpchelper"
+	"github.com/erigontech/erigon/rpc/transactions"
+)
+
+const (
+	rewardTraceType = "reward"
+	rewardTypeBlock = "block"
+	rewardTypeUncle = "uncle"
+)
+
+// Transaction implements trace_transaction
+func (api *TraceAPIImpl) Transaction(ctx context.Context, txHash common.Hash, gasBailOut *bool, traceConfig *config.TraceConfig) (ParityTraces, error) {
+	if gasBailOut == nil {
+		gasBailOut = new(bool) // false by default
+	}
+	tx, err := api.kv.BeginTemporalRo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	chainConfig, err := api.chainConfig(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	var isBorStateSyncTxn bool
+	blockNumber, txNum, ok, err := api.txnLookup(ctx, tx, txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ok {
+		if chainConfig.Bor == nil {
+			return nil, nil
+		}
+
+		// otherwise this may be a bor state sync transaction - check
+		blockNumber, ok, err = api.bridgeReader.EventTxnLookup(ctx, txHash)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, nil
+		}
+
+		isBorStateSyncTxn = true
+	}
+
+	err = api.BaseAPI.checkPruneHistory(ctx, tx, blockNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	header, err := api.headerByNumber(ctx, rpc.BlockNumber(blockNumber), tx)
+	if err != nil {
+		return nil, err
+	}
+	if header == nil {
+		return nil, nil
+	}
+
+	txNumMin, err := api._txNumReader.Min(ctx, tx, blockNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	if txNumMin+1 > txNum && !isBorStateSyncTxn {
+		return nil, fmt.Errorf("uint underflow txnums error txNum: %d, txNumMin: %d, blockNum: %d", txNum, txNumMin, blockNumber)
+	}
+
+	var txIndex = int(txNum - txNumMin - 1)
+
+	if isBorStateSyncTxn {
+		txIndex = -1
+	}
+
+	bn := hexutil.Uint64(blockNumber)
+	hash := header.Hash()
+	signer := types.MakeSigner(chainConfig, blockNumber, header.Time)
+	// Returns an array of trace arrays, one trace array for each transaction
+	trace, err := api.callTransaction(ctx, tx, header, []string{TraceTypeTrace}, txIndex, *gasBailOut, signer, chainConfig, traceConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]ParityTrace, 0, len(trace.Trace))
+	blockno := uint64(bn)
+	for _, pt := range trace.Trace {
+		pt.BlockHash = &hash
+		pt.BlockNumber = &blockno
+		pt.TransactionHash = trace.TransactionHash
+		txpos := uint64(txIndex)
+		pt.TransactionPosition = &txpos
+		out = append(out, *pt)
+	}
+
+	return out, err
+}
+
+// Get implements trace_get
+func (api *TraceAPIImpl) Get(ctx context.Context, txHash common.Hash, indicies []hexutil.Uint64, gasBailOut *bool, traceConfig *config.TraceConfig) (*ParityTrace, error) {
+	// Parity fails if it gets more than a single index. It returns nothing in this case. Must we?
+	if len(indicies) > 1 {
+		return nil, nil
+	}
+	traces, err := api.Transaction(ctx, txHash, gasBailOut, traceConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// 'trace_get' index starts at one (oddly)
+	firstIndex := int(indicies[0]) + 1
+	for i, trace := range traces {
+		if i == firstIndex {
+			return &trace, nil
+		}
+	}
+	return nil, err
+}
+
+func rewardKindToString(kind protocolrules.RewardKind) string {
+	switch kind {
+	case protocolrules.RewardAuthor:
+		return rewardTypeBlock
+	case protocolrules.RewardEmptyStep:
+		return "emptyStep"
+	case protocolrules.RewardExternal:
+		return "external"
+	case protocolrules.RewardUncle:
+		return rewardTypeUncle
+	default:
+		return "unknown"
+	}
+}
+
+// Block implements trace_block
+func (api *TraceAPIImpl) Block(ctx context.Context, blockNr rpc.BlockNumber, gasBailOut *bool, traceConfig *config.TraceConfig) (ParityTraces, error) {
+	if gasBailOut == nil {
+		gasBailOut = new(bool) // false by default
+	}
+	tx, err := api.kv.BeginTemporalRo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	blockNum, hash, _, err := rpchelper.GetBlockNumber(ctx, rpc.BlockNumberOrHashWithNumber(blockNr), tx, api._blockReader, api.filters)
+	if err != nil {
+		return nil, err
+	}
+	if blockNum == 0 {
+		return []ParityTrace{}, nil
+	}
+	bn := hexutil.Uint64(blockNum)
+
+	// if we've pruned this history away for this block then just return early
+	// to save any red herring errors
+	err = api.BaseAPI.checkPruneHistory(ctx, tx, blockNum)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract transactions from block
+	block, bErr := api.blockWithSenders(ctx, tx, hash, blockNum)
+	if bErr != nil {
+		return nil, bErr
+	}
+	if block == nil {
+		return nil, fmt.Errorf("could not find block %d", uint64(bn))
+	}
+
+	cfg, err := api.chainConfig(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	signer := types.MakeSigner(cfg, blockNum, block.Time())
+	traces, syscall, err := api.callBlock(ctx, tx, block, []string{TraceTypeTrace}, *gasBailOut /* gasBailOut */, signer, cfg, traceConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]ParityTrace, 0, len(traces))
+	for txno, trace := range traces {
+		txpos := uint64(txno)
+		for _, pt := range trace.Trace {
+			pt.BlockHash = &hash
+			pt.BlockNumber = &blockNum
+			pt.TransactionHash = trace.TransactionHash
+			pt.TransactionPosition = &txpos
+			out = append(out, *pt)
+		}
+	}
+
+	rewards, err := api.engine().CalculateRewards(cfg, block.Header(), block.Uncles(), syscall)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range rewards {
+		var tr ParityTrace
+		rewardAction := &RewardTraceAction{}
+		rewardAction.Author = r.Beneficiary.Value()
+		rewardAction.RewardType = rewardKindToString(r.Kind)
+		rewardAction.Value.ToInt().Set(r.Amount.ToBig())
+		tr.Action = rewardAction
+		blockHash := block.Hash()
+		tr.BlockHash = &common.Hash{}
+		copy(tr.BlockHash[:], blockHash[:])
+		tr.BlockNumber = new(uint64)
+		*tr.BlockNumber = block.NumberU64()
+		tr.Type = rewardTraceType
+		tr.TraceAddress = []int{}
+		out = append(out, tr)
+	}
+
+	return out, err
+}
+
+func traceFilterBitmapsV3(tx kv.TemporalTx, req TraceFilterRequest, from, to uint64) (fromAddresses, toAddresses map[common.Address]struct{}, allBlocks stream.U64, err error) {
+	fromAddresses = make(map[common.Address]struct{}, len(req.FromAddress))
+	toAddresses = make(map[common.Address]struct{}, len(req.ToAddress))
+	var blocksTo stream.U64
+
+	for _, addr := range req.FromAddress {
+		if addr != nil {
+			it, err := tx.IndexRange(kv.TracesFromIdx, addr[:], int(from), int(to), order.Asc, kv.Unlim)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			allBlocks = stream.Union[uint64](allBlocks, it, order.Asc, kv.Unlim)
+			fromAddresses[*addr] = struct{}{}
+		}
+	}
+
+	for _, addr := range req.ToAddress {
+		if addr != nil {
+			it, err := tx.IndexRange(kv.TracesToIdx, addr[:], int(from), int(to), order.Asc, kv.Unlim)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			blocksTo = stream.Union[uint64](blocksTo, it, order.Asc, kv.Unlim)
+			toAddresses[*addr] = struct{}{}
+		}
+	}
+
+	switch req.Mode {
+	case TraceFilterModeIntersection:
+		allBlocks = stream.Intersect[uint64](allBlocks, blocksTo, order.Asc, kv.Unlim)
+	case TraceFilterModeUnion:
+		fallthrough
+	default:
+		allBlocks = stream.Union[uint64](allBlocks, blocksTo, order.Asc, kv.Unlim)
+	}
+
+	// Special case - if no addresses specified, take all traces
+	if len(req.FromAddress) == 0 && len(req.ToAddress) == 0 {
+		allBlocks = stream.Range[uint64](from, to)
+		//} else {
+		//allBlocks.RemoveRange(0, from)
+		//allBlocks.RemoveRange(to, uint64(0x100000000))
+	}
+
+	return fromAddresses, toAddresses, allBlocks, nil
+}
+
+// Filter implements trace_filter
+// NOTE: We do not store full traces - we just store index for each address
+// Pull blocks which have txs with matching address
+func (api *TraceAPIImpl) Filter(ctx context.Context, req TraceFilterRequest, gasBailOut *bool, traceConfig *config.TraceConfig, stream jsonstream.Stream) error {
+	if gasBailOut == nil {
+		//nolint
+		gasBailOut = new(bool) // false by default
+	}
+	dbtx, err1 := api.kv.BeginTemporalRo(ctx)
+	if err1 != nil {
+		return fmt.Errorf("traceFilter cannot open tx: %w", err1)
+	}
+	defer dbtx.Rollback()
+
+	var fromBlock uint64
+	var toBlock uint64
+	var err error
+	if req.FromBlock == nil {
+		fromBlock = 0
+	} else {
+		fromBlock, _, _, err = rpchelper.GetBlockNumber(ctx, *req.FromBlock, dbtx, api._blockReader, api.filters)
+		if err != nil {
+			if errors.As(err, &rpc.BlockNotFoundErr{}) {
+				stream.WriteEmptyArray()
+				return nil // waiting for spec: not error for historical reasons
+			}
+			return err
+		}
+	}
+
+	if req.ToBlock == nil {
+		headNumber, err := api._blockReader.HeaderNumber(ctx, dbtx, rawdb.ReadHeadHeaderHash(dbtx))
+		if err != nil {
+			return err
+		}
+		toBlock = *headNumber
+	} else {
+		toBlock, _, _, err = rpchelper.GetBlockNumber(ctx, *req.ToBlock, dbtx, api._blockReader, api.filters)
+		if err != nil {
+			if errors.As(err, &rpc.BlockNotFoundErr{}) {
+				stream.WriteEmptyArray()
+				return nil // waiting for spec: not error for historical reasons
+			}
+			return err
+		}
+	}
+	if fromBlock > toBlock {
+		return errors.New("invalid parameters: fromBlock cannot be greater than toBlock")
+	}
+
+	// if we've pruned this history away for this block then just return early
+	// to save any red herring errors
+
+	err = api.BaseAPI.checkPruneHistory(ctx, dbtx, fromBlock)
+	if err != nil {
+		return err
+	}
+
+	return api.filterV3(ctx, dbtx, fromBlock, toBlock, req, stream, *gasBailOut, traceConfig)
+}
+
+func (api *TraceAPIImpl) filterV3(ctx context.Context, dbtx kv.TemporalTx, fromBlock, toBlock uint64, req TraceFilterRequest, stream jsonstream.Stream, gasBailOut bool, traceConfig *config.TraceConfig) error {
+	var fromTxNum, toTxNum uint64
+	var err error
+
+	if api.blockRangeLimit != 0 && (toBlock-fromBlock) > uint64(api.blockRangeLimit) {
+		return fmt.Errorf("%s: %d", errExceedBlockRange, api.blockRangeLimit)
+	}
+
+	if fromBlock > 0 {
+		fromTxNum, err = api._txNumReader.Min(ctx, dbtx, fromBlock)
+		if err != nil {
+			return err
+		}
+	}
+	toTxNum, err = api._txNumReader.Max(ctx, dbtx, toBlock) // toBlock is an inclusive bound
+	if err != nil {
+		return err
+	}
+	toTxNum++ //+1 because internally Erigon using semantic [from, to), but some RPC have different semantic
+	fromAddresses, toAddresses, allTxs, err := traceFilterBitmapsV3(dbtx, req, fromTxNum, toTxNum)
+	if err != nil {
+		return err
+	}
+	it := rawdbv3.TxNums2BlockNums(ctx, dbtx, api._txNumReader, allTxs, order.Asc)
+	defer it.Close()
+
+	chainConfig, err := api.chainConfig(ctx, dbtx)
+	if err != nil {
+		return err
+	}
+	engine := api.engine()
+
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	stream.WriteArrayStart()
+	first := true
+	// Execute all transactions in picked blocks
+
+	count := uint64(^uint(0)) // this just makes it easier to use below
+	if req.Count != nil {
+		count = *req.Count
+	}
+	after := uint64(0) // this just makes it easier to use below
+	if req.After != nil {
+		after = *req.After
+	}
+	vmConfig := vm.Config{}
+	nSeen := uint64(0)
+	nExported := uint64(0)
+	includeAll := len(fromAddresses) == 0 && len(toAddresses) == 0
+
+	var lastBlockHash common.Hash
+	var lastHeader *types.Header
+	var lastSigner *types.Signer
+	var lastRules *chain.Rules
+
+	noop := state.NewNoopWriter()
+	isPos := false
+
+	for it.HasNext() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		txNum, blockNum, txIndex, isFnalTxn, blockNumChanged, err := it.Next()
+		if err != nil {
+			if first {
+				first = false
+			} else {
+				stream.WriteMore()
+			}
+			stream.WriteObjectStart()
+			rpc.HandleError(err, stream)
+			stream.WriteObjectEnd()
+			continue
+		}
+
+		if blockNumChanged {
+			if lastHeader, err = api._blockReader.HeaderByNumber(ctx, dbtx, blockNum); err != nil {
+				if first {
+					first = false
+				} else {
+					stream.WriteMore()
+				}
+				stream.WriteObjectStart()
+				rpc.HandleError(err, stream)
+				stream.WriteObjectEnd()
+				continue
+			}
+			if lastHeader == nil {
+				if first {
+					first = false
+				} else {
+					stream.WriteMore()
+				}
+				stream.WriteObjectStart()
+				rpc.HandleError(fmt.Errorf("header not found: %d", blockNum), stream)
+				stream.WriteObjectEnd()
+				continue
+			}
+
+			if !isPos && chainConfig.TerminalTotalDifficulty != nil {
+				header := lastHeader
+				isPos = header.Difficulty.IsZero() || header.Difficulty.Cmp(chainConfig.TerminalTotalDifficulty) >= 0
+			}
+
+			lastBlockHash = lastHeader.Hash()
+			lastSigner = types.MakeSigner(chainConfig, blockNum, lastHeader.Time)
+			blockCtx := transactions.NewEVMBlockContext(engine, lastHeader, true /* requireCanonical */, dbtx, api._blockReader, chainConfig)
+			lastRules = blockCtx.Rules(chainConfig)
+		}
+		if isFnalTxn {
+			// TODO(yperbasis) proper rewards for Gnosis
+
+			// if we are in POS
+			// we don't check for uncles or block rewards
+			if isPos {
+				continue
+			}
+
+			body, _, err := api._blockReader.Body(ctx, dbtx, lastBlockHash, blockNum)
+			if err != nil {
+				if first {
+					first = false
+				} else {
+					stream.WriteMore()
+				}
+				stream.WriteObjectStart()
+				rpc.HandleError(err, stream)
+				stream.WriteObjectEnd()
+				continue
+			}
+			// Block reward section, handle specially
+			minerReward, uncleRewards := ethash.AccumulateRewards(chainConfig, lastHeader, body.Uncles)
+			if _, ok := toAddresses[lastHeader.Coinbase]; ok || includeAll {
+				nSeen++
+				var tr ParityTrace
+				var rewardAction = &RewardTraceAction{}
+				rewardAction.Author = lastHeader.Coinbase
+				rewardAction.RewardType = rewardTypeBlock
+				rewardAction.Value.ToInt().Set(minerReward.ToBig())
+				tr.Action = rewardAction
+				tr.BlockHash = &common.Hash{}
+				copy(tr.BlockHash[:], lastBlockHash[:])
+				tr.BlockNumber = new(uint64)
+				*tr.BlockNumber = blockNum
+				tr.Type = rewardTraceType
+				tr.TraceAddress = []int{}
+				b, err := json.Marshal(tr)
+				if err != nil {
+					if first {
+						first = false
+					} else {
+						stream.WriteMore()
+					}
+					stream.WriteObjectStart()
+					rpc.HandleError(err, stream)
+					stream.WriteObjectEnd()
+					continue
+				}
+				if nSeen > after && nExported < count {
+					if first {
+						first = false
+					} else {
+						stream.WriteMore()
+					}
+					if _, err := stream.Write(b); err != nil {
+						return err
+					}
+					nExported++
+				}
+			}
+			for i, uncle := range body.Uncles {
+				if _, ok := toAddresses[uncle.Coinbase]; ok || includeAll {
+					if i < len(uncleRewards) {
+						nSeen++
+						var tr ParityTrace
+						rewardAction := &RewardTraceAction{}
+						rewardAction.Author = uncle.Coinbase
+						rewardAction.RewardType = rewardTypeUncle
+						rewardAction.Value.ToInt().Set(uncleRewards[i].ToBig())
+						tr.Action = rewardAction
+						tr.BlockHash = &common.Hash{}
+						copy(tr.BlockHash[:], lastBlockHash[:])
+						tr.BlockNumber = new(uint64)
+						*tr.BlockNumber = blockNum
+						tr.Type = rewardTraceType
+						tr.TraceAddress = []int{}
+						b, err := json.Marshal(tr)
+						if err != nil {
+							if first {
+								first = false
+							} else {
+								stream.WriteMore()
+							}
+							stream.WriteObjectStart()
+							rpc.HandleError(err, stream)
+							stream.WriteObjectEnd()
+							continue
+						}
+						if nSeen > after && nExported < count {
+							if first {
+								first = false
+							} else {
+								stream.WriteMore()
+							}
+							if _, err := stream.Write(b); err != nil {
+								return err
+							}
+							nExported++
+						}
+					}
+				}
+			}
+			continue
+		}
+		if txIndex == -1 { //is system tx
+			continue
+		}
+		txIndexU64 := uint64(txIndex)
+		//fmt.Printf("txNum=%d, blockNum=%d, txIndex=%d\n", txNum, blockNum, txIndex)
+		txn, err := api._txnReader.TxnByIdxInBlock(ctx, dbtx, blockNum, txIndex)
+		if err != nil {
+			if first {
+				first = false
+			} else {
+				stream.WriteMore()
+			}
+			stream.WriteObjectStart()
+			rpc.HandleError(err, stream)
+			stream.WriteObjectEnd()
+			continue
+		}
+		if txn == nil {
+			continue //guess block doesn't have transactions
+		}
+		txHash := txn.Hash()
+		msg, err := txn.AsMessage(*lastSigner, lastHeader.BaseFee, lastRules)
+		if err != nil {
+			if first {
+				first = false
+			} else {
+				stream.WriteMore()
+			}
+			stream.WriteObjectStart()
+			rpc.HandleError(err, stream)
+			stream.WriteObjectEnd()
+			continue
+		}
+
+		stateCache := shards.NewStateCache(32, 0 /* no limit */) // this cache living only during current RPC call, but required to store state writes
+		cachedReader := state.NewCachedReader(state.NewHistoryReaderV3(dbtx, txNum), stateCache)
+		cachedWriter := state.NewCachedWriter(noop, stateCache)
+
+		traceResult := &TraceCallResult{Trace: []*ParityTrace{}}
+		var ot OeTracer
+		ot.config, err = parseOeTracerConfig(traceConfig)
+		if err != nil {
+			return err
+		}
+		ot.compat = api.compatibility
+		ot.r = traceResult
+		ot.idx = []string{fmt.Sprintf("%d-", txIndex)}
+		ot.traceAddr = []int{}
+		vmConfig.Tracer = ot.Tracer().Hooks
+		ibs := state.New(cachedReader)
+
+		blockCtx := transactions.NewEVMBlockContext(engine, lastHeader, true /* requireCanonical */, dbtx, api._blockReader, chainConfig)
+		evmTxCtx := protocol.NewEVMTxContext(msg)
+		evm := vm.NewEVM(blockCtx, evmTxCtx, ibs, chainConfig, vmConfig)
+
+		gp := new(protocol.GasPool).AddGas(msg.Gas()).AddBlobGas(msg.BlobGas())
+		ibs.SetTxContext(blockNum, txIndex)
+		ibs.SetHooks(ot.Tracer().Hooks)
+
+		if ot.Tracer() != nil && ot.Tracer().Hooks.OnTxStart != nil {
+			ot.Tracer().OnTxStart(evm.GetVMContext(), txn, msg.From())
+		}
+
+		var timer *time.Timer
+		if api.evmCallTimeout > 0 {
+			timer = time.AfterFunc(api.evmCallTimeout, evm.Cancel)
+		}
+		var execResult *evmtypes.ExecutionResult
+		execResult, err = protocol.ApplyMessage(evm, msg, gp, true /* refunds */, gasBailOut, engine)
+		if timer != nil {
+			timer.Stop()
+		}
+		timedOut := timer != nil && evm.Cancelled()
+
+		if timedOut {
+			timeoutErr := fmt.Errorf("execution aborted (timeout = %v)", api.evmCallTimeout)
+			if ot.Tracer() != nil && ot.Tracer().Hooks.OnTxEnd != nil {
+				ot.Tracer().OnTxEnd(nil, timeoutErr)
+			}
+			if first {
+				first = false
+			} else {
+				stream.WriteMore()
+			}
+			stream.WriteObjectStart()
+			rpc.HandleError(timeoutErr, stream)
+			stream.WriteObjectEnd()
+			// Safe to skip FinalizeTx/CommitBlock: each iteration creates a fresh
+			// stateCache, cachedReader and ibs from the next txNum, and writes go
+			// to a noop writer, so no partial state escapes this scope.
+			continue
+		}
+		if err != nil {
+			if ot.Tracer() != nil && ot.Tracer().Hooks.OnTxEnd != nil {
+				ot.Tracer().OnTxEnd(nil, err)
+			}
+			if first {
+				first = false
+			} else {
+				stream.WriteMore()
+			}
+			stream.WriteObjectStart()
+			rpc.HandleError(err, stream)
+			stream.WriteObjectEnd()
+			continue
+		}
+		if ot.Tracer() != nil && ot.Tracer().Hooks.OnTxEnd != nil {
+			ot.Tracer().OnTxEnd(&types.Receipt{GasUsed: execResult.ReceiptGasUsed}, nil)
+		}
+		traceResult.Output = common.Copy(execResult.ReturnData)
+		if err = ibs.FinalizeTx(evm.ChainRules(), noop); err != nil {
+			if first {
+				first = false
+			} else {
+				stream.WriteMore()
+			}
+			stream.WriteObjectStart()
+			rpc.HandleError(err, stream)
+			stream.WriteObjectEnd()
+			continue
+		}
+		if err = ibs.CommitBlock(evm.ChainRules(), cachedWriter); err != nil {
+			if first {
+				first = false
+			} else {
+				stream.WriteMore()
+			}
+			stream.WriteObjectStart()
+			rpc.HandleError(err, stream)
+			stream.WriteObjectEnd()
+			continue
+		}
+		isIntersectionMode := req.Mode == TraceFilterModeIntersection
+		for _, pt := range traceResult.Trace {
+			if includeAll || filterTrace(pt, fromAddresses, toAddresses, isIntersectionMode) {
+				nSeen++
+				pt.BlockHash = &lastBlockHash
+				pt.BlockNumber = &blockNum
+				pt.TransactionHash = &txHash
+				pt.TransactionPosition = &txIndexU64
+				b, err := json.Marshal(pt)
+				if err != nil {
+					if first {
+						first = false
+					} else {
+						stream.WriteMore()
+					}
+					stream.WriteObjectStart()
+					rpc.HandleError(err, stream)
+					stream.WriteObjectEnd()
+					continue
+				}
+				if nSeen > after && nExported < count {
+					if first {
+						first = false
+					} else {
+						stream.WriteMore()
+					}
+					if _, err := stream.Write(b); err != nil {
+						return err
+					}
+					nExported++
+				}
+			}
+		}
+	}
+	stream.WriteArrayEnd()
+	return nil
+}
+
+func filterTrace(pt *ParityTrace, fromAddresses map[common.Address]struct{}, toAddresses map[common.Address]struct{}, isIntersectionMode bool) bool {
+	f, t := false, false
+	switch action := pt.Action.(type) {
+	case *CallTraceAction:
+		_, f = fromAddresses[action.From]
+		_, t = toAddresses[action.To]
+	case *CreateTraceAction:
+		_, f = fromAddresses[action.From]
+
+		if res, ok := pt.Result.(*CreateTraceResult); ok {
+			if res.Address != nil {
+				_, t = toAddresses[*res.Address]
+			}
+		}
+	case *SuicideTraceAction:
+		_, f = fromAddresses[action.Address]
+		_, t = toAddresses[action.RefundAddress]
+	}
+
+	if isIntersectionMode {
+		return f && t
+	} else {
+		return f || t
+	}
+}
+
+func (api *TraceAPIImpl) callBlock(
+	ctx context.Context,
+	dbtx kv.TemporalTx,
+	block *types.Block,
+	traceTypes []string,
+	gasBailOut bool,
+	signer *types.Signer,
+	cfg *chain.Config,
+	traceConfig *config.TraceConfig,
+) ([]*TraceCallResult, protocolrules.SystemCall, error) {
+	blockNumber := block.NumberU64()
+	pNo := blockNumber
+	if pNo > 0 {
+		pNo -= 1
+	}
+
+	parentNo := rpc.BlockNumber(pNo)
+	header := block.Header()
+	engine := api.engine()
+	blockCtx := transactions.NewEVMBlockContext(engine, header, true /* requireCanonical */, dbtx, api._blockReader, cfg)
+	rules := blockCtx.Rules(cfg)
+	txs := block.Transactions()
+	var borStateSyncTxn types.Transaction
+	var borStateSyncTxnHash common.Hash
+	if cfg.Bor != nil {
+		// check if this block has state sync txn
+		blockHash := block.Hash()
+		borStateSyncTxnHash = bortypes.ComputeBorTxHash(blockNumber, blockHash)
+
+		_, ok, err := api.bridgeReader.EventTxnLookup(ctx, borStateSyncTxnHash)
+
+		if err != nil {
+			return nil, nil, err
+		}
+		if ok {
+			borStateSyncTxn = bortypes.NewBorTransaction()
+			txs = append(txs, borStateSyncTxn)
+		}
+	}
+
+	callParams := make([]TraceCallParam, 0, len(txs))
+
+	parentHash := block.ParentHash()
+	parentNrOrHash := rpc.BlockNumberOrHash{
+		BlockNumber:      &parentNo,
+		BlockHash:        &parentHash,
+		RequireCanonical: true,
+	}
+
+	err := rpchelper.CheckBlockExecuted(api.filters.WithOverlay(dbtx), blockNumber)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateReader, err := rpchelper.CreateStateReader(ctx, dbtx, api._blockReader, parentNrOrHash, 0, api.filters, api.stateCache, api._txNumReader)
+	if err != nil {
+		return nil, nil, err
+	}
+	stateCache := shards.NewStateCache(
+		32, 0 /* no limit */) // this cache living only during current RPC call, but required to store state writes
+	cachedReader := state.NewCachedReader(stateReader, stateCache)
+	noop := state.NewNoopWriter()
+	cachedWriter := state.NewCachedWriter(noop, stateCache)
+	ibs := state.New(cachedReader)
+
+	consensusHeaderReader := consensuschain.NewReader(cfg, dbtx, api._blockReader, nil)
+	logger := log.New("trace_filtering")
+	err = protocol.InitializeBlockExecution(engine.(protocolrules.Engine), consensusHeaderReader, block.HeaderNoCopy(), cfg, ibs, nil, logger, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err = ibs.CommitBlock(rules, cachedWriter); err != nil {
+		return nil, nil, err
+	}
+
+	msgs := make([]*types.Message, len(txs))
+	for i, txn := range txs {
+		isBorStateSyncTxn := txn == borStateSyncTxn
+		var txnHash common.Hash
+		var msg *types.Message
+		var err error
+		if isBorStateSyncTxn {
+			txnHash = borStateSyncTxnHash
+			// we use an empty message for bor state sync txn since it gets handled differently
+		} else {
+			txnHash = txn.Hash()
+			msg, err = txn.AsMessage(*signer, header.BaseFee, rules)
+			if err != nil {
+				return nil, nil, fmt.Errorf("convert txn into msg: %w", err)
+			}
+		}
+
+		callParams = append(callParams, TraceCallParam{
+			txHash:            &txnHash,
+			traceTypes:        traceTypes,
+			isBorStateSyncTxn: isBorStateSyncTxn,
+		})
+
+		msgs[i] = msg
+	}
+
+	// Use parallel execution when replaying historical blocks without stateDiff or vmTrace:
+	// each tx can read its own pre-state independently from the temporal DB,
+	// so workers never share mutable state and need no conflict detection.
+	// Bor state-sync txns are excluded because they require bridgeReader.Events
+	// which uses the shared dbtx. vmTrace is excluded because the parallel path
+	// does not initialise traceResult.VmTrace.
+	// When the parallel path is taken, ibs only has InitializeBlockExecution effects
+	// (no user-tx state); CalculateRewards is safe because rewards are header-derived.
+	hasStateDiff := false
+	hasVmTrace := false
+	for _, t := range traceTypes {
+		switch t {
+		case TraceTypeStateDiff:
+			hasStateDiff = true
+		case TraceTypeVmTrace:
+			hasVmTrace = true
+		}
+		if hasStateDiff && hasVmTrace {
+			break
+		}
+	}
+	hsr, isHistoricalStateReader := stateReader.(state.HistoricalStateReader)
+	var baseTxNum uint64
+	if isHistoricalStateReader {
+		baseTxNum = hsr.GetTxNum()
+	}
+
+	var traces []*TraceCallResult
+	var cmErr error
+	if isHistoricalStateReader && !hasStateDiff && !hasVmTrace && borStateSyncTxn == nil && len(txs) > 1 {
+		traces, cmErr = api.doCallBlockParallel(ctx, dbtx, baseTxNum, txs, msgs, callParams, header, gasBailOut, traceConfig)
+	} else {
+		traces, _, cmErr = api.doCallBlock(ctx, dbtx, stateReader, stateCache, cachedWriter, ibs, txs, msgs, callParams,
+			&parentNrOrHash, header, gasBailOut /* gasBailout */, traceConfig)
+	}
+
+	if cmErr != nil {
+		return nil, nil, cmErr
+	}
+
+	syscall := func(contract accounts.Address, data []byte) ([]byte, error) {
+		ret, err := protocol.SysCallContract(contract, data, cfg, ibs, header, engine, false /* constCall */, vm.Config{})
+		return ret, err
+	}
+
+	return traces, syscall, nil
+}
+
+type blockTraceTxJob struct {
+	txIndex   int
+	txn       types.Transaction
+	msg       *types.Message
+	callParam TraceCallParam
+}
+
+// doCallBlockParallel traces all transactions in a block concurrently using a
+// worker pool of size min(GOMAXPROCS, len(txns)).  Each worker opens its own
+// read-only temporal transaction so that the underlying MDBX transaction is
+// never accessed from more than one goroutine.  Because the temporal DB stores
+// the exact pre-state for every txNum, each transaction can be replayed
+// independently without conflict detection or state forwarding.
+//
+// Preconditions (checked by the caller):
+//   - stateReader is a HistoricalStateReader (historical block, not latest)
+//   - no stateDiff is requested (stateDiff needs per-tx cloneCache isolation)
+//   - no Bor state-sync txn (it uses bridgeReader.Events via the shared dbtx)
+func (api *TraceAPIImpl) doCallBlockParallel(
+	ctx context.Context,
+	dbtx kv.TemporalTx,
+	baseTxNum uint64,
+	txns []types.Transaction,
+	msgs []*types.Message,
+	callParams []TraceCallParam,
+	header *types.Header,
+	gasBailout bool,
+	traceConfig *config.TraceConfig,
+) ([]*TraceCallResult, error) {
+	chainConfig, err := api.chainConfig(ctx, dbtx)
+	if err != nil {
+		return nil, err
+	}
+	engine := api.engine()
+
+	var cancel context.CancelFunc
+	if api.evmCallTimeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, api.evmCallTimeout)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
+	}
+	defer cancel()
+
+	results := make([]*TraceCallResult, len(txns))
+
+	// Cap at 32 to bound memory from concurrent IntraBlockState instances and
+	// MDBX read transactions even on high-core-count machines.
+	const maxParallelWorkers = 32
+	numWorkers := min(runtime.GOMAXPROCS(0), len(txns), maxParallelWorkers)
+
+	// Pre-fill a buffered channel so the main goroutine never blocks.
+	jobs := make(chan blockTraceTxJob, len(txns))
+	for txIndex, msg := range msgs {
+		jobs <- blockTraceTxJob{txIndex: txIndex, txn: txns[txIndex], msg: msg, callParam: callParams[txIndex]}
+	}
+	close(jobs)
+
+	var wg sync.WaitGroup
+	var errOnce sync.Once
+	var firstErr error
+
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			workerTx, err := api.kv.BeginTemporalRo(ctx)
+			if err != nil {
+				errOnce.Do(func() { firstErr = err; cancel() })
+				return
+			}
+			defer workerTx.Rollback()
+
+			// Per-worker constants: same for every job this worker processes.
+			// blockCtx captures workerTx in its GetHash closure, so it cannot
+			// be shared across workers (each needs its own copy).
+			blockCtx := transactions.NewEVMBlockContext(engine, header, true /* requireCanonical */, workerTx, api._blockReader, chainConfig)
+			chainRules := blockCtx.Rules(chainConfig)
+			oeConfig, err := parseOeTracerConfig(traceConfig)
+			if err != nil {
+				errOnce.Do(func() { firstErr = err; cancel() })
+				return
+			}
+			noop := state.NewNoopWriter()
+
+			for job := range jobs {
+				if err := common.Stopped(ctx.Done()); err != nil {
+					errOnce.Do(func() { firstErr = err })
+					return
+				}
+
+				workerReader := state.NewHistoryReaderV3(workerTx, baseTxNum+uint64(job.txIndex))
+				workerIbs := state.New(workerReader)
+
+				traceResult := &TraceCallResult{Trace: []*ParityTrace{}, TransactionHash: job.callParam.txHash}
+
+				var ot OeTracer
+				ot.config = oeConfig
+				ot.compat = api.compatibility
+				ot.r = traceResult
+				ot.idx = []string{fmt.Sprintf("%d-", job.txIndex)}
+				// The parallel path only activates when !hasStateDiff && !hasVmTrace, so
+				// TraceTypeTrace is always active here; initialise traceAddr unconditionally.
+				ot.traceAddr = []int{}
+
+				tracer := ot.Tracer()
+				vmConfig := vm.Config{Tracer: tracer.Hooks}
+
+				workerIbs.SetTxContext(blockCtx.BlockNumber, job.txIndex)
+				workerIbs.SetHooks(tracer.Hooks)
+
+				txCtx := protocol.NewEVMTxContext(job.msg)
+				evm := vm.NewEVM(blockCtx, txCtx, workerIbs, chainConfig, vmConfig)
+				gp := new(protocol.GasPool).AddGas(job.msg.Gas()).AddBlobGas(job.msg.BlobGas())
+
+				if tracer.Hooks.OnTxStart != nil {
+					tracer.Hooks.OnTxStart(evm.GetVMContext(), job.txn, job.msg.From())
+				}
+
+				execResult, execErr := protocol.ApplyMessage(evm, job.msg, gp, true /* refunds */, gasBailout, engine)
+				if execErr != nil {
+					if tracer.Hooks.OnTxEnd != nil {
+						tracer.Hooks.OnTxEnd(nil, execErr)
+					}
+					errOnce.Do(func() { firstErr = fmt.Errorf("txIndex %d: %w", job.txIndex, execErr); cancel() })
+					return
+				}
+
+				if tracer.Hooks.OnTxEnd != nil {
+					tracer.Hooks.OnTxEnd(&types.Receipt{GasUsed: execResult.ReceiptGasUsed}, nil)
+				}
+
+				if err := workerIbs.FinalizeTx(chainRules, noop); err != nil {
+					errOnce.Do(func() { firstErr = err; cancel() })
+					return
+				}
+
+				traceResult.Output = common.Copy(execResult.ReturnData)
+				results[job.txIndex] = traceResult
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	if firstErr != nil {
+		return nil, firstErr
+	}
+	return results, nil
+}
+
+func (api *TraceAPIImpl) callTransaction(
+	ctx context.Context,
+	dbtx kv.TemporalTx,
+	header *types.Header,
+	traceTypes []string,
+	txIndex int,
+	gasBailOut bool,
+	signer *types.Signer,
+	cfg *chain.Config,
+	traceConfig *config.TraceConfig,
+) (*TraceCallResult, error) {
+	blockNumber := header.Number.Uint64()
+	pNo := blockNumber
+	if pNo > 0 {
+		pNo -= 1
+	}
+
+	parentNo := rpc.BlockNumber(pNo)
+	engine := api.engine()
+	blockCtx := transactions.NewEVMBlockContext(engine, header, true /* requireCanonical */, dbtx, api._blockReader, cfg)
+	rules := blockCtx.Rules(cfg)
+	var txn types.Transaction
+	var borStateSyncTxnHash common.Hash
+	isBorStateSyncTxn := txIndex == -1 && cfg.Bor != nil
+	if isBorStateSyncTxn {
+		// check if this header has state sync txn
+		blockHash := header.Hash()
+		borStateSyncTxnHash = bortypes.ComputeBorTxHash(blockNumber, blockHash)
+
+		_, ok, err := api.bridgeReader.EventTxnLookup(ctx, borStateSyncTxnHash)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, errors.New("bridge transaction expected but not found")
+		}
+		txn = bortypes.NewBorTransaction()
+	} else {
+		var err error
+		txn, err = api._txnReader.TxnByIdxInBlock(ctx, dbtx, blockNumber, txIndex)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	parentHash := header.ParentHash
+	parentNrOrHash := rpc.BlockNumberOrHash{
+		BlockNumber:      &parentNo,
+		BlockHash:        &parentHash,
+		RequireCanonical: true,
+	}
+
+	err := rpchelper.CheckBlockExecuted(api.filters.WithOverlay(dbtx), blockNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	stateReader, err := rpchelper.CreateStateReader(ctx, dbtx, api._blockReader, parentNrOrHash, 0, api.filters, api.stateCache, api._txNumReader)
+	if err != nil {
+		return nil, err
+	}
+	stateCache := shards.NewStateCache(
+		32, 0 /* no limit */) // this cache living only during current RPC call, but required to store state writes
+	cachedReader := state.NewCachedReader(stateReader, stateCache)
+	noop := state.NewNoopWriter()
+	cachedWriter := state.NewCachedWriter(noop, stateCache)
+	ibs := state.New(cachedReader)
+
+	consensusHeaderReader := consensuschain.NewReader(cfg, dbtx, api._blockReader, nil)
+	logger := log.New("trace_filtering")
+	err = protocol.InitializeBlockExecution(engine.(protocolrules.Engine), consensusHeaderReader, header, cfg, ibs, nil, logger, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err = ibs.CommitBlock(rules, cachedWriter); err != nil {
+		return nil, err
+	}
+
+	var txnHash common.Hash
+	var msg *types.Message
+	if isBorStateSyncTxn {
+		txnHash = borStateSyncTxnHash
+		// we use an empty message for bor state sync txn since it gets handled differently
+	} else {
+		txnHash = txn.Hash()
+		msg, err = txn.AsMessage(*signer, header.BaseFee, rules)
+		if err != nil {
+			return nil, fmt.Errorf("convert txn into msg: %w", err)
+		}
+	}
+
+	callParam := TraceCallParam{
+		txHash:            &txnHash,
+		traceTypes:        traceTypes,
+		isBorStateSyncTxn: isBorStateSyncTxn,
+	}
+
+	trace, cmErr := api.doCall(ctx, dbtx, stateReader, stateCache, cachedWriter, ibs, msg, callParam,
+		&parentNrOrHash, header, gasBailOut /* gasBailout */, txIndex, traceConfig)
+
+	if cmErr != nil {
+		return nil, cmErr
+	}
+	return trace, nil
+}
+
+// TraceFilterRequest represents the arguments for trace_filter
+type TraceFilterRequest struct {
+	FromBlock   *rpc.BlockNumberOrHash `json:"fromBlock"`
+	ToBlock     *rpc.BlockNumberOrHash `json:"toBlock"`
+	FromAddress []*common.Address      `json:"fromAddress"`
+	ToAddress   []*common.Address      `json:"toAddress"`
+	Mode        TraceFilterMode        `json:"mode"`
+	After       *uint64                `json:"after"`
+	Count       *uint64                `json:"count"`
+}
+
+type TraceFilterMode string
+
+const (
+	// TraceFilterModeUnion is default mode for TraceFilter.
+	// Unions results referred to addresses from FromAddress or ToAddress
+	TraceFilterModeUnion = "union"
+	// TraceFilterModeIntersection retrieves results referred to addresses provided both in FromAddress and ToAddress
+	TraceFilterModeIntersection = "intersection"
+)

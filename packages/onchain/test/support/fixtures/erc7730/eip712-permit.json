@@ -1,0 +1,61 @@
+{
+  "$schema": "https://eips.ethereum.org/assets/eip-7730/erc7730-v1.schema.json",
+  "context": {
+    "eip712": {
+      "deployments": [
+        { "chainId": 1, "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" }
+      ],
+      "domain": { "name": "USD Coin", "version": "2", "chainId": 1 },
+      "schemas": [
+        {
+          "primaryType": "Permit",
+          "types": {
+            "Permit": [
+              { "name": "owner", "type": "address" },
+              { "name": "spender", "type": "address" },
+              { "name": "value", "type": "uint256" },
+              { "name": "nonce", "type": "uint256" },
+              { "name": "deadline", "type": "uint256" }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "owner": "USDC",
+    "token": { "name": "USD Coin", "ticker": "USDC", "decimals": 6 }
+  },
+  "display": {
+    "formats": {
+      "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)": {
+        "intent": "Authorize spending of tokens",
+        "fields": [
+          {
+            "path": "spender",
+            "label": "Spender",
+            "format": "addressName",
+            "params": { "types": ["contract"], "sources": ["local"] },
+            "visible": "always"
+          },
+          {
+            "path": "value",
+            "label": "Max spending amount",
+            "format": "tokenAmount",
+            "params": { "tokenPath": "@.to" },
+            "visible": "always"
+          },
+          {
+            "path": "deadline",
+            "label": "Valid until",
+            "format": "date",
+            "params": { "encoding": "timestamp" },
+            "visible": "always"
+          },
+          { "path": "owner", "label": "Owner", "format": "raw", "visible": "never" },
+          { "path": "nonce", "label": "Nonce", "format": "raw", "visible": "never" }
+        ]
+      }
+    }
+  }
+}
