@@ -4,7 +4,24 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## Unreleased
+## [0.7.0] — 2026-08-27
+
+### Changed
+
+- **`{:descripex, "~> 0.12"}` → `{:descripex, "~> 1.0"}`.** descripex 1.0.0 is
+  the stable major line, behaviourally equal to 0.13.0 per its own CHANGELOG
+  ("No behavioural change over 0.13.0"). A requirement narrowing, hence this
+  minor.
+
+- **Repo moved into the `onchain-stack` monorepo.** Source, issue tracker and
+  release tags now live at `github.com/ZenHive/onchain-stack`, under
+  `packages/onchain_evm/`; the tag scheme is `onchain_evm-v<version>` (was a
+  bare `v<version>` in the standalone repo). The standalone
+  `ZenHive/onchain_evm` GitHub repo is archived. The Hex package name and
+  public API are unchanged. Starting with this version, precompiled NIF
+  downloads are served from `onchain-stack` release tags
+  (`onchain_evm-v<version>`); older published versions keep loading their
+  artifacts from the archived standalone repo's release tags.
 
 ### Documentation
 
@@ -100,21 +117,6 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
   parser types. Deeply nested expressions return `{:error, {:parse_error, _}}`
   instead of aborting the BEAM. The crate requires Rust 1.95+. JSON-ABI parsing
   stays on `alloy-json-abi`.
-
-- **`{:descripex, "~> 0.12"}` → `{:descripex, "~> 1.0"}`.** descripex 1.0.0 is
-  the stable major line, behaviourally equal to 0.13.0 per its own CHANGELOG
-  ("No behavioural change over 0.13.0"). A requirement narrowing, hence this
-  minor.
-
-- **Repo moved into the `onchain-stack` monorepo.** Source, issue tracker and
-  release tags now live at `github.com/ZenHive/onchain-stack`, under
-  `packages/onchain_evm/`; the tag scheme is `onchain_evm-v<version>` (was a
-  bare `v<version>` in the standalone repo). The standalone
-  `ZenHive/onchain_evm` GitHub repo is archived. The Hex package name and
-  public API are unchanged. Starting with this version, precompiled NIF
-  downloads are served from `onchain-stack` release tags
-  (`onchain_evm-v<version>`); older published versions keep loading their
-  artifacts from the archived standalone repo's release tags.
 
 ## [0.5.1] — 2026-08-22
 

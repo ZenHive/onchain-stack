@@ -14,7 +14,20 @@ All notable changes to this project will be documented in this file.
 <a id="phase-11-hieroglyph-1-0-0-1-4-0-adoption-advisory"></a>
 <a id="phase-12-agent-economy-descripex-adoption"></a>
 
-## [Unreleased]
+## [0.9.0] — 2026-08-27
+
+### Changed
+
+- **`{:descripex, "~> 0.12"}` → `{:descripex, "~> 1.0"}`.** descripex 1.0.0 is
+  the stable major line, behaviourally equal to 0.13.0 per its own CHANGELOG
+  ("No behavioural change over 0.13.0"). A requirement narrowing, hence this
+  minor.
+
+- **Repo moved into the `onchain-stack` monorepo.** Source, issue tracker and
+  release tags now live at `github.com/ZenHive/onchain-stack`, under
+  `packages/cartouche/`; the tag scheme is `cartouche-v<version>` (was a bare
+  `v<version>` in the standalone repo). The standalone `ZenHive/cartouche`
+  GitHub repo is archived. The Hex package name and public API are unchanged.
 
 ### Fixed
 
@@ -226,17 +239,6 @@ All notable changes to this project will be documented in this file.
   worktree, which that check correctly reports as drift, producing a red the
   reviewer can neither fix nor ignore. `AGENTS.md` freshness stays enforced by
   `precommit.full` on the landed base.
-
-- **`{:descripex, "~> 0.12"}` → `{:descripex, "~> 1.0"}`.** descripex 1.0.0 is
-  the stable major line, behaviourally equal to 0.13.0 per its own CHANGELOG
-  ("No behavioural change over 0.13.0"). A requirement narrowing, hence this
-  minor.
-
-- **Repo moved into the `onchain-stack` monorepo.** Source, issue tracker and
-  release tags now live at `github.com/ZenHive/onchain-stack`, under
-  `packages/cartouche/`; the tag scheme is `cartouche-v<version>` (was a bare
-  `v<version>` in the standalone repo). The standalone `ZenHive/cartouche`
-  GitHub repo is archived. The Hex package name and public API are unchanged.
 
 ### Fixed
 
