@@ -8,3 +8,4 @@
 /.lexical/
 erl_crash.dump
 *.ez
+.hex-docs/
