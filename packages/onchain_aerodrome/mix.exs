@@ -135,7 +135,7 @@ defmodule OnchainAerodrome.MixProject do
       main: "readme",
       source_ref: "onchain_aerodrome-v#{@version}",
       source_url: @source_url,
-      extras: ["README.md", "CHANGELOG.md"],
+      extras: ["README.md", "CHANGELOG.md", "docs/protocol-context.md"],
       # ExDoc builds file links relative to the package root, but the
       # monorepo puts the package two levels below the repo root — without
       # this pattern every generated doc link 404s against

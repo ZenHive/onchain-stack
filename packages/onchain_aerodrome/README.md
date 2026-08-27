@@ -12,8 +12,8 @@ weekly by veAERO voters; an epoch is one week and flips **Thursday 00:00 UTC**.
 
 > **Status: scaffold.** The address registry and captured ABIs are in place and
 > verified against live Base state. The binding, read, analytics and write
-> layers are scoped in [`ROADMAP.md`](ROADMAP.md) (canonical source
-> `roadmap/tasks.toml`, managed by `rmap`) and not yet implemented.
+> layers are scoped in [the monorepo `ROADMAP.md`](https://github.com/ZenHive/onchain-stack/blob/main/ROADMAP.md)
+> (canonical source `roadmap/tasks.toml` at the repo root, tasks offset +5000) and not yet implemented.
 > Dated protocol notes (official Sugar SDK sibling, tokenized stocks, B20
 > multiplier) live in [`docs/protocol-context.md`](docs/protocol-context.md).
 
@@ -182,4 +182,4 @@ against Sugar redeploy drift.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/ZenHive/onchain-stack/blob/main/packages/onchain_aerodrome/LICENSE).
