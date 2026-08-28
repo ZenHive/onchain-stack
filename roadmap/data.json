@@ -114,6 +114,11 @@
       "order": 3012,
       "status": "pending"
     },
+    "3013": {
+      "name": "[onchain] EIP-7702 Execution Rail",
+      "order": 3013,
+      "status": "pending"
+    },
     "4001": {
       "name": "[onchain_aave] Aave Core (Read)",
       "order": 4001,
@@ -152,6 +157,11 @@
     "4008": {
       "name": "[onchain_aave] Event & Revert Decoding",
       "order": 4008,
+      "status": "pending"
+    },
+    "4009": {
+      "name": "[onchain_aave] Flash-Loan Execution",
+      "order": 4009,
       "status": "pending"
     },
     "5001": {
@@ -242,6 +252,11 @@
     "8003": {
       "name": "[onchain_tempo] Future Work",
       "order": 8003,
+      "status": "pending"
+    },
+    "9001": {
+      "name": "[onchain_morpho] Morpho Blue Read Layer",
+      "order": 9001,
       "status": "pending"
     }
   },
@@ -461,6 +476,11 @@
       "order": 1,
       "description": "Decode what the deployed protocol says back: Pool event logs with topic filters, structured revert reasons on write failures, and strict ABI decoding of responses."
     },
+    "onchain_aave_flash_executor": {
+      "phase": 4009,
+      "order": 1,
+      "description": "Flash-loan execution: an atomic action bundle funded and repaid inside one Aave flash loan, under the full verification regime."
+    },
     "onchain_aave_math_validation": {
       "phase": 4003,
       "order": 1,
@@ -546,6 +566,11 @@
       "order": 4,
       "description": "Differential test harness comparing Onchain.RPC against reference implementations."
     },
+    "onchain_eip7702": {
+      "phase": 3013,
+      "order": 1,
+      "description": "EIP-7702 execution rail: type-0x04 through Onchain.Signer and batched execution under a pinned audited delegate."
+    },
     "onchain_ens": {
       "phase": 3012,
       "order": 3,
@@ -610,6 +635,11 @@
       "phase": 7001,
       "order": 1,
       "description": "QuickBEAM runtime lifecycle, npm setup, browser stubs"
+    },
+    "onchain_morpho_reads": {
+      "phase": 9001,
+      "order": 1,
+      "description": "Morpho Blue read layer: markets, positions and oracle prices on Ethereum mainnet and Base."
     },
     "onchain_node_portability": {
       "phase": 3012,
@@ -7045,6 +7075,176 @@
       "cross_repo": []
     },
     {
+      "id": 3095,
+      "phase": 3013,
+      "bundle": "onchain_eip7702",
+      "target_repo": "onchain",
+      "status": "pending",
+      "title": "Onchain.Signer type-0x04: build, sign, and broadcast EIP-7702 transactions",
+      "scores": {
+        "d": 5,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.5,
+      "dep_layer": 0,
+      "unlocks": 1,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "cursor",
+      "module": "Onchain.Signer",
+      "model": "cursor-grok-4.6-high",
+      "acceptance_criteria": [
+        "build_transaction/3 accepts an :authorization_list and returns a Cartouche.Transaction.V4; sign, encode and send handle the V4 struct end to end",
+        "Authorization-tuple signing is exposed at the Onchain level and pinned byte-exact against cartouche's viem-2.55.19 and ethers-6.17.0 vector fixtures",
+        "Gas estimation accounts for the per-authorization overhead defined by EIP-7702 rather than reusing the bare eth_estimateGas result unchanged",
+        "An integration test broadcasts a real type-0x04 transaction on a testnet, asserts the delegation designator (0xef0100 plus the address) is readable via eth_getCode afterwards, and pins one real send error; missing credentials flunk with the exact variables to export",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "The delegate contract choice and batched-call encoding — task 3096 owns those",
+        "Blob transactions (Cartouche.Transaction.V3)"
+      ],
+      "touches": [
+        "packages/onchain/lib/onchain/signer.ex",
+        "packages/onchain/test/onchain/signer_test.exs",
+        "packages/onchain/CHANGELOG.md"
+      ],
+      "body": "Cartouche.Transaction.V4 already implements the whole EIP-7702 wire format — new/10 with an authorization list, sign_authorization/2, authorization_signing_payload/1, recover_authority/1 — cross-checked byte-exact against viem 2.55.19 and ethers 6.17.0 vector fixtures and a real mainnet type-0x04 decode (task 2032, done). Onchain.Signer wraps none of it: the module is hardcoded to Cartouche.Transaction.V2 in five places (the alias, build_transaction_validated/3, sign_transaction/3, both encode_transaction/1 clauses), recognises no :authorization_list option, and every @spec names V2.t() (surveyed 2026-08-28). The onchain CHANGELOG explicitly deferred this wrapping until a consumer needs 7702 set-code auth — the consumer now exists: aave_sim task 118 evaluates 7702 as its one-transaction rail.\n\nWire it through: an :authorization_list option on build, V4 branches on sign, encode and send, authorization-tuple signing surfaced at the Onchain level, and gas estimation that carries the authorization overhead.\n\nConstraint measured, not assumed: onchain_evm's revm NIF does not expose authorization lists (zero grep hits in native/src), so fork simulation cannot carry a type-0x04 — live evidence comes from a testnet send, not a fork.\n\nAUTHORITY: EIP-7702 and live network behaviour; cartouche's vector fixtures are the encoding oracle.\n\nDispatch trigger: money-path transaction surface requiring live testnet evidence.\n",
+      "created_at": "2026-08-28",
+      "scored_at": "2026-08-28",
+      "cross_repo": []
+    },
+    {
+      "id": 3096,
+      "phase": 3013,
+      "bundle": "onchain_eip7702",
+      "target_repo": "onchain",
+      "status": "pending",
+      "title": "EIP-7702 batched execution: pin an audited delegate and encode its batch calldata",
+      "scores": {
+        "d": 6,
+        "b": 9,
+        "u": 7
+      },
+      "eff": 1.33,
+      "dep_layer": 1,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [
+        3095
+      ],
+      "assignee": "grok",
+      "module": "Onchain.Delegate",
+      "model": "grok-4.6",
+      "acceptance_criteria": [
+        "A named, audited, already-deployed 7702 delegate implementation is pinned: its deployed runtime bytecode is verified against its published source with compiler settings recorded, and the choice is written down with the audit reference",
+        "execute/executeBatch calldata builders for the pinned delegate are pinned by selector-and-encoding unit tests",
+        "An end-to-end testnet integration test sends one type-0x04 transaction that authorizes the delegate and executes at least two calls — an ERC-20 approve followed by a call that consumes the approval — atomically",
+        "A negative control on the same path: a batch whose second call deliberately reverts leaves no observable effect from the first call, so the atomicity claim is verified rather than asserted",
+        "Missing credentials flunk with the exact variables to export",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "Authoring a delegate contract — if research concludes no audited deployed delegate is adoptable, stop and file the authoring task, which then carries the full onchain-verification regime (invariant inventory, stateful fuzzing, mutation review, verification ledger)",
+        "Sending infrastructure — task 3095 owns the type-0x04 transport",
+        "The application-side rail decision — aave_sim task 118 owns it"
+      ],
+      "touches": [
+        "packages/onchain/lib/onchain/",
+        "packages/onchain/test/onchain/",
+        "packages/onchain/CHANGELOG.md"
+      ],
+      "body": "The half that makes borrow-then-swap-then-supply ONE transaction under EIP-7702, for aave_sim task 118. No delegate or executor contract exists anywhere in the stack — no Solidity source, no bytecode fixture, no delegatecall batcher; Onchain.Multicall is read-only aggregation (surveyed 2026-08-28).\n\nDo not author Solidity. Research and adopt an existing audited, deployed delegate — candidates to evaluate against their own repositories and audits include eth-infinitism's Simple7702Account (account-abstraction v0.8) and MetaMask's EIP-7702 delegator contracts; use WebFetch on the canonical repos and do not trust training data for addresses or ABIs. Adoption means pinning: deployed address per network, runtime bytecode verified against published source, audit reference recorded. Then encode its execute/executeBatch calldata so a single signed type-0x04 runs a caller-supplied call list. A delegate controls the authorizing EOA outright, which is why the bytecode-identity and negative-control criteria are the substance of this task, not ceremony.\n\nConstraint measured, not assumed: revm in onchain_evm does not expose authorization lists, so the atomicity evidence runs on a testnet, not a fork.\n\nAUTHORITY: the pinned delegate's own repository, audits and deployed bytecode; EIP-7702 for authorization semantics.\n\nDispatch trigger: authority-granting surface requiring live testnet evidence and bytecode verification.\n",
+      "created_at": "2026-08-28",
+      "scored_at": "2026-08-28",
+      "cross_repo": []
+    },
+    {
+      "id": 3097,
+      "phase": 3009,
+      "bundle": "onchain_account_abstraction",
+      "target_repo": "onchain",
+      "status": "pending",
+      "title": "Onchain.AA account clients: execute/executeBatch calldata, initCode, and the counterfactual sender",
+      "scores": {
+        "d": 6,
+        "b": 8,
+        "u": 6
+      },
+      "eff": 1.17,
+      "dep_layer": 0,
+      "unlocks": 1,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "codex",
+      "module": "Onchain.AA",
+      "model": "gpt-5.6-sol",
+      "acceptance_criteria": [
+        "Calldata builders exist for the reference account's execute and executeBatch per EntryPoint version, pinned by selector-and-encoding unit tests",
+        "initCode (v0.6) and factory/factoryData (v0.7) are built from a factory address, owner and salt, and the counterfactual sender address is computed and cross-checked against the EntryPoint's own getSenderAddress answer",
+        "A nonce read against the EntryPoint replaces caller-supplied guessing",
+        "An integration test sends a deploy-on-first-op UserOperation through a live bundler on a testnet, executes a batch, asserts the receipt's domain meaning, and pins one real bundler error; missing credentials flunk with the exact variables to export",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "Paymaster sponsorship — task 3098 owns it",
+        "Session keys and key rotation — aave_sim task 112's delegation decision owns whether those are needed",
+        "The application-side rail decision — aave_sim task 118 owns it"
+      ],
+      "touches": [
+        "packages/onchain/lib/onchain/aa.ex",
+        "packages/onchain/test/onchain/aa_test.exs",
+        "packages/onchain/test/onchain/aa_integration_test.exs",
+        "packages/onchain/CHANGELOG.md"
+      ],
+      "body": "Onchain.AA builds, hashes, signs and submits UserOperations for both EntryPoint v0.6 and v0.7, byte-exact against viem vectors (task 3069, done). What it cannot do is produce the two payloads every real UserOperation needs: call_data and init_code are carried and packed but never built — there is no execute(address,uint256,bytes) or executeBatch encoder anywhere in the stack, no createAccount/initCode construction, no getSenderAddress counterfactual computation, no EntryPoint nonce read (all measured absent by grep, 2026-08-28). A caller must hand-encode everything through the generic ABI encoder.\n\nClose the gap against eth-infinitism's reference account: SimpleAccount execute/executeBatch per EntryPoint version — the v0.6 and v0.7 signatures differ, so take them from the account-abstraction repository at the matching release tag, not from memory — SimpleAccountFactory createAccount initCode, the counterfactual sender, and EntryPoint getNonce. Consumer: aave_sim task 118 evaluates 4337 as its one-transaction rail, and this is the missing half of that candidate.\n\nAUTHORITY: eth-infinitism/account-abstraction at the released v0.6/v0.7 tags and the deployed canonical factories; a live bundler decides submission semantics.\n\nDispatch trigger: money-path calldata construction requiring live bundler evidence.\n",
+      "created_at": "2026-08-28",
+      "scored_at": "2026-08-28",
+      "cross_repo": []
+    },
+    {
+      "id": 3098,
+      "phase": 3009,
+      "bundle": "onchain_account_abstraction",
+      "target_repo": "onchain",
+      "status": "pending",
+      "title": "Onchain.AA paymaster client: ERC-7677 sponsorship round-trip",
+      "scores": {
+        "d": 5,
+        "b": 6,
+        "u": 5
+      },
+      "eff": 1.1,
+      "dep_layer": 1,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [
+        3097
+      ],
+      "assignee": "cursor",
+      "module": "Onchain.AA",
+      "model": "cursor-grok-4.6-high",
+      "acceptance_criteria": [
+        "pm_getPaymasterStubData and pm_getPaymasterData are callable against a paymaster endpoint and their answers populate paymaster_and_data (v0.6) or the unpacked v0.7 paymaster fields correctly for hashing and submission",
+        "An integration test obtains a real sponsorship for a testnet UserOperation from a live paymaster service, submits it, and asserts the sender did not pay gas; a second test pins one real sponsorship rejection; missing credentials flunk with the exact variables to export",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "Running a paymaster — this is a client of ERC-7677 services only",
+        "Account calldata and factory — task 3097 owns those"
+      ],
+      "touches": [
+        "packages/onchain/lib/onchain/aa.ex",
+        "packages/onchain/test/onchain/aa_integration_test.exs",
+        "packages/onchain/CHANGELOG.md"
+      ],
+      "body": "The UserOperation struct carries paymaster_and_data and the unpacked v0.7 paymaster fields, and packing and hashing handle them — but nothing produces them: no pm_sponsorUserOperation or pm_getPaymasterData client exists; all 55 paymaster mentions in the stack are field plumbing in aa.ex, user_operation.ex and their tests (measured by grep, 2026-08-28).\n\nAdd the ERC-7677 client: pm_getPaymasterStubData for estimation, pm_getPaymasterData for the real payload, wired into the existing bundler transport. Consumers: aave_sim task 112's keeper (gas sponsorship for automated firings) and the 4337 rail candidate in aave_sim task 118.\n\nAUTHORITY: ERC-7677 and the live behaviour of a real paymaster service (Pimlico, Alchemy or Coinbase Developer Platform); provider docs are reference material, the live endpoint decides.\n\nDispatch trigger: external-provider integration requiring live sponsorship evidence.\n",
+      "created_at": "2026-08-28",
+      "scored_at": "2026-08-28",
+      "cross_repo": []
+    },
+    {
       "id": 4006,
       "phase": 4001,
       "bundle": "onchain_aave_core_read",
@@ -8697,7 +8897,7 @@
       },
       "eff": 1.88,
       "dep_layer": 0,
-      "unlocks": 0,
+      "unlocks": 2,
       "markers": [],
       "depends_on": [],
       "assignee": "cursor",
@@ -8722,6 +8922,93 @@
         "packages/onchain_aave/CHANGELOG.md"
       ],
       "body": "Every write in this library fuses encoding and sending: Pool, V4.PositionManager, DebtToken and Faucet each build calldata via Onchain.ABI.encode_call and immediately hand it to Onchain.Signer.send_transaction — no public surface returns the calldata alone (surveyed 2026-08-28 across lib/). That shape is correct for a server that holds the key and wrong for every consumer that does not: a browser wallet that signs client-side, an EIP-7702/4337 batch that composes several calls into one signed object, and a fork simulation that wants to execute the call without any key. aave_sim's execution milestone (its tasks 111 and 118) is blocked on exactly this.\n\nExpose a public calldata-building counterpart for each existing write and re-route the send functions through it, so the encoding lives once. The builders' argument contracts mirror the existing writes — owner stays an explicit required argument everywhere the current wrappers demand it.\n\nAUTHORITY: the deployed contracts already registered in Onchain.Aave.Contracts; the existing send-path tests define the encoding the builders must reproduce.\n\nDispatch trigger: money-path write-surface reshape requiring fork evidence.\n",
+      "created_at": "2026-08-28",
+      "scored_at": "2026-08-28",
+      "cross_repo": []
+    },
+    {
+      "id": 4072,
+      "phase": 4006,
+      "bundle": "onchain_aave_v3_write_gaps",
+      "target_repo": "onchain_aave",
+      "status": "pending",
+      "title": "Pool flash-loan surface: flashLoanSimple and flashLoan builders plus premium reads",
+      "scores": {
+        "d": 4,
+        "b": 7,
+        "u": 6
+      },
+      "eff": 1.63,
+      "dep_layer": 1,
+      "unlocks": 1,
+      "markers": [],
+      "depends_on": [
+        4071
+      ],
+      "assignee": "grok",
+      "module": "Onchain.Aave.Pool",
+      "model": "grok-4.6",
+      "acceptance_criteria": [
+        "Calldata builders exist for flashLoanSimple and flashLoan following the calldata-only shape task 4071 establishes, pinned by selector-and-encoding unit tests",
+        "FLASHLOAN_PREMIUM_TOTAL and FLASHLOAN_PREMIUM_TO_PROTOCOL are readable from the Pool and the premium a given amount owes is computable",
+        "A fork integration test via onchain_evm executes a built flashLoanSimple against a minimal receiver planted by code override and asserts the premium accounting on real mainnet state; a second run whose receiver cannot repay reverts; missing RPC env vars flunk with exact export instructions",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "The executor contract that does something with the borrowed funds — task 4073 owns it",
+        "V4 flash-loan surfaces"
+      ],
+      "touches": [
+        "packages/onchain_aave/lib/onchain/aave/pool.ex",
+        "packages/onchain_aave/test/",
+        "packages/onchain_aave/CHANGELOG.md"
+      ],
+      "body": "The Pool write surface is exactly supply, withdraw, borrow and repay — no flashLoan or flashLoanSimple builder exists, and the only flash-loan traces in the package are the read-side flash_loan_enabled reserve flag (surveyed 2026-08-28). aave_sim task 118 evaluates a flash-loan executor as its one-transaction rail, and DeFi Saver — the category reference — runs its entire recipe engine on this primitive.\n\nAdd the builders and the premium reads. The receiver argument is an address this library does not judge; the contract that implements executeOperation is task 4073's.\n\nAUTHORITY: the deployed Aave V3 Pool and Aave's own documentation; the vendored DefiSaver and Aave interface sources under onchain_evm/priv/contracts/real are reference material only.\n\nDispatch trigger: money-path calldata construction requiring fork evidence.\n",
+      "created_at": "2026-08-28",
+      "scored_at": "2026-08-28",
+      "cross_repo": []
+    },
+    {
+      "id": 4073,
+      "phase": 4009,
+      "bundle": "onchain_aave_flash_executor",
+      "target_repo": "onchain_aave",
+      "status": "pending",
+      "title": "Flash-loan executor contract: an atomic action bundle funded and repaid inside one Aave flash loan",
+      "scores": {
+        "d": 8,
+        "b": 9,
+        "u": 6
+      },
+      "eff": 0.94,
+      "dep_layer": 2,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [
+        4072
+      ],
+      "assignee": "codex",
+      "module": "Onchain.Aave.Executor",
+      "model": "gpt-5.6-sol",
+      "acceptance_criteria": [
+        "An invariant inventory with stable identifiers exists before the contract: at minimum conservation (the executor's token and ETH balances net to zero after every run beyond the premium it forwards), authorization (only the Aave Pool may call executeOperation, only with the commissioning initiator, and only caller-listed targets are called), and lifecycle (a failed action reverts the entire flash loan)",
+        "Foundry unit, fuzz and invariant tests plus Echidna and Medusa stateful campaigns run against those invariants with coverage and corpora recorded, and a Gambit mutation campaign whose survivors are each classified",
+        "A deliberate negative control — the initiator check removed — is caught by the suite, proving the right target is being verified",
+        "A commit-bound verification ledger records source hashes, compiler settings, artifact hashes, tool versions, seeds, mutation totals and survivor dispositions",
+        "An Elixir builder commissions the executor (encodes the action list and the flashLoanSimple call), and a fork integration test via onchain_evm plants the compiled runtime bytecode by code override and executes a real borrow-swap-supply bundle on mainnet state atomically; a bundle whose middle action fails leaves no observable state change",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "Deployment to any network and the independent audit that must precede production authorization — a separate task once aave_sim task 118 selects this rail",
+        "Swap routing — the swap action consumes task 3094's calldata",
+        "The application-side rail decision — aave_sim task 118 owns it"
+      ],
+      "touches": [
+        "packages/onchain_aave/sol/",
+        "packages/onchain_aave/lib/onchain/aave/",
+        "packages/onchain_aave/CHANGELOG.md"
+      ],
+      "body": "Rail option three for aave_sim task 118, and the mechanism DeFi Saver itself runs on: a contract that takes an Aave flash loan, executes a caller-encoded action list (approve, supply, borrow, repay, withdraw, one swap call) with the borrowed funds, and repays principal plus premium — so a boost or a collateral switch that exceeds the position's free borrow headroom still lands as one transaction. Nothing like it exists in the stack: no IFlashLoanReceiver implementation, no executeOperation, no deployable Solidity beyond test fixtures (surveyed 2026-08-28). The vendored defisaver-v3-contracts sources under onchain_evm/priv/contracts/real show the category's shape and are reference material only.\n\nThis is deployable Solidity that transiently holds funds and acts under granted authority, so the onchain-verification regime is the work, not an appendix: invariants first, independent stateful fuzzers, mutation adequacy with survivor review, a negative control, and a ledger bound to the commit. Keep the contract minimal — a fixed small action vocabulary, no recipe DSL, no registry, no upgradeability.\n\nThe evidence lane is measured and available: onchain_evm executes undeployed runtime bytecode on forked mainnet state via code override, and the whole flash-loan round trip is one top-level call, so atomicity is provable on a fork without deploying anything.\n\nAUTHORITY: the deployed Aave V3 Pool and its published interfaces for flash-loan semantics (premium, callback, repayment pull); confirm the executeOperation contract against the deployed Pool, not against memory.\n\nDispatch trigger: deployable Solidity holding funds — full verification regime required.\n",
       "created_at": "2026-08-28",
       "scored_at": "2026-08-28",
       "cross_repo": []
@@ -12825,6 +13112,47 @@
       "body": "Task 12 built a mutation-graded verification stack for 0x76, but it covers only the 13 named fields plus the sender signature. The optional key_authorization slot is unverified and partly unimplemented: Onchain.Tempo.Transaction.split_base_fields/1 computes has_key_auth (transaction.ex:391) and build_fee_payer_preimage_fields/4 then discards it as _has_key_auth (transaction.ex:396), while the verification oracle's spec_order/0 carries no key_authorization slot at all (test/support/tempo_verification/spec_encoder.ex:10-24). The module's own spec list does include it (transaction.ex:11). Verified by reading those lines on 4d648ce.\n\nClose the gap on the authorization side of the signing domain: give key_authorization its spec position in both the 0x76 sender payload and the 0x78 fee-payer preimage, and hold that position against an oracle independent of our own field layout. The provider-owned authority is the current official Tempo SDK/specification plus live Moderato behavior; the local encoder is never its own oracle, and a fixture generated from our field indexes is not independent evidence. Observe the SDK and the chain before fixing any expected bytes.\n\nThen challenge the result the way Task 12 challenged the base surface — properties over presence and absence, differential vectors, a deliberate canary, and a mutation campaign whose survivors are each classified with evidence.\n",
       "created_at": "2026-08-26",
       "scored_at": "2026-08-26",
+      "cross_repo": []
+    },
+    {
+      "id": 9001,
+      "phase": 9001,
+      "bundle": "onchain_morpho_reads",
+      "target_repo": "onchain_morpho",
+      "status": "pending",
+      "title": "Found onchain_morpho: Morpho Blue market, position and oracle reads on mainnet and Base",
+      "scores": {
+        "d": 6,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.25,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "cursor",
+      "module": "Onchain.Morpho",
+      "model": "cursor-grok-4.6-high",
+      "acceptance_criteria": [
+        "A new packages/onchain_morpho package exists, wired into the monorepo's single mix ci exactly like the existing packages, and the roadmap vision line counts it",
+        "An address registry resolves the Morpho Blue singleton per chain (Ethereum mainnet and Base), every address citing Morpho's own deployments record",
+        "For a market id, the market's loan token, collateral token, oracle, IRM and LLTV are readable; for a user and market, supply shares, borrow shares and collateral are readable, and borrow shares convert to current borrow assets including interest accrued since the last on-chain accrual",
+        "The market oracle's price is readable with its scaling stated and verified against Morpho's oracle spec, and the inputs of Morpho's own solvency rule (collateral value times LLTV versus borrow value) are exposed as the protocol defines them",
+        "An integration test reads one real mainnet position and one real Base market and pins the observed values and units; a second pins one real error on an unknown market id; missing RPC credentials flunk with the exact variables to export",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "MetaMorpho / Morpho Vaults, rewards, the public allocator",
+        "Writes of any kind",
+        "The aave_sim adapter that consumes these reads — aave_sim task 114 owns it"
+      ],
+      "touches": [
+        "packages/onchain_morpho/"
+      ],
+      "body": "The package half of aave_sim task 114 — the first non-Aave protocol behind its adapter boundary. The protocol choice was verified against live data on 2026-08-28, not assumed: DeFiLlama's API puts Morpho at roughly $9.5B TVL — about double Spark, the #2 — with roughly $4.7B borrowed, deployed on Ethereum mainnet and Base, where it is the largest lending protocol on any L2 (defillama.com/protocol/morpho and api.llama.fi, queried 2026-08-28; Spark's elevated TVL is partly the April 2026 post-exploit deposit flight from Aave rather than organic share). Its market model is also the simplest to read: isolated markets, one collateral asset, one loan asset, a fixed LLTV per market.\n\nNothing exists in the stack for any non-Aave lending protocol, so this founds the ninth package. Scope is the read layer only — what a position row and a risk simulation need: market parameters, a user's position, the market oracle's price, and the inputs of Morpho's own solvency rule. Interest accrual matters: Morpho Blue stores shares and accrues on interaction, so a truthful read computes current borrow assets rather than reporting the stale stored value — take the accrual formula from Morpho's own contracts and documentation, not from the Aave shape and not from memory.\n\nAUTHORITY: the deployed Morpho Blue singleton and Morpho's own documentation and deployments record (docs.morpho.org, the morpho-blue repository). Verify every address and every unit against the chain — a read that disagrees with the contract is wrong whatever any aggregator says.\n\nDispatch trigger: new package founding with live mainnet evidence.\n",
+      "created_at": "2026-08-28",
+      "scored_at": "2026-08-28",
       "cross_repo": []
     }
   ]

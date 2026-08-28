@@ -295,6 +295,8 @@
 |------|--------|-------|
 | Task 3069 `[P]` | ✅ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · ERC-4337 UserOperation construction, signing, and bundler RPC [D:7/B:8/U:7 → Eff:1.07?] 📋 |
 | Task 3079 | ✅ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Audit-surfaced: ERC-4337 to_rpc_params validation can diverge from user_op_hash [D:4/B:5/U:5 → Eff:1.25?] 📋 |
+| Task 3097 | ⬜ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Onchain.AA account clients: execute/executeBatch calldata, initCode, and the counterfactual sender [D:6/B:8/U:6 → Eff:1.17] 📋 |
+| Task 3098 | ⬜ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Onchain.AA paymaster client: ERC-7677 sponsorship round-trip [D:5/B:6/U:5 → Eff:1.1] 📋 |
 <!-- TASKS:END -->
 
 ### Phase 3010: RPC Composition Layer
@@ -401,6 +403,7 @@
 | Task 4061 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Expose typed direct reserve data and normalized index reads [D:4/B:5/U:5 → Eff:1.25] 📋 |
 | Task 4062 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · Make the integration gate settle: bound math_revm runtime so --include integration terminates [D:4/B:7/U:8 → Eff:1.88] 🚀 |
 | Task 4071 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · *Onchain.Aave* · Calldata-only mode for every Aave write: build without sending [D:4/B:8/U:7 → Eff:1.88] 🚀 |
+| Task 4072 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · *Onchain.Aave.Pool* · Pool flash-loan surface: flashLoanSimple and flashLoan builders plus premium reads [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 4007: Read-Path Multicall Adoption
