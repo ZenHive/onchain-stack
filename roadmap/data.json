@@ -7003,6 +7003,48 @@
       "cross_repo": []
     },
     {
+      "id": 3094,
+      "phase": 3007,
+      "bundle": "onchain_dex",
+      "target_repo": "onchain",
+      "status": "pending",
+      "title": "Onchain.DEX swap execution: encode an executable swap for a quoted route, with a slippage bound",
+      "scores": {
+        "d": 6,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.25,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "codex",
+      "module": "Onchain.DEX",
+      "model": "gpt-5.6-sol",
+      "acceptance_criteria": [
+        "A quoted %Route{} produces executable swap calldata for the canonical Uniswap router, carrying an explicit amountOutMinimum derived from the quote plus a caller-supplied slippage tolerance, a deadline, and an explicit recipient",
+        "Each builder is pinned by an encoded-calldata unit test asserting the 4-byte selector and argument encoding",
+        "A fork integration test via onchain_evm executes the built calldata and asserts token balances moved consistently with the quote within the stated tolerance, and a second run with a violated slippage bound reverts; missing RPC env vars flunk with exact export instructions",
+        "Every router address cites Uniswap's own deployment record",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "DEX aggregators, split routing, multi-venue routing",
+        "Atomic composition with lending operations — aave_sim's one-transaction-rail task owns that",
+        "Aerodrome routers — task 5028 owns Write.Router on Base"
+      ],
+      "touches": [
+        "packages/onchain/lib/onchain/dex/router.ex",
+        "packages/onchain/test/onchain/dex/",
+        "packages/onchain/CHANGELOG.md"
+      ],
+      "body": "Onchain.DEX.Router routes and quotes — v2 pools analytically, v3 via the on-chain QuoterV2 — and nothing in the stack executes what it prices: there is no SwapRouter02 or UniversalRouter calldata builder and no aggregator client (surveyed 2026-08-28; the only swap-execution hit anywhere is a Tempo TIP-20 selector). The consumer demand is concrete: aave_sim's boost action is borrow, then swap, then supply, and its execution tasks (aave_sim 118/119) need the swap leg as bare calldata a one-transaction rail can compose.\n\nBuild the missing half: encode exactInputSingle / exactInput for a quoted route on the canonical Uniswap SwapRouter02, with the minimum-out derived from the quote and a caller-supplied tolerance, a deadline, and an explicit recipient. Baseline before optimization: single venue, no split routing, no aggregator.\n\nAUTHORITY: Uniswap's own deployed router contracts and documentation. The Uniswap JS SDK reachable through onchain_js (task 7003) is reference material only and cannot define calldata correctness.\n\nDispatch trigger: money-path calldata construction requiring live fork evidence.\n",
+      "created_at": "2026-08-28",
+      "scored_at": "2026-08-28",
+      "cross_repo": []
+    },
+    {
       "id": 4006,
       "phase": 4001,
       "bundle": "onchain_aave_core_read",
@@ -8639,6 +8681,49 @@
       "body": "Open decision (default unless observation contradicts it): key this instance as network: :optimism. V3 already uses :optimism for the V3 pool; V4 lives in a separate map so that does not collide. Switch to a named instance key (e.g. :etherfi_cash) only if a second V4 deployment on Optimism is already listed in the address book or an AIP — one V4 per chain is the default.\n\nether.fi Cash is a live Aave V4 market that this library cannot name. It is not a Spoke on Ethereum Core Hub (that is v4_etherfi_spoke, weETH→WETH e-Mode, already registered). It is a DAO-licensed, EtherFi-operated whitelabel on OP Mainnet: one Liquidity Hub (Cash Hub), one Spoke at launch (Cash Spoke), borrow-whitelisted to Cash cardholders, isolated from every other Aave market. Stani called it the first externally managed V4 deployment. Third-party figures as of 2026-08-26 put it around $249M deposits / $20M borrows, the #2 V4 market by deposits.\n\nPremise verified 2026-08-26 against aave-dao/aave-address-book safe.csv: there is no AaveV4Optimism namespace. Task 69's authority is that file, so Cash is out of 69 on purpose. Landscape and sources: V4_DEPLOYMENTS.md.\n\nThis task is only reachable after 69 because Onchain.Aave.V4.Hub currently types a hub as :core | :prime | :plus. Adding :cash (or whatever the instance is called) onto that closed set repeats the Global Dollar failure. 69 opens the type; this task is then additive registry data plus live evidence.\n\nDo not invent addresses. Observe them from the executed AIP / Optimism explorer / a live eth_call that proves the contract is a Hub, then register what was seen. Previews, blogs and V4_DEPLOYMENTS.md figures are reference material, not the address set.\n\nAUTHORITY: the deployed Optimism instance itself (eth_call at a pinned block) plus the Aave governance AIP/ARFC that authorized it (https://governance.aave.com/t/arfc-deploy-a-dedicated-aave-v4-whitelabel-instance-fully-managed-by-etherfi-on-op-mainnet-to-power-ether-fi-cash/25314). The address book is not authority here — it does not list this instance.\n\nDispatch trigger: the library's stated V4 coverage disagrees with a live deployed market on a money surface, and the fix needs live external-system evidence against a source that is not the DAO address book.\n",
       "created_at": "2026-08-26",
       "scored_at": "2026-08-26",
+      "cross_repo": []
+    },
+    {
+      "id": 4071,
+      "phase": 4006,
+      "bundle": "onchain_aave_v3_write_gaps",
+      "target_repo": "onchain_aave",
+      "status": "pending",
+      "title": "Calldata-only mode for every Aave write: build without sending",
+      "scores": {
+        "d": 4,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.88,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "cursor",
+      "module": "Onchain.Aave",
+      "model": "cursor-grok-4.6-high",
+      "acceptance_criteria": [
+        "Every existing write in Pool, V4.PositionManager, DebtToken and Faucet has a public calldata-building counterpart returning the target address and calldata (and value where applicable) with no RPC, nonce, key or signing dependency",
+        "The existing send functions route through the same builders, so the encoding exists exactly once and the send path's contract is unchanged",
+        "Each builder is pinned by a unit test asserting the 4-byte selector and argument encoding",
+        "A fork integration test via onchain_evm executes at least one built calldata (a supply) by impersonating a real holder and asserts the domain effect on balances, not the shape",
+        "mix ci passes"
+      ],
+      "out_of_scope": [
+        "New protocol operations — tasks 4058, 4060, 4066 and 4067 own those; this task changes the shape of existing writes only",
+        "Batching, atomicity or any execution rail — aave_sim's one-transaction-rail task owns that"
+      ],
+      "touches": [
+        "packages/onchain_aave/lib/onchain/aave/pool.ex",
+        "packages/onchain_aave/lib/onchain/aave/v4/position_manager.ex",
+        "packages/onchain_aave/lib/onchain/aave/debt_token.ex",
+        "packages/onchain_aave/lib/onchain/aave/faucet.ex",
+        "packages/onchain_aave/CHANGELOG.md"
+      ],
+      "body": "Every write in this library fuses encoding and sending: Pool, V4.PositionManager, DebtToken and Faucet each build calldata via Onchain.ABI.encode_call and immediately hand it to Onchain.Signer.send_transaction — no public surface returns the calldata alone (surveyed 2026-08-28 across lib/). That shape is correct for a server that holds the key and wrong for every consumer that does not: a browser wallet that signs client-side, an EIP-7702/4337 batch that composes several calls into one signed object, and a fork simulation that wants to execute the call without any key. aave_sim's execution milestone (its tasks 111 and 118) is blocked on exactly this.\n\nExpose a public calldata-building counterpart for each existing write and re-route the send functions through it, so the encoding lives once. The builders' argument contracts mirror the existing writes — owner stays an explicit required argument everywhere the current wrappers demand it.\n\nAUTHORITY: the deployed contracts already registered in Onchain.Aave.Contracts; the existing send-path tests define the encoding the builders must reproduce.\n\nDispatch trigger: money-path write-surface reshape requiring fork evidence.\n",
+      "created_at": "2026-08-28",
+      "scored_at": "2026-08-28",
       "cross_repo": []
     },
     {
@@ -11912,6 +11997,50 @@
       "body": "`spec_id_for_fork` in `native/onchain_evm/src/lib.rs:98-102` hard-rejects every chain id except Ethereum mainnet:\n\n```rust\nfn spec_id_for_fork(chain_id: u64, block_number: u64) -> Result<SpecId, EvmError> {\n    if chain_id != ETHEREUM_MAINNET_CHAIN_ID {\n        return Err(EvmError::ForkError(format!(\n            \"unsupported chain id {chain_id}: hardfork schedule is known only for Ethereum mainnet (chain id {ETHEREUM_MAINNET_CHAIN_ID})\"\n        )));\n    }\n    ...\n}\n```\n\n`lib/onchain/evm.ex:34-40` documents the same constraint in the `Onchain.EVM` moduledoc's \"Fork revision\" section: \"RPC endpoints whose chain id is not Ethereum mainnet (`1`) return `{:error, {:fork_error, _}}` rather than silently executing under mainnet rules.\" Both are working as designed today — this is not a bug, it is a deliberately narrow feature that now blocks real consumers.\n\nThis is the direct extension of Task 60 (`Derive the EVM revision from the forked block instead of always executing under one modern SpecId`), which built the mainnet-only `MAINNET_HARDFORK_BLOCKS` schedule and explicitly scoped \"supporting chains beyond those the module already targets\" out. That scope boundary is what this task now needs to cross.\n\n**Concrete blocking case:** `onchain_aerodrome` targets Aerodrome Finance on Base (chain id 8453). Its intended test strategy is revm fork tests against a pinned Base block plus a `simulate/2` path for validating writes before broadcast — both impossible today, since any fork attempt against a Base RPC returns `{:error, {:fork_error, _}}`. It has fallen back to golden fixtures plus pinned-block `eth_call`, which cannot validate write paths at all. The same blocker hits every OP-Stack chain (Optimism, chain id 10; Base, chain id 8453) and Arbitrum.\n\n**Two shapes to evaluate, not presuppose:**\n1. Add an OP-Stack/Base hardfork-schedule table (mirroring `MAINNET_HARDFORK_BLOCKS`) so `spec_id_for_fork` resolves known L2 chain ids against their own activation history.\n2. A caller-supplied `:spec_id` option that bypasses the built-in schedule lookup entirely, putting correctness burden on the caller. Likely far smaller and unblocks every chain at once, but is a weaker long-term guarantee for chains this library wants to support first-class.\n\nPick with evidence — option 2 may be the right immediate unblock even if option 1 (or both together) is the correct long-term answer for chains this library supports directly.\n",
       "created_at": "2026-08-26",
       "scored_at": "2026-08-26",
+      "cross_repo": []
+    },
+    {
+      "id": 6065,
+      "phase": 6003,
+      "bundle": "onchain_evm_standalone",
+      "target_repo": "onchain_evm",
+      "status": "pending",
+      "title": "simulate_batch: per-call value and sender, so ETH-bearing and multi-actor sequences are simulable",
+      "scores": {
+        "d": 5,
+        "b": 7,
+        "u": 6
+      },
+      "eff": 1.3,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "grok",
+      "module": "Onchain.EVM",
+      "model": "grok-4.6",
+      "acceptance_criteria": [
+        "A batch element can optionally carry a value and a from alongside address and calldata, and the existing 2-tuple form keeps working unchanged",
+        "Nonces are tracked per sender across the batch, not from a single base nonce",
+        "A fork integration test pins an ETH-bearing sequence — WETH deposit then transfer — with balance assertions",
+        "A second fork test pins a two-sender sequence in which one address grants an allowance and a different address exercises it, asserting the state the second sender observed",
+        "mix ci passes, including the cargo test and clippy gates"
+      ],
+      "out_of_scope": [
+        "Non-mainnet forks — task 6064 owns the chain question",
+        "Contract deployment (TxKind::Create) and constructor execution",
+        "Storage-slot discovery helpers for token balance or allowance overrides"
+      ],
+      "touches": [
+        "packages/onchain_evm/native/onchain_evm/src/lib.rs",
+        "packages/onchain_evm/lib/onchain/evm.ex",
+        "packages/onchain_evm/lib/onchain/evm/params.ex",
+        "packages/onchain_evm/test/onchain/evm_integration_test.exs",
+        "packages/onchain_evm/CHANGELOG.md"
+      ],
+      "body": "simulate_batch is the stack's only dependent-sequence simulator — one fork, state committed between calls — and two hardcodings bound what it can express (surveyed 2026-08-28 in native/onchain_evm/src/lib.rs): every call's value is fixed to U256::ZERO in the batch loop, and one from covers the whole batch with nonces derived from a single base. An approve-then-supply pair works and is pinned in the integration tests; a sequence containing an ETH-bearing call (a WETH deposit, a payable entry point) or two actors (an owner grants, a manager acts — exactly the Aave V4 position-manager flows the stack now wraps) cannot be expressed at all.\n\nExtend the batch element to optionally carry value and from, with per-sender nonce tracking, keeping the existing 2-tuple accepted. The consumer demand is aave_sim's execution milestone: proving a composed multi-call action against forked mainnet state before anything signs it.\n\nAUTHORITY: revm's own transaction environment semantics and the deployed contracts the integration tests already pin against.\n\nDispatch trigger: Rust NIF surface change requiring fork evidence.\n",
+      "created_at": "2026-08-28",
+      "scored_at": "2026-08-28",
       "cross_repo": []
     },
     {

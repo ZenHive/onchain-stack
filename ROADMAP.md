@@ -285,6 +285,7 @@
 | Task 3028 `[P]` | ✅ | 🎁 **onchain_dex** · *Onchain.DEX.Router* · DEX swap routing (optimal path across pools) [D:7/B:8/U:7 → Eff:1.07?] 📋 |
 | Task 3029 `[P]` | ✅ | 🎁 **onchain_dex** · *Onchain.MEV* · MEV protection (private transaction submission) [D:6/B:8/U:7 → Eff:1.25?] 📋 |
 | Task 3080 | ✅ | 🎁 **onchain_dex** · *Onchain.MEV* · Audit-surfaced: Onchain.MEV accepts block tags where a concrete block is required [D:3/B:4/U:4 → Eff:1.33?] 📋 |
+| Task 3094 | ⬜ | 🎁 **onchain_dex** · *Onchain.DEX* · Onchain.DEX swap execution: encode an executable swap for a quoted route, with a slippage bound [D:6/B:8/U:7 → Eff:1.25] 📋 |
 <!-- TASKS:END -->
 
 ### Phase 3009: Account Abstraction (ERC-4337)
@@ -399,6 +400,7 @@
 | Task 4060 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Onchain.Aave.Pool — setUserUseReserveAsCollateral and repayWithATokens [D:4/B:7/U:7 → Eff:1.75] 🚀 |
 | Task 4061 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Expose typed direct reserve data and normalized index reads [D:4/B:5/U:5 → Eff:1.25] 📋 |
 | Task 4062 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · Make the integration gate settle: bound math_revm runtime so --include integration terminates [D:4/B:7/U:8 → Eff:1.88] 🚀 |
+| Task 4071 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · *Onchain.Aave* · Calldata-only mode for every Aave write: build without sending [D:4/B:8/U:7 → Eff:1.88] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 4007: Read-Path Multicall Adoption
@@ -539,7 +541,7 @@
 ### Phase 6003: Standalone & Release
 
 <!-- TASKS:BEGIN phase=6003 -->
-> 14 tasks. See [CHANGELOG.md](CHANGELOG.md#phase-6003-onchain-evm-standalone-release).
+> 15 tasks. See [CHANGELOG.md](CHANGELOG.md#phase-6003-onchain-evm-standalone-release).
 <!-- TASKS:END -->
 
 ---

@@ -4711,6 +4711,33 @@ scored_at = "2026-08-25"
 # onchain_aave — ids 4000xx
 # ---------------------------------------------------------------------------
 
+
+[[task]]
+id = 3094
+phase = 3007
+bundle = "onchain_dex"
+title = "Onchain.DEX swap execution: encode an executable swap for a quoted route, with a slippage bound"
+status = "pending"
+target_repo = "onchain"
+module = "Onchain.DEX"
+scores = { d = 6, b = 8, u = 7 }
+acceptance_criteria = ["A quoted %Route{} produces executable swap calldata for the canonical Uniswap router, carrying an explicit amountOutMinimum derived from the quote plus a caller-supplied slippage tolerance, a deadline, and an explicit recipient", "Each builder is pinned by an encoded-calldata unit test asserting the 4-byte selector and argument encoding", "A fork integration test via onchain_evm executes the built calldata and asserts token balances moved consistently with the quote within the stated tolerance, and a second run with a violated slippage bound reverts; missing RPC env vars flunk with exact export instructions", "Every router address cites Uniswap's own deployment record", "mix ci passes"]
+out_of_scope = ["DEX aggregators, split routing, multi-venue routing", "Atomic composition with lending operations — aave_sim's one-transaction-rail task owns that", "Aerodrome routers — task 5028 owns Write.Router on Base"]
+touches = ["packages/onchain/lib/onchain/dex/router.ex", "packages/onchain/test/onchain/dex/", "packages/onchain/CHANGELOG.md"]
+assignee = "codex"
+model = "gpt-5.6-sol"
+body = """
+Onchain.DEX.Router routes and quotes — v2 pools analytically, v3 via the on-chain QuoterV2 — and nothing in the stack executes what it prices: there is no SwapRouter02 or UniversalRouter calldata builder and no aggregator client (surveyed 2026-08-28; the only swap-execution hit anywhere is a Tempo TIP-20 selector). The consumer demand is concrete: aave_sim's boost action is borrow, then swap, then supply, and its execution tasks (aave_sim 118/119) need the swap leg as bare calldata a one-transaction rail can compose.
+
+Build the missing half: encode exactInputSingle / exactInput for a quoted route on the canonical Uniswap SwapRouter02, with the minimum-out derived from the quote and a caller-supplied tolerance, a deadline, and an explicit recipient. Baseline before optimization: single venue, no split routing, no aggregator.
+
+AUTHORITY: Uniswap's own deployed router contracts and documentation. The Uniswap JS SDK reachable through onchain_js (task 7003) is reference material only and cannot define calldata correctness.
+
+Dispatch trigger: money-path calldata construction requiring live fork evidence.
+"""
+created_at = "2026-08-28"
+scored_at = "2026-08-28"
+
 [[task]]
 id = 4006
 phase = 4001
@@ -5706,6 +5733,33 @@ scored_at = "2026-08-26"
 # ---------------------------------------------------------------------------
 # onchain_aerodrome — ids 5000xx
 # ---------------------------------------------------------------------------
+
+
+[[task]]
+id = 4071
+phase = 4006
+bundle = "onchain_aave_v3_write_gaps"
+title = "Calldata-only mode for every Aave write: build without sending"
+status = "pending"
+target_repo = "onchain_aave"
+module = "Onchain.Aave"
+scores = { d = 4, b = 8, u = 7 }
+acceptance_criteria = ["Every existing write in Pool, V4.PositionManager, DebtToken and Faucet has a public calldata-building counterpart returning the target address and calldata (and value where applicable) with no RPC, nonce, key or signing dependency", "The existing send functions route through the same builders, so the encoding exists exactly once and the send path's contract is unchanged", "Each builder is pinned by a unit test asserting the 4-byte selector and argument encoding", "A fork integration test via onchain_evm executes at least one built calldata (a supply) by impersonating a real holder and asserts the domain effect on balances, not the shape", "mix ci passes"]
+out_of_scope = ["New protocol operations — tasks 4058, 4060, 4066 and 4067 own those; this task changes the shape of existing writes only", "Batching, atomicity or any execution rail — aave_sim's one-transaction-rail task owns that"]
+touches = ["packages/onchain_aave/lib/onchain/aave/pool.ex", "packages/onchain_aave/lib/onchain/aave/v4/position_manager.ex", "packages/onchain_aave/lib/onchain/aave/debt_token.ex", "packages/onchain_aave/lib/onchain/aave/faucet.ex", "packages/onchain_aave/CHANGELOG.md"]
+assignee = "cursor"
+model = "cursor-grok-4.6-high"
+body = """
+Every write in this library fuses encoding and sending: Pool, V4.PositionManager, DebtToken and Faucet each build calldata via Onchain.ABI.encode_call and immediately hand it to Onchain.Signer.send_transaction — no public surface returns the calldata alone (surveyed 2026-08-28 across lib/). That shape is correct for a server that holds the key and wrong for every consumer that does not: a browser wallet that signs client-side, an EIP-7702/4337 batch that composes several calls into one signed object, and a fork simulation that wants to execute the call without any key. aave_sim's execution milestone (its tasks 111 and 118) is blocked on exactly this.
+
+Expose a public calldata-building counterpart for each existing write and re-route the send functions through it, so the encoding lives once. The builders' argument contracts mirror the existing writes — owner stays an explicit required argument everywhere the current wrappers demand it.
+
+AUTHORITY: the deployed contracts already registered in Onchain.Aave.Contracts; the existing send-path tests define the encoding the builders must reproduce.
+
+Dispatch trigger: money-path write-surface reshape requiring fork evidence.
+"""
+created_at = "2026-08-28"
+scored_at = "2026-08-28"
 
 [[task]]
 id = 5001
@@ -7840,6 +7894,33 @@ scored_at = "2026-08-26"
 # ---------------------------------------------------------------------------
 # onchain_js — ids 7000xx
 # ---------------------------------------------------------------------------
+
+
+[[task]]
+id = 6065
+phase = 6003
+bundle = "onchain_evm_standalone"
+title = "simulate_batch: per-call value and sender, so ETH-bearing and multi-actor sequences are simulable"
+status = "pending"
+target_repo = "onchain_evm"
+module = "Onchain.EVM"
+scores = { d = 5, b = 7, u = 6 }
+acceptance_criteria = ["A batch element can optionally carry a value and a from alongside address and calldata, and the existing 2-tuple form keeps working unchanged", "Nonces are tracked per sender across the batch, not from a single base nonce", "A fork integration test pins an ETH-bearing sequence — WETH deposit then transfer — with balance assertions", "A second fork test pins a two-sender sequence in which one address grants an allowance and a different address exercises it, asserting the state the second sender observed", "mix ci passes, including the cargo test and clippy gates"]
+out_of_scope = ["Non-mainnet forks — task 6064 owns the chain question", "Contract deployment (TxKind::Create) and constructor execution", "Storage-slot discovery helpers for token balance or allowance overrides"]
+touches = ["packages/onchain_evm/native/onchain_evm/src/lib.rs", "packages/onchain_evm/lib/onchain/evm.ex", "packages/onchain_evm/lib/onchain/evm/params.ex", "packages/onchain_evm/test/onchain/evm_integration_test.exs", "packages/onchain_evm/CHANGELOG.md"]
+assignee = "grok"
+model = "grok-4.6"
+body = """
+simulate_batch is the stack's only dependent-sequence simulator — one fork, state committed between calls — and two hardcodings bound what it can express (surveyed 2026-08-28 in native/onchain_evm/src/lib.rs): every call's value is fixed to U256::ZERO in the batch loop, and one from covers the whole batch with nonces derived from a single base. An approve-then-supply pair works and is pinned in the integration tests; a sequence containing an ETH-bearing call (a WETH deposit, a payable entry point) or two actors (an owner grants, a manager acts — exactly the Aave V4 position-manager flows the stack now wraps) cannot be expressed at all.
+
+Extend the batch element to optionally carry value and from, with per-sender nonce tracking, keeping the existing 2-tuple accepted. The consumer demand is aave_sim's execution milestone: proving a composed multi-call action against forked mainnet state before anything signs it.
+
+AUTHORITY: revm's own transaction environment semantics and the deployed contracts the integration tests already pin against.
+
+Dispatch trigger: Rust NIF surface change requiring fork evidence.
+"""
+created_at = "2026-08-28"
+scored_at = "2026-08-28"
 
 [[task]]
 id = 7001
