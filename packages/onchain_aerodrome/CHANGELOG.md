@@ -5,13 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Ship `docs/` in the Hex tarball: `docs/protocol-context.md` is declared as an
+  ExDoc extra, but the explicit `files` list omitted it, so HexDocs built from
+  the package could not find the extra.
+
 ## [0.1.0] - 2026-08-27
 
 ### Added
 
-- Roadmap on the `rmap` substrate: `roadmap/tasks.toml` as canonical source with
-  35 tasks across nine phases and two milestones, rendering `ROADMAP.md` and
-  `roadmap/data.json`. Records three findings that shape the build — the
+- Roadmap on the `rmap` substrate: 35 tasks across nine phases and two
+  milestones, filed in the monorepo's root `roadmap/tasks.toml` (rendered to the
+  root `ROADMAP.md` and `roadmap/data.json`; this package's ids are the 5xxx
+  range). Records three findings that shape the build — the
   `.reach.exs` layer gate does not yet enforce what it documents (and forbids
   `bindings -> types`, which the layer table requires); `decode_structs: true` is
   unreachable through hex `onchain` 0.13.0's 2-arity wrappers, so decoding is

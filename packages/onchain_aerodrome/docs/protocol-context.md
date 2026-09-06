@@ -198,8 +198,8 @@ Feeds from Base docs, 2026-08-26:
 aero.xyz, 2026-08-24: "In 2026, Aerodrome will merge with Velodrome to become
 Aero: the unified liquidity layer for all of Ethereum."
 
-ROADMAP.md already lists Velodrome-on-Optimism as a future direction (same
-Sugar family, different addresses). No new task. When addresses unify, recapture
+The monorepo's root `ROADMAP.md` already lists Velodrome-on-Optimism as a
+future direction (same Sugar family, different addresses). No new task. When addresses unify, recapture
 `priv/abis/` and re-verify `Contracts` — the existing Sugar-drift procedure.
 
 ---

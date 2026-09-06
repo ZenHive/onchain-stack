@@ -1,10 +1,10 @@
 # Onchain Stack Roadmap
 
-**Vision:** Monorepo of the eight-package EVM cascade — hieroglyph, cartouche, onchain and the five consumers (aave, aerodrome, evm, js, tempo). One repository, verified at HEAD in a single mix ci through path deps; eight unchanged Hex packages published outward. Task ids carry their package's thousand-range (hieroglyph 1xxx … onchain_tempo 8xxx) and target_repo names the package a task lands in.
+**Vision:** Monorepo of the eight-package EVM cascade — hieroglyph, cartouche, onchain and the five consumers (aave, aerodrome, evm, js, tempo). One repository, verified at HEAD in a single mix ci through path deps; eight unchanged Hex packages published outward. Task ids carry their package's thousand-range (hieroglyph 1xxx … onchain_tempo 8xxx; 9xxx is reserved for onchain_morpho, the ninth package task 9001 founds) and target_repo names the package a task lands in.
 
 **Canonical source:** `roadmap/tasks.toml` — this file is rendered by `rmap render`. Do not hand-edit inside the marker pairs.
 
-**Task id ranges carry provenance:** hieroglyph 1xxx · cartouche 2xxx · onchain 3xxx · onchain_aave 4xxx · onchain_aerodrome 5xxx · onchain_evm 6xxx · onchain_js 7xxx · onchain_tempo 8xxx. Every task also carries `target_repo = "<package>"`.
+**Task id ranges carry provenance:** hieroglyph 1xxx · cartouche 2xxx · onchain 3xxx · onchain_aave 4xxx · onchain_aerodrome 5xxx · onchain_evm 6xxx · onchain_js 7xxx · onchain_tempo 8xxx · onchain_morpho 9xxx (reserved; task 9001 founds the package). Every task also carries `target_repo = "<package>"`.
 
 **Completed work:** see each package's `packages/<name>/CHANGELOG.md`.
 
@@ -341,6 +341,15 @@
 | Task 3093 | ⬜ | 🎁 **onchain_rpc_composition** · Onchain.RPC.create_access_list — compute the EIP-2930 access list that Signer.build_transaction already accepts but cannot produce [D:4/B:6/U:5 → Eff:1.38] 📋 |
 <!-- TASKS:END -->
 
+### Phase 3013: EIP-7702 Execution Rail
+
+<!-- TASKS:BEGIN phase=3013 -->
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 3095 | ⬜ | 🎁 **onchain_eip7702** · *Onchain.Signer* · Onchain.Signer type-0x04: build, sign, and broadcast EIP-7702 transactions [D:5/B:8/U:7 → Eff:1.5] 🚀 |
+| Task 3096 | ⬜ | 🎁 **onchain_eip7702** · *Onchain.Delegate* · EIP-7702 batched execution: pin an audited delegate and encode its batch calldata [D:6/B:9/U:7 → Eff:1.33] 📋 |
+<!-- TASKS:END -->
+
 ---
 
 ## onchain_aave
@@ -421,6 +430,14 @@
 | Task 4064 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · Surface decoded revert reasons on Aave write and call failures [D:4/B:7/U:7 → Eff:1.75] 🚀 |
 | Task 4065 | 🔶 | 🎁 **onchain_aave_event_error_decoding** · Adopt strict ABI decoding across Aave response decode paths [D:3/B:6/U:5 → Eff:1.83] 🚀 ⛔ onchain task 88 must land first: Onchain.ABI.decode_response/2 and Onchain.Contract.call accept no decode options today, so strict mode is unreachable from this repo |
 | Task 4068 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · *Onchain.Aave.Events* · Decode V4 Hub, Spoke and Tokenization Spoke events from logs [D:5/B:8/U:7 → Eff:1.5] 🚀 |
+<!-- TASKS:END -->
+
+### Phase 4009: Flash-Loan Execution
+
+<!-- TASKS:BEGIN phase=4009 -->
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 4073 | ⬜ | 🎁 **onchain_aave_flash_executor** · *Onchain.Aave.Executor* · Flash-loan executor contract: an atomic action bundle funded and repaid inside one Aave flash loan [D:8/B:9/U:6 → Eff:0.94] ⚠️ |
 <!-- TASKS:END -->
 
 ---
@@ -544,7 +561,23 @@
 ### Phase 6003: Standalone & Release
 
 <!-- TASKS:BEGIN phase=6003 -->
-> 15 tasks. See [CHANGELOG.md](CHANGELOG.md#phase-6003-onchain-evm-standalone-release).
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 6028 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_evm* · Rust unit tests for `onchain_evm` — transport-error classification, tx building, block parsing, error encoding [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 6029 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec [D:5/B:9/U:8 → Eff:1.7] 🚀 |
+| Task 6033 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_evm* · Spike: measure whether per-call tokio runtime creation costs anything before reusing one [D:3/B:4/U:4 → Eff:1.33] 📋 |
+| Task 6043 | ✅ | 🎁 **onchain_evm_standalone** · *Both native crates* · Gate the Rust half: run `cargo test` and `cargo clippy` from `mix ci` [D:4/B:8/U:6 → Eff:1.75] 🚀 |
+| Task 6044 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Stop leaking Rust `Debug` renderings into Elixir error and type strings [D:4/B:7/U:6 → Eff:1.62] 🚀 |
+| Task 6051 | ⛔ | 🎁 **onchain_evm_standalone** · *(cross-cutting research)* · Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
+| Task 6052 | ✅ | 🎁 **onchain_evm_standalone** · *Onchain.Contract.Generator* · Codegen-emit per-contract Multicall helper modules [D:5/B:7/U:6 → Eff:1.3?] 📋 |
+| Task 6053 | ✅ | 🎁 **onchain_evm_standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — artifacts cross-built locally with cargo-zigbuild [D:6/B:8/U:8 → Eff:1.33] 📋 |
+| Task 6056 | ✅ | 🎁 **onchain_evm_standalone** · 🔒 Independent EVM semantics and exact-bytecode verification harness [D:8/B:10/U:8 → Eff:1.12] 📋 |
+| Task 6059 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax [D:3/B:8/U:7 → Eff:2.5] 🎯 |
+| Task 6061 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Migrate Solidity source parsing from solang-parser to solar-parse [D:6/B:8/U:7 → Eff:1.25] 📋 |
+| Task 6062 | ✅ | 🎁 **onchain_evm_standalone** · *release* · Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex [D:4/B:9/U:8 → Eff:2.12] 🎯 |
+| Task 6063 | ✅ | 🎁 **onchain_evm_standalone** · Close the assertion gap in the semantics harness: every vector asserted against every key the oracle checks [D:5/B:8/U:6 → Eff:1.4] 📋 |
+| Task 6064 | ⬜ | 🎁 **onchain_evm_standalone** · *native/onchain_evm, Onchain.EVM* · Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch [D:5/B:9/U:8 → Eff:1.7] 🚀 |
+| Task 6065 | ⬜ | 🎁 **onchain_evm_standalone** · *Onchain.EVM* · simulate_batch: per-call value and sender, so ETH-bearing and multi-actor sequences are simulable [D:5/B:7/U:6 → Eff:1.3] 📋 |
 <!-- TASKS:END -->
 
 ---
@@ -606,6 +639,18 @@
 | Task 8011 | ✅ | 🎁 **onchain_tempo_cartouche_migration** · Update transport stub off the :cartouche,:client seam after onchain's Req migration [D:2/B:5/U:5 → Eff:2.5?] 🎯 |
 | Task 8012 | ✅ | 🎁 **onchain_tempo_verification** · 🔒 Mutation-grade 0x76 transaction and signing invariants [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 | Task 8013 | ⬜ | 🎁 **onchain_tempo_verification** · 🔒 Verify optional 0x76 key_authorization across encode, sign, and recover [D:5/B:7/U:4 → Eff:1.1] 📋 |
+<!-- TASKS:END -->
+
+---
+
+## onchain_morpho
+
+### Phase 9001: Morpho Blue Read Layer
+
+<!-- TASKS:BEGIN phase=9001 -->
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 9001 | ⬜ | 🎁 **onchain_morpho_reads** · *Onchain.Morpho* · Found onchain_morpho: Morpho Blue market, position and oracle reads on mainnet and Base [D:6/B:8/U:7 → Eff:1.25] 📋 |
 <!-- TASKS:END -->
 
 ---

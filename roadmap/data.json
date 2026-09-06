@@ -2,7 +2,7 @@
   "schema_version": 2,
   "project": "onchain_stack",
   "default_branch": "main",
-  "vision": "Monorepo of the eight-package EVM cascade — hieroglyph, cartouche, onchain and the five consumers (aave, aerodrome, evm, js, tempo). One repository, verified at HEAD in a single mix ci through path deps; eight unchanged Hex packages published outward. Task ids carry their package's thousand-range (hieroglyph 1xxx … onchain_tempo 8xxx) and target_repo names the package a task lands in.",
+  "vision": "Monorepo of the eight-package EVM cascade — hieroglyph, cartouche, onchain and the five consumers (aave, aerodrome, evm, js, tempo). One repository, verified at HEAD in a single mix ci through path deps; eight unchanged Hex packages published outward. Task ids carry their package's thousand-range (hieroglyph 1xxx … onchain_tempo 8xxx; 9xxx is reserved for onchain_morpho, the ninth package task 9001 founds) and target_repo names the package a task lands in.",
   "phases": {
     "1001": {
       "name": "[hieroglyph] Upstream & Fork Bug Fixes",
@@ -222,7 +222,7 @@
     "6003": {
       "name": "[onchain_evm] Standalone & Release",
       "order": 6003,
-      "status": "done"
+      "status": "pending"
     },
     "7001": {
       "name": "[onchain_js] Foundation",

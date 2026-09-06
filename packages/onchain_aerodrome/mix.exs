@@ -125,8 +125,10 @@ defmodule OnchainAerodrome.MixProject do
       # `priv/plts/` holds the dialyzer PLTs this project pins there
       # (`dialyzer/0` sets `plt_local_path`). .gitignore does not apply to
       # `mix hex.build`, so an implicit files list would ship dev-only PLT.
-      # Ship `priv/abis` and nothing else under `priv`.
-      files: ~w(lib priv/abis .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
+      # Ship `priv/abis` and nothing else under `priv`. `docs/` must ship
+      # too: `docs/protocol-context.md` is an ExDoc extra, and HexDocs builds
+      # from the tarball, not the repo.
+      files: ~w(lib priv/abis docs .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
     ]
   end
 
