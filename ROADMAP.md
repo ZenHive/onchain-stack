@@ -639,6 +639,7 @@
 | Task 8011 | ✅ | 🎁 **onchain_tempo_cartouche_migration** · Update transport stub off the :cartouche,:client seam after onchain's Req migration [D:2/B:5/U:5 → Eff:2.5?] 🎯 |
 | Task 8012 | ✅ | 🎁 **onchain_tempo_verification** · 🔒 Mutation-grade 0x76 transaction and signing invariants [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 | Task 8013 | ⬜ | 🎁 **onchain_tempo_verification** · 🔒 Verify optional 0x76 key_authorization across encode, sign, and recover [D:5/B:7/U:4 → Eff:1.1] 📋 |
+| Task 8014 | ⬜ | 🎁 **onchain_tempo_verification** · 🔒 Normalize ECDSA signatures to low-s before Curvy recovery in Onchain.Tempo.Transaction and report the curvy recover_key recid bug upstream [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 <!-- TASKS:END -->
 
 ---

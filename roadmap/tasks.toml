@@ -8626,3 +8626,26 @@ Dispatch trigger: new package founding with live mainnet evidence.
 """
 created_at = "2026-08-28"
 scored_at = "2026-08-28"
+
+[[task]]
+id = "8014"
+phase = 8003
+bundle = "onchain_tempo_verification"
+target_repo = "onchain_tempo"
+status = "pending"
+title = "Normalize ECDSA signatures to low-s before Curvy recovery in Onchain.Tempo.Transaction and report the curvy recover_key recid bug upstream"
+scores = { d = 3, b = 6, u = 5 }
+markers = ["security"]
+acceptance_criteria = ["Onchain.Tempo.Transaction.sender/1 returns the same address for the low-s and complement-s encodings of one signature, or rejects the high-s encoding with an explicit error — the choice is documented in the moduledoc", "A unit test constructs the complement-s encoding from a known-good signed 0x76 envelope and pins the chosen behaviour", "Every Curvy recovery call site across packages/ is listed in the delivery with its normalization status", "An upstream issue against libitx/curvy is opened with a minimal reproduction and its URL recorded in the task's implemented note", "mix ci passes"]
+out_of_scope = ["Changing mpp's canonicalize_transaction/1 (already normalizes before recovery, mpp Task 114)", "Forking or vendoring curvy"]
+touches = ["packages/onchain_tempo/lib/onchain/tempo/transaction.ex", "packages/onchain_tempo/lib/onchain/tempo/transaction/builder.ex", "packages/onchain_tempo/test/onchain/tempo/transaction_test.exs"]
+assignee = "codex"
+model = "gpt-6-astra"
+body = """
+curvy 0.3.1 `Curvy.recover_key/3` (deps/curvy/lib/curvy.ex:187-197) binds `recid` from the input struct, calls `Signature.normalize/1` (which for s > n/2 replaces s with n - s AND flips recid), then passes the PRE-normalization recid to `Point.from_signature/3`. For a high-s signature the recovery therefore pairs the normalized s with the wrong recovery id and returns a well-formed but wrong public key instead of the signer's. Observed 2026-09-11 in the mpp repo (harness review of mpp Task 114): `Onchain.Tempo.Transaction.sender/1` on the complement-s encoding of a signed 0x76 envelope returned a different address than on the canonical encoding. Verified by reading the curvy source; premise confirmed.
+
+Consequence today is fail-closed (a verifier comparing the recovered address to an expected signer rejects), and it is not a forgery vector — an attacker can submit any (r, s, recid) triple directly, so the mis-recovered point is already reachable. It IS a correctness defect at the boundary this package owns: `sender/1` must recover the same address for every valid encoding of one signature. Moderato itself rejects high-s at broadcast (-32602 'invalid transaction signature', observed live 2026-09-11), so the fix affects verification of never-broadcast envelopes, not chain state.
+
+Do: normalize to BIP-62 low-s (flip s and recid together) at the recovery boundary in `Onchain.Tempo.Transaction` before calling Curvy, or reject high-s outright with an explicit error — pick one and document it; audit `builder.ex` and any other Curvy recovery call in the eight packages for the same pattern; add a test that feeds the complement-s encoding and asserts either the identical sender or the explicit rejection. Report the bug upstream to libitx/curvy with a minimal reproduction (the maintainer-facing issue text is public-safe; nothing here is embargoed)."""
+created_at = "2026-09-11"
+scored_at = "2026-09-11"
