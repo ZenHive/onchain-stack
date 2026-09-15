@@ -105,6 +105,19 @@ defmodule Cartouche.RecoveryBitTest do
       assert Cartouche.RecoveryBit.normalize_signature(sig, :eip155, 8453) == sig
     end
 
+    # The original defect was a pattern-level FunctionClauseError on anything
+    # wider than 65 bytes. Reaching the documented cross-chain RuntimeError is
+    # what proves the pattern now admits the signature the signer actually emits.
+    test "normalize_signature/2 on a multi-byte v raises the documented cross-chain error" do
+      sig = <<1::256, 2::256>> <> :binary.encode_unsigned(16_941)
+
+      assert byte_size(sig) == 66
+
+      assert_raise RuntimeError, "Invalid EIP-155 Signature: recovery_bit=16941, chain_id=5", fn ->
+        Cartouche.RecoveryBit.normalize_signature(sig, :base)
+      end
+    end
+
     test "normalize/3 produces a Base EIP-155 v from an Ethereum recovery bit" do
       assert Cartouche.RecoveryBit.normalize(28, :eip155, 8453) == 16_942
     end
