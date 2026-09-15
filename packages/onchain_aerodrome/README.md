@@ -178,15 +178,17 @@ mix deps.get
 mix precommit        # fast local loop
 mix ci               # full gate (= mix precommit.full)
 mix test.json --quiet
-mix test.json --quiet --include integration   # requires a Base RPC endpoint
+mix test.json --quiet --include integration   # requires Base RPC + BASE_SECONDARY_RPC_URL
 mix aerodrome.capture_fixtures --block N      # live Base RPC; not part of mix ci
 ```
 
 `BASE_RPC_URL` is used when `--rpc-url` is omitted, falling back to
-`https://mainnet.base.org`. `--block` is required: a capture at `latest` is not
-a fixture. Re-running at the same block is byte-identical (`captured_at` is the
-block timestamp). Golden-fixture decode tests require no network and are the
-primary defence against Sugar redeploy drift.
+`https://mainnet.base.org`. Portability integration tests also require
+`BASE_SECONDARY_RPC_URL` (Alchemy/Infura-class Base URL; no fallback).
+`--block` is required: a capture at `latest` is not a fixture. Re-running at
+the same block is byte-identical (`captured_at` is the block timestamp).
+Golden-fixture decode tests require no network and are the primary defence
+against Sugar redeploy drift.
 
 ## Related packages
 

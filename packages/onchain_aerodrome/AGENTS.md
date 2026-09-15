@@ -926,6 +926,7 @@ The family-wide law is `node-portability.md` (`@`-imported above). This package'
 - **Everything is `eth_call` against a deployed contract**, routed through `Onchain.RPC` / `Onchain.Contract` / `Onchain.Multicall`. No `debug_*`/`trace_*`, no client extensions, no WebSocket.
 - **`eth_call` weight, not archive depth, is the portability question here.** `LpSugar.all(500, offset, 0)` is heavy (~1.1 MB response), but verified 2026-08-26 on **both** the public `https://mainnet.base.org` and an Alchemy Base endpoint — identical results, so `limit: 500` is not a privileged-endpoint assumption. An endpoint with a tighter per-call gas or response cap can still refuse it; document that requirement rather than silently lowering `limit`.
 - **Archive is needed only for historical/epoch queries** — anything taking a block parameter. Say so in that function's `@doc`. An integration test that only ever runs against our archive node is not evidence of portability.
+- **Two-endpoint test seam.** `Onchain.Aerodrome.RPCCase` (`test/support/rpc_case.ex`) runs the same zero-arity eth_call-shaped closure against `BASE_RPC_URL` (fallback `https://mainnet.base.org`) and `BASE_SECONDARY_RPC_URL` (Alchemy/Infura-class; no fallback, flunks when unset). Agreement between those two unprivileged endpoints is the portability claim. This seam does not exist in onchain core's `Onchain.RPCCase`; upstreaming it is a deliberate non-goal.
 - **Base only.** Contract addresses here are Base-specific; the Velodrome sibling on Optimism has different addresses and is out of scope.
 
 ## Module Layout
@@ -942,6 +943,7 @@ priv/abis/                      # Sourcify-captured deployed ABIs + provenance R
 test/fixtures/aerodrome/        # committed eth_call goldens + manifest.json
 test/support/aerodrome_fixtures.ex
                                 # offline loader for the goldens
+test/support/rpc_case.ex        # two-endpoint Base portability seam (not upstreamed)
 ```
 
 The remaining layers (`types/`, `analytics/`, `sugar/`, `write/`) and the rest of
@@ -973,7 +975,7 @@ mix test.json --quiet                          # Unit tests only
 mix test.json --quiet --include integration    # Unit + integration (requires a Base RPC)
 ```
 
-Integration tests require a Base endpoint (`BASE_RPC_URL`, falling back to `https://mainnet.base.org`). Golden-fixture decode tests need no network at all and are the primary defence against Sugar redeploy drift.
+Integration tests require a Base endpoint (`BASE_RPC_URL`, falling back to `https://mainnet.base.org`). Portability assertions also require `BASE_SECONDARY_RPC_URL` (a genuinely different hosted provider; no fallback — missing it flunks, never skips). Use `Onchain.Aerodrome.RPCCase.run_on_both_endpoints/1`. Golden-fixture decode tests need no network at all and are the primary defence against Sugar redeploy drift.
 
 ## Contract Address Verification
 

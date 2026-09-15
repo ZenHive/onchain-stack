@@ -8,6 +8,8 @@ defmodule Onchain.Aerodrome.Integration.PortabilityTest do
   alias Onchain.RPC
 
   @moduletag :integration
+  # Two 180s RPC calls plus blockNumber exceed ExUnit's 60s default.
+  @moduletag timeout: 600_000
 
   # Bindings.LpSugar is a later task; the deployed all(uint256,uint256,uint256)
   # at Contracts.address!(:lp_sugar) is the authority this seam tools against.
@@ -42,7 +44,8 @@ defmodule Onchain.Aerodrome.Integration.PortabilityTest do
     opts = Keyword.put(RPCCase.rpc_opts!(), :timeout, @timeout)
 
     case RPC.block_number(opts) do
-      {:ok, block} -> block
+      # Two blocks behind latest so a lagging secondary cannot miss the pin.
+      {:ok, block} -> max(block - 2, 0)
       {:error, reason} -> flunk("eth_blockNumber failed: #{inspect(reason)}")
     end
   end

@@ -19,6 +19,8 @@ defmodule Onchain.Aerodrome.RPCCaseTest do
       assert RPCCase.primary_rpc_url!() == @primary_fallback
       System.put_env("BASE_RPC_URL", "")
       assert RPCCase.primary_rpc_url!() == @primary_fallback
+      System.put_env("BASE_RPC_URL", "   ")
+      assert RPCCase.primary_rpc_url!() == @primary_fallback
     end
 
     test "uses BASE_RPC_URL when set" do
@@ -29,7 +31,7 @@ defmodule Onchain.Aerodrome.RPCCaseTest do
 
   describe "secondary_rpc_url!/0" do
     test "flunks with the exact env var and export command when unset or empty" do
-      for value <- [nil, ""] do
+      for value <- [nil, "", "   "] do
         System.put_env(%{"BASE_SECONDARY_RPC_URL" => value})
         error = assert_raise ExUnit.AssertionError, fn -> RPCCase.secondary_rpc_url!() end
         assert error.message =~ "BASE_SECONDARY_RPC_URL"
@@ -67,7 +69,7 @@ defmodule Onchain.Aerodrome.RPCCaseTest do
       assert error.message =~ ~s(export BASE_SECONDARY_RPC_URL="#{@secondary_example}")
     end
 
-    test "flunks when both accessors resolve to the same URL, without printing it" do
+    test "flunks when both accessors resolve to the same host, without printing the URL" do
       System.put_env("BASE_RPC_URL", @primary_fallback)
       System.put_env("BASE_SECONDARY_RPC_URL", @primary_fallback)
 
@@ -78,9 +80,23 @@ defmodule Onchain.Aerodrome.RPCCaseTest do
 
       assert error.message =~ "BASE_RPC_URL"
       assert error.message =~ "BASE_SECONDARY_RPC_URL"
-      assert error.message =~ "same URL"
+      assert error.message =~ "same host"
       assert error.message =~ ~s(export BASE_SECONDARY_RPC_URL="#{@secondary_example}")
       refute error.message =~ @primary_fallback
+    end
+
+    test "flunks two keys on the same hosted provider as not a second authority" do
+      System.put_env("BASE_RPC_URL", "https://base-mainnet.g.alchemy.com/v2/aaa")
+      System.put_env("BASE_SECONDARY_RPC_URL", "https://base-mainnet.g.alchemy.com/v2/bbb")
+
+      error =
+        assert_raise ExUnit.AssertionError, fn ->
+          RPCCase.run_on_both_endpoints(fn -> flunk("must not run") end)
+        end
+
+      assert error.message =~ "same host"
+      refute error.message =~ "aaa"
+      refute error.message =~ "bbb"
     end
   end
 end

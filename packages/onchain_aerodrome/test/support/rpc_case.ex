@@ -78,7 +78,8 @@ defmodule Onchain.Aerodrome.RPCCase do
   The closure should read `rpc_url!/0` or `rpc_opts!/0` so each invocation
   hits a different node. Returns `{primary_result, secondary_result}`.
   Flunks — never skips — when the secondary URL is missing or when both
-  accessors resolve to the same URL.
+  accessors resolve to the same host (same provider under a different key
+  is not a second authority).
   """
   @spec run_on_both_endpoints((-> result)) :: {result, result} when result: term()
   def run_on_both_endpoints(fun) when is_function(fun, 0) do
@@ -92,8 +93,14 @@ defmodule Onchain.Aerodrome.RPCCase do
   @spec env_url(String.t()) :: String.t() | nil
   defp env_url(var) do
     case System.get_env(var) do
-      url when is_binary(url) and url != "" -> url
-      _unset -> nil
+      url when is_binary(url) ->
+        case String.trim(url) do
+          "" -> nil
+          trimmed -> trimmed
+        end
+
+      _unset ->
+        nil
     end
   end
 
@@ -113,20 +120,40 @@ defmodule Onchain.Aerodrome.RPCCase do
   defp restore_rpc_url(nil), do: Process.delete(@rpc_url_key)
 
   @spec assert_distinct!(String.t(), String.t()) :: :ok | no_return()
-  defp assert_distinct!(primary, secondary) when primary != secondary, do: :ok
+  defp assert_distinct!(primary, secondary) do
+    if rpc_host!(primary) == rpc_host!(secondary) do
+      ExUnit.Assertions.flunk("""
+      BASE_RPC_URL and BASE_SECONDARY_RPC_URL resolve to the same host.
 
-  defp assert_distinct!(_primary, _secondary) do
-    ExUnit.Assertions.flunk("""
-    BASE_RPC_URL and BASE_SECONDARY_RPC_URL resolve to the same URL.
+      The consumer's node — not ours — as the case that matters.
+      Secondary must be a genuinely different unprivileged provider
+      (Alchemy, Infura, or similar), not the public Base endpoint again
+      and not a second key on the same hosted provider.
 
-    The consumer's node — not ours — as the case that matters.
-    Secondary must be a genuinely different unprivileged provider
-    (Alchemy, Infura, or similar), not the public Base endpoint again.
+      A real result or its real refusal, never a skip.
 
-    A real result or its real refusal, never a skip.
+        export #{@secondary_env}="#{@secondary_example}"
+      """)
+    else
+      :ok
+    end
+  end
 
-      export #{@secondary_env}="#{@secondary_example}"
-    """)
+  @spec rpc_host!(String.t()) :: String.t() | no_return()
+  defp rpc_host!(url) do
+    case URI.parse(url) do
+      %URI{host: host} when is_binary(host) and host != "" ->
+        String.downcase(host)
+
+      _invalid ->
+        ExUnit.Assertions.flunk("""
+        RPC URL is not a usable endpoint: missing host.
+
+        A real result or its real refusal, never a skip.
+
+          export #{@secondary_env}="#{@secondary_example}"
+        """)
+    end
   end
 
   @spec flunk_missing(String.t(), String.t()) :: no_return()
