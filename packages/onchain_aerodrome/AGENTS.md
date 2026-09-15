@@ -934,10 +934,14 @@ The family-wide law is `node-portability.md` (`@`-imported above). This package'
 lib/onchain_aerodrome.ex        # Descripex.Discoverable roster
 lib/onchain/aerodrome/
   contracts.ex                  # address registry + verified constants (base layer)
+  bindings/abi.ex               # compile-time signatures from priv/abis (bindings layer)
 priv/abis/                      # Sourcify-captured deployed ABIs + provenance README
 ```
 
-The remaining layers (`types/`, `bindings/`, `analytics/`, `sugar/`, `write/`) are scoped in the root `roadmap/tasks.toml` (offset +5000) and not yet implemented. `.reach.exs` already declares them, so the gate is in place before the first module lands.
+The remaining layers (`types/`, `analytics/`, `sugar/`, `write/`) and the rest of
+`bindings/` are scoped in the root `roadmap/tasks.toml` (offset +5000) and not
+yet implemented. `.reach.exs` already declares them, so the gate is in place
+before those modules land.
 
 ## Dependencies from onchain core
 

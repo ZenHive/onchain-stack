@@ -48,7 +48,10 @@ defmodule Onchain.Aerodrome.Bindings.Abi do
           {Path.basename(path), functions}
         end)
 
-  @type lookup_error :: :unknown_file | :unknown_function | :ambiguous_function
+  @type lookup_error ::
+          {:unknown_file, String.t()}
+          | {:unknown_function, String.t()}
+          | {:ambiguous_function, String.t()}
 
   @doc "Returns the canonical call signature for a captured function."
   @spec signature(String.t(), String.t()) :: {:ok, String.t()} | {:error, lookup_error()}
@@ -68,7 +71,7 @@ defmodule Onchain.Aerodrome.Bindings.Abi do
         find_function(functions, function)
 
       :error ->
-        {:error, :unknown_file}
+        {:error, {:unknown_file, file}}
     end
   end
 
@@ -77,8 +80,8 @@ defmodule Onchain.Aerodrome.Bindings.Abi do
            function == name or function == signature
          end) do
       [match] -> {:ok, match}
-      [] -> {:error, :unknown_function}
-      _matches -> {:error, :ambiguous_function}
+      [] -> {:error, {:unknown_function, function}}
+      _matches -> {:error, {:ambiguous_function, function}}
     end
   end
 end

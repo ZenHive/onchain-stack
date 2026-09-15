@@ -31,6 +31,7 @@ defmodule OnchainAerodrome do
 
   use Descripex.Discoverable,
     modules: [
-      Onchain.Aerodrome.Contracts
+      Onchain.Aerodrome.Contracts,
+      Onchain.Aerodrome.Bindings.Abi
     ]
 end

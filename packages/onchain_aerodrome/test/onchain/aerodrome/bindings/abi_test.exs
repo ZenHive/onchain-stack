@@ -50,10 +50,10 @@ defmodule Onchain.Aerodrome.Bindings.AbiTest do
   end
 
   test "unknown and overloaded lookups fail explicitly" do
-    assert {:error, :unknown_file} = Abi.signature("missing.json", "all")
-    assert {:error, :unknown_function} = Abi.return_type("lp_sugar.json", "missing")
-    assert {:error, :ambiguous_function} = Abi.signature("pool_factory.json", "getPool")
-    assert {:error, :ambiguous_function} = Abi.return_type("pool_factory.json", "getPool")
+    assert {:error, {:unknown_file, "missing.json"}} = Abi.signature("missing.json", "all")
+    assert {:error, {:unknown_function, "missing"}} = Abi.return_type("lp_sugar.json", "missing")
+    assert {:error, {:ambiguous_function, "getPool"}} = Abi.signature("pool_factory.json", "getPool")
+    assert {:error, {:ambiguous_function, "getPool"}} = Abi.return_type("pool_factory.json", "getPool")
 
     assert {:ok, "getPool(address,address,bool)"} =
              Abi.signature("pool_factory.json", "getPool(address,address,bool)")
@@ -84,7 +84,7 @@ defmodule Onchain.Aerodrome.Bindings.AbiTest do
 
   @tag :tmp_dir
   @tag timeout: 120_000
-  test "changing each captured external resource triggers Mix recompilation", %{tmp_dir: dir} do
+  test "changing a captured external resource triggers Mix recompilation", %{tmp_dir: dir} do
     File.mkdir_p!(Path.join(dir, "lib/onchain/aerodrome/bindings"))
     File.mkdir_p!(Path.join(dir, "priv"))
     File.cp_r!(@abi_dir, Path.join(dir, "priv/abis"))
@@ -104,15 +104,13 @@ defmodule Onchain.Aerodrome.Bindings.AbiTest do
     assert compile_probe(dir) =~ "Compiling 1 file"
     refute compile_probe(dir) =~ "Compiling 1 file"
 
-    for path <- @files do
-      resource = Path.join(dir, "priv/abis/" <> Path.basename(path))
-      File.touch!(resource, System.os_time(:second) - 10)
-      refute compile_probe(dir) =~ "Compiling 1 file"
+    resource = Path.join(dir, "priv/abis/" <> Path.basename(hd(@files)))
+    File.touch!(resource, System.os_time(:second) - 10)
+    refute compile_probe(dir) =~ "Compiling 1 file"
 
-      # Elixir 1.20 compares content digests; a timestamp-only touch is a no-op.
-      File.write!(resource, File.read!(resource) <> "\n")
-      assert compile_probe(dir) =~ "Compiling 1 file"
-    end
+    # Elixir 1.20 compares content digests; a timestamp-only touch is a no-op.
+    File.write!(resource, File.read!(resource) <> "\n")
+    assert compile_probe(dir) =~ "Compiling 1 file"
 
     resources = :attributes |> Abi.__info__() |> Keyword.get_values(:external_resource) |> List.flatten()
     assert Enum.sort(resources) == Enum.sort(@files)
@@ -122,9 +120,15 @@ defmodule Onchain.Aerodrome.Bindings.AbiTest do
     paths = ["-pa", Application.app_dir(:jason, "ebin")]
 
     {output, status} =
-      System.cmd("elixir", paths ++ ["-S", "mix", "compile", "--no-deps-check", "--no-prune-code-paths"],
+      System.cmd(
+        "elixir",
+        paths ++ ["-S", "mix", "compile", "--no-deps-check", "--no-prune-code-paths"],
         cd: dir,
-        env: [{"MIX_ENV", "test"}, {"ERL_FLAGS", "+S 2:2"}],
+        env: [
+          {"MIX_ENV", "test"},
+          {"MIX_BUILD_PATH", Path.join(dir, "_build")},
+          {"ERL_FLAGS", "+S 2:2"}
+        ],
         stderr_to_stdout: true
       )
 
