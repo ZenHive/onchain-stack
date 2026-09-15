@@ -238,7 +238,10 @@ defmodule OnchainAerodrome.MixProject do
       # `:ex_unit` is required because elixirc_paths/1 compiles test/support in
       # :test, so the case modules there are analyzed — without it every
       # `flunk/1` callsite reads as `unknown_function` (5 errors, exit 2).
-      plt_add_apps: [:mix, :ex_unit],
+      # `:jason` is required because the capture Mix task calls `Jason.encode!/2`
+      # at runtime; jason arrives transitively and `:apps_direct` would otherwise
+      # leave that call as `unknown_function`.
+      plt_add_apps: [:mix, :ex_unit, :jason],
       plt_local_path: "priv/plts",
       plt_core_path: "priv/plts"
     ]

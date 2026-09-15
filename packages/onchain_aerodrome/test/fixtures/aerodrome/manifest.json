@@ -1,0 +1,33 @@
+{
+  "block_number": 51348944,
+  "captured_at": "2026-09-15T15:47:15Z",
+  "chain_id": 8453,
+  "fixtures": [
+    "lp_sugar.count",
+    "lp_sugar.all.page0",
+    "lp_sugar.all.page1",
+    "lp_sugar.all.tail",
+    "lp_sugar.all.filtered_short",
+    "lp_sugar.forSwaps",
+    "ve_sugar.all",
+    "ve_sugar.byAccount",
+    "ve_sugar.byId",
+    "lp_sugar.positions.short",
+    "lp_sugar.positionsByFactory",
+    "lp_sugar.positionsUnstakedConcentrated",
+    "lp_sugar.tokens",
+    "token_sugar.tokens",
+    "lp_sugar.almEstimateAmounts",
+    "rewards_sugar.epochsLatest",
+    "rewards_sugar.epochsByAddress",
+    "rewards_sugar.rewards",
+    "rewards_sugar.rewardsByAddress",
+    "rewards_sugar.forRoot",
+    "relay_sugar.all",
+    "relay_sugar.registries",
+    "token_sugar.safe_balance_of",
+    "token_sugar.safe_decimals",
+    "token_sugar.safe_symbol"
+  ],
+  "rpc_endpoint": "https://mainnet.base.org"
+}

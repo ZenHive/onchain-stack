@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Pinned-block Sugar `eth_call` fixtures under `test/fixtures/aerodrome/`, an
+  offline loader (`Onchain.Aerodrome.Fixtures`), and
+  `mix aerodrome.capture_fixtures --block N` to re-capture them. The Mix task
+  is a dev workflow; `mix ci` decodes the committed hex with zero network.
+
 - `test/reach_architecture_test.exs` — the layer contract is now asserted
   against Reach directly rather than trusted. Each test compiles a probe module
   and checks the violation Reach reports, and the permitted-edge tests assert

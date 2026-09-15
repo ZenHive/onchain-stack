@@ -1,0 +1,14 @@
+{
+  "address": "0x1b121EfDaF4ABb8785a315C51D29BCE0552A7678",
+  "args": [
+    "0x723aef6543aece026a15662be4d3fb3424d502a9"
+  ],
+  "block_number": 51348944,
+  "calldata": "0x1235c48a000000000000000000000000723aef6543aece026a15662be4d3fb3424d502a9",
+  "contract": "rewards_sugar",
+  "function": "forRoot",
+  "id": "rewards_sugar.forRoot",
+  "response": "0x00000000000000000000000050f0249b824033cf0af0c8b9fe1c67c2842a34d5000000000000000000000000958a5612390bb4134e1e7505c7cb6b0652941174000000000000000000000000b0b88ca338f183d2fbabab0f75ba3c90424131d9",
+  "row_count": 3,
+  "signature": "forRoot(address)"
+}

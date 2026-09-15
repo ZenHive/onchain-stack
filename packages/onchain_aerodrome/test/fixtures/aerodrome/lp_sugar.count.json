@@ -1,0 +1,11 @@
+{
+  "address": "0x69dD9db6d8f8E7d83887A704f447b1a584b599A1",
+  "args": [],
+  "block_number": 51348944,
+  "calldata": "0x06661abd",
+  "contract": "lp_sugar",
+  "function": "count",
+  "id": "lp_sugar.count",
+  "response": "0x0000000000000000000000000000000000000000000000000000000000008f29",
+  "signature": "count()"
+}

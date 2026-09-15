@@ -1,0 +1,13 @@
+{
+  "address": "0x910CD56277994B4970F49AEDA52c96aD620aE81D",
+  "args": [
+    "0x236aa50979d5f3de3bd1eeb40e81137f22ab794b"
+  ],
+  "block_number": 51348944,
+  "calldata": "0xbcf5906a000000000000000000000000236aa50979d5f3de3bd1eeb40e81137f22ab794b",
+  "contract": "token_sugar",
+  "function": "safe_decimals",
+  "id": "token_sugar.safe_decimals",
+  "response": "0x0000000000000000000000000000000000000000000000000000000000000012",
+  "signature": "safe_decimals(address)"
+}

@@ -1,0 +1,13 @@
+{
+  "address": "0x3dd0849D66DBd63D06f11442502e200601c50790",
+  "args": [
+    0
+  ],
+  "block_number": 51348944,
+  "calldata": "0x6347c9000000000000000000000000000000000000000000000000000000000000000000",
+  "contract": "relay_sugar",
+  "function": "registries",
+  "id": "relay_sugar.registries",
+  "response": "0x00000000000000000000000005e41604b9463e2224227053980dff3f57fb6db5",
+  "signature": "registries(uint256)"
+}

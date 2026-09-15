@@ -935,7 +935,12 @@ lib/onchain_aerodrome.ex        # Descripex.Discoverable roster
 lib/onchain/aerodrome/
   contracts.ex                  # address registry + verified constants (base layer)
   bindings/abi.ex               # compile-time signatures from priv/abis (bindings layer)
+lib/mix/tasks/aerodrome.capture_fixtures.ex
+                                # pinned-block Sugar eth_call capture (dev workflow, not mix ci)
 priv/abis/                      # Sourcify-captured deployed ABIs + provenance README
+test/fixtures/aerodrome/        # committed eth_call goldens + manifest.json
+test/support/aerodrome_fixtures.ex
+                                # offline loader for the goldens
 ```
 
 The remaining layers (`types/`, `analytics/`, `sugar/`, `write/`) and the rest of
