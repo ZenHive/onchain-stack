@@ -9,7 +9,7 @@ defmodule Onchain.Aave.V4.HubTest do
   alias Onchain.Aave.V4.Hub.SpokeData
   alias Onchain.RPCStub
 
-  @hubs [:core, :prime, :plus]
+  @hubs [:core, :prime, :plus, :global_dollar]
   @asset_id 0
   @spoke "0x94e7A5dCbE816e498b89aB752661904E2F56c485"
   @usdc "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
@@ -40,7 +40,7 @@ defmodule Onchain.Aave.V4.HubTest do
   @max_risk_premium_threshold 16_777_215
 
   describe "hub_address/2" do
-    test "resolves all three configured Hubs to distinct checksummed addresses" do
+    test "resolves every registered Hub to a distinct checksummed address" do
       addresses =
         Enum.map(@hubs, fn hub ->
           assert {:ok, addr} = Hub.hub_address(hub)
@@ -50,10 +50,11 @@ defmodule Onchain.Aave.V4.HubTest do
       assert addresses == [
                Contracts.address!(:v4_core_hub),
                Contracts.address!(:v4_prime_hub),
-               Contracts.address!(:v4_plus_hub)
+               Contracts.address!(:v4_plus_hub),
+               Contracts.address!(:v4_global_dollar_hub)
              ]
 
-      assert [_, _, _] = Enum.uniq(addresses)
+      assert [_, _, _, _] = Enum.uniq(addresses)
     end
 
     test "returns unknown_hub for an unconfigured atom" do
@@ -214,7 +215,7 @@ defmodule Onchain.Aave.V4.HubTest do
       %{rpc_opts: RPCStub.rpc_opts(url), seen: seen}
     end
 
-    test "every selected read succeeds on all three Hubs", %{rpc_opts: rpc_opts} do
+    test "every selected read succeeds on all registered Hubs", %{rpc_opts: rpc_opts} do
       spoke = @spoke
 
       Enum.each(@hubs, fn hub ->

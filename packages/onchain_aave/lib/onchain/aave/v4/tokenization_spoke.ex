@@ -55,11 +55,11 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
   alias Onchain.Contract
   alias Onchain.Hex
 
-  @type hub :: :core | :prime | :plus
+  @type hub :: atom()
 
   @opts_desc "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
   @spoke_desc "Tokenization Spoke address as 0x hex string or 20-byte binary"
-  @hub_desc "Hub atom: :core, :prime, or :plus"
+  @hub_desc "Registered Hub atom, e.g. :core or :global_dollar"
   @asset_desc "Underlying asset atom, e.g. :weth, :usdc, :pt_susde"
   @account_desc "Account address as 0x hex string or 20-byte binary"
   @bytes32_size 32

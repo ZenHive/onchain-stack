@@ -62,6 +62,8 @@ defmodule Onchain.Aave.V4.RegistryTest do
 
     assert {:ok, 6} = Hub.get_asset_count(:global_dollar, [block: 0x123] ++ RPCStub.rpc_opts(url))
     assert {:error, {:unknown_hub, :unregistered}} = Hub.get_asset_count(:unregistered)
+    assert {:ok, expected} = Hub.hub_address(:global_dollar)
+    assert expected == Contracts.address!(:v4_global_dollar_hub)
     assert {:ok, _address} = Hub.hub_address(:core, network: :avalanche)
   end
 

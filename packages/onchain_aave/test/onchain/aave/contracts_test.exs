@@ -253,13 +253,18 @@ defmodule Onchain.Aave.ContractsTest do
     end
 
     test "every registered tokenization spoke is a valid checksummed address" do
-      hubs = [core: 17, prime: 7, plus: 7]
+      ethereum = [
+        core: tokenization_assets(:core),
+        prime: tokenization_assets(:prime),
+        plus: tokenization_assets(:plus),
+        global_dollar: tokenization_assets(:global_dollar)
+      ]
 
-      total =
-        for {hub, _count} <- hubs, reduce: 0 do
+      avalanche_core = tokenization_assets(:avalanche_core)
+
+      ethereum_total =
+        for {hub, assets} <- ethereum, reduce: 0 do
           acc ->
-            assets = tokenization_assets(hub)
-
             for asset <- assets do
               assert {:ok, addr} = Contracts.v4_tokenization_spoke(hub, asset),
                      "Failed for #{hub}/#{asset}"
@@ -271,7 +276,15 @@ defmodule Onchain.Aave.ContractsTest do
             acc + length(assets)
         end
 
-      assert total == 31
+      for asset <- avalanche_core do
+        assert {:ok, addr} = Contracts.v4_tokenization_spoke(:core, asset, network: :avalanche),
+               "Failed for avalanche/core/#{asset}"
+
+        assert Onchain.Address.valid?(addr)
+        assert {:ok, ^addr} = Onchain.Address.checksum(addr)
+      end
+
+      assert ethereum_total + length(avalanche_core) == 43
     end
 
     test "unknown hub returns unknown_hub" do
@@ -306,6 +319,15 @@ defmodule Onchain.Aave.ContractsTest do
       assert :v4_main_spoke_oracle in keys
     end
 
+    test "lists the pinned V4 registry keys on avalanche" do
+      assert {:ok, keys} = Contracts.v4_contracts(network: :avalanche)
+      assert :v4_core_hub in keys
+      assert :v4_main_spoke in keys
+      assert :v4_avax_correlated_spoke in keys
+      assert :v4_treasury_spoke in keys
+      refute :v4_global_dollar_hub in keys
+    end
+
     test "V3-only networks have no V4 singletons" do
       assert {:error, {:unsupported_network, :arbitrum}} =
                Contracts.v4_contracts(network: :arbitrum)
@@ -318,4 +340,6 @@ defmodule Onchain.Aave.ContractsTest do
 
   defp tokenization_assets(:prime), do: ~w(cbbtc gho usdc usdt wbtc weth wsteth)a
   defp tokenization_assets(:plus), do: ~w(gho pt_susde pt_usde susde usdc usde usdt)a
+  defp tokenization_assets(:global_dollar), do: ~w(pt_usdg_24sep2026 usdc usdt usdg paxg)a
+  defp tokenization_assets(:avalanche_core), do: ~w(wavax btcb usdc usdt wethe eurc savax)a
 end

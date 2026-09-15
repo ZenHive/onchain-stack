@@ -111,17 +111,10 @@ defmodule Onchain.Aave.V4.Hub do
 
   @spec hub_address(atom(), keyword()) :: {:ok, String.t()} | {:error, term()}
   def hub_address(hub, opts \\ []) do
-    key_name = "v4_#{hub}_hub"
-
-    key =
-      Enum.find_value(Contracts.networks(), fn network ->
-        case Contracts.v4_contracts(network: network) do
-          {:ok, keys} -> Enum.find(keys, &(Atom.to_string(&1) == key_name))
-          {:error, _reason} -> nil
-        end
-      end)
-
-    if key, do: Contracts.address(key, opts), else: {:error, {:unknown_hub, hub}}
+    case registered_hub_key(hub) do
+      nil -> {:error, {:unknown_hub, hub}}
+      key -> Contracts.address(key, opts)
+    end
   end
 
   # --- get_spoke_count ---
@@ -945,6 +938,21 @@ defmodule Onchain.Aave.V4.Hub do
   @spec max_risk_premium_threshold(hub(), keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
   def max_risk_premium_threshold(hub, opts \\ []) do
     call_uint(hub, "MAX_RISK_PREMIUM_THRESHOLD()", [], opts)
+  end
+
+  # Hub atoms resolve to a `:v4_<name>_hub` registry key present on any V4
+  # network. The lookup then uses `opts` so a known Hub on the wrong network
+  # still surfaces `unknown_contract` / `unsupported_network` from Contracts.
+  @spec registered_hub_key(atom()) :: atom() | nil
+  defp registered_hub_key(hub) do
+    key_name = "v4_#{hub}_hub"
+
+    Enum.find_value(Contracts.networks(), fn network ->
+      case Contracts.v4_contracts(network: network) do
+        {:ok, keys} -> Enum.find(keys, &(Atom.to_string(&1) == key_name))
+        {:error, _reason} -> nil
+      end
+    end)
   end
 
   @spec call_hub(atom(), String.t(), list(), String.t(), keyword()) ::
