@@ -12252,7 +12252,7 @@
       "phase": 6003,
       "bundle": "onchain_evm_standalone",
       "target_repo": "onchain_evm",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch",
       "scores": {
         "d": 5,
@@ -12285,6 +12285,7 @@
       ],
       "body": "`spec_id_for_fork` in `native/onchain_evm/src/lib.rs:98-102` hard-rejects every chain id except Ethereum mainnet:\n\n```rust\nfn spec_id_for_fork(chain_id: u64, block_number: u64) -> Result<SpecId, EvmError> {\n    if chain_id != ETHEREUM_MAINNET_CHAIN_ID {\n        return Err(EvmError::ForkError(format!(\n            \"unsupported chain id {chain_id}: hardfork schedule is known only for Ethereum mainnet (chain id {ETHEREUM_MAINNET_CHAIN_ID})\"\n        )));\n    }\n    ...\n}\n```\n\n`lib/onchain/evm.ex:34-40` documents the same constraint in the `Onchain.EVM` moduledoc's \"Fork revision\" section: \"RPC endpoints whose chain id is not Ethereum mainnet (`1`) return `{:error, {:fork_error, _}}` rather than silently executing under mainnet rules.\" Both are working as designed today — this is not a bug, it is a deliberately narrow feature that now blocks real consumers.\n\nThis is the direct extension of Task 60 (`Derive the EVM revision from the forked block instead of always executing under one modern SpecId`), which built the mainnet-only `MAINNET_HARDFORK_BLOCKS` schedule and explicitly scoped \"supporting chains beyond those the module already targets\" out. That scope boundary is what this task now needs to cross.\n\n**Concrete blocking case:** `onchain_aerodrome` targets Aerodrome Finance on Base (chain id 8453). Its intended test strategy is revm fork tests against a pinned Base block plus a `simulate/2` path for validating writes before broadcast — both impossible today, since any fork attempt against a Base RPC returns `{:error, {:fork_error, _}}`. It has fallen back to golden fixtures plus pinned-block `eth_call`, which cannot validate write paths at all. The same blocker hits every OP-Stack chain (Optimism, chain id 10; Base, chain id 8453) and Arbitrum.\n\n**Two shapes to evaluate, not presuppose:**\n1. Add an OP-Stack/Base hardfork-schedule table (mirroring `MAINNET_HARDFORK_BLOCKS`) so `spec_id_for_fork` resolves known L2 chain ids against their own activation history.\n2. A caller-supplied `:spec_id` option that bypasses the built-in schedule lookup entirely, putting correctness burden on the caller. Likely far smaller and unblocks every chain at once, but is a weaker long-term guarantee for chains this library wants to support first-class.\n\nPick with evidence — option 2 may be the right immediate unblock even if option 1 (or both together) is the correct long-term answer for chains this library supports directly.\n",
       "created_at": "2026-08-26",
+      "started_at": "2026-09-15",
       "scored_at": "2026-08-26",
       "cross_repo": []
     },

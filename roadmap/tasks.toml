@@ -8050,15 +8050,15 @@ done_at = "2026-08-22"
 id = 6064
 phase = 6003
 bundle = "onchain_evm_standalone"
-title = "Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch"
-status = "pending"
 target_repo = "onchain_evm"
-module = "native/onchain_evm, Onchain.EVM"
+status = "in_progress"
+title = "Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch"
 scores = { d = 5, b = 9, u = 8 }
 acceptance_criteria = ["A fork pinned to a real Base (chain id 8453) block succeeds and executes under a revision that is not silently the Ethereum mainnet schedule misapplied to an L2 block number — verified against an actual behavioural difference (e.g. an opcode or gas rule), not just by reading a configured value back", "Existing Ethereum mainnet (chain id 1) fork behaviour is unchanged: the current `MAINNET_HARDFORK_BLOCKS` resolution and its historical-block test coverage still pass as a regression check", "If the caller-supplied `:spec_id` escape hatch is the chosen (or partial) solution, an invalid or unknown spec_id value fails loudly with a tagged error — it must never silently fall back to the mainnet schedule or to a default revision", "The task's implementer evaluates both shapes named in the body with evidence (schedule table vs. escape hatch, or both) and states which was built and why, rather than presupposing one", "mix ci passes, including cargo tests for the native crate"]
 out_of_scope = ["OP-Stack-specific execution semantics beyond hardfork/SpecId resolution (L1 data fee opcode, deposit transactions, Arbitrum retryables) — this task only makes fork revision resolution correct for non-mainnet chain ids, not full L2 semantic parity", "Changes to onchain_aerodrome or any other consumer repo — this task is scoped to onchain_evm only", "Building out a generic multi-chain provider/registry abstraction beyond what resolving spec_id needs"]
 touches = ["packages/onchain_evm/native/onchain_evm/src/lib.rs", "packages/onchain_evm/lib/onchain/evm.ex"]
 assignee = "grok"
+module = "native/onchain_evm, Onchain.EVM"
 model = "grok-4.6"
 body = """
 `spec_id_for_fork` in `native/onchain_evm/src/lib.rs:98-102` hard-rejects every chain id except Ethereum mainnet:
@@ -8087,6 +8087,7 @@ This is the direct extension of Task 60 (`Derive the EVM revision from the forke
 Pick with evidence — option 2 may be the right immediate unblock even if option 1 (or both together) is the correct long-term answer for chains this library supports directly.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 # ---------------------------------------------------------------------------

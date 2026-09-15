@@ -577,7 +577,7 @@
 | Task 6061 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Migrate Solidity source parsing from solang-parser to solar-parse [D:6/B:8/U:7 → Eff:1.25] 📋 |
 | Task 6062 | ✅ | 🎁 **onchain_evm_standalone** · *release* · Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex [D:4/B:9/U:8 → Eff:2.12] 🎯 |
 | Task 6063 | ✅ | 🎁 **onchain_evm_standalone** · Close the assertion gap in the semantics harness: every vector asserted against every key the oracle checks [D:5/B:8/U:6 → Eff:1.4] 📋 |
-| Task 6064 | ⬜ | 🎁 **onchain_evm_standalone** · *native/onchain_evm, Onchain.EVM* · Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch [D:5/B:9/U:8 → Eff:1.7] 🚀 |
+| Task 6064 | 🔄 | 🎁 **onchain_evm_standalone** · *native/onchain_evm, Onchain.EVM* · Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 | Task 6065 | ⬜ | 🎁 **onchain_evm_standalone** · *Onchain.EVM* · simulate_batch: per-call value and sender, so ETH-bearing and multi-actor sequences are simulable [D:5/B:7/U:6 → Eff:1.3] 📋 |
 <!-- TASKS:END -->
 
