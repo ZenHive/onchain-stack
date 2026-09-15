@@ -9140,7 +9140,7 @@
       "bundle": "onchain_aerodrome_foundations",
       "target_repo": "onchain_aerodrome",
       "milestone": "onchain_aerodrome_v0_1",
-      "status": "in_progress",
+      "status": "done",
       "title": "Decode strategy and Bindings.Abi signature plumbing from priv/abis",
       "scores": {
         "d": 5,
@@ -9187,10 +9187,17 @@
         "packages/onchain_aerodrome/priv/abis/README.md",
         "packages/onchain_aerodrome/README.md"
       ],
+      "shipped_in": "cc39bb49e755d3df669a85a96ec00d5558c31d3a",
       "body": "Settle the decode strategy for the whole package in one place, then build the plumbing every binding task consumes.\n\nThe reachability fact this task exists to encode: hieroglyph 1.7.0 is a runtime dependency and its ABI.decode/3 does support decode_structs: true, which returns a map keyed by snake_case atoms. But hex-released onchain 0.13.0 exposes Onchain.Contract.call/5 and Onchain.ABI.decode_response/2 at 2-arity with no opts forwarding, so decode_structs cannot be reached through the project's own wrappers. Reaching past them straight into hieroglyph would mean bypassing our own abstraction, and decode_structs additionally raises at runtime on any un-interned field atom. Verify the arities yourself in deps/onchain before building on this.\n\nTherefore: positional decode. Onchain.RPC.eth_call plus Onchain.ABI.decode_response(return_type, hex), then a hand-written from_raw/1 per struct in tasks 6 and 7. This is the shape onchain_aave already uses in production. It sidesteps atom interning entirely, because defstruct field atoms are literal source and nothing calls String.to_existing_atom/1 on dynamic input. The residual risk is silent field-order drift on a Sugar redeploy, which tasks 6 and 7 defend with per-struct field-count and order tests read directly from the ABI JSON.\n\nBuild Bindings.Abi: given an ABI file and a function name, return the canonical call signature and the canonical return-type signature by walking inputs, outputs and components recursively with Jason. Cache per file in a module attribute with @external_resource so a re-captured ABI forces a recompile.\n\nWrite the atom-interning demonstration test. It is the standing defence against a future engineer helpfully adding decode_structs: true somewhere it will raise in production.\n\nCLAUDE.md, priv/abis/README.md and the README ABI paragraph currently still tell implementers to intern field atoms for decode_structs: true. That is the discarded path. Correct those three files in this task so a dispatched agent loading CLAUDE.md first does not follow it. Named tuple components in the Sourcify captures remain useful — they are the input to the field-order drift tests in tasks 6 and 7, not a reason to call decode_structs. Regenerating AGENTS.md is required because mix agents.check diffs it against CLAUDE.md.\n\nOPEN DECISIONS settled 2026-08-26 (do not re-ask): (a) there is no runtime dependency on an unreleased onchain fix — mix.exs is hex-only, no path or git deps; (b) the type-string builder covers exactly what the nine captured ABIs need, not a general Solidity grammar.\n\nAUTHORITY: priv/abis/lp_sugar.json and the other eight captured ABIs (Sourcify v2, deployed bytecode, named tuple components) are the sole source of truth for every signature. Not velodrome-finance/sugar's README, which is proven stale — it documents all(limit, offset) while the deployed contract is all(uint256,uint256,uint256) and the two-argument form reverts.\n",
       "created_at": "2026-08-26",
       "started_at": "2026-09-15",
+      "done_at": "2026-09-15",
       "scored_at": "2026-08-26",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1789484463756-b28b97b4, cc39bb49e755d3df669a85a96ec00d5558c31d3a).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1789484463756-b28b97b4",
       "cross_repo": []
     },
     {

@@ -6052,7 +6052,7 @@ phase = 5001
 bundle = "onchain_aerodrome_foundations"
 target_repo = "onchain_aerodrome"
 milestone = "onchain_aerodrome_v0_1"
-status = "in_progress"
+status = "done"
 title = "Decode strategy and Bindings.Abi signature plumbing from priv/abis"
 scores = { d = 5, b = 8, u = 8 }
 depends_on = [5001]
@@ -6080,9 +6080,16 @@ OPEN DECISIONS settled 2026-08-26 (do not re-ask): (a) there is no runtime depen
 
 AUTHORITY: priv/abis/lp_sugar.json and the other eight captured ABIs (Sourcify v2, deployed bytecode, named tuple components) are the sole source of truth for every signature. Not velodrome-finance/sugar's README, which is proven stale — it documents all(limit, offset) while the deployed contract is all(uint256,uint256,uint256) and the two-argument form reverts.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1789484463756-b28b97b4, cc39bb49e755d3df669a85a96ec00d5558c31d3a)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1789484463756-b28b97b4"
 created_at = "2026-08-26"
 started_at = "2026-09-15"
 scored_at = "2026-08-26"
+done_at = "2026-09-15"
+shipped_in = "cc39bb49e755d3df669a85a96ec00d5558c31d3a"
 
 [[task]]
 id = 5004
