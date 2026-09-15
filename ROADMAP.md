@@ -32,7 +32,7 @@
 - **target_version:** 0.1.0
 - **status:** 🔄 active
 - **hypothesis:** Tests whether the complete Aerodrome read surface — Sugar reads, a built-in price layer, and denominator-tagged analytics — can ship with correctness graded by deployed contracts rather than by our own code, given that Base EVM simulation is structurally blocked.
-- **pinned tasks:** 5/27 done
+- **pinned tasks:** 6/27 done
 
 ### onchain_js_v0_3 — [onchain_js] First real npm library end-to-end
 
@@ -479,7 +479,7 @@
 <!-- TASKS:BEGIN phase=5002 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 5006 `[P]` | 🔄 | 🎁 **onchain_aerodrome_types** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Types.Lp* · Types.Lp, .Position, .Swap and .Token — the pool and token structs, with ABI drift tests [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 5006 `[P]` | ✅ | 🎁 **onchain_aerodrome_types** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Types.Lp* · Types.Lp, .Position, .Swap and .Token — the pool and token structs, with ABI drift tests [D:5/B:8/U:8 → Eff:1.6] 🚀 |
 | Task 5007 `[P]` | ⬜ | 🎁 **onchain_aerodrome_types** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Types.VeNFT* · Types.VeNFT, .Vote, .Relay, .LpEpoch and .Reward — the veAERO structs, with ABI drift tests [D:5/B:8/U:8 → Eff:1.6] 🚀 |
 <!-- TASKS:END -->
 

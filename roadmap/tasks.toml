@@ -6222,7 +6222,7 @@ phase = 5002
 bundle = "onchain_aerodrome_types"
 target_repo = "onchain_aerodrome"
 milestone = "onchain_aerodrome_v0_1"
-status = "in_progress"
+status = "done"
 title = "Types.Lp, .Position, .Swap and .Token — the pool and token structs, with ABI drift tests"
 scores = { d = 5, b = 8, u = 8 }
 markers = ["parallel"]
@@ -6244,9 +6244,16 @@ Types.Token is shared across two ABIs. Confirm the shapes are byte-identical wit
 
 AUTHORITY: priv/abis/lp_sugar.json and priv/abis/token_sugar.json — specifically the outputs[0].components arrays of all, positions, forSwaps and tokens. Not velodrome-finance/sugar's struct documentation, which is exactly the source already proven stale by the all/2 versus all/3 arity mismatch.
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1789506041960-dcd600b3, 43575465c56d9754c2add8400a5b808ecea94be2)."
+delivered_by = "cursor"
+verified = true
+verified_by = "claude"
+verification_ref = "harness-run:run-1789506041960-dcd600b3"
 created_at = "2026-08-26"
 started_at = "2026-09-15"
 scored_at = "2026-08-26"
+done_at = "2026-09-15"
+shipped_in = "43575465c56d9754c2add8400a5b808ecea94be2"
 
 [[task]]
 id = 5007
