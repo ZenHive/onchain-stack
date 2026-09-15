@@ -19,6 +19,7 @@ defmodule Onchain.EVM.ParamsTest do
                  value: "0x1",
                  gas_limit: 21_000,
                  timeout_ms: 5_000,
+                 spec_id: :cancun,
                  state_overrides: overrides
                )
 
@@ -30,6 +31,7 @@ defmodule Onchain.EVM.ParamsTest do
       assert params["value"] == "0x1"
       assert params["gas_limit"] == 21_000
       assert params["timeout_ms"] == 5_000
+      assert params["spec_id"] == "Cancun"
       assert params["state_overrides"] == overrides
     end
 
@@ -225,6 +227,7 @@ defmodule Onchain.EVM.ParamsTest do
     value: "not-a-hex",
     gas_limit: @u64_overflow,
     timeout_ms: @u64_overflow,
+    spec_id: "not-a-spec",
     state_overrides: %{atom_key: %{"balance" => "0x1"}}
   }
 
@@ -397,6 +400,62 @@ defmodule Onchain.EVM.ParamsTest do
                  rpc_url: @valid_rpc_url,
                  gas_limit: over
                )
+    end
+  end
+
+  describe "build_call_params/3 :spec_id" do
+    test "canonicalizes atom, lowercase, and PascalCase names" do
+      for spec <- [:cancun, "cancun", "Cancun", "CANCUN"] do
+        assert {:ok, params} =
+                 Params.build_call_params(@valid_address, @valid_data,
+                   rpc_url: @valid_rpc_url,
+                   spec_id: spec
+                 )
+
+        assert params["spec_id"] == "Cancun"
+      end
+    end
+
+    test "maps :spurious_dragon to the revm FromStr name Spurious" do
+      assert {:ok, params} =
+               Params.build_call_params(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 spec_id: :spurious_dragon
+               )
+
+      assert params["spec_id"] == "Spurious"
+    end
+
+    test "rejects an unknown spec_id without assembling the NIF map" do
+      assert {:error, {:invalid_spec_id, "not-a-spec"}} =
+               Params.build_call_params(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 spec_id: "not-a-spec"
+               )
+
+      assert {:error, {:invalid_spec_id, :latest}} =
+               Params.build_call_params(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 spec_id: :latest
+               )
+    end
+
+    test "rejects a non-name spec_id value" do
+      assert {:error, {:invalid_spec_id, 12}} =
+               Params.build_call_params(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 spec_id: 12
+               )
+    end
+
+    test "puts spec_id on batch params" do
+      assert {:ok, params} =
+               Params.build_batch_params([{@valid_address, @valid_data}],
+                 rpc_url: @valid_rpc_url,
+                 spec_id: :prague
+               )
+
+      assert params["spec_id"] == "Prague"
     end
   end
 

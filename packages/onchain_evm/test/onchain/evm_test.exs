@@ -164,6 +164,28 @@ defmodule Onchain.EVMTest do
     end
   end
 
+  describe "simulate_call/3 :spec_id validation" do
+    test "rejects an unknown spec_id at the Elixir boundary" do
+      assert {:error, {:invalid_spec_id, "bogus"}} =
+               EVM.simulate_call(@valid_address, @valid_data,
+                 rpc_url: @valid_rpc_url,
+                 spec_id: "bogus"
+               )
+    end
+
+    test "rejects a non-name spec_id" do
+      assert {:error, {:invalid_spec_id, 1}} =
+               EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, spec_id: 1)
+    end
+
+    test "accepts a known spec_id and fails at the NIF, not validation" do
+      result =
+        EVM.simulate_call(@valid_address, @valid_data, rpc_url: @valid_rpc_url, spec_id: :cancun)
+
+      refute match?({:error, {:invalid_spec_id, _}}, result)
+    end
+  end
+
   describe "simulate_call/3 :from validation" do
     test "returns error for invalid :from address" do
       assert {:error, {:invalid_address, "not-valid"}} =

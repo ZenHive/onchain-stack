@@ -26,4 +26,10 @@ defmodule Onchain.RPCCase do
       export ETH_RPC_URL="https://mainnet.infura.io/v3/YOUR_KEY"
     """)
   end
+
+  @doc false
+  @spec base_rpc_url() :: String.t()
+  def base_rpc_url do
+    System.get_env("BASE_RPC_URL") || "https://mainnet.base.org"
+  end
 end

@@ -24,7 +24,7 @@ top of `{:onchain, "~> 0.12"}`.
 
 | Module | What it does |
 |--------|--------------|
-| `Onchain.EVM` | Fork mainnet state from an RPC endpoint, simulate calls/transactions/batches with revm |
+| `Onchain.EVM` | Fork chain state from an RPC endpoint, simulate calls/transactions/batches with revm |
 | `Onchain.Solidity` | Parse JSON ABI, `.sol` source, or a `.sol` file (with import resolution) into structured Elixir |
 | `Onchain.Trace` | `debug_*` namespace — `trace_transaction`, `trace_call`, `storage_at`, `available?` |
 | `Onchain.Contract.Generator` | `use` macro: `.sol`/ABI → typed Elixir module at compile time |
@@ -51,7 +51,8 @@ Onchain.EVM.simulate_batch(calls, rpc_url: url)
 | Option | Notes |
 |--------|-------|
 | `:rpc_url` | **Required.** Empty / whitespace / non-HTTP(S) / hostless URLs are rejected with `{:error, {:invalid_rpc_url, reason}}` (`reason` ∈ `:missing`, `:empty`, `{:not_a_string, term}`, `{:invalid_scheme, url}`, `{:missing_host, url}`). |
-| `:block` | Integer, `"0x…"` hex, or tag string `"latest"` / `"finalized"` / `"safe"` / `"pending"` / `"earliest"`. Resolved natively by Alloy. Also selects the EVM revision active at that block on Ethereum mainnet; other `eth_chainId` values return `{:error, {:fork_error, _}}`. |
+| `:block` | Integer, `"0x…"` hex, or tag string `"latest"` / `"finalized"` / `"safe"` / `"pending"` / `"earliest"`. Resolved natively by Alloy. Also selects the EVM revision active at that block: Ethereum mainnet (`1`) by block number, OP Mainnet (`10`) and Base (`8453`) by timestamp. Other `eth_chainId` values return `{:error, {:fork_error, _}}` unless `:spec_id` is set. |
+| `:spec_id` | Explicit EVM revision (atom or string: `:cancun`, `"Prague"`, …). Bypasses the built-in schedule. Unknown values return `{:error, {:invalid_spec_id, _}}` and never fall back to a default revision. |
 | `:timeout_ms` | Positive integer; per-RPC-request budget (default 30 000ms; connect timeout fixed at 5s). A request that exceeds it aborts instead of blocking the dirty-IO scheduler. |
 | `:from` | Sender address (0x hex or 20-byte binary). |
 | `:value` | 0x-prefixed U256 hex quantity — validated, not silently dropped. |
@@ -61,7 +62,8 @@ Onchain.EVM.simulate_batch(calls, rpc_url: url)
 **Error shape (`evm_error()`):** a union of `validation_error()` (Elixir-side input
 checks: `{:invalid_rpc_url, _}`, `{:invalid_address, _}`, `{:invalid_data, _}`,
 `{:invalid_calls, _}`, `{:invalid_block, _}`, `{:invalid_value, _}`,
-`{:invalid_gas_limit, _}`, `{:invalid_state_overrides, _}`, `{:invalid_timeout_ms, _}`)
+`{:invalid_gas_limit, _}`, `{:invalid_state_overrides, _}`, `{:invalid_timeout_ms, _}`,
+`{:invalid_spec_id, _}`)
 and `nif_error()` (`{:evm_error, msg}`, `{:evm_revert, msg}`, `{:fork_error, msg}`,
 `{:timeout, msg}`). Malformed options never cross the NIF.
 

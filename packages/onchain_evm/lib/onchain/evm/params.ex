@@ -14,6 +14,28 @@ defmodule Onchain.EVM.Params do
 
   @block_tags ~w(latest finalized pending earliest safe)
 
+  # Canonical revm SpecId::from_str names (PascalCase). Elixir accepts the
+  # lowercase atom/string forms and the canonical names; unknown values fail
+  # as {:invalid_spec_id, _} and never reach the NIF.
+  @spec_ids %{
+    "frontier" => "Frontier",
+    "homestead" => "Homestead",
+    "tangerine" => "Tangerine",
+    "spurious" => "Spurious",
+    "spurious_dragon" => "Spurious",
+    "byzantium" => "Byzantium",
+    "petersburg" => "Petersburg",
+    "istanbul" => "Istanbul",
+    "berlin" => "Berlin",
+    "london" => "London",
+    "merge" => "Merge",
+    "shanghai" => "Shanghai",
+    "cancun" => "Cancun",
+    "prague" => "Prague",
+    "osaka" => "Osaka",
+    "amsterdam" => "Amsterdam"
+  }
+
   # u64::MAX — the NIF decodes timeout_ms, block_number, and gas_limit as u64.
   # Anything above this overflows the decoder and surfaces as a bare
   # {:evm_error, "invalid param type: …"} instead of the documented tagged contract.
@@ -34,7 +56,8 @@ defmodule Onchain.EVM.Params do
          {:ok, params} <- maybe_put_from(base, opts),
          {:ok, params} <- maybe_put_value(params, opts),
          {:ok, params} <- maybe_put_gas_limit(params, opts),
-         {:ok, params} <- maybe_put_timeout_ms(params, opts) do
+         {:ok, params} <- maybe_put_timeout_ms(params, opts),
+         {:ok, params} <- maybe_put_spec_id(params, opts) do
       maybe_put_state_overrides(params, opts)
     end
   end
@@ -49,7 +72,8 @@ defmodule Onchain.EVM.Params do
          {:ok, base} <- maybe_put_block(%{"rpc_url" => rpc_url, "calls" => validated_calls}, opts),
          {:ok, params} <- maybe_put_from(base, opts),
          {:ok, params} <- maybe_put_gas_limit(params, opts),
-         {:ok, params} <- maybe_put_timeout_ms(params, opts) do
+         {:ok, params} <- maybe_put_timeout_ms(params, opts),
+         {:ok, params} <- maybe_put_spec_id(params, opts) do
       maybe_put_state_overrides(params, opts)
     end
   end
@@ -289,4 +313,34 @@ defmodule Onchain.EVM.Params do
       {:ok, other} -> {:error, {:invalid_timeout_ms, other}}
     end
   end
+
+  @doc false
+  # Validates :spec_id and adds the canonical revm SpecId name for the NIF.
+  @spec maybe_put_spec_id(map(), EVM.sim_opts()) :: {:ok, map()} | {:error, {:invalid_spec_id, term()}}
+  defp maybe_put_spec_id(params, opts) do
+    case Keyword.fetch(opts, :spec_id) do
+      :error -> {:ok, params}
+      {:ok, spec} -> put_spec_id(params, spec)
+    end
+  end
+
+  @spec put_spec_id(map(), term()) :: {:ok, map()} | {:error, {:invalid_spec_id, term()}}
+  defp put_spec_id(params, spec) when is_atom(spec) and spec not in [nil, true, false] do
+    case lookup_spec_id(Atom.to_string(spec)) do
+      {:ok, canonical} -> {:ok, Map.put(params, "spec_id", canonical)}
+      :error -> {:error, {:invalid_spec_id, spec}}
+    end
+  end
+
+  defp put_spec_id(params, spec) when is_binary(spec) do
+    case lookup_spec_id(spec) do
+      {:ok, canonical} -> {:ok, Map.put(params, "spec_id", canonical)}
+      :error -> {:error, {:invalid_spec_id, spec}}
+    end
+  end
+
+  defp put_spec_id(_params, other), do: {:error, {:invalid_spec_id, other}}
+
+  @spec lookup_spec_id(String.t()) :: {:ok, String.t()} | :error
+  defp lookup_spec_id(name), do: Map.fetch(@spec_ids, String.downcase(name))
 end

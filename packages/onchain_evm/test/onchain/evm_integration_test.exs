@@ -142,6 +142,34 @@ defmodule Onchain.EVM.IntegrationTest do
       assert msg =~ ~r/NotActivated|OpcodeNotFound/
     end
 
+    test "caller spec_id overrides the mainnet schedule (TLOAD under Shanghai at Cancun block)" do
+      overrides = %{@override_contract => %{"code" => @tload_runtime}}
+      rpc_url = Onchain.RPCCase.rpc_url!()
+
+      assert {:ok, @zero_word} =
+               EVM.simulate_call(
+                 @override_contract,
+                 "0x",
+                 rpc_url: rpc_url,
+                 block: @cancun_activation_block,
+                 spec_id: :cancun,
+                 state_overrides: overrides
+               )
+
+      assert {:error, {:evm_error, msg}} =
+               EVM.simulate_call(
+                 @override_contract,
+                 "0x",
+                 rpc_url: rpc_url,
+                 block: @cancun_activation_block,
+                 spec_id: :shanghai,
+                 state_overrides: overrides
+               )
+
+      assert msg =~ "halt"
+      assert msg =~ ~r/NotActivated|OpcodeNotFound/
+    end
+
     test "populates the forked block environment fields" do
       assert {:ok, expected_block} =
                RPC.get_block_by_number(@fork_block, rpc_url: Onchain.RPCCase.rpc_url!())
@@ -478,6 +506,82 @@ defmodule Onchain.EVM.IntegrationTest do
 
         other ->
           flunk("Expected {:error, {:fork_error, _}} from refused connection, got: #{inspect(other)}")
+      end
+    end
+  end
+
+  describe "non-mainnet forks" do
+    # Native USDC on Base. Used only to prove a live Base fork executes, not
+    # as a golden supply pin — that would require a historical archive block.
+    @base_usdc "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+    # Post-Ecotone Base block whose number is still pre-Cancun on Ethereum
+    # mainnet (Cancun = 19_426_587). Under the Base timestamp schedule this
+    # is Cancun (TLOAD works); under a misapplied mainnet block schedule it
+    # is London (TLOAD halts).
+    @base_post_ecotone_block 15_000_000
+    @ecotone_timestamp 1_710_374_401
+
+    defp base_opts(extra \\ []) do
+      Keyword.merge([rpc_url: Onchain.RPCCase.base_rpc_url()], extra)
+    end
+
+    test "forks Base latest and executes a real Base contract" do
+      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+
+      case EVM.simulate_call(@base_usdc, calldata, base_opts()) do
+        {:ok, hex} ->
+          assert {:ok, [supply]} = ABI.decode_response("(uint256)", hex)
+          assert supply > 0
+
+        {:error, {:fork_error, msg}} ->
+          flunk("""
+          Base latest fork failed. Set BASE_RPC_URL to a working Base endpoint.
+
+            export BASE_RPC_URL="https://mainnet.base.org"
+
+          Got: #{msg}
+          """)
+
+        other ->
+          flunk("unexpected Base latest result: #{inspect(other)}")
+      end
+    end
+
+    test "TLOAD at a pre-Cancun-number Base block uses the Base schedule, not mainnet" do
+      overrides = %{@override_contract => %{"code" => @tload_runtime}}
+      opts = base_opts(block: @base_post_ecotone_block, state_overrides: overrides)
+
+      assert {:ok, header} =
+               RPC.get_block_by_number(@base_post_ecotone_block, rpc_url: Onchain.RPCCase.base_rpc_url())
+
+      assert header.timestamp >= @ecotone_timestamp,
+             "block #{@base_post_ecotone_block} timestamp #{header.timestamp} is before Ecotone"
+
+      assert @base_post_ecotone_block < @cancun_activation_block
+
+      case EVM.simulate_call(@override_contract, "0x", opts) do
+        {:ok, @zero_word} ->
+          :ok
+
+        {:error, {:evm_error, msg}} ->
+          flunk("""
+          TLOAD halted at Base block #{@base_post_ecotone_block}. That is the
+          mainnet-schedule misapplication this task forbids (London at block
+          15_000_000). Got: #{msg}
+          """)
+
+        {:error, {:fork_error, msg}} ->
+          flunk("""
+          Base historical fork at block #{@base_post_ecotone_block} needs an
+          archive (or state-override-capable) Base endpoint.
+
+            export BASE_RPC_URL="<base archive RPC>"
+
+          Got: #{msg}
+          """)
+
+        other ->
+          flunk("unexpected Base TLOAD result: #{inspect(other)}")
       end
     end
   end

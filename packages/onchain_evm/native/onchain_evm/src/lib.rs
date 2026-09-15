@@ -33,12 +33,15 @@
 //!
 //! # Fork revision
 //!
-//! The EVM revision (`SpecId`) is derived from the forked block: `eth_chainId`
-//! selects a hardfork schedule, and the header's block number selects the
-//! revision active at that block. Only Ethereum mainnet (chain id 1) has a
-//! schedule; any other chain id is rejected as `:fork_error` rather than
-//! silently executing under mainnet rules. Amsterdam is not yet scheduled, so
-//! blocks at or after Osaka execute as Osaka.
+//! The EVM revision (`SpecId`) is derived from the forked block unless the
+//! caller supplies `spec_id`. `eth_chainId` selects a hardfork schedule:
+//! Ethereum mainnet (chain id 1) activates by block number; OP Mainnet (10)
+//! and Base (8453) activate by header timestamp. Any other chain id is
+//! rejected as `:fork_error` rather than silently executing under mainnet
+//! rules — pass `spec_id` to select a revision explicitly. An unknown
+//! `spec_id` is also `:fork_error`; it never falls back to a default
+//! revision. Amsterdam is not yet scheduled on mainnet, so blocks at or
+//! after Osaka execute as Osaka.
 //!
 //! [revm]: https://docs.rs/revm
 
@@ -48,6 +51,7 @@
 
 use rustler::{Encoder, Env, NifResult, Term};
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::time::Duration;
 
 use alloy_eips::BlockId;
@@ -70,6 +74,8 @@ const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 5_000;
 
 // Ethereum mainnet chain id (`eth_chainId`).
 const ETHEREUM_MAINNET_CHAIN_ID: u64 = 1;
+const OPTIMISM_MAINNET_CHAIN_ID: u64 = 10;
+const BASE_MAINNET_CHAIN_ID: u64 = 8453;
 
 // Ethereum mainnet hardfork activation blocks.
 //
@@ -95,19 +101,72 @@ const MAINNET_HARDFORK_BLOCKS: &[(u64, SpecId)] = &[
     (23_935_694, SpecId::OSAKA),
 ];
 
-fn spec_id_for_fork(chain_id: u64, block_number: u64) -> Result<SpecId, EvmError> {
-    if chain_id != ETHEREUM_MAINNET_CHAIN_ID {
-        return Err(EvmError::ForkError(format!(
-            "unsupported chain id {chain_id}: hardfork schedule is known only for Ethereum mainnet (chain id {ETHEREUM_MAINNET_CHAIN_ID})"
-        )));
-    }
+// OP-Stack / Base hardforks that change the Ethereum execution SpecId.
+// Intermediate OP forks (Delta, Fjord, Granite, Holocene, Jovian, Beryl)
+// do not change SpecId and are omitted. Activation is by timestamp
+// (OP-Stack network upgrades), never by L2 block number — applying
+// MAINNET_HARDFORK_BLOCKS to an L2 block number would select the wrong
+// revision. Mapping: Bedrock/Regolith→MERGE, Canyon→SHANGHAI,
+// Ecotone→CANCUN, Isthmus→PRAGUE, Azul (Base) / Karst (OP)→OSAKA.
+// Sources: alloy-op-hardforks Base/OP constants; Base `into_eth_spec`
+// (base/crates/common/chains/src/upgrade.rs); docs.optimism.io Karst;
+// BaseHub Azul activation 2026-05-28 18:00:00 UTC.
+const OP_MAINNET_HARDFORK_TIMESTAMPS: &[(u64, SpecId)] = &[
+    (0, SpecId::MERGE),
+    (1_704_992_401, SpecId::SHANGHAI),
+    (1_710_374_401, SpecId::CANCUN),
+    (1_746_806_401, SpecId::PRAGUE),
+    (1_783_526_401, SpecId::OSAKA),
+];
 
-    Ok(MAINNET_HARDFORK_BLOCKS
+const BASE_MAINNET_HARDFORK_TIMESTAMPS: &[(u64, SpecId)] = &[
+    (0, SpecId::MERGE),
+    (1_704_992_401, SpecId::SHANGHAI),
+    (1_710_374_401, SpecId::CANCUN),
+    (1_746_806_401, SpecId::PRAGUE),
+    (1_779_991_200, SpecId::OSAKA),
+];
+
+fn spec_from_schedule(schedule: &[(u64, SpecId)], cursor: u64) -> SpecId {
+    schedule
         .iter()
         .rev()
-        .find(|(activation, _)| block_number >= *activation)
+        .find(|(activation, _)| cursor >= *activation)
         .map(|(_, spec)| *spec)
-        .expect("FRONTIER starts at block 0"))
+        .expect("every schedule starts at 0")
+}
+
+fn spec_id_for_fork(chain_id: u64, block_number: u64, timestamp: u64) -> Result<SpecId, EvmError> {
+    match chain_id {
+        ETHEREUM_MAINNET_CHAIN_ID => Ok(spec_from_schedule(MAINNET_HARDFORK_BLOCKS, block_number)),
+        OPTIMISM_MAINNET_CHAIN_ID => {
+            Ok(spec_from_schedule(OP_MAINNET_HARDFORK_TIMESTAMPS, timestamp))
+        }
+        BASE_MAINNET_CHAIN_ID => Ok(spec_from_schedule(BASE_MAINNET_HARDFORK_TIMESTAMPS, timestamp)),
+        _ => Err(EvmError::ForkError(format!(
+            "unsupported chain id {chain_id}: hardfork schedule is known for Ethereum mainnet (chain id {ETHEREUM_MAINNET_CHAIN_ID}), OP Mainnet (chain id {OPTIMISM_MAINNET_CHAIN_ID}), and Base (chain id {BASE_MAINNET_CHAIN_ID}); pass spec_id to select a revision"
+        ))),
+    }
+}
+
+fn parse_caller_spec_id(name: &str) -> Result<SpecId, EvmError> {
+    SpecId::from_str(name).map_err(|_| {
+        EvmError::ForkError(format!(
+            "unknown spec_id {name:?}: expected a revm SpecId name (Frontier, Homestead, Tangerine, Spurious, Byzantium, Petersburg, Istanbul, Berlin, London, Merge, Shanghai, Cancun, Prague, Osaka, Amsterdam)"
+        ))
+    })
+}
+
+fn resolve_fork_spec_id(
+    caller_spec_id: Option<&str>,
+    chain_id: u64,
+    block_number: u64,
+    timestamp: u64,
+) -> Result<SpecId, EvmError> {
+    match caller_spec_id {
+        Some(name) => parse_caller_spec_id(name),
+        None => spec_id_for_fork(chain_id, block_number, timestamp),
+    }
 }
 
 fn configure_fork_cfg(cfg: &mut CfgEnv, spec_id: SpecId, disable_nonce_check: bool) {
@@ -433,6 +492,7 @@ fn build_fork(
     block_id: BlockId,
     timeout_ms: u64,
     connect_timeout_ms: u64,
+    caller_spec_id: Option<&str>,
 ) -> Result<(ForkDB, BlockEnv, SpecId), EvmError> {
     let rt = build_current_thread_runtime()?;
 
@@ -466,7 +526,7 @@ fn build_fork(
         Ok::<_, EvmError>((block, chain_id))
     })?;
     let header = &block.header.inner;
-    let spec_id = spec_id_for_fork(chain_id, header.number)?;
+    let spec_id = resolve_fork_spec_id(caller_spec_id, chain_id, header.number, header.timestamp)?;
     let block_env = BlockEnv {
         number: U256::from(header.number),
         beneficiary: header.beneficiary,
@@ -666,8 +726,14 @@ fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, Ev
     let timeout_ms = get_optional_u64_param(params, "timeout_ms")?.unwrap_or(DEFAULT_TIMEOUT_MS);
     let cp = extract_call_params(params)?;
 
-    let (mut db, block_env, spec_id) =
-        build_fork(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
+    let caller_spec_id = get_optional_string_param(params, "spec_id")?;
+    let (mut db, block_env, spec_id) = build_fork(
+        &rpc_url,
+        block_id,
+        timeout_ms,
+        DEFAULT_CONNECT_TIMEOUT_MS,
+        caller_spec_id.as_deref(),
+    )?;
     apply_state_overrides(&mut db, params)?;
 
     let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
@@ -702,8 +768,14 @@ fn do_simulate_transaction<'a>(params: &HashMap<String, Term<'a>>) -> Result<TxR
     let timeout_ms = get_optional_u64_param(params, "timeout_ms")?.unwrap_or(DEFAULT_TIMEOUT_MS);
     let cp = extract_call_params(params)?;
 
-    let (mut db, block_env, spec_id) =
-        build_fork(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
+    let caller_spec_id = get_optional_string_param(params, "spec_id")?;
+    let (mut db, block_env, spec_id) = build_fork(
+        &rpc_url,
+        block_id,
+        timeout_ms,
+        DEFAULT_CONNECT_TIMEOUT_MS,
+        caller_spec_id.as_deref(),
+    )?;
     apply_state_overrides(&mut db, params)?;
 
     let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
@@ -747,8 +819,14 @@ fn do_simulate_batch<'a>(params: &HashMap<String, Term<'a>>) -> Result<Vec<TxRes
         return Ok(Vec::new());
     }
 
-    let (mut db, block_env, spec_id) =
-        build_fork(&rpc_url, block_id, timeout_ms, DEFAULT_CONNECT_TIMEOUT_MS)?;
+    let caller_spec_id = get_optional_string_param(params, "spec_id")?;
+    let (mut db, block_env, spec_id) = build_fork(
+        &rpc_url,
+        block_id,
+        timeout_ms,
+        DEFAULT_CONNECT_TIMEOUT_MS,
+        caller_spec_id.as_deref(),
+    )?;
     apply_state_overrides(&mut db, params)?;
     let base_nonce = current_nonce(&db, from)?;
 
@@ -913,7 +991,7 @@ mod tests {
 
         for (block, spec) in cases {
             assert_eq!(
-                spec_id_for_fork(ETHEREUM_MAINNET_CHAIN_ID, block).unwrap(),
+                spec_id_for_fork(ETHEREUM_MAINNET_CHAIN_ID, block, 0).unwrap(),
                 spec,
                 "block {block}"
             );
@@ -922,12 +1000,170 @@ mod tests {
 
     #[test]
     fn spec_id_rejects_unknown_chain() {
-        match spec_id_for_fork(11_155_111, 19_426_587) {
+        match spec_id_for_fork(11_155_111, 19_426_587, 0) {
             Err(EvmError::ForkError(msg)) => {
                 assert!(msg.contains("11155111"), "{msg}");
-                assert!(msg.contains("mainnet"), "{msg}");
+                assert!(msg.contains("spec_id"), "{msg}");
             }
             other => panic!("expected ForkError, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn spec_id_follows_base_hardfork_timestamps() {
+        let cases = [
+            (0, SpecId::MERGE),
+            (1_704_992_400, SpecId::MERGE),
+            (1_704_992_401, SpecId::SHANGHAI),
+            (1_710_374_400, SpecId::SHANGHAI),
+            (1_710_374_401, SpecId::CANCUN),
+            (1_746_806_400, SpecId::CANCUN),
+            (1_746_806_401, SpecId::PRAGUE),
+            (1_779_991_199, SpecId::PRAGUE),
+            (1_779_991_200, SpecId::OSAKA),
+            (u64::MAX, SpecId::OSAKA),
+        ];
+
+        for (timestamp, spec) in cases {
+            assert_eq!(
+                spec_id_for_fork(BASE_MAINNET_CHAIN_ID, 15_000_000, timestamp).unwrap(),
+                spec,
+                "base timestamp {timestamp}"
+            );
+        }
+    }
+
+    #[test]
+    fn spec_id_follows_op_hardfork_timestamps() {
+        let cases = [
+            (0, SpecId::MERGE),
+            (1_704_992_401, SpecId::SHANGHAI),
+            (1_710_374_401, SpecId::CANCUN),
+            (1_746_806_401, SpecId::PRAGUE),
+            (1_783_526_400, SpecId::PRAGUE),
+            (1_783_526_401, SpecId::OSAKA),
+        ];
+
+        for (timestamp, spec) in cases {
+            assert_eq!(
+                spec_id_for_fork(OPTIMISM_MAINNET_CHAIN_ID, 120_000_000, timestamp).unwrap(),
+                spec,
+                "op timestamp {timestamp}"
+            );
+        }
+    }
+
+    #[test]
+    fn spec_id_does_not_apply_mainnet_block_schedule_to_base() {
+        // Base block 15_000_000 is post-Ecotone (Cancun) on the L2 timestamp
+        // schedule. The same block number on Ethereum mainnet is still London.
+        let timestamp = 1_710_374_401;
+        assert_eq!(
+            spec_id_for_fork(BASE_MAINNET_CHAIN_ID, 15_000_000, timestamp).unwrap(),
+            SpecId::CANCUN
+        );
+        assert_eq!(
+            spec_id_for_fork(ETHEREUM_MAINNET_CHAIN_ID, 15_000_000, timestamp).unwrap(),
+            SpecId::LONDON
+        );
+    }
+
+    #[test]
+    fn caller_spec_id_overrides_schedule_and_unknown_chain() {
+        assert_eq!(
+            resolve_fork_spec_id(Some("Cancun"), 42_161, 1, 1).unwrap(),
+            SpecId::CANCUN
+        );
+        assert_eq!(
+            resolve_fork_spec_id(Some("Shanghai"), ETHEREUM_MAINNET_CHAIN_ID, 0, 0).unwrap(),
+            SpecId::SHANGHAI
+        );
+        match resolve_fork_spec_id(None, 42_161, 1, 1) {
+            Err(EvmError::ForkError(msg)) => assert!(msg.contains("42161"), "{msg}"),
+            other => panic!("expected ForkError, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn unknown_caller_spec_id_fails_without_falling_back() {
+        match parse_caller_spec_id("cancun") {
+            Err(EvmError::ForkError(msg)) => {
+                assert!(msg.contains("cancun"), "{msg}");
+                assert!(msg.contains("unknown spec_id"), "{msg}");
+            }
+            other => panic!("expected ForkError, got {other:?}"),
+        }
+        match parse_caller_spec_id("Latest") {
+            Err(EvmError::ForkError(msg)) => assert!(msg.contains("Latest"), "{msg}"),
+            other => panic!("expected ForkError, got {other:?}"),
+        }
+        assert_eq!(parse_caller_spec_id("Osaka").unwrap(), SpecId::OSAKA);
+        assert_eq!(
+            parse_caller_spec_id("Spurious").unwrap(),
+            SpecId::SPURIOUS_DRAGON
+        );
+    }
+
+    fn execute_code_under_spec(spec: SpecId, code: Vec<u8>) -> Result<TxResult, EvmError> {
+        use revm::state::AccountInfo;
+        use revm_database::EmptyDB;
+
+        let to = Address::repeat_byte(TEST_TO_BYTE);
+        let from = Address::repeat_byte(TEST_FROM_BYTE);
+        let mut db = CacheDB::new(EmptyDB::default());
+        db.insert_account_info(
+            to,
+            AccountInfo::default().with_code(Bytecode::new_raw(Bytes::from(code))),
+        );
+        db.insert_account_info(
+            from,
+            AccountInfo::default().with_balance(U256::from(1_000_000_000_000_000u64)),
+        );
+
+        let tx = TxEnv::builder()
+            .caller(from)
+            .kind(TxKind::Call(to))
+            .gas_limit(100_000)
+            .build()
+            .expect("valid tx");
+
+        let mut evm = Context::mainnet()
+            .with_db(&mut db)
+            .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec, true))
+            .build_mainnet();
+
+        let result = evm.transact(tx).map_err(classify_transport_error)?;
+        extract_tx_result(result.result)
+    }
+
+    #[test]
+    fn tload_differs_between_base_and_mainnet_at_same_block_number() {
+        // TLOAD (0x5c, EIP-1153): halt before Cancun, zero-word return after.
+        // Same bytecode as the Elixir Cancun-boundary integration test.
+        let tload = hex::decode("60005c60005260206000f3").expect("tload runtime");
+        let timestamp = 1_710_374_401;
+        let base_spec = spec_id_for_fork(BASE_MAINNET_CHAIN_ID, 15_000_000, timestamp).unwrap();
+        let mainnet_spec =
+            spec_id_for_fork(ETHEREUM_MAINNET_CHAIN_ID, 15_000_000, timestamp).unwrap();
+        assert_eq!(base_spec, SpecId::CANCUN);
+        assert_eq!(mainnet_spec, SpecId::LONDON);
+
+        let on_base = execute_code_under_spec(base_spec, tload.clone()).expect("cancun tload");
+        assert!(on_base.success);
+        assert_eq!(
+            on_base.output,
+            "0x0000000000000000000000000000000000000000000000000000000000000000"
+        );
+
+        match execute_code_under_spec(mainnet_spec, tload) {
+            Err(EvmError::ExecutionError(msg)) => {
+                assert!(msg.contains("halt"), "{msg}");
+                assert!(
+                    msg.contains("NotActivated") || msg.contains("OpcodeNotFound"),
+                    "{msg}"
+                );
+            }
+            other => panic!("expected TLOAD halt under London, got {other:?}"),
         }
     }
 

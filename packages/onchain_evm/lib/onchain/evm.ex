@@ -2,9 +2,8 @@ defmodule Onchain.EVM do
   @moduledoc """
   Local EVM simulation powered by revm via Rustler NIF.
 
-  Simulates contract execution locally by forking Ethereum mainnet state from
-  a mainnet RPC endpoint. Zero gas cost, zero latency compared to on-chain
-  execution.
+  Simulates contract execution locally by forking chain state from an RPC
+  endpoint. Zero gas cost, zero latency compared to on-chain execution.
 
   ## Core Use Cases
 
@@ -29,15 +28,19 @@ defmodule Onchain.EVM do
   | Invalid value option | `{:error, {:invalid_value, input}}` |
   | Invalid gas_limit option | `{:error, {:invalid_gas_limit, input}}` |
   | Invalid timeout_ms option | `{:error, {:invalid_timeout_ms, input}}` |
+  | Invalid spec_id option | `{:error, {:invalid_spec_id, input}}` |
   | Invalid state_overrides option | `{:error, {:invalid_state_overrides, input}}` |
 
   ## Fork revision
 
   A `:block` pin selects both the forked state *and* the EVM revision that was
-  active at that block, via the Ethereum mainnet hardfork schedule (keyed on
-  `eth_chainId` plus the header's block number). RPC endpoints whose chain id
-  is not Ethereum mainnet (`1`) return `{:error, {:fork_error, _}}` rather than
-  silently executing under mainnet rules.
+  active at that block. `eth_chainId` picks a hardfork schedule: Ethereum
+  mainnet (`1`) activates by block number; OP Mainnet (`10`) and Base (`8453`)
+  activate by header timestamp. Other chain ids return
+  `{:error, {:fork_error, _}}` rather than silently executing under mainnet
+  rules. Pass `:spec_id` to select a revision explicitly (any chain); an
+  unknown value returns `{:error, {:invalid_spec_id, _}}` and never falls
+  back to a default revision.
 
   ## Timeouts
 
@@ -131,6 +134,7 @@ defmodule Onchain.EVM do
           value: String.t(),
           gas_limit: non_neg_integer(),
           timeout_ms: pos_integer(),
+          spec_id: atom() | String.t(),
           state_overrides: state_overrides()
         ]
 
@@ -154,6 +158,7 @@ defmodule Onchain.EVM do
           | {:invalid_value, term()}
           | {:invalid_gas_limit, term()}
           | {:invalid_timeout_ms, term()}
+          | {:invalid_spec_id, term()}
           | {:invalid_state_overrides, term()}
 
   @typedoc "Errors from the Rust NIF during EVM execution."
@@ -183,7 +188,8 @@ defmodule Onchain.EVM do
       opts: [
         kind: :value,
         default: [],
-        description: "Options: :rpc_url (required), :block, :from, :value, :gas_limit, :timeout_ms, :state_overrides"
+        description:
+          "Options: :rpc_url (required), :block, :from, :value, :gas_limit, :timeout_ms, :spec_id, :state_overrides"
       ]
     ],
     returns: %{
@@ -231,7 +237,8 @@ defmodule Onchain.EVM do
       opts: [
         kind: :value,
         default: [],
-        description: "Options: :rpc_url (required), :block, :from, :value, :gas_limit, :timeout_ms, :state_overrides"
+        description:
+          "Options: :rpc_url (required), :block, :from, :value, :gas_limit, :timeout_ms, :spec_id, :state_overrides"
       ]
     ],
     returns: %{
@@ -275,7 +282,7 @@ defmodule Onchain.EVM do
       opts: [
         kind: :value,
         default: [],
-        description: "Options: :rpc_url (required), :block, :from, :gas_limit, :timeout_ms, :state_overrides"
+        description: "Options: :rpc_url (required), :block, :from, :gas_limit, :timeout_ms, :spec_id, :state_overrides"
       ]
     ],
     returns: %{
