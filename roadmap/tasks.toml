@@ -3683,15 +3683,15 @@ scored_at = "2026-08-27"
 id = 2133
 phase = 2000
 bundle = "cartouche_correctness_010"
-title = "EIP-712 conformance: encode_type non-termination, bytesN padding direction, array-of-struct support, int types"
-status = "pending"
 target_repo = "cartouche"
+status = "in_progress"
+title = "EIP-712 conformance: encode_type non-termination, bytesN padding direction, array-of-struct support, int types"
 scores = { d = 4, b = 9, u = 8 }
 markers = ["security"]
 acceptance_criteria = ["Cartouche.Typed.encode_type/2 terminates for a type referencing two or more DISTINCT struct types, and a test asserts termination with a bounded Task.yield rather than hanging the suite; today `%{\"Root\" => fields [{\"z\",\"Zebra\"},{\"a\",\"Apple\"}]}` never returns", "Referenced struct types are appended sorted by name, per EIP-712 'the set of referenced struct types is collected, sorted by name and appended'; a test pins a type whose field order and alphabetical order differ and asserts the exact encodeType string", "bytesN values are zero-padded AT THE END per EIP-712; `encode_data_value(<<0xCC>>, {:bytes, 32})` returns <<0xCC, 0::248>>. The doctest at typed.ex:279-280 currently asserts the opposite and must be corrected, not deleted", "Address and uint stay LEFT-padded (address is uint160, big-endian) — a test pins both alignments side by side so the two opposite semantics can never be re-conflated into one pad/2 call", "Struct types referenced through an array field are collected into encodeType (today `Root(Person[] people)` omits `Person(string name)` silently), and encode_data_value/2 encodes an array-of-structs field without raising", "int8..int256 are representable: deserialize_type/1 returns an int variant, serialize_type/1 round-trips it, and encode_data_value/2 sign-extends to 256 bits big-endian per EIP-712", "The whole surface is pinned against independent implementations the way docs/verification-ledger.md pins transactions: signTypedData vectors generated from BOTH ethers and viem, covering nested structs, arrays of structs, bytesN, and a negative int — following test/fixtures/vectors/generate.cjs's existing pattern", "mix ci passes"]
 out_of_scope = ["EIP-712 domain-separator policy or chain-id binding — this task fixes encoding conformance, not domain semantics", "A typed-data message builder for Hyperliquid or any specific venue — orthogonal, and already fenced off by task 104", "Refactoring Cartouche.Hex.pad/2's signature; adding a right-padding function beside it is fine, changing every existing caller is not"]
-touches = ["packages/cartouche/CHANGELOG.md", "packages/cartouche/test/fixtures/vectors/"]
 files_to_modify = ["packages/cartouche/lib/cartouche/typed.ex", "packages/cartouche/lib/cartouche/hex.ex", "packages/cartouche/test/typed_test.exs"]
+touches = ["packages/cartouche/CHANGELOG.md", "packages/cartouche/test/fixtures/vectors/"]
 assignee = "codex"
 model = "gpt-6-astra"
 body = """
@@ -3712,6 +3712,7 @@ Severity ordering for the implementer: (3) and the array half of (4) are SILENT 
 Authority is the EIP-712 text plus two independent implementations — ethers `_TypedDataEncoder` and viem `hashTypedData`. Where the EIP is terse, agreement across those two is the spec in practice; a single implementation's behaviour is not.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]
