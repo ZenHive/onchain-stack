@@ -839,9 +839,9 @@ Consequences, all of them load-bearing:
 
 The **deployed ABI is the only authority.** Sugar's own `readme.md` in `velodrome-finance/sugar` documents `LpSugar.all(limit, offset)`; the deployed contract is **`all(uint256,uint256,uint256)`** — a third `_filter` argument — and the 2-argument form **reverts on-chain**. Documentation drift here is not hypothetical, it is the current state.
 
-- ABIs live in `priv/abis/`, captured from **Sourcify v2** (`https://sourcify.dev/server/v2/contract/8453/<addr>?fields=abi`) because it serves the *deployed* ABI **with named tuple components** — required for `hieroglyph`'s `decode_structs: true`. `priv/abis/README.md` records address, match type, fetch date, and the exact `curl` per file.
-- After any Sugar redeploy: re-capture from Sourcify, re-run the golden decode suite, and re-run the live probes in `priv/abis/README.md`. A decode that starts returning `nil` fields is drift, not a bug in the decoder.
-- `decode_structs: true` uses `String.to_existing_atom/1` and **raises at runtime** on un-interned field atoms. Intern them (module attribute, `@type`, or an explicit list) before the first decode. It is also a **no-op on unnamed signatures** — the `"(uint256,bool)"` strings `Onchain.Solidity` produces carry no field names.
+- ABIs live in `priv/abis/`, captured from **Sourcify v2** (`https://sourcify.dev/server/v2/contract/8453/<addr>?fields=abi`) because it serves the *deployed* ABI **with named tuple components** — the source for per-struct field-count and field-order drift tests. `priv/abis/README.md` records address, match type, fetch date, and the exact `curl` per file.
+- After any Sugar redeploy: re-capture from Sourcify, re-run the golden decode suite, and re-run the live probes in `priv/abis/README.md`. Positional decoding cannot detect reordered fields by itself; ABI field-order tests must guard that drift.
+- Decode positionally: `Onchain.RPC.eth_call/3` → `Onchain.ABI.decode_response/2` → hand-written `from_raw/1` constructors, matching onchain_aave. Do not use `decode_structs: true`: it raises on un-interned field atoms. Literal defstruct fields need no dynamic atom lookup. `Bindings.Abi` records the wrapper-version evidence and derives signatures from the captures.
 
 ## 🚨 Pagination — never terminate on a short page
 
