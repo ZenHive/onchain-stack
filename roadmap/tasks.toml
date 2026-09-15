@@ -5860,15 +5860,15 @@ scored_at = "2026-08-26"
 id = 4069
 phase = 4005
 bundle = "onchain_aave_v4_support"
-title = "Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs"
-status = "pending"
 target_repo = "onchain_aave"
-module = "Onchain.Aave.Contracts"
+status = "in_progress"
+title = "Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs"
 scores = { d = 4, b = 9, u = 9 }
 acceptance_criteria = ["Every AaveV4 entry the address book lists for Ethereum and for Avalanche resolves through this library's public API — Hubs, Spokes and their oracles, Tokenization Spokes, Position Managers, gateways, Treasury Spoke, configurators and the access manager", "A Hub is no longer restricted to three hardcoded atoms: the fourth deployed Ethereum Hub resolves and works through the Hub read functions with no code change beyond registry data, and an unknown hub still returns the tagged unknown_hub error", "networks/0 reports networks that exist in the V4 registry, not only those present in the V3 registry, and a test pins that a V4-only network would be listed", "A pinned-block integration read against at least one newly registered Ethereum Hub and one Avalanche Spoke returns live data, proving the addresses are real and the Avalanche endpoint is reachable; missing RPC env vars flunk with exact export instructions", "V4_SCOPING.md and CHANGELOG no longer state that V4 is Ethereum-mainnet-only, and V4_SCOPING.md records the date and address-book commit its enumeration was re-derived from", "CLAUDE.md's address-verification recipe names the address book's current canonical org", "mix ci passes"]
 out_of_scope = ["Wrapping the configurator, config-engine or access-manager interfaces — registering their addresses is enough here", "Avalanche-specific write paths or a second fork-simulation target", "Chainlink price-feed address space, which is separate from the Aave registry", "ether.fi Cash on Optimism — DAO-licensed whitelabel, not in safe.csv; follow-on after this task (see V4_DEPLOYMENTS.md)", "Base V4 lending — announced, not in the address book"]
 touches = ["packages/onchain_aave/lib/onchain/aave/contracts.ex", "packages/onchain_aave/lib/onchain/aave/v4/hub.ex", "packages/onchain_aave/test/onchain/aave/contracts_test.exs", "packages/onchain_aave/test/onchain/aave/v4/hub_test.exs", "packages/onchain_aave/V4_SCOPING.md", "packages/onchain_aave/CLAUDE.md", "packages/onchain_aave/CHANGELOG.md"]
 assignee = "codex"
+module = "Onchain.Aave.Contracts"
 model = "gpt-6-astra"
 body = """
 The V4 registry describes a deployment that has moved on twice, and one of the two gaps is structural rather than data.
@@ -5888,6 +5888,7 @@ AUTHORITY: the address book at aave-dao/aave-address-book (safe.csv, the AaveV4E
 Dispatch trigger: the library's stated coverage disagrees with deployed reality on a money surface, and the fix needs live external-system evidence.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]
