@@ -215,7 +215,7 @@ Each signer process keeps its own public key, and signatures are verified agains
 
 The `Cartouche.Signer` GenServer is for **keys you operate** — relayers, fee payers, treasury wallets, attestation oracles. It is **not** a place to plug in end-user wallets; users on-chain sign in their own wallet (MetaMask, Phantom, Ledger, WalletConnect) and your backend's job is to **verify** what they sent. The relevant primitives:
 
-- **EIP-712 typed data** (`eth_signTypedData_v4`) — `Cartouche.Typed` for domain / type encoding and the digest a wallet would have produced.
+- **EIP-712 typed data** (`eth_signTypedData_v4`) — `Cartouche.Typed` for domain / type encoding and the digest a wallet would have produced. Supports nested structs, dynamic arrays of structs, fixed bytes, and signed `int8` through `int256`. See the [verification ledger](docs/verification-ledger.md#eip-712-encoding-conformance-task-2133) for ethers/viem conformance vectors.
 - **`personal_sign` / raw signature recovery** — `Cartouche.Recover.recover_personal_sign/2` for MetaMask / WalletConnect payloads (applies the EIP-191 envelope internally). Use `recover_eth/2` directly when you already have the envelope, or apply `prefix_eth/1` first to build it manually. Use `find_recid/3` when only `(r, s)` arrived.
 - **Recovery-bit normalisation** — `Cartouche.RecoveryBit` between `:base` / `:ethereum` / `:eip155` representations.
 

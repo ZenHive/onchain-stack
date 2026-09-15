@@ -636,6 +636,34 @@ defmodule Cartouche.Hex do
 
   def pad(bin, size) when size == byte_size(bin), do: bin
 
+  api(:pad_right, "Pad raw binary bytes with trailing zeros to a target length.",
+    params: [
+      bin: [kind: :value, description: "Raw binary bytes to right-pad."],
+      size: [kind: :value, description: "Target byte length; must be at least the input byte size."]
+    ],
+    returns: %{type: :raw_binary, description: "Raw binary of exactly `size` bytes, with zero bytes appended as needed."}
+  )
+
+  @doc """
+  Pads a binary with trailing zero bytes to the given length.
+
+  ## Examples
+
+      iex> Cartouche.Hex.pad_right(<<1, 2>>, 4)
+      <<1, 2, 0, 0>>
+
+      iex> Cartouche.Hex.pad_right(<<1, 2>>, 2)
+      <<1, 2>>
+
+      iex> Cartouche.Hex.pad_right(<<1, 2>>, 1)
+      ** (FunctionClauseError) no function clause matching in Cartouche.Hex.pad_right/2
+  """
+  @spec pad_right(binary(), pos_integer()) :: binary()
+  def pad_right(bin, size) when size >= byte_size(bin) do
+    padding_len_bits = (size - byte_size(bin)) * 8
+    <<bin::binary, 0::size(padding_len_bits)>>
+  end
+
   api(:encode_bytes, "Encode an integer as fixed-width raw bytes, left-padded with zeros.",
     params: [
       b: [kind: :value, description: "Integer amount to encode, or `nil` to preserve missing optional values."],

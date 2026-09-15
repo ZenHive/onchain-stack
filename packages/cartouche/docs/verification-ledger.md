@@ -34,6 +34,37 @@ Each JSON fixture embeds its source, exact version, and generation command. The 
 
 Toolchain used for this ledger: Node.js 26.7.0, npm 11.19.0, ethers 6.17.0, viem 2.55.19, Elixir 1.20.2, Erlang/OTP 29, and StreamData 1.4.0.
 
+## EIP-712 encoding conformance (Task 2133)
+
+[EIP-712](https://eips.ethereum.org/EIPS/eip-712#definition-of-encodedata) defines
+right-padding for fixed bytes, left-padding for addresses and unsigned integers,
+sign extension for signed integers, and recursive hashes for structs and arrays.
+Referenced struct definitions are collected transitively, deduplicated, sorted by
+name, and appended after the primary type.
+
+`test/typed_test.exs` pins these rules, including bounded termination tests for
+multiple dependencies and recursive type graphs, every signed integer width and
+its range boundaries, and empty and nested arrays of structs. Struct encodings
+require the type definitions: `Type.encode_data_value(value, type, types)` carries
+them through nested arrays; the existing two-argument primitive API is preserved.
+
+| Fixture | Source | Version | Coverage |
+|---|---|---|---|
+| `test/fixtures/vectors/typed/typed-ethers-6.17.0.json` | ethers `TypedDataEncoder` and `Wallet.signTypedData` | 6.17.0 | Nested structs, shared dependencies, struct arrays, nested/empty arrays, bytes2, negative int24/int256. |
+| `test/fixtures/vectors/typed/typed-viem-2.55.19.json` | viem `hashStruct`, `hashTypedData`, and account `signTypedData` | 2.55.19 | Same inputs, independently computed struct hashes, digests, and signatures. |
+
+Regenerate with `test/fixtures/vectors/typed/generate-typed.cjs` using the exact command
+embedded in each fixture. This follows the transaction generator's isolated npm
+prefix and pinned versions. The generator asserts agreement between both sources;
+the Elixir tests check JSON round-trips, encodeType, struct hashes, signing digests,
+signature bytes, and recovered signers against both committed outputs. ethers 6
+calls the ethers 5 `_TypedDataEncoder` API `TypedDataEncoder`.
+
+Both implementations require exact `bytesN` lengths. The direct Cartouche API's
+existing short-input padding convenience is retained, now padding on the right;
+the short-input assertion is derived from the EIP's byte ordering, while external
+vectors use exact-length inputs. No domain policy changes are included.
+
 ## Mutation adequacy
 
 Task 113 shows the suite *passes* on the transaction and signing surface. Task 114 asks

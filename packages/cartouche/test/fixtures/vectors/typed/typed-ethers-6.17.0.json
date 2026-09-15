@@ -1,0 +1,203 @@
+{
+  "source": "ethers",
+  "version": "6.17.0",
+  "generationCommand": "npm install --prefix /tmp/cartouche-vector-tools ethers@6.17.0 viem@2.55.19 && VECTOR_TOOL_ROOT=/tmp/cartouche-vector-tools node test/fixtures/vectors/typed/generate-typed.cjs",
+  "privateKey": "0x4646464646464646464646464646464646464646464646464646464646464646",
+  "vectors": [
+    {
+      "domain": {
+        "name": "Cartouche conformance",
+        "version": "1",
+        "chainId": 1,
+        "verifyingContract": "0x3535353535353535353535353535353535353535"
+      },
+      "types": {
+        "Order": [
+          {
+            "name": "maker",
+            "type": "Person"
+          },
+          {
+            "name": "item",
+            "type": "Asset"
+          },
+          {
+            "name": "people",
+            "type": "Person[]"
+          },
+          {
+            "name": "groups",
+            "type": "Person[][]"
+          },
+          {
+            "name": "tag",
+            "type": "bytes2"
+          },
+          {
+            "name": "delta",
+            "type": "int256"
+          },
+          {
+            "name": "tick",
+            "type": "int24"
+          }
+        ],
+        "Person": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "wallet",
+            "type": "address"
+          }
+        ],
+        "Asset": [
+          {
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "name": "issuer",
+            "type": "Person"
+          }
+        ]
+      },
+      "primaryType": "Order",
+      "message": {
+        "maker": {
+          "name": "Alice",
+          "wallet": "0x3535353535353535353535353535353535353535"
+        },
+        "item": {
+          "id": 7,
+          "issuer": {
+            "name": "Bob",
+            "wallet": "0x1111111111111111111111111111111111111111"
+          }
+        },
+        "tag": "0xccdd",
+        "delta": -12345,
+        "tick": -42,
+        "people": [
+          {
+            "name": "Alice",
+            "wallet": "0x3535353535353535353535353535353535353535"
+          },
+          {
+            "name": "Bob",
+            "wallet": "0x1111111111111111111111111111111111111111"
+          }
+        ],
+        "groups": [
+          [
+            {
+              "name": "Bob",
+              "wallet": "0x1111111111111111111111111111111111111111"
+            }
+          ],
+          [],
+          [
+            {
+              "name": "Alice",
+              "wallet": "0x3535353535353535353535353535353535353535"
+            },
+            {
+              "name": "Bob",
+              "wallet": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        ]
+      },
+      "signer": "0x9d8a62f656a8d1615c1294fd71e9cfb3e4855a4f",
+      "encode_type": "Order(Person maker,Asset item,Person[] people,Person[][] groups,bytes2 tag,int256 delta,int24 tick)Asset(uint256 id,Person issuer)Person(string name,address wallet)",
+      "struct_hash": "0xc0b71c037d42fb7928c0d37dcecccfe20416388c8c34cd6ba239611a7216d385",
+      "digest": "0xc0d9127cf9c625f0e27b2c7c79572f85b66e5ae9aaf48a1edf31c3f85bb20468",
+      "signature": "0xa3594609903c237123fd5649607e547a53757ede05e37020fd9be4f2677d06501defa4b48127818f5f9ceea9966c78b4d41d88c2a60b8614b4fe799db17c642f1c"
+    },
+    {
+      "domain": {
+        "name": "Cartouche conformance",
+        "version": "1",
+        "chainId": 1,
+        "verifyingContract": "0x3535353535353535353535353535353535353535"
+      },
+      "types": {
+        "Order": [
+          {
+            "name": "maker",
+            "type": "Person"
+          },
+          {
+            "name": "item",
+            "type": "Asset"
+          },
+          {
+            "name": "people",
+            "type": "Person[]"
+          },
+          {
+            "name": "groups",
+            "type": "Person[][]"
+          },
+          {
+            "name": "tag",
+            "type": "bytes2"
+          },
+          {
+            "name": "delta",
+            "type": "int256"
+          },
+          {
+            "name": "tick",
+            "type": "int24"
+          }
+        ],
+        "Person": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "wallet",
+            "type": "address"
+          }
+        ],
+        "Asset": [
+          {
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "name": "issuer",
+            "type": "Person"
+          }
+        ]
+      },
+      "primaryType": "Order",
+      "message": {
+        "maker": {
+          "name": "Alice",
+          "wallet": "0x3535353535353535353535353535353535353535"
+        },
+        "item": {
+          "id": 7,
+          "issuer": {
+            "name": "Bob",
+            "wallet": "0x1111111111111111111111111111111111111111"
+          }
+        },
+        "tag": "0xccdd",
+        "delta": 0,
+        "tick": 8388607,
+        "people": [],
+        "groups": []
+      },
+      "signer": "0x9d8a62f656a8d1615c1294fd71e9cfb3e4855a4f",
+      "encode_type": "Order(Person maker,Asset item,Person[] people,Person[][] groups,bytes2 tag,int256 delta,int24 tick)Asset(uint256 id,Person issuer)Person(string name,address wallet)",
+      "struct_hash": "0x8d562471681cda7d9ea6fc2a9d5c5545fab7927b845cfbc6350efedaffa3662b",
+      "digest": "0x55057e2ef896230b7385aa72afa94c919c8f6b28115dae889408138ca9d7a6b4",
+      "signature": "0xdce627c970bd2aa4890c50de9863c7f0cfacedb12f4c412d3e2401afe94b1d7e659964ac9e273e990ed89550b4f812e5fb643d1d937d4a5d3c1aea40867b08fa1b"
+    }
+  ]
+}

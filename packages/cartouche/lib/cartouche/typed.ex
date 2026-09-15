@@ -25,10 +25,11 @@ defmodule Cartouche.Typed do
     @type primitive() ::
             :address
             | {:uint, number()}
+            | {:int, pos_integer()}
             | {:bytes, number()}
             | :string
             | :bytes
-            | {:array, primitive()}
+            | {:array, field_type()}
             | :bool
     @type field_type() :: primitive() | String.t()
     @type type_list() :: [{String.t(), field_type()}]
@@ -121,6 +122,7 @@ defmodule Cartouche.Typed do
     """
     @spec serialize_type(field_type()) :: String.t()
     def serialize_type(:address), do: "address"
+    def serialize_type({:int, sz}), do: "int#{sz}"
     def serialize_type({:uint, sz}), do: "uint#{sz}"
     def serialize_type({:bytes, sz}), do: "bytes#{sz}"
     def serialize_type(:string), do: "string"
@@ -161,11 +163,18 @@ defmodule Cartouche.Typed do
     """
     @spec deserialize_type(String.t()) :: field_type()
     def deserialize_type("address"), do: :address
-    def deserialize_type("uint256"), do: {:uint, 256}
-    def deserialize_type("bytes32"), do: {:bytes, 32}
     def deserialize_type("string"), do: :string
     def deserialize_type("bool"), do: :bool
     def deserialize_type("bytes"), do: :bytes
+
+    for width <- 8..256//8 do
+      def deserialize_type(unquote("int#{width}")), do: {:int, unquote(width)}
+      def deserialize_type(unquote("uint#{width}")), do: {:uint, unquote(width)}
+    end
+
+    for size <- 1..32 do
+      def deserialize_type(unquote("bytes#{size}")), do: {:bytes, unquote(size)}
+    end
 
     def deserialize_type(ty) when is_binary(ty) do
       cond do
@@ -198,7 +207,7 @@ defmodule Cartouche.Typed do
         <<0xCC::256>>
 
         iex> Cartouche.Typed.Type.deserialize_value!("0xCC", {:bytes, 32})
-        <<0xCC::256>>
+        <<0xCC, 0::248>>
 
         iex> Cartouche.Typed.Type.deserialize_value!("Cow", :string)
         "Cow"
@@ -214,9 +223,10 @@ defmodule Cartouche.Typed do
     def deserialize_value!(value, :string), do: value
     def deserialize_value!(value, :bytes), do: from_hex!(value)
     def deserialize_value!(value, {:uint, _}), do: value
+    def deserialize_value!(value, {:int, _}), do: value
     def deserialize_value!(value, :bool), do: value
 
-    def deserialize_value!(value, {:bytes, sz}), do: Cartouche.Hex.pad(from_hex!(value), sz)
+    def deserialize_value!(value, {:bytes, sz}), do: Cartouche.Hex.pad_right(from_hex!(value), sz)
 
     def deserialize_value!(value, {:array, ty}) when is_list(value), do: Enum.map(value, &deserialize_value!(&1, ty))
 
@@ -238,7 +248,7 @@ defmodule Cartouche.Typed do
         "0x00000000000000000000000000000000000000000000000000000000000000cc"
 
         iex> Cartouche.Typed.Type.serialize_value(<<0xCC>>, {:bytes, 32})
-        "0x00000000000000000000000000000000000000000000000000000000000000cc"
+        "0xcc00000000000000000000000000000000000000000000000000000000000000"
 
         iex> Cartouche.Typed.Type.serialize_value("Cow", :string)
         "Cow"
@@ -250,15 +260,16 @@ defmodule Cartouche.Typed do
         ["0xccdd", "0xee"]
     """
     @spec serialize_value(term(), primitive()) :: term()
-    def serialize_value(value, :address), do: serialize_value(value, {:bytes, 20})
+    def serialize_value(value, :address), do: value |> Cartouche.Hex.pad(20) |> to_hex()
     def serialize_value(value, :string), do: value
     def serialize_value(value, :bytes), do: to_hex(value)
     def serialize_value(value, :bool), do: value
     def serialize_value(value, {:uint, _}), do: value
+    def serialize_value(value, {:int, _}), do: value
 
     def serialize_value(value, {:bytes, sz}) do
       value
-      |> Cartouche.Hex.pad(sz)
+      |> Cartouche.Hex.pad_right(sz)
       |> to_hex()
     end
 
@@ -266,7 +277,8 @@ defmodule Cartouche.Typed do
 
     @doc ~S"""
     Encodes a value for `encodeData`, as per the EIP-712 spec. Specifically, raw values are
-    expanded to 32-bytes, and dynamic types are hashed.
+    expanded to 32-bytes, and dynamic types are hashed. Pass the type map as the
+    third argument when encoding structs or arrays containing structs.
 
     ## Examples
 
@@ -277,7 +289,7 @@ defmodule Cartouche.Typed do
         <<0::248, 55>>
 
         iex> Cartouche.Typed.Type.encode_data_value(<<0xCC>>, {:bytes, 32})
-        <<0::248, 0xCC>>
+        <<0xCC, 0::248>>
 
         iex> Cartouche.Typed.Type.encode_data_value(<<0xCC, 0xDD>>, :bytes)
         ~h[9014B850703629D30F5C8C6C86A6AD981AB9319997490629D7DA37E8CAE985A1]
@@ -288,20 +300,35 @@ defmodule Cartouche.Typed do
         iex> Cartouche.Typed.Type.encode_data_value([<<0xCC, 0xDD>>, <<0xEE>>], {:array, :bytes})
         ~h[134619415A3C9FE841D99F7CFD5C0BCCFC7CF0DAE90743A3D717C748A3961CF5]
     """
-    @spec encode_data_value(term(), primitive()) :: term()
-    def encode_data_value(value, :address), do: Cartouche.Hex.pad(value, 32)
-    def encode_data_value(value, {:uint, _}), do: Cartouche.Hex.encode_bytes(value, 32)
-    def encode_data_value(value, :string), do: Cartouche.Hash.keccak(value)
-    def encode_data_value(value, :bytes), do: Cartouche.Hash.keccak(value)
-    def encode_data_value(value, {:bytes, _}), do: Cartouche.Hex.pad(value, 32)
+    @spec encode_data_value(term(), field_type(), Cartouche.Typed.type_map()) :: binary()
+    def encode_data_value(value, type, types \\ %{})
 
-    def encode_data_value(value, :bool), do: encode_data_value(if(value, do: 1, else: 0), {:uint, 256})
+    def encode_data_value(value, :address, _types), do: Cartouche.Hex.pad(value, 32)
+    def encode_data_value(value, {:uint, _}, _types), do: Cartouche.Hex.encode_bytes(value, 32)
+    def encode_data_value(value, :string, _types), do: Cartouche.Hash.keccak(value)
+    def encode_data_value(value, :bytes, _types), do: Cartouche.Hash.keccak(value)
+    def encode_data_value(value, {:bytes, _}, _types), do: Cartouche.Hex.pad_right(value, 32)
 
-    def encode_data_value(value, {:array, ty}) do
+    def encode_data_value(value, {:int, width}, _types)
+        when is_integer(width) and width in 8..256 and rem(width, 8) == 0 and is_integer(value) do
+      limit = Integer.pow(2, width - 1)
+
+      if value < -limit or value >= limit do
+        raise ArgumentError, "value out of range for int#{width}"
+      end
+
+      <<value::signed-big-256>>
+    end
+
+    def encode_data_value(value, :bool, types), do: encode_data_value(if(value, do: 1, else: 0), {:uint, 256}, types)
+
+    def encode_data_value(value, {:array, ty}, types) do
       value
-      |> Enum.map_join(&encode_data_value(&1, ty))
+      |> Enum.map_join(&encode_data_value(&1, ty, types))
       |> Cartouche.Hash.keccak()
     end
+
+    def encode_data_value(value, type, types) when is_binary(type), do: Cartouche.Typed.hash_struct(type, value, types)
   end
 
   defmodule Domain do
@@ -548,45 +575,29 @@ defmodule Cartouche.Typed do
     Map.fetch!(string_keyed_value, field)
   end
 
-  # Takes the `value` parameter (a map), and deserializes it to be stored in memory
-  @spec deserialize_value_map(%{String.t() => term()}, Type.type_list(), type_map()) :: %{
-          String.t() => term()
-        }
-  defp deserialize_value_map(value, fields, types) do
+  @spec transform_value(term(), Type.field_type(), type_map(), (term(), Type.primitive() -> term())) :: term()
+  defp transform_value(value, {:array, type}, types, transform) do
+    Enum.map(value, &transform_value(&1, type, types, transform))
+  end
+
+  defp transform_value(value, type, types, transform) when is_binary(type) do
+    transform_value_map(value, Map.fetch!(types, type).fields, types, transform)
+  end
+
+  defp transform_value(value, type, _types, transform), do: transform.(value, type)
+
+  @spec transform_value_map(value_map(), Type.type_list(), type_map(), (term(), Type.primitive() -> term())) ::
+          value_map()
+  defp transform_value_map(value, fields, types, transform) do
     for {field, type} <- fields, into: %{} do
-      if is_binary(type) do
-        {field, deserialize_value_map(fetch_value(value, field), Map.fetch!(types, type).fields, types)}
-      else
-        {field, Type.deserialize_value!(fetch_value(value, field), type)}
-      end
+      {field, transform_value(fetch_value(value, field), type, types, transform)}
     end
   end
 
-  # Takes the `value` parameter (a map), and serializes it to be stored on disk
-  @spec serialize_value_map(%{String.t() => term()}, Type.type_list(), type_map()) :: %{
-          String.t() => term()
-        }
-  defp serialize_value_map(value, fields, types) do
-    for {field, type} <- fields, into: %{} do
-      if is_binary(type) do
-        {field, serialize_value_map(fetch_value(value, field), Map.fetch!(types, type).fields, types)}
-      else
-        {field, Type.serialize_value(fetch_value(value, field), type)}
-      end
-    end
-  end
-
-  # Takes the `value` parameter (a map), and encodes the values per the EIP-712 encode data spec
-  @spec encode_value_map(%{String.t() => term()}, Type.type_list(), type_map()) :: binary()
+  @spec encode_value_map(value_map(), Type.type_list(), type_map()) :: binary()
   defp encode_value_map(value, fields, types) do
     for {field, type} <- fields, into: <<>> do
-      IO.iodata_to_binary(
-        if is_binary(type) do
-          hash_struct(type, fetch_value(value, field), types)
-        else
-          Type.encode_data_value(fetch_value(value, field), type)
-        end
-      )
+      Type.encode_data_value(fetch_value(value, field), type, types)
     end
   end
 
@@ -698,7 +709,7 @@ defmodule Cartouche.Typed do
     %__MODULE__{
       domain: Domain.deserialize(domain),
       types: types,
-      value: deserialize_value_map(value, type.fields, types)
+      value: transform_value_map(value, type.fields, types, &Type.deserialize_value!/2)
     }
   end
 
@@ -782,7 +793,7 @@ defmodule Cartouche.Typed do
     %{
       "domain" => Domain.serialize(domain),
       "types" => types_map,
-      "value" => serialize_value_map(value, type.fields, types)
+      "value" => transform_value_map(value, type.fields, types, &Type.serialize_value/2)
     }
   end
 
@@ -805,35 +816,31 @@ defmodule Cartouche.Typed do
   """
   @spec encode_type(String.t(), type_map()) :: String.t()
   def encode_type(name, types) do
-    do_encode_type(types, [name], "", [])
+    dependencies = types |> collect_types([name], %{}) |> Map.delete(name) |> Map.keys() |> Enum.sort()
+
+    Enum.map_join([name | dependencies], fn type_name ->
+      fields = Map.fetch!(types, type_name).fields
+      inner = Enum.map_join(fields, ",", fn {field, type} -> "#{Type.serialize_type(type)} #{field}" end)
+      "#{type_name}(#{inner})"
+    end)
   end
 
-  @spec do_encode_type(type_map(), [String.t()], String.t(), [String.t()]) :: String.t()
-  defp do_encode_type(types, [name | rest], acc, seen) do
-    type = Map.fetch!(types, name)
+  @spec collect_types(type_map(), [String.t()], %{String.t() => true}) :: %{String.t() => true}
+  defp collect_types(_types, [], seen), do: seen
 
-    {enc_fields_r, new_types_r} =
-      Enum.reduce(type.fields, {[], rest}, fn {name, type}, {enc_fields, new_types} ->
-        next_enc_fields = ["#{Type.serialize_type(type)} #{name}" | enc_fields]
-
-        next_new_types =
-          if is_binary(type) and !Enum.member?(new_types, type) and !Enum.member?(seen, type) and
-               type != name do
-            [type | new_types]
-          else
-            new_types
-          end
-
-        {next_enc_fields, next_new_types}
-      end)
-
-    inner = enc_fields_r |> Enum.reverse() |> Enum.join(",")
-    next_new_types = rest ++ Enum.reverse(new_types_r)
-
-    do_encode_type(types, next_new_types, acc <> "#{name}(#{inner})", [name | seen])
+  defp collect_types(types, [name | rest], seen) do
+    if Map.has_key?(seen, name) do
+      collect_types(types, rest, seen)
+    else
+      references = Enum.flat_map(Map.fetch!(types, name).fields, fn {_, type} -> referenced_types(type) end)
+      collect_types(types, references ++ rest, Map.put(seen, name, true))
+    end
   end
 
-  defp do_encode_type(_types, [], acc, _seen), do: acc
+  @spec referenced_types(Type.field_type()) :: [String.t()]
+  defp referenced_types({:array, type}), do: referenced_types(type)
+  defp referenced_types(type) when is_binary(type), do: [type]
+  defp referenced_types(_type), do: []
 
   @doc """
   Hashes a struct value, per the EIP-712 spec.
