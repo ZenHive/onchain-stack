@@ -6108,7 +6108,7 @@ phase = 5001
 bundle = "onchain_aerodrome_foundations"
 target_repo = "onchain_aerodrome"
 milestone = "onchain_aerodrome_v0_1"
-status = "in_progress"
+status = "done"
 title = "Golden-fixture capture harness: pinned-block eth_call fixtures and an offline loader"
 scores = { d = 4, b = 7, u = 8 }
 depends_on = [5003]
@@ -6129,9 +6129,16 @@ Make sure at least one all(500, offset, non_zero_filter) capture returns fewer t
 
 AUTHORITY: live eth_call responses from the addresses in lib/onchain/aerodrome/contracts.ex, captured yourself at a block you record in the manifest. Not any remembered Sugar response shape, and not the Sourcify ABI alone — the ABI gives you the shape, not real field values to sanity-check against (for example that Lp.type really does take -1, 0 and positive values in practice).
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1789486229092-fb163e53, 2e44d1cac5703ee71b295b3eaa6c3c4de595eebd)."
+delivered_by = "cursor"
+verified = true
+verified_by = "claude"
+verification_ref = "harness-run:run-1789486229092-fb163e53"
 created_at = "2026-08-26"
 started_at = "2026-09-15"
 scored_at = "2026-08-26"
+done_at = "2026-09-15"
+shipped_in = "2e44d1cac5703ee71b295b3eaa6c3c4de595eebd"
 
 [[task]]
 id = 5005
