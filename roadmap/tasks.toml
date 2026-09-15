@@ -5861,7 +5861,7 @@ id = 4069
 phase = 4005
 bundle = "onchain_aave_v4_support"
 target_repo = "onchain_aave"
-status = "in_progress"
+status = "done"
 title = "Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs"
 scores = { d = 4, b = 9, u = 9 }
 acceptance_criteria = ["Every AaveV4 entry the address book lists for Ethereum and for Avalanche resolves through this library's public API — Hubs, Spokes and their oracles, Tokenization Spokes, Position Managers, gateways, Treasury Spoke, configurators and the access manager", "A Hub is no longer restricted to three hardcoded atoms: the fourth deployed Ethereum Hub resolves and works through the Hub read functions with no code change beyond registry data, and an unknown hub still returns the tagged unknown_hub error", "networks/0 reports networks that exist in the V4 registry, not only those present in the V3 registry, and a test pins that a V4-only network would be listed", "A pinned-block integration read against at least one newly registered Ethereum Hub and one Avalanche Spoke returns live data, proving the addresses are real and the Avalanche endpoint is reachable; missing RPC env vars flunk with exact export instructions", "V4_SCOPING.md and CHANGELOG no longer state that V4 is Ethereum-mainnet-only, and V4_SCOPING.md records the date and address-book commit its enumeration was re-derived from", "CLAUDE.md's address-verification recipe names the address book's current canonical org", "mix ci passes"]
@@ -5887,9 +5887,16 @@ AUTHORITY: the address book at aave-dao/aave-address-book (safe.csv, the AaveV4E
 
 Dispatch trigger: the library's stated coverage disagrees with deployed reality on a money surface, and the fix needs live external-system evidence.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1789509634492-71b6f709, bd5c2288fb7063ff89a4334a9b2b88ef18d302a6)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1789509634492-71b6f709"
 created_at = "2026-08-26"
 started_at = "2026-09-15"
 scored_at = "2026-08-26"
+done_at = "2026-09-15"
+shipped_in = "bd5c2288fb7063ff89a4334a9b2b88ef18d302a6"
 
 [[task]]
 id = 4070

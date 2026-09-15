@@ -8833,7 +8833,7 @@
       "phase": 4005,
       "bundle": "onchain_aave_v4_support",
       "target_repo": "onchain_aave",
-      "status": "in_progress",
+      "status": "done",
       "title": "Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs",
       "scores": {
         "d": 4,
@@ -8873,10 +8873,17 @@
         "packages/onchain_aave/CLAUDE.md",
         "packages/onchain_aave/CHANGELOG.md"
       ],
+      "shipped_in": "bd5c2288fb7063ff89a4334a9b2b88ef18d302a6",
       "body": "The V4 registry describes a deployment that has moved on twice, and one of the two gaps is structural rather than data.\n\nVerified against the address book on 2026-08-26: the AaveV4Ethereum namespace has grown from 150 entries at commit 10c4e9d (2026-04-16, the snapshot V4_SCOPING.md was built from) to 304 today. That includes a fourth Hub, GLOBAL_DOLLAR_HUB at 0x62d63197660c080236193CA60b70E49A08E90368, two additional Spokes, four additional Tokenization Spokes and their interest-rate strategies. Onchain.Aave.V4.Hub types a hub as :core | :prime | :plus and resolves it through a closed case, so the fourth Hub is not merely missing from the registry — it cannot be named. Opening that up is the substance of this task; the rest is data.\n\nSecond: V4 is no longer Ethereum-only. It deployed to Avalanche (chainId 43114) on 2026-07-15 with 73 entries — one Core Hub, Main / Forex / AVAX-Correlated Spokes with their oracles, seven Tokenization Spokes, the full Position Manager set including both gateways, and a Treasury Spoke. The contract kind labels are identical to Ethereum's, so no new registry shape is needed. Both @v4_addresses and @v4_tokenization_spokes are already keyed by network, and address/2, v4_contracts/1 and v4_tokenization_spoke/3 are network-generic — adding a network is additive data. The one function that would silently omit it is networks/0, which walks only the V3 map.\n\nTwo documentation claims are now false and are load-bearing for other sessions: V4_SCOPING.md and the v0.4.0 CHANGELOG entry both state V4 is Ethereum-mainnet-only, and a task in the aave_sim repo cites that claim as its reason to exclude V4 from multi-chain work. Also note the address book repo has been transferred from the bgd-labs org to aave-dao; the raw URL in CLAUDE.md still resolves, but the recipe should name the canonical org.\n\nUpstream also renamed some keys without changing addresses (ETHERFI_E_SPOKE became ETHERFI_ESPOKE, and price-feed keys gained a _SPOKE infix). Our atoms need not mirror upstream naming, but where they were derived from it, keep them resolvable and say which convention this registry follows.\n\nAddress book today has only AaveV4Ethereum and AaveV4Avalanche. The ether.fi Cash instance on Optimism is a DAO-licensed whitelabel and is not in safe.csv; Base V4 lending is announced, not deployed. Both are out of this task — see V4_DEPLOYMENTS.md.\n\nAUTHORITY: the address book at aave-dao/aave-address-book (safe.csv, the AaveV4Ethereum and AaveV4Avalanche namespaces) for the address set, and a live read against the deployed contracts for proof that a registered address is the contract we think it is. Explorers, blog posts and this repo's existing V4_SCOPING.md snapshot are reference material only.\n\nDispatch trigger: the library's stated coverage disagrees with deployed reality on a money surface, and the fix needs live external-system evidence.\n",
       "created_at": "2026-08-26",
       "started_at": "2026-09-15",
+      "done_at": "2026-09-15",
       "scored_at": "2026-08-26",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1789509634492-71b6f709, bd5c2288fb7063ff89a4334a9b2b88ef18d302a6).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1789509634492-71b6f709",
       "cross_repo": []
     },
     {
