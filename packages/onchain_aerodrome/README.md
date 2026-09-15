@@ -11,7 +11,8 @@ stable) with Slipstream concentrated-liquidity pools. Emissions are directed
 weekly by veAERO voters; an epoch is one week and flips **Thursday 00:00 UTC**.
 
 > **Status.** The address registry, weekly epoch arithmetic, captured ABIs,
-> pool/token structs (`Types.Lp`, `.Position`, `.Swap`, `.Token`), and the
+> pool/token structs (`Types.Lp`, `.Position`, `.Swap`, `.Token`), veAERO
+> structs (`Types.VeNFT`, `.Vote`, `.Relay`, `.LpEpoch`, `.Reward`), and the
 > LpSugar read binding (`Bindings.LpSugar`) are in place. Remaining Sugar
 > bindings, the ergonomic `Sugar.*` read API, analytics, and writes are scoped
 > in [the monorepo `ROADMAP.md`](https://github.com/ZenHive/onchain-stack/blob/main/ROADMAP.md)

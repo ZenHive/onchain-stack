@@ -162,6 +162,11 @@ lib/onchain/aerodrome/
   types/position.ex             # LpSugar.positions row
   types/swap.ex                 # LpSugar.forSwaps row
   types/token.ex                # tokens row (shared with TokenSugar)
+  types/vote.ex                 # {lp, weight} nested vote (shared by VeNFT and Relay)
+  types/ve_nft.ex               # VeSugar.byId / all / byAccount row
+  types/relay.ex                # RelaySugar.all(address) row + AccountVeNFT
+  types/lp_epoch.ex             # RewardsSugar.epochsLatest row + TokenAmount
+  types/reward.ex               # RewardsSugar.rewards row
   types/row.ex                  # positional from_raw/4 helper
 lib/mix/tasks/aerodrome.capture_fixtures.ex
                                 # pinned-block Sugar eth_call capture (dev workflow, not mix ci)

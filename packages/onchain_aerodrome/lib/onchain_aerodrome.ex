@@ -36,8 +36,15 @@ defmodule OnchainAerodrome do
       Onchain.Aerodrome.Bindings.Abi,
       Onchain.Aerodrome.Bindings.LpSugar,
       Onchain.Aerodrome.Types.Lp,
+      Onchain.Aerodrome.Types.LpEpoch,
+      Onchain.Aerodrome.Types.LpEpoch.TokenAmount,
       Onchain.Aerodrome.Types.Position,
+      Onchain.Aerodrome.Types.Relay,
+      Onchain.Aerodrome.Types.Relay.AccountVeNFT,
+      Onchain.Aerodrome.Types.Reward,
       Onchain.Aerodrome.Types.Swap,
-      Onchain.Aerodrome.Types.Token
+      Onchain.Aerodrome.Types.Token,
+      Onchain.Aerodrome.Types.VeNFT,
+      Onchain.Aerodrome.Types.Vote
     ]
 end
