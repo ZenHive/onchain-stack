@@ -15,10 +15,14 @@ defmodule Onchain.Aerodrome.Types.Lp do
   - any positive value — Slipstream concentrated-liquidity tick spacing
 
   Money fields (`liquidity`, `reserve0`/`reserve1`, `staked0`/`staked1`,
-  `emissions`, `emissions_cap`, `token0_fees`/`token1_fees`, `locked`, and
+  `emissions`, `token0_fees`/`token1_fees`, `locked`, and
   the rest of the uint amounts) stay integers. `emissions` is a **per-second**
   rate. Addresses are EIP-55 checksummed; the zero address is stored as the
   checksummed zero address, not rewritten to `nil`.
+
+  `emissions_cap` is an integer relative share in basis points, not a token
+  amount. `emissions` already reflects the notified rate; do not apply the
+  cap again to that rate or its weekly amount.
   """
 
   use Descripex, namespace: "/aerodrome/types/lp"
