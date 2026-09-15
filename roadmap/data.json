@@ -9021,7 +9021,7 @@
       "bundle": "onchain_aerodrome_foundations",
       "target_repo": "onchain_aerodrome",
       "milestone": "onchain_aerodrome_v0_1",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Close the reach layer-gate holes so analytics-never-touches-the-network is enforced, not documented",
       "scores": {
         "d": 5,
@@ -9062,6 +9062,7 @@
       ],
       "body": "CLAUDE.md asserts that mix reach.check --arch fails the build when an analytics module makes an RPC call. Verify that claim before changing anything: it is false as configured, and the entire analytics-is-testable-with-zero-network guarantee rests on it.\n\nTwo concrete defects, both readable in deps/reach/lib/reach/check/architecture.ex.\n\nFirst, layer_graph/2 only emits an edge when BOTH caller and callee resolve to a declared layer (module_layer(callee, layers); nil drops the edge). Onchain.RPC, Onchain.Contract, Onchain.Multicall and Req belong to no declared layer, so a direct RPC call from analytics produces zero violations.\n\nSecond, forbidden_dependency_rule_matches?({from, to}, edge) reads as layer from must not call layer to. {:analytics, :bindings} is missing from the forbidden list, so analytics may call bindings freely, which is a second network path. And {:bindings, :types} IS present, which forbids exactly the dependency the documented layer table requires; it will block every bindings task until fixed.\n\nConvert deps to mode: :allowlist and enumerate what each layer may reach. An allowlist is exhaustive by construction, so a future layer cannot silently open a hole. Then add calls: [forbidden: ...] for the out-of-layer network modules. Reach.Config.valid_forbidden_calls?/1 accepts {caller_patterns, call_patterns} and {caller_patterns, call_patterns, except: [...]} with glob strings.\n\nEvaluate, do not assume, whether effects: [by_layer: [analytics: [:pure, :exception]]] is usable. Reach.Effects.classify/2 falls back to :unknown for unresolvable calls and the architecture check subtracts the allowed list from function_effects/2, which includes :unknown. If :unknown floods the report, drop the effects policy and record in a .reach.exs comment why the forbidden-calls rule is the load-bearing mechanism instead. Do not ship a noisy gate.\n\nProve each rule by introducing the violating line, capturing the failure output, and reverting. A gate nobody has seen fail is not a gate.\n\nOPEN DECISIONS settled 2026-08-26 (do not re-ask): (a) types is forbidden from reaching base — Types are pure structs and the table's \"depends on nothing\" is the allowlist; (b) Onchain.Aerodrome.Contracts and Math.* stay one `base` layer, because analytics must reach Contracts.constants() and same-layer edges are exempt.\n\nAUTHORITY: deps/reach/lib/reach/check/architecture.ex and deps/reach/lib/reach/config.ex in this checkout are the authority on what the gate enforces. Not CLAUDE.md, not the reach README. Read the matcher functions before writing config.\n",
       "created_at": "2026-08-26",
+      "started_at": "2026-09-15",
       "scored_at": "2026-08-26",
       "cross_repo": []
     },

@@ -5963,17 +5963,17 @@ scored_at = "2026-08-28"
 id = 5001
 phase = 5001
 bundle = "onchain_aerodrome_foundations"
-milestone = "onchain_aerodrome_v0_1"
-title = "Close the reach layer-gate holes so analytics-never-touches-the-network is enforced, not documented"
-status = "pending"
 target_repo = "onchain_aerodrome"
-module = "Onchain.Aerodrome"
+milestone = "onchain_aerodrome_v0_1"
+status = "in_progress"
+title = "Close the reach layer-gate holes so analytics-never-touches-the-network is enforced, not documented"
 scores = { d = 5, b = 9, u = 8 }
 acceptance_criteria = ["deps in .reach.exs uses mode: :allowlist with an explicit allowed: entry per declared layer (types -> [], base -> [], bindings -> [:types, :base], analytics -> [:types, :base], read -> [:types, :base, :bindings, :analytics], write -> everything below); the forbidden list is gone", "mix reach.check --arch FAILS on a deliberately introduced Onchain.RPC.eth_call/3 call inside an Onchain.Aerodrome.Analytics.* module, and the captured failure output is pasted into the task write-up before the probe is reverted", "mix reach.check --arch FAILS on a deliberately introduced alias plus call of Onchain.Aerodrome.Bindings.* inside an Onchain.Aerodrome.Analytics.* module (legal today, must not be)", "mix reach.check --arch PASSES for a Bindings.* module that uses a Types.* struct, which the current {:bindings, :types} rule wrongly forbids", "calls: [forbidden: ...] names at minimum Onchain.RPC.*, Onchain.Contract.*, Onchain.Multicall.*, Req.* and :httpc.* as unreachable from Onchain.Aerodrome.Analytics.* and Onchain.Aerodrome.Math*", "A .reach.exs comment records that Mix.Tasks.* is intentionally outside the layer graph because the fixture generators must reach the network", "CLAUDE.md's layer-contract section is corrected to describe what the gate actually enforces, its dependency table stops presenting Onchain.Solidity and Onchain.Contract.Generator as runtime-available (they live in onchain_evm, dev/test only), and AGENTS.md is regenerated so mix agents.check passes", "mix ci passes"]
 out_of_scope = ["Writing any Analytics.* or Math.* module — the probes are temporary and reverted", "Adding anything to a smells ignore list; smell findings are fixed, never ignored", "Effects-policy tuning beyond recording the finding (see body)"]
-touches = ["packages/onchain_aerodrome/.reach.exs", "packages/onchain_aerodrome/CLAUDE.md", "packages/onchain_aerodrome/AGENTS.md"]
 files_to_modify = ["packages/onchain_aerodrome/.reach.exs", "packages/onchain_aerodrome/CLAUDE.md"]
+touches = ["packages/onchain_aerodrome/.reach.exs", "packages/onchain_aerodrome/CLAUDE.md", "packages/onchain_aerodrome/AGENTS.md"]
 assignee = "codex"
+module = "Onchain.Aerodrome"
 model = "gpt-6-astra"
 body = """
 CLAUDE.md asserts that mix reach.check --arch fails the build when an analytics module makes an RPC call. Verify that claim before changing anything: it is false as configured, and the entire analytics-is-testable-with-zero-network guarantee rests on it.
@@ -5995,6 +5995,7 @@ OPEN DECISIONS settled 2026-08-26 (do not re-ask): (a) types is forbidden from r
 AUTHORITY: deps/reach/lib/reach/check/architecture.ex and deps/reach/lib/reach/config.ex in this checkout are the authority on what the gate enforces. Not CLAUDE.md, not the reach README. Read the matcher functions before writing config.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]
