@@ -10,7 +10,7 @@ defmodule Onchain.Aerodrome.Types.SwapTest do
       swap = Swap.from_raw(row)
 
       assert %Swap{} = swap
-      TypesCase.assert_one_to_one(Swap, row, swap)
+      TypesCase.assert_one_to_one(Swap, {"lp_sugar.json", "forSwaps"}, row, swap)
       TypesCase.refute_floats(swap)
       assert is_integer(swap.pool_fee)
     end

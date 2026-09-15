@@ -42,7 +42,7 @@ defmodule Onchain.Aerodrome.Types.PositionTest do
       position = Position.from_raw(@raw)
 
       assert %Position{} = position
-      TypesCase.assert_one_to_one(Position, @raw, position)
+      TypesCase.assert_one_to_one(Position, {"lp_sugar.json", "positions"}, @raw, position)
       TypesCase.refute_floats(position)
     end
 
@@ -61,9 +61,6 @@ defmodule Onchain.Aerodrome.Types.PositionTest do
       assert position.locker == zero
       assert position.unlocks_at == 0
       assert position.alm == zero
-      assert position.locker
-      assert position.alm
-      assert position.unlocks_at
     end
 
     test "raises FunctionClauseError on a tuple of the wrong size" do

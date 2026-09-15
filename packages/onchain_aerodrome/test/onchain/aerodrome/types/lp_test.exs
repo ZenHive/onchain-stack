@@ -13,7 +13,7 @@ defmodule Onchain.Aerodrome.Types.LpTest do
       lp = Lp.from_raw(row)
 
       assert %Lp{} = lp
-      TypesCase.assert_one_to_one(Lp, row, lp)
+      TypesCase.assert_one_to_one(Lp, {"lp_sugar.json", "all"}, row, lp)
       TypesCase.refute_floats(lp)
     end
 
