@@ -8491,7 +8491,7 @@
       "phase": 4006,
       "bundle": "onchain_aave_v3_write_gaps",
       "target_repo": "onchain_aave",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Make the integration gate settle: bound math_revm runtime so --include integration terminates",
       "scores": {
         "d": 4,
@@ -8522,6 +8522,7 @@
       ],
       "body": "`mix test.json --include integration` does not terminate under any practical time cap, which makes the repo's own live gate unusable for dispatched agents and for CI.\n\nEvidence, all from 2026-08-23: harness run-1787478012579-900e9275 was killed by the progress-stall reflex while idle-waiting on this suite, and its transcript shows the agent had its own module green and was blocked solely on the gate. The reviewer of run-1787481036522-9e92c0d9 recorded `Did not finish in 17m (0% CPU, ~27MB RSS, DirtyIo NIF ESTABLISHED to 127.0.0.1:8545)`, plus SIGALRM 142 at 90s on `--only math_revm` and at 120s on `--only integration --exclude math_revm`, and fell back to running the suite file-by-file. A local full run of test/onchain/aave/math_revm_test.exs alone took 3055 seconds.\n\nTwo compounding causes: the math_revm modules set `timeout: :infinity`, and `Onchain.EVM` calls run on a DirtyIo scheduler, so ExUnit cannot interrupt a stalled archive fetch — a flapping node turns into an unbounded hang rather than a failure. Independently, every property does `max_runs` live fork calls, so the wall-clock cost is inherently large even when the node is healthy.\n\nGive the suite a bounded, interruptible runtime without giving up the cross-validation guarantee that makes `Onchain.Aave.Math` trustworthy. Decide and document the coverage/runtime tradeoff explicitly rather than silently shrinking the property space: options include a finite per-test timeout, a smaller default `max_runs` with an opt-in exhaustive mode, reusing one fork across vectors instead of one per call, or separating the revm cross-validation into its own tag that the ordinary integration gate does not pull in. Whatever is chosen, `--include integration` must terminate and a dead or flapping RPC must surface as a loud failure, never as a hang.\n",
       "created_at": "2026-08-23",
+      "started_at": "2026-09-15",
       "scored_at": "2026-08-23",
       "cross_repo": []
     },
