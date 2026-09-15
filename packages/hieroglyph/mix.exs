@@ -16,7 +16,7 @@ end
 defmodule ABI.Mixfile do
   use Mix.Project
 
-  @version "1.8.0"
+  @version "1.8.1"
   @source_url "https://github.com/ZenHive/onchain-stack"
 
   @spec project() :: keyword()

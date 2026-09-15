@@ -1,4 +1,4 @@
-# Unreleased
+# 1.8.1 - 2026-09-15
 
 * **Changed — `ABI.Math.kec/1` hashes on the `ex_keccak` Rust NIF instead of the
   pure-Elixir `ex_sha3`.** Same algorithm, same bytes: the keccak vectors in the
