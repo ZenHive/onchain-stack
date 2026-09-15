@@ -6297,7 +6297,7 @@ phase = 5003
 bundle = "onchain_aerodrome_bindings"
 target_repo = "onchain_aerodrome"
 milestone = "onchain_aerodrome_v0_1"
-status = "in_progress"
+status = "done"
 title = "Bindings.LpSugar — the full read surface and the count()-driven pagination driver"
 scores = { d = 6, b = 9, u = 9 }
 depends_on = [5003, 5004, 5006]
@@ -6323,9 +6323,16 @@ The remaining reads land in the same module and the same diff because they share
 
 AUTHORITY: priv/abis/lp_sugar.json's all(uint256,uint256,uint256) signature and the task-4 fixtures, specifically the one demonstrating a non-zero filter returning a short page. Not velodrome-finance/sugar's README, which documents the stale two-argument all(limit, offset) that reverts on the deployed contract.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1789509634495-84d29ee8, 33f4a6303149867018b8d83960d45866a73b1712)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1789509634495-84d29ee8"
 created_at = "2026-08-26"
 started_at = "2026-09-15"
 scored_at = "2026-08-26"
+done_at = "2026-09-15"
+shipped_in = "33f4a6303149867018b8d83960d45866a73b1712"
 
 [[task]]
 id = 5009

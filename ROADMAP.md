@@ -32,7 +32,7 @@
 - **target_version:** 0.1.0
 - **status:** 🔄 active
 - **hypothesis:** Tests whether the complete Aerodrome read surface — Sugar reads, a built-in price layer, and denominator-tagged analytics — can ship with correctness graded by deployed contracts rather than by our own code, given that Base EVM simulation is structurally blocked.
-- **pinned tasks:** 6/27 done
+- **pinned tasks:** 7/27 done
 
 ### onchain_js_v0_3 — [onchain_js] First real npm library end-to-end
 
@@ -488,7 +488,7 @@
 <!-- TASKS:BEGIN phase=5003 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 5008 | 🔄 | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.LpSugar* · Bindings.LpSugar — the full read surface and the count()-driven pagination driver [D:6/B:9/U:9 → Eff:1.5] 🚀 |
+| Task 5008 | ✅ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.LpSugar* · Bindings.LpSugar — the full read surface and the count()-driven pagination driver [D:6/B:9/U:9 → Eff:1.5] 🚀 |
 | Task 5009 `[P]` | ⬜ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.RewardsSugar* · Bindings.RewardsSugar and Bindings.VeSugar [D:4/B:7/U:7 → Eff:1.75] 🚀 |
 | Task 5010 `[P]` | ⬜ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.RelaySugar* · Bindings.RelaySugar and Bindings.TokenSugar [D:3/B:6/U:6 → Eff:2.0] 🎯 |
 | Task 5011 `[P]` | ⬜ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.Factories* · Bindings.Factories — PoolFactory, CLFactory and SlipstreamHelper [D:4/B:6/U:6 → Eff:1.5] 🚀 |
