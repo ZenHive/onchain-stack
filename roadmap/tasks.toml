@@ -6040,18 +6040,18 @@ scored_at = "2026-08-26"
 id = 5003
 phase = 5001
 bundle = "onchain_aerodrome_foundations"
-milestone = "onchain_aerodrome_v0_1"
-title = "Decode strategy and Bindings.Abi signature plumbing from priv/abis"
-status = "pending"
 target_repo = "onchain_aerodrome"
-module = "Onchain.Aerodrome.Bindings.Abi"
+milestone = "onchain_aerodrome_v0_1"
+status = "in_progress"
+title = "Decode strategy and Bindings.Abi signature plumbing from priv/abis"
 scores = { d = 5, b = 8, u = 8 }
 depends_on = [5001]
 acceptance_criteria = ["Bindings.Abi.signature/2 and Bindings.Abi.return_type/2 produce canonical Solidity type strings for every function in all nine priv/abis/*.json files, handling address, string, bool, uintN, intN, tuple, tuple[], type[] and type[N]", "A test iterates every ABI file and asserts each produced call signature yields the same 4-byte selector as the one computed independently through Onchain.ABI.encode_call/2", "Every ABI file consumed is declared with @external_resource and parsed once into a module attribute at compile time, not re-parsed per call; a test proves touching a priv/abis/*.json file forces recompilation", "A test proves Onchain.ABI.decode_response/2 never raises across a decoded golden fixture", "A second test proves hieroglyph's ABI.decode/3 RAISES ArgumentError with decode_structs: true against a synthetic non-interned field name — the atom-interning hazard demonstrated, not asserted in prose", "The moduledoc records the decode-strategy decision and its evidence: hex-released onchain 0.13.0 exposes Onchain.Contract.call/5 and Onchain.ABI.decode_response/2 at 2-arity with no opts forwarding, so decode_structs is unreachable through the project's own wrappers; positional decode plus hand-written from_raw/1 constructors is the chosen path, matching onchain_aave precedent", "CLAUDE.md, priv/abis/README.md and the README ABI paragraph stop presenting decode_structs: true as the package decode path; they record positional decode, name Sourcify's named tuple components as the input to field-order drift tests (not to decode_structs), and AGENTS.md is regenerated so mix agents.check passes", "mix ci passes"]
 out_of_scope = ["Struct definitions, which are tasks 6 and 7", "Any RPC call, which starts at task 8", "The calldata encode path for writes, which is task 26", "Using onchain_evm's Onchain.Solidity or Onchain.Contract.Generator — both are dev/test-only Rust NIFs, and the Generator's struct codegen only fires for sol: input, not abi_json:"]
-touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/abi.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/abi_test.exs", "packages/onchain_aerodrome/CLAUDE.md", "packages/onchain_aerodrome/priv/abis/README.md", "packages/onchain_aerodrome/README.md"]
 files_to_modify = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/abi.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/abi_test.exs", "packages/onchain_aerodrome/CLAUDE.md", "packages/onchain_aerodrome/priv/abis/README.md", "packages/onchain_aerodrome/README.md"]
+touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/abi.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/abi_test.exs", "packages/onchain_aerodrome/CLAUDE.md", "packages/onchain_aerodrome/priv/abis/README.md", "packages/onchain_aerodrome/README.md"]
 assignee = "codex"
+module = "Onchain.Aerodrome.Bindings.Abi"
 model = "gpt-6-astra"
 body = """
 Settle the decode strategy for the whole package in one place, then build the plumbing every binding task consumes.
@@ -6071,6 +6071,7 @@ OPEN DECISIONS settled 2026-08-26 (do not re-ask): (a) there is no runtime depen
 AUTHORITY: priv/abis/lp_sugar.json and the other eight captured ABIs (Sourcify v2, deployed bytecode, named tuple components) are the sole source of truth for every signature. Not velodrome-finance/sugar's README, which is proven stale — it documents all(limit, offset) while the deployed contract is all(uint256,uint256,uint256) and the two-argument form reverts.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]
