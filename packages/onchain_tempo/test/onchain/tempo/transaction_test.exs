@@ -569,6 +569,26 @@ defmodule Onchain.Tempo.TransactionTest do
       assert {:ok, ^expected} = Transaction.sender(cosigned_transfer([]))
     end
 
+    test "sender/1 recovers the same sender from complement-s signature encodings" do
+      tx = cosigned_transfer([])
+      {:ok, expected} = Curvy.get_address(@client_key)
+      assert {:ok, ^expected} = Transaction.sender(tx)
+
+      <<r::256, s::256, v::8>> = List.last(tx.fields)
+      n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+      assert s <= div(n, 2)
+      high_s = n - s
+      assert high_s > div(n, 2)
+      recid = Bitwise.bxor(v - 27, 1)
+
+      for recovery_byte <- [recid, recid + 27] do
+        fields = List.replace_at(tx.fields, -1, <<r::256, high_s::256, recovery_byte::8>>)
+        raw = "0x76" <> Base.encode16(ExRLP.encode(fields), case: :lower)
+        assert {:ok, complement} = Transaction.deserialize(raw)
+        assert {:ok, ^expected} = Transaction.sender(complement)
+      end
+    end
+
     test "sender/1 errors on a transaction with too few fields" do
       tx = %Transaction{chain_id: 1, calls: [%{to: <<0::160>>, value: 0, input: <<>>}], fields: [<<1>>], raw: "0x"}
       assert {:error, "Transaction missing fields required to recover sender"} = Transaction.sender(tx)

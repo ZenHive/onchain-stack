@@ -40,6 +40,10 @@ tx.chain_id  #=> 42431
 tx.calls     #=> [%{to: <<...>>, value: 0, input: <<...>>}]
 ```
 
+`Transaction.sender/1` normalizes high-s signatures to low-s before recovery,
+so equivalent complement-s encodings recover the same sender. It preserves
+the original envelope; successful recovery does not imply broadcast acceptance.
+
 ### Find a payment call
 
 ```elixir

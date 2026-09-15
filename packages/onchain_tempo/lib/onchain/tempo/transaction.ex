@@ -17,6 +17,11 @@ defmodule Onchain.Tempo.Transaction do
   passthrough. When fee payer mode is enabled, it co-signs the transaction
   with a server-side key using the 0x78 domain separator.
 
+  Sender recovery accepts high-s ECDSA signatures by normalizing to BIP-62
+  low-s form, flipping `s` and the recovery bit together before recovery.
+  Equivalent low-s and complement-s encodings recover the same sender. This
+  does not rewrite `raw` or imply that a high-s envelope is broadcastable.
+
   ## Dependencies
 
   Uses `ExRLP` (available transitively via `cartouche` → `onchain`) for RLP
@@ -403,7 +408,8 @@ defmodule Onchain.Tempo.Transaction do
   @dialyzer {:nowarn_function, recover_sender: 2}
   defp recover_sender(signing_payload, <<r::unsigned-big-size(256), s::unsigned-big-size(256), v::8>>) do
     recid = if v >= 27, do: v - 27, else: v
-    sig = %CurvySig{crv: :secp256k1, r: r, s: s, recid: recid}
+    # Curvy 0.3.1 captures recid before its internal normalization flips it.
+    sig = CurvySig.normalize(%CurvySig{crv: :secp256k1, r: r, s: s, recid: recid})
     {:ok, Recover.recover_eth(signing_payload, sig)}
   rescue
     # Narrowed to the failure modes a malformed *signature* actually produces:
