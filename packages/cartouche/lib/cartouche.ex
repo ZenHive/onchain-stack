@@ -101,8 +101,8 @@ defmodule Cartouche do
 
   @type address :: <<_::160>>
   # Packed `r (32) || s (32) || v`. `v` is one or more bytes: 65 bytes when
-  # EIP-155 `v` fits in a single byte (chain id ≤ 110), 66–68 bytes on every
-  # chain in `Cartouche.Chain` except mainnet and the dead testnets.
+  # `v` fits in a single byte, longer otherwise. At chain id 110, EIP-155
+  # `v` is 255 or 256 depending on recovery parity.
   @type signature :: <<_::520, _::_*8>>
   @type bytes32 :: <<_::256>>
   @type contract :: address() | atom()

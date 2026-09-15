@@ -13512,6 +13512,67 @@
       "created_at": "2026-09-15",
       "scored_at": "2026-09-15",
       "cross_repo": []
+    },
+    {
+      "id": "9007",
+      "phase": 2000,
+      "bundle": "cartouche_release_010",
+      "target_repo": "cartouche",
+      "status": "pending",
+      "title": "Record task 2134 signing API changes in Cartouche release notes",
+      "scores": {
+        "d": 1,
+        "b": 2,
+        "u": 2
+      },
+      "eff": 2.0,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "The next release notes describe all four task 2134 changes and the packed signature width contract."
+      ],
+      "touches": [
+        "packages/cartouche/CHANGELOG.md"
+      ],
+      "body": "Audit 408b2b6 found no release-note entry for the EIP-191 byte-length fix, recover_personal_sign/2, variable-width packed signatures, or explicit chain-id normalization. Harness reserves changelog edits, so record these changes during release preparation without rewriting historical entries.",
+      "created_at": "2026-09-15",
+      "scored_at": "2026-09-15",
+      "cross_repo": []
+    },
+    {
+      "id": "9008",
+      "phase": 2000,
+      "bundle": "cartouche_phase7_deps",
+      "target_repo": "cartouche",
+      "status": "pending",
+      "title": "Assess Mint advisories reported by Cartouche cold dependency resolution",
+      "scores": {
+        "d": 2,
+        "b": 5,
+        "u": 4
+      },
+      "eff": 2.25,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "Current public Mint advisories and upstream fix availability are checked.",
+        "An available compatible fix is applied and affected package gates run serially, or the upstream blocker is documented."
+      ],
+      "touches": [
+        "packages/cartouche/mix.lock"
+      ],
+      "body": "During audit 408b2b6, mix deps.get retained locked Mint 1.9.3 and reported two public security advisories. Check current upstream fixes and the dependent packages, update the lock if a compatible fix exists, and run both audit tools plus affected package gates. Do not suppress findings. This is an observed dependency warning, not a demonstrated application exploit.",
+      "created_at": "2026-09-15",
+      "scored_at": "2026-09-15",
+      "cross_repo": []
     }
   ]
 }

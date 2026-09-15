@@ -10,8 +10,9 @@ defmodule Cartouche.Signer do
   `Cartouche.Signer.sign(MySigner, "message")` to get a packed
   `r || s || v` Ethereum signature (`Cartouche.signature()`).
 
-  The packed form is 65 bytes when EIP-155 `v` fits in one byte (chain id
-  ≤ 110) and 66–68 bytes otherwise. Chain binding for legacy transactions
+  The packed form is 65 bytes when EIP-155 `v` fits in one byte and longer
+  otherwise. At chain id 110, `v` is 255 or 256 depending on recovery parity,
+  producing 65 or 66 bytes respectively. Chain binding for legacy transactions
   lives in that trailing `v` because `Transaction.V1.add_signature/2` copies
   it into the RLP `v` field; emitting a parity-only byte here would silently
   drop EIP-155 replay protection. Typed transactions already take y-parity
@@ -313,7 +314,7 @@ defmodule Cartouche.Signer do
   # path (no `chain_id:` option) signs for the configured chain instead of crashing.
   #
   # Trailing `v` is `chain_id*2+35+recid` encoded with `:binary.encode_unsigned/1`,
-  # so chain ids above 110 yield 66–68 byte signatures. That is deliberate: V1's
+  # so `v` above 255 yields signatures longer than 65 bytes. That is deliberate: V1's
   # RLP `v` field *is* the chain binding, and `V1.add_signature/2` copies these
   # bytes into it. A parity-only 65-byte form would write 0/1 or 27/28 into V1.v
   # and silently drop EIP-155 replay protection. Typed transactions already
