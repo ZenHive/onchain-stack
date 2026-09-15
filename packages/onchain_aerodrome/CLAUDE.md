@@ -96,7 +96,9 @@ This is the part of the domain most likely to be silently wrong, because a wrong
 
 ## Layer contract
 
-`.reach.exs` turns "each layer is usable on its own" from prose into a gate:
+`mix reach.check --arch` enforces `.reach.exs` with two complementary rules:
+an exhaustive allowlist for remote calls between declared layers, and forbidden
+calls for external network modules. The layer allowlist is:
 
 | Layer | Namespace | Depends on |
 |-------|-----------|------------|
@@ -104,12 +106,30 @@ This is the part of the domain most likely to be silently wrong, because a wrong
 | `base` | `Onchain.Aerodrome.Contracts`, `.Epoch`, `.Math`, `.Math.*` | nothing |
 | `bindings` | `Onchain.Aerodrome.Bindings.*` | `types`, `base` |
 | `analytics` | `Onchain.Aerodrome.Analytics.*` | `types`, `base` |
-| `read` | `Onchain.Aerodrome.Sugar.*` | everything below |
-| `write` | `Onchain.Aerodrome.Write.*` | everything below |
+| `read` | `Onchain.Aerodrome.Sugar.*` | `types`, `base`, `bindings`, `analytics` |
+| `write` | `Onchain.Aerodrome.Write.*` | `types`, `base`, `bindings`, `analytics`, `read` |
 
-**`analytics` sits below `read` deliberately.** APR, tick math and valuation take structs, not RPC options — so the entire L3 suite is testable with zero network, and the "never sum the APRs" invariant is checkable statically. If an analytics module needs to make a call, the design is wrong: pass it the data.
+**`analytics` sits below `read` deliberately.** APR, tick math and valuation
+consume data, not RPC options, so analytics tests need no network. Analytics
+cannot call bindings, Sugar or write modules. Types cannot call base; Contracts
+and Math remain together in base so analytics can use `Contracts.constants()`.
 
-Layer order in `.reach.exs` matters — reach's `*` crosses name segments, so specific layers must precede a broad catch-all.
+Reach only builds layer edges when both modules match a declared layer, and
+same-layer calls are exempt. The separate forbidden-call rule rejects calls
+from `Analytics.*` and `Math*` to `Onchain.RPC.*`, `Onchain.Contract.*`,
+`Onchain.Multicall.*`, `Req.*` and `:httpc.*`, including resolved aliases.
+This is a static boundary for those calls, not a proof against dynamic dispatch
+or arbitrary external network wrappers, nor a check of the APR denominator
+invariant. The latter needs behavioral tests. `Mix.Tasks.*` intentionally stays
+outside the layer graph because fixture generators must reach the network.
+
+An effects allowlist of `[:pure, :exception]` was tested and omitted: Reach
+2.8.2 classifies even a pure local helper call as `:unknown` and rejects it.
+The forbidden-call rule is the network gate, without that false-positive noise.
+
+Layer order in `.reach.exs` matters — Reach's `*` crosses name segments, so
+specific layers must precede a broad catch-all. New declared layers have no
+cross-layer permissions until explicitly added to the allowlist.
 
 ## Architecture
 
@@ -146,12 +166,15 @@ The remaining layers (`types/`, `bindings/`, `analytics/`, `sugar/`, `write/`) a
 | `Onchain.ABI` | ABI encoding/decoding |
 | `Onchain.RPC` | `eth_call`, `batch/2`, per-call retry |
 | `Onchain.Multicall` | `aggregate3/2`, `call_many/2` — per-pool enrichment |
-| `Onchain.Contract` | Generic contract call; `Contract.Generator` for bindings |
-| `Onchain.Solidity` | `parse_abi_file/1` over `priv/abis/` |
+| `Onchain.Contract` | Generic contract call |
 | `Onchain.Signer` | Transaction signing (opt-in write path only) |
 | `Onchain.Address` | Validation, checksumming |
 | `Onchain.Hex` | Hex encoding/decoding |
 | `Onchain.Decimal` | Decimal math (ratios) |
+
+`Onchain.Solidity.parse_abi_file/1` (ABI parsing over `priv/abis/`) and
+`Onchain.Contract.Generator` (bindings codegen) come from **onchain_evm**, a
+**dev/test-only** dependency. They are tooling, not runtime APIs from onchain.
 
 ## Testing
 
