@@ -6266,11 +6266,10 @@ shipped_in = "43575465c56d9754c2add8400a5b808ecea94be2"
 id = 5007
 phase = 5002
 bundle = "onchain_aerodrome_types"
-milestone = "onchain_aerodrome_v0_1"
-title = "Types.VeNFT, .Vote, .Relay, .LpEpoch and .Reward — the veAERO structs, with ABI drift tests"
-status = "pending"
 target_repo = "onchain_aerodrome"
-module = "Onchain.Aerodrome.Types.VeNFT"
+milestone = "onchain_aerodrome_v0_1"
+status = "in_progress"
+title = "Types.VeNFT, .Vote, .Relay, .LpEpoch and .Reward — the veAERO structs, with ABI drift tests"
 scores = { d = 5, b = 8, u = 8 }
 markers = ["parallel"]
 depends_on = [5003, 5004]
@@ -6278,6 +6277,7 @@ acceptance_criteria = ["Types.VeNFT carries every field of ve_sugar.json's byId 
 out_of_scope = ["Epoch boundary arithmetic, which is task 2", "APR or reward accounting logic", "Any RPC call", "The pool and token structs, which are task 6"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/types/ve_nft.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/types/vote.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/types/relay.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/types/lp_epoch.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/types/reward.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/types/ve_nft_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/types/vote_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/types/relay_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/types/lp_epoch_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/types/reward_test.exs"]
 assignee = "grok"
+module = "Onchain.Aerodrome.Types.VeNFT"
 model = "grok-4.6"
 body = """
 Define the five structs the veAERO side decodes into. They are one task because they share the same positional-decode drift invariant and the same fixture set, and because two of them share a nested type that must be defined exactly once.
@@ -6289,6 +6289,7 @@ LpEpoch's bribes and fees are {token, amount} pairs; Reward is a flat six-field 
 AUTHORITY: priv/abis/ve_sugar.json, priv/abis/relay_sugar.json and priv/abis/rewards_sugar.json — specifically the outputs components of byId, all(address), epochsLatest and rewards. The captured deployed ABI is the only authority on struct shape.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]

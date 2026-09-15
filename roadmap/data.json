@@ -9437,7 +9437,7 @@
       "bundle": "onchain_aerodrome_types",
       "target_repo": "onchain_aerodrome",
       "milestone": "onchain_aerodrome_v0_1",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Types.VeNFT, .Vote, .Relay, .LpEpoch and .Reward — the veAERO structs, with ABI drift tests",
       "scores": {
         "d": 5,
@@ -9487,6 +9487,7 @@
       ],
       "body": "Define the five structs the veAERO side decodes into. They are one task because they share the same positional-decode drift invariant and the same fixture set, and because two of them share a nested type that must be defined exactly once.\n\nTwo shape facts to get right, both verified against the captured ABIs rather than inferred. Types.Vote ({lp, weight}) is byte-identical between VeSugar's VeNFT.votes and RelaySugar's Relay.votes, so it is defined once and aliased. And Relay is materially larger than its function count suggests: a wide struct with two nested arrays, one of them ({id, amount, earned}) unique to it. Record in the moduledoc that the field list is read from the ABI JSON, so nobody re-derives it from memory or from the function count later.\n\nLpEpoch's bribes and fees are {token, amount} pairs; Reward is a flat six-field record. They are not structurally related. Do not merge their field lists.\n\nAUTHORITY: priv/abis/ve_sugar.json, priv/abis/relay_sugar.json and priv/abis/rewards_sugar.json — specifically the outputs components of byId, all(address), epochsLatest and rewards. The captured deployed ABI is the only authority on struct shape.\n",
       "created_at": "2026-08-26",
+      "started_at": "2026-09-15",
       "scored_at": "2026-08-26",
       "cross_repo": []
     },

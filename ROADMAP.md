@@ -481,7 +481,7 @@
 | Task | Status | Notes |
 |------|--------|-------|
 | Task 5006 `[P]` | ✅ | 🎁 **onchain_aerodrome_types** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Types.Lp* · Types.Lp, .Position, .Swap and .Token — the pool and token structs, with ABI drift tests [D:5/B:8/U:8 → Eff:1.6] 🚀 |
-| Task 5007 `[P]` | ⬜ | 🎁 **onchain_aerodrome_types** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Types.VeNFT* · Types.VeNFT, .Vote, .Relay, .LpEpoch and .Reward — the veAERO structs, with ABI drift tests [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 5007 `[P]` | 🔄 | 🎁 **onchain_aerodrome_types** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Types.VeNFT* · Types.VeNFT, .Vote, .Relay, .LpEpoch and .Reward — the veAERO structs, with ABI drift tests [D:5/B:8/U:8 → Eff:1.6] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 5003: Bindings
