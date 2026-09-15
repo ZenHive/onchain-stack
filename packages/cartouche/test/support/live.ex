@@ -24,40 +24,120 @@ defmodule Cartouche.Test.Live do
   @spec live_opts() :: Keyword.t()
   def live_opts, do: [req_options: [plug: nil], ethereum_node: live_rpc_url(), timeout: 30_000]
 
+  @endpoints [
+    archive: "CARTOUCHE_LIVE_NODE_URL",
+    alchemy: "ETHEREUM_ALCHEMY_URL",
+    infura: "ETHEREUM_INFURA_URL",
+    cloudflare: "CLOUDFLARE_ETHEREUM_API_URL"
+  ]
+  @type endpoint :: :archive | :alchemy | :infura | :cloudflare
+
+  @doc "Resolves a named mainnet endpoint; the archive lane retains its localhost default."
+  @spec live_rpc_url(endpoint()) :: String.t()
+  def live_rpc_url(:archive), do: live_rpc_url()
+
+  def live_rpc_url(endpoint) do
+    env = Keyword.fetch!(@endpoints, endpoint)
+
+    case System.get_env(env) do
+      url when is_binary(url) and url != "" -> url
+      _ -> flunk(endpoint_message(endpoint, "is not configured"))
+    end
+  end
+
+  @doc "Builds per-call network options for a named endpoint."
+  @spec live_opts(endpoint()) :: Keyword.t()
+  def live_opts(endpoint), do: [req_options: [plug: nil], ethereum_node: live_rpc_url(endpoint), timeout: 30_000]
+
   @doc false
   @spec assert_node_available!() :: :ok | no_return()
-  def assert_node_available! do
-    case Cartouche.RPC.eth_chain_id(live_opts()) do
-      {:ok, 1} ->
-        :ok
+  def assert_node_available!, do: assert_node_available!(:archive)
 
-      {:ok, other} ->
-        flunk("""
-        Integration node at #{live_rpc_url()} reported chain_id=#{other}, expected 1 (Ethereum mainnet).
-        This suite pins mainnet historical anchors. Connect to a mainnet archive node.
-        """)
-
-      {:error, reason} ->
-        flunk("""
-        Integration test opt-in detected (mix integration / mix test --include integration)
-        but the Ethereum mainnet archive node is unreachable.
-
-        Expected node at: #{live_rpc_url()}
-        Error: #{inspect(reason)}
-
-        Start the SSH tunnel:
-
-            ssh -L 8545:127.0.0.1:8545 -L 8546:127.0.0.1:8546 blockwatch-one
-
-        Override the URL via env var:
-
-            export CARTOUCHE_LIVE_NODE_URL=http://your-node:8545
-
-        Then re-run:
-
-            mix integration
-        """)
+  @doc "Requires the named endpoint to answer with chain ID 1 (Ethereum mainnet)."
+  @spec assert_node_available!(endpoint()) :: :ok | no_return()
+  def assert_node_available!(endpoint) do
+    case Cartouche.RPC.eth_chain_id(live_opts(endpoint)) do
+      {:ok, 1} -> :ok
+      {:ok, _other} -> flunk(endpoint_message(endpoint, "reported a chain ID other than 1 (Ethereum mainnet)"))
+      {:error, _reason} -> flunk(endpoint_message(endpoint, "is unreachable or refused eth_chainId"))
     end
+  end
+
+  @doc """
+  Runs the same call on archive and at least one hosted endpoint, checking every answer.
+
+  Expectations are named boolean predicates over unmodified RPC results, including
+  explicit refusals (`-32601`/`-32600`, or an HTTP error response). Return `true` for
+  the expected answer; use predicates, not assertions that could print credentials.
+  Unexpected answers fail using only the endpoint's env-var name. Returns the raw
+  answers for further inspection without logging credential-bearing responses.
+
+  Require a real result or its real refusal, never a skip. Treat
+  the consumer's node — not ours — as the case that matters:
+  the identical green run on both endpoints is what the portability claim rests on.
+
+      assert_portability!(&Cartouche.RPC.base_fee/1,
+        archive: &match?({:ok, fee} when is_integer(fee) and fee >= 0, &1),
+        alchemy: &expected_alchemy_refusal?/1
+      )
+
+  See `test/rpc_portability_test.exs` for the observed Alchemy refusal predicate.
+  Choose expectations from observed responses; some providers refuse with HTTP 400
+  and a `%Req.Response{}` instead of a decoded JSON-RPC error map.
+  """
+  @spec assert_portability!((Keyword.t() -> term()), [{endpoint(), (term() -> boolean())}]) ::
+          [{endpoint(), term()}]
+  def assert_portability!(call, expectations) do
+    endpoints = Keyword.keys(expectations)
+
+    if !(:archive in endpoints and match?([_, _ | _], endpoints) and
+           Enum.uniq(endpoints) == endpoints and
+           Enum.all?(endpoints, &Keyword.has_key?(@endpoints, &1))) do
+      flunk("Portability requires :archive and at least one distinct named hosted endpoint; never a skip.")
+    end
+
+    urls = Enum.map(endpoints, &live_rpc_url/1)
+
+    if Enum.uniq(urls) != urls do
+      flunk(
+        "Portability endpoints must resolve to distinct URLs; the consumer's node — not ours — as the case that matters."
+      )
+    end
+
+    Enum.each(endpoints, &assert_node_available!/1)
+    answers = Enum.map(endpoints, &{&1, call.(live_opts(&1))})
+
+    Enum.each(answers, fn {endpoint, answer} ->
+      if Keyword.fetch!(expectations, endpoint).(answer) != true do
+        flunk(endpoint_message(endpoint, "returned an unexpected answer"))
+      end
+    end)
+
+    answers
+  end
+
+  @spec endpoint_message(endpoint(), String.t()) :: String.t()
+  defp endpoint_message(endpoint, problem) do
+    env = Keyword.fetch!(@endpoints, endpoint)
+
+    """
+    Mainnet endpoint #{env} #{problem}.
+    Require a real result or its real refusal, never a skip.
+    Use the consumer's node — not ours — as the case that matters;
+    the identical green run on both endpoints is what the portability claim rests on.
+
+    Configure this endpoint:
+
+        export #{env}='https://your-mainnet-endpoint'
+
+    For the archive node, start the SSH tunnel:
+
+        ssh -L 8545:127.0.0.1:8545 -L 8546:127.0.0.1:8546 blockwatch-one
+
+    Then re-run:
+
+        mix test test/rpc_portability_test.exs --include integration
+    """
   end
 
   @dev_env "CARTOUCHE_DEV_NODE_URL"
