@@ -5189,7 +5189,7 @@
         2136
       ],
       "assignee": "codex",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "The real refusal is observed, not assumed: a live call to eth_baseFee against at least two independent hosted mainnet endpoints (e.g. Alchemy and Infura) is made, and the actual JSON-RPC error code and message from each is recorded verbatim in the task's implemented note",
         "A live integration test pins the observed hosted refusal for base_fee/1 — a real result or its real refusal, never a skip — flunking with exact export instructions when the endpoint env var is absent",
@@ -5336,7 +5336,7 @@
         2137
       ],
       "assignee": "codex",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "Cartouche.RPC gains eth_getStorageAt (address, slot, block tag -> 32-byte word) with block-tag support, pinned by a live test reading a known mainnet contract slot",
         "Cartouche.RPC gains eth_getProof decoding into a cartouche struct covering the account fields (balance, nonce, codeHash, storageHash, accountProof) and the storageProof entries; a live test asserts domain fields of a known contract's proof, not just shape",
@@ -5478,7 +5478,7 @@
       ],
       "depends_on": [],
       "assignee": "codex",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "Cartouche.Typed.encode_type/2 terminates for a type referencing two or more DISTINCT struct types, and a test asserts termination with a bounded Task.yield rather than hanging the suite; today `%{\"Root\" => fields [{\"z\",\"Zebra\"},{\"a\",\"Apple\"}]}` never returns",
         "Referenced struct types are appended sorted by name, per EIP-712 'the set of referenced struct types is collected, sorted by name and appended'; a test pins a type whose field order and alphabetical order differ and asserts the exact encodeType string",
@@ -5624,7 +5624,7 @@
       "markers": [],
       "depends_on": [],
       "assignee": "codex",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "Cartouche.Test.Live gains a named-endpoint lane beside the existing single live_rpc_url/0: an endpoint is addressed by name (e.g. :archive, :alchemy, :infura, :cloudflare) and resolves to a URL from a per-endpoint env var, so a test can request the SAME call on two endpoints without the whole suite being re-run under a different env var",
         "The existing live_opts/0 and live_rpc_url/0 keep working unchanged — all 56 existing call sites across test/rpc_integration_test.exs, test/filter_test.exs and test/rpc_debug_namespace_test.exs stay green with no edit. This is an additive seam, not a migration",
@@ -5670,7 +5670,7 @@
       "markers": [],
       "depends_on": [],
       "assignee": "codex",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "Cartouche.RPC gains node-refusal classification: JSON-RPC -32601 / -32600 / -32001 become distinguishable tagged results (method-not-found / namespace-unavailable / unavailable) instead of an opaque error term. Port the semantics from Onchain.RPC.classify_node_refusal/1 (onchain/lib/onchain/rpc.ex:1374-1391), whose moduledoc records that it was pinned against live Alchemy responses — keep that provenance in the @doc",
         "Cartouche.RPC gains opt-in retry over send_rpc/3 with the same policy onchain proved: transport failures retry, JSON-RPC application errors are final and never retried (onchain/lib/onchain/rpc.ex:1317-1368). Generalize it to wrap a call rather than one hardcoded function — onchain's retry_rpc/4 can only call Helpers.do_rpc/3, which is why its typed wrappers cannot use it",
@@ -6593,7 +6593,7 @@
       ],
       "depends_on": [],
       "assignee": "codex",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "RPC properties and the existing differential suite pin parameter ordering/nesting, block tags, hex decoding and sparse response semantics against a live node plus provider-owned JSON-RPC specifications",
         "DEX properties pin integer rounding, fee application, path monotonicity, minimum-output/slippage behavior and quote semantics against official protocol formulas or deployed calls at the same block",
@@ -6823,7 +6823,8 @@
         "security"
       ],
       "depends_on": [],
-      "assignee": "human",
+      "assignee": "codex",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "mix.lock resolves cartouche 0.8.0",
         "sign_transaction/3 dispatches through a {Cartouche.Signer.Curvy, key_bin} carrier rather than {Curvy, :sign, [key_bin]} plus sign_direct/4",
@@ -6862,7 +6863,8 @@
       "depends_on": [
         3089
       ],
-      "assignee": "human",
+      "assignee": "codex",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "A poller can be started with kind: :log | :block | :pending and delivers the matching payloads to its subscriber",
         "Stopping the poller uninstalls the node-side filter — asserted rather than assumed, since the leak this closes is per-restart",
@@ -6956,7 +6958,7 @@
         3091
       ],
       "assignee": "codex",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "eth_config/1 and eth_capabilities/1 are exposed on Onchain.RPC following the module's existing conventions, returning cartouche's Configuration and Capabilities structs rather than onchain-local re-decodings",
         "Both are verified against the live archive node with a test that asserts domain meaning — a specific known chain id and fork identifier from eth_config, and a concrete retention boundary from eth_capabilities — not merely that a struct came back",
@@ -7051,7 +7053,7 @@
       "depends_on": [],
       "assignee": "codex",
       "module": "Onchain.DEX",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "A quoted %Route{} produces executable swap calldata for the canonical Uniswap router, carrying an explicit amountOutMinimum derived from the quote plus a caller-supplied slippage tolerance, a deadline, and an explicit recipient",
         "Each builder is pinned by an encoded-calldata unit test asserting the 4-byte selector and argument encoding",
@@ -7179,7 +7181,7 @@
       "depends_on": [],
       "assignee": "codex",
       "module": "Onchain.AA",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "Calldata builders exist for the reference account's execute and executeBatch per EntryPoint version, pinned by selector-and-encoding unit tests",
         "initCode (v0.6) and factory/factoryData (v0.7) are built from a factory address, owner and salt, and the counterfactual sender address is computed and cross-checked against the EntryPoint's own getSenderAddress answer",
@@ -8291,7 +8293,7 @@
       "depends_on": [],
       "assignee": "codex",
       "module": "Onchain.Aave.Pool",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "Pool.set_user_e_mode/2 (plus a ! variant) encodes setUserEMode(uint8) and sends through the module's existing signed-write path",
         "Pool.get_user_e_mode/2 returns the user's active category id from a pinned-block live archive read",
@@ -8524,7 +8526,7 @@
       "depends_on": [],
       "assignee": "codex",
       "module": "Onchain.Aave.Events",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "An events module decodes the deployed V3 Pool's protocol events — at minimum Supply, Withdraw, Borrow, Repay, LiquidationCall, FlashLoan and ReserveDataUpdated — from raw log maps into named-field maps, with event signatures and indexed layouts taken from Aave-owned IPool source, not from a third-party client",
         "A pinned-block integration test fetches real mainnet Pool logs via Onchain.RPC.eth_get_logs against the archive node and decodes them, asserting known field values of at least one historical Supply and one LiquidationCall log; missing RPC env vars flunk with exact export instructions",
@@ -8656,7 +8658,7 @@
       "depends_on": [],
       "assignee": "codex",
       "module": "Onchain.Aave.V4.TokenizationSpoke",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "Whether the deployed share token exposes an executable ERC-20 surface — transfer, approve, allowance, EIP-2612 permit — and under what restrictions is established live against a deployed Tokenization Spoke and recorded in the moduledoc; the wrapper surfaces what exists and documents what does not",
         "deposit, mint, withdraw and redeem execute against a pinned-block mainnet fork and move both share balance and underlying balance in the direction and magnitude the matching preview_* read predicted, within the documented rounding direction",
@@ -8795,7 +8797,7 @@
       "depends_on": [],
       "assignee": "codex",
       "module": "Onchain.Aave.Contracts",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "Every AaveV4 entry the address book lists for Ethereum and for Avalanche resolves through this library's public API — Hubs, Spokes and their oracles, Tokenization Spokes, Position Managers, gateways, Treasury Spoke, configurators and the access manager",
         "A Hub is no longer restricted to three hardcoded atoms: the fourth deployed Ethereum Hub resolves and works through the Hub read functions with no code change beyond registry data, and an unknown hub still returns the tagged unknown_hub error",
@@ -8847,7 +8849,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aave.Contracts",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "The Cash Hub, Cash Spoke, Spoke oracle, Position Managers, and any Tokenization Spokes that actually exist on the deployed Optimism instance resolve through this library's public API",
         "A Hub atom for this instance is not one of :core, :prime, or :plus — an unknown_hub error is not the result of looking it up after it has been registered",
@@ -8989,7 +8991,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aave.Executor",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "An invariant inventory with stable identifiers exists before the contract: at minimum conservation (the executor's token and ETH balances net to zero after every run beyond the premium it forwards), authorization (only the Aave Pool may call executeOperation, only with the commissioning initiator, and only caller-listed targets are called), and lifecycle (a failed action reverts the entire flash loan)",
         "Foundry unit, fuzz and invariant tests plus Echidna and Medusa stateful campaigns run against those invariants with coverage and corpora recorded, and a Gambit mutation campaign whose survivors are each classified",
@@ -9033,7 +9035,7 @@
       "depends_on": [],
       "assignee": "codex",
       "module": "Onchain.Aerodrome",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "deps in .reach.exs uses mode: :allowlist with an explicit allowed: entry per declared layer (types -> [], base -> [], bindings -> [:types, :base], analytics -> [:types, :base], read -> [:types, :base, :bindings, :analytics], write -> everything below); the forbidden list is gone",
         "mix reach.check --arch FAILS on a deliberately introduced Onchain.RPC.eth_call/3 call inside an Onchain.Aerodrome.Analytics.* module, and the captured failure output is pasted into the task write-up before the probe is reverted",
@@ -9136,7 +9138,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.Bindings.Abi",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "Bindings.Abi.signature/2 and Bindings.Abi.return_type/2 produce canonical Solidity type strings for every function in all nine priv/abis/*.json files, handling address, string, bool, uintN, intN, tuple, tuple[], type[] and type[N]",
         "A test iterates every ABI file and asserts each produced call signature yields the same 4-byte selector as the one computed independently through Onchain.ABI.encode_call/2",
@@ -9406,7 +9408,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.Bindings.LpSugar",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "count/1 and single-page all/4 (limit, offset, filter) are implemented via Onchain.RPC.eth_call plus a Bindings.Abi-derived signature, decoding positionally into [%Types.Lp{}]",
         "The pagination driver drives offset TO count(), never terminating on a short page; a test using the task-4 non-zero-filter fixture (which returns fewer than limit rows mid-sequence) asserts the loop CONTINUES past that short page and the final offset reached equals or exceeds count()",
@@ -9618,7 +9620,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.Bindings.Voter",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "The epoch and weight getters are implemented: epochNext, epochStart, epochVoteEnd, epochVoteStart, totalWeight, weights, votes, usedWeights, lastVoted, poolVote, maxVotingNum, length and pools",
         "The registry getters are implemented: gaugeToBribe, gaugeToFees, gauges, isGauge, isAlive, poolForGauge, isWhitelistedToken, isWhitelistedNFT, factoryRegistry, minter, ve, governor, epochGovernor, emergencyCouncil, forwarder and isTrustedForwarder",
@@ -9665,7 +9667,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.Math.Tick",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "sqrt_ratio_at_tick/1 and tick_at_sqrt_ratio/1 are exported with @spec, return {:ok, integer()} or {:error, {:tick_out_of_bounds | :sqrt_ratio_out_of_bounds, value}}, and use integer arithmetic only — a grep test asserts no float literal, no Kernel./ and no :math call appears in the module",
         "A committed manifest test/fixtures/tick_math/sweep_manifest.json records the SlipstreamHelper address 0x9c62ab10577fB3C20A22E231b7703Ed6D456CC7a, chain id 8453, the pinned block number, the capture date, the tick set specification, and a SHA-256 digest over the FULL usable int24 domain (all 1_774_545 ticks in [-887272, 887272], concatenated 20-byte big-endian uint160 values in ascending tick order)",
@@ -9826,7 +9828,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.Math.Price",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "from_sqrt_ratio_x96/3 returns a Decimal for (sqrt_ratio, decimals0, decimals1), computing the square in INTEGER arithmetic before any Decimal division so no precision is lost to an intermediate Decimal square",
         "A test asserts from_sqrt_ratio_x96 applied to Math.Tick.sqrt_ratio_at_tick(t) agrees with 1.0001^t to within 1e-12 relative error for t in a spread including both usable-range extremes, tying the price layer to the tick oracle rather than to a second unverified constant",
@@ -10093,7 +10095,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.Analytics.APR",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "The return type is %Analytics.APR.Rate{} carrying at minimum kind (:fee or :emission), rate (Decimal), basis (an atom naming the denominator), numerator (with amount, unit, period and epochs_per_year 52), denominator (with amount, unit and label), and inputs recording the exact Lp, LpEpoch and price entries used. A bare Decimal is never returned from any APR function",
         "Rate.combine/2 raises Analytics.APR.IncomparableBasisError whenever the two rates' basis values differ, and it is the ONLY combining function in the module's public API",
@@ -10206,7 +10208,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.Sugar.Pools",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "Sugar.Pools.all/1 and a streaming variant drive pagination to count() through the task-8 binding, returning {:ok, [%Types.Lp{}]} or a tagged error tuple",
         "A test asserts Sugar.Pools.all/1 against the task-4 short-page fixture returns the FULL row count, not the short page's count — re-proving the pagination invariant at the ergonomic layer, because a naive re-implementation here reintroduces the bug even with a correct binding underneath",
@@ -10311,7 +10313,7 @@
       "depends_on": [],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.Contracts",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "Router and NFPM addresses are each independently confirmed by two sources recorded as two DISTINCT rows: the Sugar team's own deployment manifest fetched with gh api repos/velodrome-finance/sugar/contents/deployments/base.env, and a live cast call probe answering a view function whose expected return was stated in advance. A BaseScan label alone is never sufficient",
         "A third corroborating check is run and recorded: a live LpSugar read pulls a real Lp row and its nfpm and gauge fields are confirmed to match the captured addresses, or a knowing divergence is explained",
@@ -10365,7 +10367,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.CalldataFixture",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "A CalldataFixture test helper shells out to the local Foundry cast binary to produce REFERENCE calldata for a given signature and arguments, and that reference — never our own Onchain.ABI.encode_call/2 output — is what assertions compare against",
         "If cast is not on PATH the test FLUNKS, never skips, naming the exact install command",
@@ -10564,7 +10566,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.Write.NFPM",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "mint, increaseLiquidity, decreaseLiquidity and collect all return calldata by default with the same Signer opt-in contract; a grep test asserts no System.get_env call reads anything key-shaped",
         "mint's tick-range arguments are validated against Contracts.constants().tick_spacings before encoding, and the @doc states that this local check is a courtesy to save wasted gas and NEVER a substitute for the contract's own enforcement",
@@ -10614,7 +10616,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.CalldataFixture",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "For every Write.* golden-calldata test added in tasks 27 through 30, a paired canary test deliberately corrupts one byte or one argument of the expected calldata and asserts the comparator DOES fail on the corrupted value, proving the assertion is exact-byte equality rather than a prefix match, a length-only check, or an accidentally-true comparison",
         "At least one canary targets a nested array argument such as Voter vote(uint256,address[],uint256[]), since array-encoding offset and length fields are the most common place a looks-equal bug hides",
@@ -10660,7 +10662,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.AbiDrift",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "An integration-tagged test iterates every row of priv/abis/README.md's captured-files table, re-runs its EXACT RECORDED curl against live Sourcify — not a command reconstructed from the address — and asserts the 4-byte function-selector set of the fresh fetch equals the selector set of the committed JSON file",
         "On a mismatch the failure message lists exactly which selectors were added, removed or changed, so the report is actionable rather than a bare drift-detected",
@@ -10710,7 +10712,7 @@
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "An integration-tagged suite exercises Sugar.Pools, Sugar.Tokens, Sugar.Positions, Sugar.VeNfts, Sugar.Rewards, Sugar.Relays and Sugar.Prices against a live Base RPC, excluded from the default mix test.json run and from mix ci's excluded-integration pass",
         "At least one assertion proves the FULL Sugar.Pools enumeration reaches or exceeds a live count() call made in the same test — the end-to-end proof that the pagination driver behaves against the real contract and not only against fixtures",
@@ -10759,7 +10761,7 @@
       ],
       "assignee": "codex",
       "module": "OnchainAerodrome",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "CHANGELOG.md's Unreleased section becomes a dated 0.1.0 entry enumerating the real shipped surface — types, bindings, pure math, the price layer, analytics and the Sugar read API — rather than a copy of roadmap task titles",
         "README.md's scaffold status line is replaced with an accurate statement of what is actually implemented, or explicitly kept with a one-line reason if something in v0_1 did not land",
@@ -12407,7 +12409,7 @@
       ],
       "assignee": "codex",
       "module": "OnchainJs.Solc",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "`OnchainJs.Solc.compile/2` accepts `.sol` source and returns `{:ok, %{abi: [...], bytecode: \"0x...\"}}` for a real contract, with bytecode that is non-empty, even-length hex.",
         "The returned ABI's function entries match the contract's declared external/public functions by name and signature — asserted against a fixture contract, not just checked for shape.",
@@ -12572,7 +12574,7 @@
         7001
       ],
       "assignee": "codex",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "A public function obtains a Fusion quote (and, where the SDK supports it without broadcasting, builds an order) through `@1inch/fusion-sdk` running in a QuickBEAM runtime.",
         "An integration test pins one real successful call, asserting domain meaning — quoted amounts consistent with the requested pair and amount, auction/preset parameters present, order hash of the documented shape — not merely HTTP 200 or `is_map/1`.",
@@ -13088,7 +13090,7 @@
       ],
       "depends_on": [],
       "assignee": "codex",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "acceptance_criteria": [
         "key_authorization is encoded in its specification position for both the 0x76 sender payload and the 0x78 fee-payer preimage, and the fee-payer preimage path no longer discards the has_key_auth flag",
         "Differential vectors from the current official Tempo SDK (exact version recorded) match on unsigned bytes, sign payload, serialized bytes, cosigned bytes and recovered sender/fee-payer identities, for transactions both with and without key_authorization",
@@ -13195,6 +13197,48 @@
       "body": "curvy 0.3.1 `Curvy.recover_key/3` (deps/curvy/lib/curvy.ex:187-197) binds `recid` from the input struct, calls `Signature.normalize/1` (which for s > n/2 replaces s with n - s AND flips recid), then passes the PRE-normalization recid to `Point.from_signature/3`. For a high-s signature the recovery therefore pairs the normalized s with the wrong recovery id and returns a well-formed but wrong public key instead of the signer's. Observed 2026-09-11 in the mpp repo (harness review of mpp Task 114): `Onchain.Tempo.Transaction.sender/1` on the complement-s encoding of a signed 0x76 envelope returned a different address than on the canonical encoding. Verified by reading the curvy source; premise confirmed.\n\nConsequence today is fail-closed (a verifier comparing the recovered address to an expected signer rejects), and it is not a forgery vector — an attacker can submit any (r, s, recid) triple directly, so the mis-recovered point is already reachable. It IS a correctness defect at the boundary this package owns: `sender/1` must recover the same address for every valid encoding of one signature. Moderato itself rejects high-s at broadcast (-32602 'invalid transaction signature', observed live 2026-09-11), so the fix affects verification of never-broadcast envelopes, not chain state.\n\nDo: normalize to BIP-62 low-s (flip s and recid together) at the recovery boundary in `Onchain.Tempo.Transaction` before calling Curvy, or reject high-s outright with an explicit error — pick one and document it; audit `builder.ex` and any other Curvy recovery call in the eight packages for the same pattern; add a test that feeds the complement-s encoding and asserts either the identical sender or the explicit rejection. Report the bug upstream to libitx/curvy with a minimal reproduction (the maintainer-facing issue text is public-safe; nothing here is embargoed).",
       "created_at": "2026-09-11",
       "scored_at": "2026-09-11",
+      "cross_repo": []
+    },
+    {
+      "id": "9002",
+      "phase": 2000,
+      "bundle": "cartouche_signer_backends",
+      "status": "pending",
+      "title": "Put secp256k1 sign and recover behind a native backend — curvy costs ~2.8 ms per signature on the DEX order path",
+      "scores": {
+        "d": 5,
+        "b": 7,
+        "u": 7
+      },
+      "eff": 1.4,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "grok",
+      "model": "grok-4.6",
+      "acceptance_criteria": [
+        "A NIF-backed secp256k1 backend implements Cartouche.Signer.Backend and is selectable by configuration; Cartouche.Signer.Curvy remains the default and every existing test passes unchanged",
+        "Byte-equality proof against curvy: for a fixed corpus of private keys and digests (including a digest whose low-s normalization changes s, and at least one 0x00-prefixed key), the new backend's r/s/recovery-id and the recovered address are identical to curvy's — asserted in a test, not reported in prose",
+        "The low-s invariant task 2118 established holds on the new backend, including the sign_direct/4 path",
+        "Recovery goes through the same backend seam: Cartouche.Recover no longer calls Curvy.recover_key/3 directly when a non-curvy backend is selected, and the recovered address matches curvy's over the same corpus",
+        "A benchmark in the repo reports sign and recover timings for both backends on the same inputs; the CHANGELOG quotes the measured numbers rather than an expected speedup",
+        "mix ci passes, and the existing keccak and EIP-712 doctests still pass byte-for-byte"
+      ],
+      "out_of_scope": [
+        "Changing the default signer backend",
+        "Any change to Cartouche.Hash or Hieroglyph's keccak path — already landed in 54539cb",
+        "Batching, async signing, or a signing process pool",
+        "CloudKMS behaviour changes beyond whatever a new recover callback forces"
+      ],
+      "files_to_modify": [
+        "packages/cartouche/lib/cartouche/signer/backend.ex",
+        "packages/cartouche/lib/cartouche/recover.ex",
+        "packages/cartouche/mix.exs"
+      ],
+      "body": "Cartouche's default signer runs secp256k1 in pure Elixir through `curvy`, and that is now\nthe dominant cost of every signature it produces.\n\nMeasured 2026-09-15 from `bourse` (the DEX client consuming this package) against its\nsigning path, as synchronous scheduler time:\n\n    Cartouche.Signer.Curvy sign_hash          2.788 ms\n    Cartouche.Recover recover_signer_address  2.030 ms\n    one signed hyperliquid order (end to end) 5.657 ms\n\nThe keccak half of that figure is already gone: commit 54539cb swapped both\n`Cartouche.Hash.keccak/1` and `Hieroglyph`'s `ABI.Math.kec/1` from `ex_sha3` onto the\n`ex_keccak` Rust NIF, taking a 32-byte keccak from 181.96 us to 0.306 us. What remains in\nthe 5.657 ms is curvy's ECDSA. A consumer that signs on request — bourse places orders\nper-call, synchronously — pays that per order.\n\nTasks 2104, 2116 and 2118 built and hardened the contract this work plugs into:\n`Cartouche.Signer.Backend` is a behaviour with `sign_payload/2`, `public_key/1` and\n`algorithm/1`, implemented by `Cartouche.Signer.Curvy` and `Cartouche.Signer.CloudKMS`.\nWhat none of them supplied is a native implementation. `ex_secp256k1` is the obvious\ncandidate: it ships precompiled through `rustler_precompiled`, which this repo already\ndepends on for `ex_keccak` and for revm in `onchain_evm`, so it adds no new toolchain\nrequirement.\n\nRecovery does not sit behind that contract yet: `Cartouche.Recover.recover_public_key_from_digest/2`\ncalls `Curvy.recover_key/3` directly. Recovery is 2.030 ms of the measurement above, so\nleaving it on curvy captures barely half the win.\n\nOpen decisions, decided here so an implementer does not answer them silently:\n\n1. **The NIF backend is additive, not the default, in this change.** Curvy stays the\n   default so no consumer's signatures change shape without opting in. Flipping the default\n   is a separate decision once the equivalence evidence below exists.\n2. **`ex_secp256k1` unless a live probe disproves it.** If it cannot produce a recoverable\n   signature carrying the recovery id that `Cartouche.Recover` and EIP-155/EIP-712 need,\n   say so in the delivery with the observed output and use `libsecp256k1` instead — do not\n   paper over it with a curvy fallback inside the backend.\n3. **Recovery moves behind the same behaviour.** Splitting sign and recover across two\n   mechanisms is what made this cost hard to see. Say so in the delivery if a `recover/2`\n   callback cannot be shaped for CloudKMS, which cannot recover at all.\n\nLow-s stays a library-wide invariant per task 2118 — a new backend must not reintroduce the\nbypass that task closed.\n\nThe measurement is the reason this is worth doing; it is not a claim that anyone has\ncomplained about latency.\n",
+      "created_at": "2026-09-15",
+      "scored_at": "2026-09-15",
       "cross_repo": []
     }
   ]

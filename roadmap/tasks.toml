@@ -3485,7 +3485,7 @@ out_of_scope = ["Changing blob_base_fee/1 (eth_blobBaseFee is a separate method 
 touches = ["packages/cartouche/README.md", "packages/cartouche/CHANGELOG.md"]
 files_to_modify = ["packages/cartouche/lib/cartouche/rpc.ex", "packages/cartouche/test/rpc_test.exs", "packages/cartouche/test/rpc_integration_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 `Cartouche.RPC.base_fee/1` (lib/cartouche/rpc.ex) wraps `eth_baseFee`. Its status was re-verified on 2026-08-27 and the earlier "Erigon extension" label was too simple: the method is Erigon-origin (erigontech/erigon#11992, 2024-09-18), was adopted by reth (2026-05-08), Nethermind (2026-05-15) and go-ethereum (PR #34904, shipped v1.17.4 on 2026-06-22), and was merged into `ethereum/execution-apis` **`main`** on 2026-06-15 (PR #795, title "feat: eth_baseFee", whose own body describes it as documenting a method "supported by enterprise RPCs and Erigon"). It is nonetheless carried by **no tagged spec release** — the newest is `v1.0.0-beta.7` (2026-06-10), five days before the merge — it is absent from the vendored `openrpc-v1.0.0-beta.4.json`, and neither Alchemy nor Infura documents it. So it is spec-resident on an unreleased branch and still non-portable in practice. Our own reth node serves it, so every check the library runs is green here while consumers on the most common hosted endpoints get an error.
 
@@ -3584,7 +3584,7 @@ out_of_scope = ["Client-side Merkle-Patricia verification of a proof against the
 touches = ["packages/cartouche/test/rpc_integration_test.exs", "packages/cartouche/CHANGELOG.md"]
 files_to_modify = ["packages/cartouche/lib/cartouche/rpc.ex"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Both methods are in the tagged execution-apis release `v1.0.0-beta.7` (`src/eth/state.yaml`) and in the vendored local spec. Both are cartouche's under the stack boundary. Both are absent from cartouche today.
 
@@ -3682,7 +3682,7 @@ out_of_scope = ["EIP-712 domain-separator policy or chain-id binding — this ta
 touches = ["packages/cartouche/CHANGELOG.md", "packages/cartouche/test/fixtures/vectors/"]
 files_to_modify = ["packages/cartouche/lib/cartouche/typed.ex", "packages/cartouche/lib/cartouche/hex.ex", "packages/cartouche/test/typed_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 `Cartouche.Typed` is the EIP-712 path the stack signs permits and orders through — task 69 records that ERC-2612 permit "already expresses it". It has four confirmed spec defects. All four were verified by executing the compiled module, not by reading it; the reproductions are below and should be turned into the failing tests before any fix.
 
@@ -3778,7 +3778,7 @@ out_of_scope = ["Rewriting the existing integration tests onto the new lane — 
 touches = ["packages/cartouche/test/rpc_integration_test.exs", "packages/cartouche/CHANGELOG.md"]
 files_to_modify = ["packages/cartouche/test/support/live.ex"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 node-portability.md rule 4 says: "Verify on a second, unprivileged endpoint before claiming portability. Green on localhost:8545 alone proves nothing. A hosted endpoint's real refusal is evidence; our node's {:ok, _} is not." The same file then admits, under Honest limits, that "Rule 4 has no tooling today — whoever builds it should build it first."
 
@@ -3810,7 +3810,7 @@ out_of_scope = ["Deleting anything in the onchain repo — a cartouche worktree 
 touches = ["packages/cartouche/test/rpc_test.exs", "packages/cartouche/CHANGELOG.md"]
 files_to_modify = ["packages/cartouche/lib/cartouche/rpc.ex", "packages/cartouche/lib/cartouche/http.ex"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 This task is what makes the stack boundary's clean cut actually safe to execute, and it was found by reading both call pipelines rather than by reasoning from the layer diagram.
 
@@ -4443,7 +4443,7 @@ markers = ["security"]
 acceptance_criteria = ["RPC properties and the existing differential suite pin parameter ordering/nesting, block tags, hex decoding and sparse response semantics against a live node plus provider-owned JSON-RPC specifications", "DEX properties pin integer rounding, fee application, path monotonicity, minimum-output/slippage behavior and quote semantics against official protocol formulas or deployed calls at the same block", "A reproducible mutation campaign changes RPC construction/decoding and DEX arithmetic/boundaries; every survivor is classified with evidence", "Wrong RPC parameter order and wrong DEX rounding/slippage canaries are detected and make the verification run fail", "A ledger records authorities, live block/evidence, configurations, mutations and survivor review; touched critical modules remain at least 95% covered and mix ci passes"]
 touches = ["packages/onchain/lib/onchain/rpc.ex", "packages/onchain/lib/onchain/rpc/", "packages/onchain/lib/onchain/dex/", "packages/onchain/test/onchain/rpc", "packages/onchain/test/onchain/differential/", "packages/onchain/test/onchain/dex/"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Extend the existing RPC differential evidence and DEX tests with property and mutation adequacy. The live node plus provider-owned RPC/protocol contracts define semantics; Cartouche or self-built fixtures alone are not independent authorities. Challenge both wire construction and money-sensitive integer math with deliberate faults while preserving current public behavior.
 """
@@ -4592,14 +4592,15 @@ done_at = "2026-08-25"
 id = 3089
 phase = 3012
 bundle = "onchain_signer_backend_contract"
-title = "Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA"
-status = "pending"
 target_repo = "onchain"
+status = "pending"
+title = "Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA"
 scores = { d = 3, b = 7, u = 6 }
 markers = ["security"]
 acceptance_criteria = ["mix.lock resolves cartouche 0.8.0", "sign_transaction/3 dispatches through a {Cartouche.Signer.Curvy, key_bin} carrier rather than {Curvy, :sign, [key_bin]} plus sign_direct/4", "The existing signer tests still recover the expected signer address from the signed V2, demonstrating the signed digest did not change", "A unit test substituting a backend whose algorithm/1 reports :ed25519 fails with a tagged error and produces no signature", "Onchain.AA.sign_user_operation stays on sign_digest/2 and its :raw and :eip191 suites pass unchanged", "mix ci passes"]
 out_of_scope = ["CloudKMS, AWS KMS or any non-Curvy backend as a supported Onchain.Signer option", "Changing Onchain.AA's digest scheme, or rescuing FunctionClauseError on a short digest — no public path can feed one", "Cartouche.Transaction.V4 and EIP-7702", "hieroglyph strict decode — task 88 owns that"]
-assignee = "human"
+assignee = "codex"
+model = "gpt-6-astra"
 body = """
 cartouche 0.8.0 turned two signer-backend contracts from documentation into enforced code: `sign_payload/2` matches an exact 32-byte digest in its function head (Curvy and CloudKMS both), and `Backend.expect_algorithm/3` runs before dispatch so a backend whose `algorithm/1` reports a different curve fails instead of mis-signing.
 
@@ -4618,14 +4619,15 @@ scored_at = "2026-08-25"
 id = 3090
 phase = 3012
 bundle = "onchain_subscription_hardening"
-title = "HTTP log/block/pending polling over Cartouche.Filter, so subscribers work on the RPC URL this library defaults to"
-status = "pending"
 target_repo = "onchain"
+status = "pending"
+title = "HTTP log/block/pending polling over Cartouche.Filter, so subscribers work on the RPC URL this library defaults to"
 scores = { d = 5, b = 6, u = 5 }
 depends_on = [3089]
 acceptance_criteria = ["A poller can be started with kind: :log | :block | :pending and delivers the matching payloads to its subscriber", "Stopping the poller uninstalls the node-side filter — asserted rather than assumed, since the leak this closes is per-restart", "A kind: :log poller substitutes for a Subscription {:logs, filter} consumer against an HTTP rpc_url on a known mainnet Transfer log, asserted on address and topic0 rather than on shape", "kind: :block and kind: :pending each have a test that receives a hash list", "The delivered message shapes are documented next to Onchain.Subscription's, so a caller can see which transport gives which", "mix ci passes"]
 out_of_scope = ["Modifying or replacing Onchain.Subscription — the WebSocket path is unchanged", "Named Onchain.RPC wrappers for cartouche 0.8.0's node-custody methods (accounts, coinbase, fill_transaction, sign, sign_transaction, send_transaction) — Onchain.RPC.call/3 already passes any method through, so wrappers are ergonomics with no capability behind them; file separately if a caller actually wants them", "eth_createAccessList, eth_baseFee, eth_blobBaseFee, eth_config and eth_capabilities — other 0.8.0 additions, unrelated to filters", "hieroglyph strict decode — task 88 owns that"]
-assignee = "human"
+assignee = "codex"
+model = "gpt-6-astra"
 body = """
 `Onchain.Subscription` is WebSocket-only — it documents `:new_heads`, `:pending_transactions` and `{:logs, filter_map}` and drives them through `eth_subscribe` (lib/onchain/subscription.ex:3 and 205). The default RPC URL this library ships is HTTP Infura (lib/onchain/rpc.ex:121). So a caller who takes the default and follows the subscription docs has no working path, and the only log retrieval left is `Transfer.fetch/2`, a one-shot `eth_get_logs` (lib/onchain/transfer.ex:247-254) rather than anything that keeps delivering.
 
@@ -4694,7 +4696,7 @@ out_of_scope = ["base_fee/1 and blob_base_fee/1 — delivered inline 2026-08-25,
 touches = ["packages/onchain/lib/onchain/rpc.ex", "packages/onchain/test/onchain/rpc_test.exs", "packages/onchain/README.md"]
 files_to_modify = ["packages/onchain/lib/onchain/rpc.ex"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 cartouche 0.8.0 added `Cartouche.RPC.eth_config/1` and `Cartouche.RPC.eth_capabilities/1`, both already deserializing into structs (`Cartouche.RPC.Configuration`, `Cartouche.RPC.Capabilities`) and both ignoring unknown fields so a newer node revision does not break the decoder. Neither is exposed through `Onchain.RPC`. Expose them, and treat the consumer's node — not ours — as the case that matters.
 
@@ -4755,7 +4757,7 @@ acceptance_criteria = ["A quoted %Route{} produces executable swap calldata for 
 out_of_scope = ["DEX aggregators, split routing, multi-venue routing", "Atomic composition with lending operations — aave_sim's one-transaction-rail task owns that", "Aerodrome routers — task 5028 owns Write.Router on Base"]
 touches = ["packages/onchain/lib/onchain/dex/router.ex", "packages/onchain/test/onchain/dex/", "packages/onchain/CHANGELOG.md"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Onchain.DEX.Router routes and quotes — v2 pools analytically, v3 via the on-chain QuoterV2 — and nothing in the stack executes what it prices: there is no SwapRouter02 or UniversalRouter calldata builder and no aggregator client (surveyed 2026-08-28; the only swap-execution hit anywhere is a Tempo TIP-20 selector). The consumer demand is concrete: aave_sim's boost action is borrow, then swap, then supply, and its execution tasks (aave_sim 118/119) need the swap leg as bare calldata a one-transaction rail can compose.
 
@@ -4838,7 +4840,7 @@ acceptance_criteria = ["Calldata builders exist for the reference account's exec
 out_of_scope = ["Paymaster sponsorship — task 3098 owns it", "Session keys and key rotation — aave_sim task 112's delegation decision owns whether those are needed", "The application-side rail decision — aave_sim task 118 owns it"]
 touches = ["packages/onchain/lib/onchain/aa.ex", "packages/onchain/test/onchain/aa_test.exs", "packages/onchain/test/onchain/aa_integration_test.exs", "packages/onchain/CHANGELOG.md"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Onchain.AA builds, hashes, signs and submits UserOperations for both EntryPoint v0.6 and v0.7, byte-exact against viem vectors (task 3069, done). What it cannot do is produce the two payloads every real UserOperation needs: call_data and init_code are carried and packed but never built — there is no execute(address,uint256,bytes) or executeBatch encoder anywhere in the stack, no createAccount/initCode construction, no getSenderAddress counterfactual computation, no EntryPoint nonce read (all measured absent by grep, 2026-08-28). A caller must hand-encode everything through the generic ABI encoder.
 
@@ -5518,7 +5520,7 @@ acceptance_criteria = ["Pool.set_user_e_mode/2 (plus a ! variant) encodes setUse
 out_of_scope = ["swapBorrowRateMode — removed from IPool in v3.2, reverts on the deployed contract", "getEModeCategoryData(uint8) legacy struct and the four category bitmap getters", "setUserEModeOnBehalfOf and the v3.5 position-manager delegation surface", "Any Aave V4 eMode equivalent"]
 touches = ["packages/onchain_aave/lib/onchain/aave/pool.ex", "packages/onchain_aave/lib/onchain/aave/ui_pool_data_provider.ex", "packages/onchain_aave/lib/onchain/aave/types/e_mode_category.ex", "packages/onchain_aave/test/onchain/aave/pool_test.exs", "packages/onchain_aave/test/onchain/aave/pool_integration_test.exs", "packages/onchain_aave/test/onchain/aave/ui_pool_data_provider_integration_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 eMode is one of the remaining user-facing position controls missing from `Onchain.Aave.Pool`. Without it a caller cannot switch a position into a configured efficiency category, so the package cannot express the borrowing-power configuration used by correlated-asset positions.
 
@@ -5655,7 +5657,7 @@ acceptance_criteria = ["An events module decodes the deployed V3 Pool's protocol
 out_of_scope = ["Aave V4 Hub/Spoke event decoding", "Streaming/subscription (eth_subscribe) support and any indexer or backfill machinery", "aToken/debt-token ERC-20 Transfer logs — Onchain.Transfer already owns token transfer decoding"]
 touches = ["packages/onchain_aave/lib/onchain/aave/events.ex", "packages/onchain_aave/test/onchain/aave/events_test.exs", "packages/onchain_aave/test/onchain/aave/events_integration_test.exs", "packages/onchain_aave/CLAUDE.md", "packages/onchain_aave/CHANGELOG.md"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 onchain_aave has no event surface: nothing reads or decodes the logs the protocol emits, so a consumer can execute a supply or borrow through this library but cannot observe its effect — or anyone else's activity — from the chain. Add log decoding for the deployed V3 Pool's event set plus topic-filter construction for eth_getLogs.
 
@@ -5730,7 +5732,7 @@ acceptance_criteria = ["Whether the deployed share token exposes an executable E
 out_of_scope = ["Hub-level writes and the Hub/Spoke configurators", "IConfigPositionManager and ISpoke position-manager authorization — its own task", "Off-chain APY or share-price timeseries derivation"]
 touches = ["packages/onchain_aave/lib/onchain/aave/v4/tokenization_spoke.ex", "packages/onchain_aave/test/onchain/aave/v4/tokenization_spoke_test.exs", "packages/onchain_aave/test/onchain/aave/v4/tokenization_spoke_write_integration_test.exs", "packages/onchain_aave/CHANGELOG.md"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 The Tokenization Spoke is the one V4 object other protocols can hold: an ERC-4626 share per (Hub, asset), which is what makes a V4 supply position portable into a vault, a lending market, or trading collateral elsewhere. This library can currently only look at it. lib/onchain/aave/v4/tokenization_spoke.ex is read-only — the ERC-4626 previews and caps are wrapped (preview_deposit/preview_mint/preview_withdraw/preview_redeem, max_*), the EIP-712 typehashes and domain separator are readable, but there is no deposit, mint, withdraw or redeem, and the share token exposes only balance_of/2 and total_supply/1 — no transfer, approve, allowance or executable permit. A consumer can compute what a deposit would mint and cannot make the deposit.
 
@@ -5815,7 +5817,7 @@ acceptance_criteria = ["Every AaveV4 entry the address book lists for Ethereum a
 out_of_scope = ["Wrapping the configurator, config-engine or access-manager interfaces — registering their addresses is enough here", "Avalanche-specific write paths or a second fork-simulation target", "Chainlink price-feed address space, which is separate from the Aave registry", "ether.fi Cash on Optimism — DAO-licensed whitelabel, not in safe.csv; follow-on after this task (see V4_DEPLOYMENTS.md)", "Base V4 lending — announced, not in the address book"]
 touches = ["packages/onchain_aave/lib/onchain/aave/contracts.ex", "packages/onchain_aave/lib/onchain/aave/v4/hub.ex", "packages/onchain_aave/test/onchain/aave/contracts_test.exs", "packages/onchain_aave/test/onchain/aave/v4/hub_test.exs", "packages/onchain_aave/V4_SCOPING.md", "packages/onchain_aave/CLAUDE.md", "packages/onchain_aave/CHANGELOG.md"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 The V4 registry describes a deployment that has moved on twice, and one of the two gaps is structural rather than data.
 
@@ -5851,7 +5853,7 @@ out_of_scope = ["Writes through the Cash borrow-whitelist (Cash-user only)", "GH
 touches = ["packages/onchain_aave/lib/onchain/aave/contracts.ex", "packages/onchain_aave/lib/onchain/aave/v4/hub.ex", "packages/onchain_aave/test/onchain/aave/contracts_test.exs", "packages/onchain_aave/test/onchain/aave/v4/hub_test.exs", "packages/onchain_aave/V4_DEPLOYMENTS.md", "packages/onchain_aave/CHANGELOG.md"]
 files_to_modify = ["packages/onchain_aave/lib/onchain/aave/contracts.ex", "packages/onchain_aave/lib/onchain/aave/v4/hub.ex", "packages/onchain_aave/test/onchain/aave/contracts_test.exs", "packages/onchain_aave/test/onchain/aave/v4/hub_test.exs", "packages/onchain_aave/V4_DEPLOYMENTS.md", "packages/onchain_aave/CHANGELOG.md"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Open decision (default unless observation contradicts it): key this instance as network: :optimism. V3 already uses :optimism for the V3 pool; V4 lives in a separate map so that does not collide. Switch to a named instance key (e.g. :etherfi_cash) only if a second V4 deployment on Optimism is already listed in the address book or an AIP — one V4 per chain is the default.
 
@@ -5942,7 +5944,7 @@ acceptance_criteria = ["An invariant inventory with stable identifiers exists be
 out_of_scope = ["Deployment to any network and the independent audit that must precede production authorization — a separate task once aave_sim task 118 selects this rail", "Swap routing — the swap action consumes task 3094's calldata", "The application-side rail decision — aave_sim task 118 owns it"]
 touches = ["packages/onchain_aave/sol/", "packages/onchain_aave/lib/onchain/aave/", "packages/onchain_aave/CHANGELOG.md"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Rail option three for aave_sim task 118, and the mechanism DeFi Saver itself runs on: a contract that takes an Aave flash loan, executes a caller-encoded action list (approve, supply, borrow, repay, withdraw, one swap call) with the borrowed funds, and repays principal plus premium — so a boost or a collateral switch that exceeds the position's free borrow headroom still lands as one transaction. Nothing like it exists in the stack: no IFlashLoanReceiver implementation, no executeOperation, no deployable Solidity beyond test fixtures (surveyed 2026-08-28). The vendored defisaver-v3-contracts sources under onchain_evm/priv/contracts/real show the category's shape and are reference material only.
 
@@ -5972,7 +5974,7 @@ out_of_scope = ["Writing any Analytics.* or Math.* module — the probes are tem
 touches = ["packages/onchain_aerodrome/.reach.exs", "packages/onchain_aerodrome/CLAUDE.md", "packages/onchain_aerodrome/AGENTS.md"]
 files_to_modify = ["packages/onchain_aerodrome/.reach.exs", "packages/onchain_aerodrome/CLAUDE.md"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 CLAUDE.md asserts that mix reach.check --arch fails the build when an analytics module makes an RPC call. Verify that claim before changing anything: it is false as configured, and the entire analytics-is-testable-with-zero-network guarantee rests on it.
 
@@ -6042,7 +6044,7 @@ out_of_scope = ["Struct definitions, which are tasks 6 and 7", "Any RPC call, wh
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/abi.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/abi_test.exs", "packages/onchain_aerodrome/CLAUDE.md", "packages/onchain_aerodrome/priv/abis/README.md", "packages/onchain_aerodrome/README.md"]
 files_to_modify = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/abi.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/abi_test.exs", "packages/onchain_aerodrome/CLAUDE.md", "packages/onchain_aerodrome/priv/abis/README.md", "packages/onchain_aerodrome/README.md"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Settle the decode strategy for the whole package in one place, then build the plumbing every binding task consumes.
 
@@ -6197,7 +6199,7 @@ out_of_scope = ["The ergonomic Sugar.Pools wrapper, which is task 23", "The MAX_
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/lp_sugar.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/lp_sugar_test.exs"]
 files_to_modify = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/lp_sugar.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/lp_sugar_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 This is the highest-risk read task in the package, and the risk is a silent one.
 
@@ -6319,7 +6321,7 @@ acceptance_criteria = ["The epoch and weight getters are implemented: epochNext,
 out_of_scope = ["All 24 Voter write functions, which are task 27", "Governance-only setters", "Gauge instance enumeration across all pools — Sugar's Lp.gauge already gives it per pool"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/voter.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/voter_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Wrap Voter's read surface: the epoch and voting-weight getters that feed APR timing, and the gauge, pool, bribe and fee address graph that the read layer cross-references against Lp.gauge, Lp.bribe and Lp.fee.
 
@@ -6349,7 +6351,7 @@ acceptance_criteria = ["sqrt_ratio_at_tick/1 and tick_at_sqrt_ratio/1 are export
 out_of_scope = ["revm or Onchain.EVM fork simulation — revm hard-rejects chain id other than 1 in spec_id_for_fork; do not attempt it and never patch anything under deps/", "getPopulatedTicks and any pool-state-dependent helper", "Liquidity and amount-delta math, which is task 14", "Tick bitmap and word-position helpers, with no v0.1 consumer"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/math/tick.ex", "packages/onchain_aerodrome/lib/mix/tasks/aerodrome.gen.tick_goldens.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/math/tick_test.exs", "packages/onchain_aerodrome/test/fixtures/tick_math/", "packages/onchain_aerodrome/priv/abis/README.md"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Port Slipstream's TickMath to pure Elixir and prove it equals the deployed Solidity — not by spot checks, but by sweeping the domain.
 
@@ -6447,7 +6449,7 @@ acceptance_criteria = ["from_sqrt_ratio_x96/3 returns a Decimal for (sqrt_ratio,
 out_of_scope = ["Anything touching %Lp{} — this module takes integers and decimal counts only, so it belongs in the base layer alongside Math.Tick", "Routing, numeraires and USD, which are task 17", "TWAP or observation-window pricing, which needs a CL pool's observe() and therefore the network"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/math/price.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/math/price_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 The shared vocabulary of the entire price layer: turning raw pool state into a Decimal price with token decimals handled correctly and exactly once.
 
@@ -6617,7 +6619,7 @@ acceptance_criteria = ["The return type is %Analytics.APR.Rate{} carrying at min
 out_of_scope = ["Any total, blended or combined APR figure under any name — this is the point of the task", "Reproducing the aerodrome.finance headline number; if ours differs the response is to state the denominators, never to tune a constant", "Bribe or voting APR for veAERO holders — a different capital base, deliberately unfiled; file it via rmap new when veAERO-holder analytics is scoped", "Historical APR series across epochs, which needs archive reads; v0.1 is current-epoch", "The enforcement tests, goldens and coverage gate, which are task 22 and deliberately a different agent"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/analytics/apr.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/analytics/apr/rate.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/analytics/apr_test.exs", "packages/onchain_aerodrome/test/fixtures/goldens/apr/"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 This is the module most likely to be silently wrong, because a wrong APR is still a plausible-looking number and nothing downstream will object to it. The brief is therefore not compute an APR but make it impossible to report one without its denominator.
 
@@ -6696,7 +6698,7 @@ acceptance_criteria = ["Sugar.Pools.all/1 and a streaming variant drive paginati
 out_of_scope = ["APR, valuation or price resolution — this layer exposes decoded structs", "The account-scoped reads, which are task 24", "Re-implementing pagination rather than delegating to the task-8 driver"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/sugar/pools.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/sugar/tokens.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/sugar/pools_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/sugar/tokens_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 The consumer-facing pool and token read API — the most visible surface in the package, and the one an agent or a human actually calls.
 
@@ -6751,7 +6753,7 @@ acceptance_criteria = ["Router and NFPM addresses are each independently confirm
 out_of_scope = ["Enumerating all deployed gauge instances, which is a read-layer concern since Lp.gauge already gives it per pool", "Capturing governance-only Voter setters", "Any address for a chain other than Base"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/contracts.ex", "packages/onchain_aerodrome/priv/abis/README.md", "packages/onchain_aerodrome/priv/abis/router.json", "packages/onchain_aerodrome/priv/abis/nfpm.json", "packages/onchain_aerodrome/priv/abis/gauge.json", "packages/onchain_aerodrome/test/onchain/aerodrome/contracts_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Capture the ABIs and verify the addresses for the three contracts the full write surface needs and that are entirely absent from this repo today: the Aerodrome Router (swap and v2 liquidity), the Slipstream NonfungiblePositionManager (CL position lifecycle), and the Gauge contracts (stake, unstake, claim).
 
@@ -6782,7 +6784,7 @@ acceptance_criteria = ["A CalldataFixture test helper shells out to the local Fo
 out_of_scope = ["Router, Gauge and NFPM specific tests, which land with each contract's write task reusing this harness", "Signing or broadcasting any transaction", "eth_call state-override tricks, which are non-portable per node-portability rule 1 and explicitly not used here"]
 touches = ["packages/onchain_aerodrome/test/support/calldata_fixture.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/write/voter_calldata_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 This is the shared piece every write task depends on, and it must exist before those tasks write a single test that grades our encoder against our encoder — which is a false green, not weak evidence.
 
@@ -6906,7 +6908,7 @@ acceptance_criteria = ["mint, increaseLiquidity, decreaseLiquidity and collect a
 out_of_scope = ["Position discovery and enumeration, which the read layer covers", "Tick-to-price conversion math, which lives in Math.Tick and Math.Price", "Computing a fair slippage minimum for a mint, which is an analytics concern"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/write/nfpm.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/write/nfpm_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 The write surface for Slipstream concentrated-liquidity position lifecycle management through the NonfungiblePositionManager. This is the most parameter-dense write surface in the package: mint alone carries tick bounds, the pool-identifying tickSpacing — Slipstream's MintParams has NO fee field; the pool key is (token0, token1, tickSpacing), and sqrtPriceX96 in MintParams creates the pool when it does not yet exist — both token amounts and their minimums, a recipient and a deadline.
 
@@ -6935,7 +6937,7 @@ acceptance_criteria = ["For every Write.* golden-calldata test added in tasks 27
 out_of_scope = ["Adopting a general-purpose Elixir mutation-testing library, which is a separate and larger decision", "Mutating anything other than the golden-calldata assertions — analytics mutation grading is task 22's territory", "Changing any write module's encoding; a defect found here is filed as a new task"]
 touches = ["packages/onchain_aerodrome/test/support/calldata_fixture.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/write/"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 This closes the gap the onchain-verification discipline calls a deliberate negative control and mutation-survivor review, without pretending real mutation-testing tooling exists here. It does not, and Base simulation is blocked, so building a mutation framework from scratch is out of proportion to this milestone.
 
@@ -6968,7 +6970,7 @@ acceptance_criteria = ["An integration-tagged test iterates every row of priv/ab
 out_of_scope = ["Struct-decode-level drift detection, which tasks 6 and 7 own", "Auto-remediation: this detector reports, a human re-captures", "Contracts outside priv/abis"]
 touches = ["packages/onchain_aerodrome/test/onchain/aerodrome/integration/abi_drift_test.exs", "packages/onchain_aerodrome/priv/abis/README.md"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Sugar drift is the standing hazard in this package, and the current defence is a paragraph of advice in CLAUDE.md. Build the runnable thing instead.
 
@@ -6996,7 +6998,7 @@ acceptance_criteria = ["An integration-tagged suite exercises Sugar.Pools, Sugar
 out_of_scope = ["Write-path testing, which is milestone v0_2", "Anything requiring EVM simulation", "Tuning any analytics constant to match a frontend figure"]
 touches = ["packages/onchain_aerodrome/test/onchain/aerodrome/integration/read_surface_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 The proof that the v0.1 surface works end to end against live Base state, not only against golden fixtures.
 
@@ -7029,7 +7031,7 @@ acceptance_criteria = ["CHANGELOG.md's Unreleased section becomes a dated 0.1.0 
 out_of_scope = ["Running mix hex.publish, which is a human decision gated on this task passing", "Registering the repo in the harness project registry, which is an operator action and not a file change", "Any API-stability commitment beyond 0.1.0", "The write surface, which ships in v0_2"]
 touches = ["packages/onchain_aerodrome/CHANGELOG.md", "packages/onchain_aerodrome/README.md", "packages/onchain_aerodrome/SECURITY.md", "packages/onchain_aerodrome/lib/onchain_aerodrome.ex", "packages/onchain_aerodrome/mix.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 The capstone for v0_1. Everything else in the milestone has to be true before this closes, and its job is to make the gap between mix ci is green and this is a real consumable hex package disappear.
 
@@ -8168,7 +8170,7 @@ out_of_scope = ["Deploying the compiled bytecode or signing transactions — tha
 touches = ["packages/onchain_js/lib/onchain_js/runtime.ex", "packages/onchain_js/package.json", "packages/onchain_js/README.md"]
 files_to_modify = ["packages/onchain_js/lib/onchain_js/solc.ex", "packages/onchain_js/test/onchain_js/solc_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Load solc-js via QuickBEAM, expose `OnchainJs.Solc.compile/2` that takes `.sol` source and returns `{:ok, %{abi: [...], bytecode: "0x..."}}`. Two consumers:
 
@@ -8270,7 +8272,7 @@ out_of_scope = ["Submitting or settling orders on-chain.", "Comparing 1inch rout
 touches = ["packages/onchain_js/lib/onchain_js/runtime.ex", "packages/onchain_js/package.json"]
 files_to_modify = ["packages/onchain_js/lib/onchain_js/one_inch.ex", "packages/onchain_js/test/onchain_js/one_inch_test.exs"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Load `@1inch/fusion-sdk` via QuickBEAM. DEX aggregation across multiple protocols. Complement to Task 3.
 
@@ -8591,7 +8593,7 @@ acceptance_criteria = ["key_authorization is encoded in its specification positi
 out_of_scope = ["Verification of transaction types other than 0x76 and its 0x78 fee-payer preimage", "Changing the wire layout of transactions that carry no key_authorization"]
 touches = ["packages/onchain_tempo/lib/onchain/tempo/transaction.ex", "packages/onchain_tempo/test/support/tempo_verification/", "packages/onchain_tempo/test/onchain/tempo/verification/", "packages/onchain_tempo/priv/verification/0x76/"]
 assignee = "codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 body = """
 Task 12 built a mutation-graded verification stack for 0x76, but it covers only the 13 named fields plus the sender signature. The optional key_authorization slot is unverified and partly unimplemented: Onchain.Tempo.Transaction.split_base_fields/1 computes has_key_auth (transaction.ex:391) and build_fee_payer_preimage_fields/4 then discards it as _has_key_auth (transaction.ex:396), while the verification oracle's spec_order/0 carries no key_authorization slot at all (test/support/tempo_verification/spec_encoder.ex:10-24). The module's own spec list does include it (transaction.ex:11). Verified by reading those lines on 4d648ce.
 
@@ -8649,3 +8651,66 @@ Consequence today is fail-closed (a verifier comparing the recovered address to 
 Do: normalize to BIP-62 low-s (flip s and recid together) at the recovery boundary in `Onchain.Tempo.Transaction` before calling Curvy, or reject high-s outright with an explicit error — pick one and document it; audit `builder.ex` and any other Curvy recovery call in the eight packages for the same pattern; add a test that feeds the complement-s encoding and asserts either the identical sender or the explicit rejection. Report the bug upstream to libitx/curvy with a minimal reproduction (the maintainer-facing issue text is public-safe; nothing here is embargoed)."""
 created_at = "2026-09-11"
 scored_at = "2026-09-11"
+
+[[task]]
+id = "9002"
+phase = 2000
+bundle = "cartouche_signer_backends"
+status = "pending"
+title = "Put secp256k1 sign and recover behind a native backend — curvy costs ~2.8 ms per signature on the DEX order path"
+scores = { d = 5, b = 7, u = 7 }
+acceptance_criteria = ["A NIF-backed secp256k1 backend implements Cartouche.Signer.Backend and is selectable by configuration; Cartouche.Signer.Curvy remains the default and every existing test passes unchanged", "Byte-equality proof against curvy: for a fixed corpus of private keys and digests (including a digest whose low-s normalization changes s, and at least one 0x00-prefixed key), the new backend's r/s/recovery-id and the recovered address are identical to curvy's — asserted in a test, not reported in prose", "The low-s invariant task 2118 established holds on the new backend, including the sign_direct/4 path", "Recovery goes through the same backend seam: Cartouche.Recover no longer calls Curvy.recover_key/3 directly when a non-curvy backend is selected, and the recovered address matches curvy's over the same corpus", "A benchmark in the repo reports sign and recover timings for both backends on the same inputs; the CHANGELOG quotes the measured numbers rather than an expected speedup", "mix ci passes, and the existing keccak and EIP-712 doctests still pass byte-for-byte"]
+out_of_scope = ["Changing the default signer backend", "Any change to Cartouche.Hash or Hieroglyph's keccak path — already landed in 54539cb", "Batching, async signing, or a signing process pool", "CloudKMS behaviour changes beyond whatever a new recover callback forces"]
+files_to_modify = ["packages/cartouche/lib/cartouche/signer/backend.ex", "packages/cartouche/lib/cartouche/recover.ex", "packages/cartouche/mix.exs"]
+assignee = "grok"
+model = "grok-4.6"
+body = """
+Cartouche's default signer runs secp256k1 in pure Elixir through `curvy`, and that is now
+the dominant cost of every signature it produces.
+
+Measured 2026-09-15 from `bourse` (the DEX client consuming this package) against its
+signing path, as synchronous scheduler time:
+
+    Cartouche.Signer.Curvy sign_hash          2.788 ms
+    Cartouche.Recover recover_signer_address  2.030 ms
+    one signed hyperliquid order (end to end) 5.657 ms
+
+The keccak half of that figure is already gone: commit 54539cb swapped both
+`Cartouche.Hash.keccak/1` and `Hieroglyph`'s `ABI.Math.kec/1` from `ex_sha3` onto the
+`ex_keccak` Rust NIF, taking a 32-byte keccak from 181.96 us to 0.306 us. What remains in
+the 5.657 ms is curvy's ECDSA. A consumer that signs on request — bourse places orders
+per-call, synchronously — pays that per order.
+
+Tasks 2104, 2116 and 2118 built and hardened the contract this work plugs into:
+`Cartouche.Signer.Backend` is a behaviour with `sign_payload/2`, `public_key/1` and
+`algorithm/1`, implemented by `Cartouche.Signer.Curvy` and `Cartouche.Signer.CloudKMS`.
+What none of them supplied is a native implementation. `ex_secp256k1` is the obvious
+candidate: it ships precompiled through `rustler_precompiled`, which this repo already
+depends on for `ex_keccak` and for revm in `onchain_evm`, so it adds no new toolchain
+requirement.
+
+Recovery does not sit behind that contract yet: `Cartouche.Recover.recover_public_key_from_digest/2`
+calls `Curvy.recover_key/3` directly. Recovery is 2.030 ms of the measurement above, so
+leaving it on curvy captures barely half the win.
+
+Open decisions, decided here so an implementer does not answer them silently:
+
+1. **The NIF backend is additive, not the default, in this change.** Curvy stays the
+   default so no consumer's signatures change shape without opting in. Flipping the default
+   is a separate decision once the equivalence evidence below exists.
+2. **`ex_secp256k1` unless a live probe disproves it.** If it cannot produce a recoverable
+   signature carrying the recovery id that `Cartouche.Recover` and EIP-155/EIP-712 need,
+   say so in the delivery with the observed output and use `libsecp256k1` instead — do not
+   paper over it with a curvy fallback inside the backend.
+3. **Recovery moves behind the same behaviour.** Splitting sign and recover across two
+   mechanisms is what made this cost hard to see. Say so in the delivery if a `recover/2`
+   callback cannot be shaped for CloudKMS, which cannot recover at all.
+
+Low-s stays a library-wide invariant per task 2118 — a new backend must not reintroduce the
+bypass that task closed.
+
+The measurement is the reason this is worth doing; it is not a claim that anyone has
+complained about latency.
+"""
+created_at = "2026-09-15"
+scored_at = "2026-09-15"
