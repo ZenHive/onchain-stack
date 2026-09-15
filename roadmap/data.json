@@ -8833,7 +8833,7 @@
       "phase": 4005,
       "bundle": "onchain_aave_v4_support",
       "target_repo": "onchain_aave",
-      "status": "in_progress",
+      "status": "pending",
       "title": "Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs",
       "scores": {
         "d": 4,
