@@ -37,6 +37,7 @@ defmodule Cartouche.Test.LiveTest do
       error = assert_raise ExUnit.AssertionError, fn -> Live.live_rpc_url(endpoint) end
       assert error.message =~ "export #{env}='https://your-mainnet-endpoint'"
       assert error.message =~ "a real result or its real refusal, never a skip"
+      assert error.message =~ "mix integration"
     end
   end
 

@@ -136,7 +136,7 @@ defmodule Cartouche.Test.Live do
 
     Then re-run:
 
-        mix test test/rpc_portability_test.exs --include integration
+        mix integration
     """
   end
 
