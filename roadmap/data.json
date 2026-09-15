@@ -8739,7 +8739,7 @@
       "phase": 4005,
       "bundle": "onchain_aave_v4_support",
       "target_repo": "onchain_aave",
-      "status": "in_progress",
+      "status": "done",
       "title": "Wrap V4 position configuration and position-manager authorization, and close the Taker fork-evidence gap",
       "scores": {
         "d": 4,
@@ -8775,10 +8775,17 @@
         "packages/onchain_aave/test/onchain/aave/v4/deployed_integration_test.exs",
         "packages/onchain_aave/CHANGELOG.md"
       ],
+      "shipped_in": "84d0f4652248cf5af0d747f287cca432f710b77f",
       "body": "V4's delegation surface is what makes a position programmable — Aave ships the three Position Managers explicitly so third-party contracts can act on a position without governance listing, gated by per-reserve allowances the user grants and can revoke. This library wraps only two thirds of it, and one gap blocks ordinary use: there is no way to enable a position manager or to toggle a reserve as collateral. IConfigPositionManager has zero coverage, and ISpoke's setUserPositionManager / setUsingAsCollateral are reachable today only by hand-encoding — the V4 deployed integration test calls them through raw encoded_call rather than through Spoke (verified 2026-08-26 by reading test/onchain/aave/v4/deployed_integration_test.exs and grepping lib/ for the interface names).\n\nThe second half of this task closes an evidence gap on a money path already shipped: of the Taker surface, supply, approve_borrow, borrow and repay are exercised on a fork at a pinned mainnet block, but withdraw, approve_withdraw and the renounce_* counterparts are pinned only by calldata-shape unit tests against an RPC stub. A selector assertion proves the call encodes; it does not prove the deployed contract moves the assets or enforces the allowance. Both halves live in the same module and the same fork test, so they are one session's work.\n\nAUTHORITY: the deployed Ethereum V4 Spokes and Position Managers registered in Onchain.Aave.Contracts, plus Aave-owned aave-v4 ISpoke / IConfigPositionManager / ITakerPositionManager source. Fork execution at a pinned block is the evidence; the existing stub tests are reference material only.\n\nDispatch trigger: authorization and money-path write surface requiring live external-system evidence.\n",
       "created_at": "2026-08-26",
       "started_at": "2026-09-15",
+      "done_at": "2026-09-15",
       "scored_at": "2026-08-26",
+      "implemented": "Landed by cursor via merge-train; reviewer-approved (run run-1789513238471-81c07dda, 84d0f4652248cf5af0d747f287cca432f710b77f).",
+      "delivered_by": "cursor",
+      "verified": true,
+      "verified_by": "claude",
+      "verification_ref": "harness-run:run-1789513238471-81c07dda",
       "cross_repo": []
     },
     {

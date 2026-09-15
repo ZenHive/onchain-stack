@@ -5806,7 +5806,7 @@ id = 4067
 phase = 4005
 bundle = "onchain_aave_v4_support"
 target_repo = "onchain_aave"
-status = "in_progress"
+status = "done"
 title = "Wrap V4 position configuration and position-manager authorization, and close the Taker fork-evidence gap"
 scores = { d = 4, b = 8, u = 8 }
 acceptance_criteria = ["A user can authorize and revoke a position manager on a Spoke and toggle a reserve's collateral flag through this library's public API, without hand-encoding calldata", "The Config Position Manager's on-behalf-of configuration surface is wrapped with the owner as an explicit required argument, consistent with the Giver/Taker wrappers' rule that no entrypoint infers the owner from msg.sender", "withdraw, approve_withdraw and both renounce_* paths are exercised on a pinned-block mainnet fork with balance and allowance assertions, not only by calldata-shape unit tests", "A withdraw attempted beyond the granted allowance fails on the fork and surfaces the tagged insufficient_withdraw_allowance tuple carrying allowance and required amount", "Each new write is pinned by an encoded-calldata unit test asserting the 4-byte selector and argument encoding", "The raw encoded_call usages in the V4 deployed integration test are replaced by the new wrappers", "mix ci passes"]
@@ -5824,9 +5824,16 @@ AUTHORITY: the deployed Ethereum V4 Spokes and Position Managers registered in O
 
 Dispatch trigger: authorization and money-path write surface requiring live external-system evidence.
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1789513238471-81c07dda, 84d0f4652248cf5af0d747f287cca432f710b77f)."
+delivered_by = "cursor"
+verified = true
+verified_by = "claude"
+verification_ref = "harness-run:run-1789513238471-81c07dda"
 created_at = "2026-08-26"
 started_at = "2026-09-15"
 scored_at = "2026-08-26"
+done_at = "2026-09-15"
+shipped_in = "84d0f4652248cf5af0d747f287cca432f710b77f"
 
 [[task]]
 id = 4068
