@@ -8720,7 +8720,7 @@ id = "8014"
 phase = 8003
 bundle = "onchain_tempo_verification"
 target_repo = "onchain_tempo"
-status = "in_progress"
+status = "done"
 title = "Normalize ECDSA signatures to low-s before Curvy recovery in Onchain.Tempo.Transaction and report the curvy recover_key recid bug upstream"
 scores = { d = 3, b = 6, u = 5 }
 markers = ["security"]
@@ -8735,9 +8735,16 @@ curvy 0.3.1 `Curvy.recover_key/3` (deps/curvy/lib/curvy.ex:187-197) binds `recid
 Consequence today is fail-closed (a verifier comparing the recovered address to an expected signer rejects), and it is not a forgery vector — an attacker can submit any (r, s, recid) triple directly, so the mis-recovered point is already reachable. It IS a correctness defect at the boundary this package owns: `sender/1` must recover the same address for every valid encoding of one signature. Moderato itself rejects high-s at broadcast (-32602 'invalid transaction signature', observed live 2026-09-11), so the fix affects verification of never-broadcast envelopes, not chain state.
 
 Do: normalize to BIP-62 low-s (flip s and recid together) at the recovery boundary in `Onchain.Tempo.Transaction` before calling Curvy, or reject high-s outright with an explicit error — pick one and document it; audit `builder.ex` and any other Curvy recovery call in the eight packages for the same pattern; add a test that feeds the complement-s encoding and asserts either the identical sender or the explicit rejection. Report the bug upstream to libitx/curvy with a minimal reproduction (the maintainer-facing issue text is public-safe; nothing here is embargoed)."""
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1789498849292-d581df42, 36a9d91bd016c5aa07b0afd91b84a60d70964825)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1789498849292-d581df42"
 created_at = "2026-09-11"
 started_at = "2026-09-15"
 scored_at = "2026-09-11"
+done_at = "2026-09-15"
+shipped_in = "36a9d91bd016c5aa07b0afd91b84a60d70964825"
 
 [[task]]
 id = "9002"
