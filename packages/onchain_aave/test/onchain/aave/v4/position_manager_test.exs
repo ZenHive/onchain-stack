@@ -18,6 +18,8 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
   @signer_key "0x" <> String.duplicate("11", 32)
   @giver :v4_giver_position_manager
   @taker :v4_taker_position_manager
+  @config :v4_config_position_manager
+  @manager "0x17A54b8d6D9C68e7fa1C7112AC998EA1BA51d11e"
 
   @supply_selector <<0xFD, 0xF3, 0xCA, 0x71>>
   @repay_selector <<0x11, 0x5F, 0x67, 0xA9>>
@@ -115,6 +117,73 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
     test "writes fail on a V3-only network before RPC" do
       assert {:error, {:unknown_contract, :v4_giver_position_manager}} =
                PositionManager.supply(@spoke, @reserve_id, @amount, @owner, network: :arbitrum)
+
+      assert {:error, {:unknown_contract, :v4_config_position_manager}} =
+               PositionManager.set_using_as_collateral_on_behalf_of(
+                 @spoke,
+                 @reserve_id,
+                 true,
+                 @owner,
+                 network: :arbitrum
+               )
+    end
+
+    test "Spoke authorization and collateral writes reject invalid addresses and flags before RPC" do
+      assert {:error, {:invalid_address, "bad"}} =
+               PositionManager.set_user_position_manager("bad", @manager, true, [])
+
+      assert {:error, {:invalid_address, "bad_mgr"}} =
+               PositionManager.set_user_position_manager(@spoke, "bad_mgr", true, [])
+
+      assert {:error, {:invalid_flag, 1}} =
+               PositionManager.set_user_position_manager(@spoke, @manager, 1, [])
+
+      assert {:error, {:invalid_address, "bad"}} =
+               PositionManager.set_using_as_collateral("bad", @reserve_id, true, @owner, [])
+
+      assert {:error, {:invalid_address, "bad_obo"}} =
+               PositionManager.set_using_as_collateral(@spoke, @reserve_id, true, "bad_obo", [])
+
+      assert {:error, {:invalid_reserve_id, -1}} =
+               PositionManager.set_using_as_collateral(@spoke, -1, true, @owner, [])
+
+      assert {:error, {:invalid_flag, "yes"}} =
+               PositionManager.set_using_as_collateral(@spoke, @reserve_id, "yes", @owner, [])
+    end
+
+    test "Config writes reject invalid addresses, reserve ids, and flags before RPC" do
+      assert {:error, {:invalid_address, "bad"}} =
+               PositionManager.set_using_as_collateral_on_behalf_of("bad", @reserve_id, true, @owner, [])
+
+      assert {:error, {:invalid_address, "bad_obo"}} =
+               PositionManager.set_using_as_collateral_on_behalf_of(@spoke, @reserve_id, true, "bad_obo", [])
+
+      assert {:error, {:invalid_reserve_id, -1}} =
+               PositionManager.set_using_as_collateral_on_behalf_of(@spoke, -1, true, @owner, [])
+
+      assert {:error, {:invalid_flag, 0}} =
+               PositionManager.set_using_as_collateral_on_behalf_of(@spoke, @reserve_id, 0, @owner, [])
+
+      assert {:error, {:invalid_address, "bad"}} =
+               PositionManager.update_user_risk_premium_on_behalf_of("bad", @owner, [])
+
+      assert {:error, {:invalid_address, "bad_obo"}} =
+               PositionManager.update_user_risk_premium_on_behalf_of(@spoke, "bad_obo", [])
+
+      assert {:error, {:invalid_address, "bad"}} =
+               PositionManager.update_user_dynamic_config_on_behalf_of("bad", @owner, [])
+
+      assert {:error, {:invalid_address, "bad_obo"}} =
+               PositionManager.update_user_dynamic_config_on_behalf_of(@spoke, "bad_obo", [])
+
+      assert {:error, {:invalid_address, "bad"}} =
+               PositionManager.set_can_set_using_as_collateral_permission("bad", @spender, true, [])
+
+      assert {:error, {:invalid_address, "bad_delegatee"}} =
+               PositionManager.set_can_set_using_as_collateral_permission(@spoke, "bad_delegatee", true, [])
+
+      assert {:error, {:invalid_flag, nil}} =
+               PositionManager.set_can_set_using_as_collateral_permission(@spoke, @spender, nil, [])
     end
   end
 
@@ -213,6 +282,117 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
     end
   end
 
+  describe "Spoke authorization and collateral calldata" do
+    test "setUserPositionManager encodes against the Spoke, not a Position Manager" do
+      {to, calldata} =
+        capture_signer_args(fn ->
+          assert {:error, {:missing_option, :private_key}} =
+                   PositionManager.set_user_position_manager(@spoke, @manager, true, [])
+        end)
+
+      assert to == @spoke
+
+      assert_set_user_position_manager_calldata(
+        calldata,
+        selector("setUserPositionManager(address,bool)"),
+        @manager,
+        true
+      )
+
+      {_to, revoke_data} =
+        capture_signer_args(fn ->
+          assert {:error, {:missing_option, :private_key}} =
+                   PositionManager.set_user_position_manager(@spoke, @manager, false, [])
+        end)
+
+      assert_set_user_position_manager_calldata(
+        revoke_data,
+        selector("setUserPositionManager(address,bool)"),
+        @manager,
+        false
+      )
+    end
+
+    test "setUsingAsCollateral encodes reserve id, flag, and owner against the Spoke" do
+      {to, calldata} =
+        capture_signer_args(fn ->
+          assert {:error, {:missing_option, :private_key}} =
+                   PositionManager.set_using_as_collateral(@spoke, @reserve_id, true, @owner, [])
+        end)
+
+      assert to == @spoke
+
+      assert_set_using_as_collateral_calldata(
+        calldata,
+        selector("setUsingAsCollateral(uint256,bool,address)"),
+        @reserve_id,
+        true,
+        @owner
+      )
+    end
+  end
+
+  describe "Config Position Manager calldata" do
+    test "setUsingAsCollateralOnBehalfOf encodes spoke, reserve, flag, and owner against Config" do
+      {to, calldata} =
+        capture_signer_args(fn ->
+          assert {:error, {:missing_option, :private_key}} =
+                   PositionManager.set_using_as_collateral_on_behalf_of(@spoke, @reserve_id, false, @owner, [])
+        end)
+
+      assert to == Contracts.address!(@config)
+
+      assert_config_collateral_calldata(
+        calldata,
+        selector("setUsingAsCollateralOnBehalfOf(address,uint256,bool,address)"),
+        @spoke,
+        @reserve_id,
+        false,
+        @owner
+      )
+    end
+
+    test "updateUserRiskPremiumOnBehalfOf and updateUserDynamicConfigOnBehalfOf encode owner against Config" do
+      {premium_to, premium_data} =
+        capture_signer_args(fn ->
+          assert {:error, {:missing_option, :private_key}} =
+                   PositionManager.update_user_risk_premium_on_behalf_of(@spoke, @owner, [])
+        end)
+
+      {config_to, config_data} =
+        capture_signer_args(fn ->
+          assert {:error, {:missing_option, :private_key}} =
+                   PositionManager.update_user_dynamic_config_on_behalf_of(@spoke, @owner, [])
+        end)
+
+      assert premium_to == Contracts.address!(@config)
+      assert config_to == premium_to
+      premium_selector = selector("updateUserRiskPremiumOnBehalfOf(address,address)")
+      config_selector = selector("updateUserDynamicConfigOnBehalfOf(address,address)")
+      assert_config_owner_calldata(premium_data, premium_selector, @spoke, @owner)
+      assert_config_owner_calldata(config_data, config_selector, @spoke, @owner)
+      refute premium_selector == config_selector
+    end
+
+    test "setCanSetUsingAsCollateralPermission encodes delegatee and status against Config" do
+      {to, calldata} =
+        capture_signer_args(fn ->
+          assert {:error, {:missing_option, :private_key}} =
+                   PositionManager.set_can_set_using_as_collateral_permission(@spoke, @spender, true, [])
+        end)
+
+      assert to == Contracts.address!(@config)
+
+      assert_config_permission_calldata(
+        calldata,
+        selector("setCanSetUsingAsCollateralPermission(address,address,bool)"),
+        @spoke,
+        @spender,
+        true
+      )
+    end
+  end
+
   describe "owner is never inferred from the signer" do
     test "supply signed with one key encodes a different on_behalf_of" do
       signer = Signer.address_from_key!(@signer_key)
@@ -234,6 +414,35 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
       encoded_owner = :binary.decode_unsigned(obo_arg)
       assert encoded_owner == :binary.decode_unsigned(pad_left(owner_bin))
       refute encoded_owner == :binary.decode_unsigned(pad_left(signer_bin))
+    end
+
+    test "Spoke and Config collateral writes encode a different on_behalf_of than the signer" do
+      signer = Signer.address_from_key!(@signer_key)
+      refute String.downcase(signer) == String.downcase(@owner)
+
+      {_to, spoke_calldata, _opts} =
+        Onchain.TraceCase.capture_signer_call(fn ->
+          assert {:error, {:missing_option, :chain_id}} =
+                   PositionManager.set_using_as_collateral(@spoke, @reserve_id, true, @owner, private_key: @signer_key)
+        end)
+
+      {_to, config_calldata, _opts} =
+        Onchain.TraceCase.capture_signer_call(fn ->
+          assert {:error, {:missing_option, :chain_id}} =
+                   PositionManager.set_using_as_collateral_on_behalf_of(@spoke, @reserve_id, true, @owner,
+                     private_key: @signer_key
+                   )
+        end)
+
+      {_to, premium_calldata, _opts} =
+        Onchain.TraceCase.capture_signer_call(fn ->
+          assert {:error, {:missing_option, :chain_id}} =
+                   PositionManager.update_user_risk_premium_on_behalf_of(@spoke, @owner, private_key: @signer_key)
+        end)
+
+      assert_encoded_owner(spoke_calldata, 2, @owner, signer)
+      assert_encoded_owner(config_calldata, 3, @owner, signer)
+      assert_encoded_owner(premium_calldata, 1, @owner, signer)
     end
   end
 
@@ -372,6 +581,79 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
     assert :binary.decode_unsigned(spoke_arg) == :binary.decode_unsigned(pad_left(spoke_bin))
     assert :binary.decode_unsigned(rid_arg) == reserve_id
     assert :binary.decode_unsigned(owner_arg) == :binary.decode_unsigned(pad_left(owner_bin))
+  end
+
+  defp assert_set_user_position_manager_calldata(calldata, selector, manager, approve) do
+    <<got_selector::binary-size(4), manager_arg::binary-size(32), flag_arg::binary-size(32)>> = calldata
+
+    assert got_selector == selector
+    {:ok, manager_bin} = Address.validate(manager)
+    assert :binary.decode_unsigned(manager_arg) == :binary.decode_unsigned(pad_left(manager_bin))
+    assert :binary.decode_unsigned(flag_arg) == bool_word(approve)
+  end
+
+  defp assert_set_using_as_collateral_calldata(calldata, selector, reserve_id, using_as_collateral, owner) do
+    <<got_selector::binary-size(4), rid_arg::binary-size(32), flag_arg::binary-size(32), owner_arg::binary-size(32)>> =
+      calldata
+
+    assert got_selector == selector
+    {:ok, owner_bin} = Address.validate(owner)
+    assert :binary.decode_unsigned(rid_arg) == reserve_id
+    assert :binary.decode_unsigned(flag_arg) == bool_word(using_as_collateral)
+    assert :binary.decode_unsigned(owner_arg) == :binary.decode_unsigned(pad_left(owner_bin))
+  end
+
+  defp assert_config_collateral_calldata(calldata, selector, spoke, reserve_id, using_as_collateral, owner) do
+    <<got_selector::binary-size(4), spoke_arg::binary-size(32), rid_arg::binary-size(32), flag_arg::binary-size(32),
+      owner_arg::binary-size(32)>> = calldata
+
+    assert got_selector == selector
+    {:ok, spoke_bin} = Address.validate(spoke)
+    {:ok, owner_bin} = Address.validate(owner)
+    assert :binary.decode_unsigned(spoke_arg) == :binary.decode_unsigned(pad_left(spoke_bin))
+    assert :binary.decode_unsigned(rid_arg) == reserve_id
+    assert :binary.decode_unsigned(flag_arg) == bool_word(using_as_collateral)
+    assert :binary.decode_unsigned(owner_arg) == :binary.decode_unsigned(pad_left(owner_bin))
+  end
+
+  defp assert_config_owner_calldata(calldata, selector, spoke, owner) do
+    <<got_selector::binary-size(4), spoke_arg::binary-size(32), owner_arg::binary-size(32)>> = calldata
+
+    assert got_selector == selector
+    {:ok, spoke_bin} = Address.validate(spoke)
+    {:ok, owner_bin} = Address.validate(owner)
+    assert :binary.decode_unsigned(spoke_arg) == :binary.decode_unsigned(pad_left(spoke_bin))
+    assert :binary.decode_unsigned(owner_arg) == :binary.decode_unsigned(pad_left(owner_bin))
+  end
+
+  defp assert_config_permission_calldata(calldata, selector, spoke, delegatee, status) do
+    <<got_selector::binary-size(4), spoke_arg::binary-size(32), delegatee_arg::binary-size(32),
+      flag_arg::binary-size(32)>> =
+      calldata
+
+    assert got_selector == selector
+    {:ok, spoke_bin} = Address.validate(spoke)
+    {:ok, delegatee_bin} = Address.validate(delegatee)
+    assert :binary.decode_unsigned(spoke_arg) == :binary.decode_unsigned(pad_left(spoke_bin))
+    assert :binary.decode_unsigned(delegatee_arg) == :binary.decode_unsigned(pad_left(delegatee_bin))
+    assert :binary.decode_unsigned(flag_arg) == bool_word(status)
+  end
+
+  defp assert_encoded_owner(calldata, arg_index, owner, signer) do
+    <<_selector::binary-size(4), args::binary>> = calldata
+    owner_arg = binary_part(args, arg_index * 32, 32)
+    {:ok, owner_bin} = Address.validate(owner)
+    {:ok, signer_bin} = Address.validate(signer)
+    encoded_owner = :binary.decode_unsigned(owner_arg)
+    assert encoded_owner == :binary.decode_unsigned(pad_left(owner_bin))
+    refute encoded_owner == :binary.decode_unsigned(pad_left(signer_bin))
+  end
+
+  defp bool_word(true), do: 1
+  defp bool_word(false), do: 0
+
+  defp selector(signature) do
+    binary_part(Cartouche.Hash.keccak(signature), 0, 4)
   end
 
   defp pad_left(bin) when byte_size(bin) <= 32 do

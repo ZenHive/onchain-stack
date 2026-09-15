@@ -8,8 +8,9 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
   - Main Spoke: `0x94e7A5dCbE816e498b89aB752661904E2F56c485`
   - Main Spoke Oracle: `0x99B2B6CEa9C3D2fd8F4d90f86741C44B212a6127`
   - Core WETH Tokenization Spoke: `0x7320CF22Ac095bA2a2e0a652F77efB836c2E751b`
-  - Giver/Taker Position Managers: `0x17A54b8d6D9C68e7fa1C7112AC998EA1BA51d11e` /
-    `0x6c044c0D3801499bCAbfAd458B70880bc518e9F7`
+  - Giver/Taker/Config Position Managers: `0x17A54b8d6D9C68e7fa1C7112AC998EA1BA51d11e` /
+    `0x6c044c0D3801499bCAbfAd458B70880bc518e9F7` /
+    `0x51305839CE822a7b4b12AA7D86eA7005052d575c`
 
   At that block, Main Spoke WETH supply and debt equal the Core Hub's
   per-Spoke accounting; the Tokenization Spoke's ERC-4626 totals and previews
@@ -17,11 +18,15 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
   the user view rounds down by one wei, borrowing 1 WETH creates one extra wei
   of debt from share rounding, and Giver repayment clears that debt. Before
   approval, the deployed Taker returns
-  `InsufficientBorrowAllowance(0, 1_000_000_000_000_000_000)`.
+  `InsufficientBorrowAllowance(0, 1_000_000_000_000_000_000)`. After
+  `approve_withdraw(1 wei)`, a 1 ETH withdraw returns
+  `InsufficientWithdrawAllowance(1, 1_000_000_000_000_000_000)`; a later
+  withdraw of the granted amount moves WETH and both `renounce_*` paths
+  clear the remaining allowances.
 
   The exercised contracts are specified by Aave's `IHub`, `ISpoke`,
-  `ITokenizationSpoke`, `GiverPositionManager`, and `TakerPositionManager`
-  sources in `https://github.com/aave/aave-v4`.
+  `ITokenizationSpoke`, `GiverPositionManager`, `TakerPositionManager`, and
+  `IConfigPositionManager` sources in `https://github.com/aave/aave-v4`.
   """
 
   use ExUnit.Case, async: false
@@ -52,6 +57,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
   @core_weth_tokenization_spoke "0x7320CF22Ac095bA2a2e0a652F77efB836c2E751b"
   @giver "0x17A54b8d6D9C68e7fa1C7112AC998EA1BA51d11e"
   @taker "0x6c044c0D3801499bCAbfAd458B70880bc518e9F7"
+  @config "0x51305839CE822a7b4b12AA7D86eA7005052d575c"
   @weth "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
   @weth_asset_id 0
   @weth_reserve_id 0
@@ -80,6 +86,8 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
   @supply_amount 10_000_000_000_000_000_000
   @borrow_amount 1_000_000_000_000_000_000
   @repay_amount 2_000_000_000_000_000_000
+  @withdraw_amount 1_000_000_000_000_000_000
+  @tiny_withdraw_allowance 1
   @rounding_delta_wei 1
   @fork_weth_balance @supply_amount + @borrow_amount
   @fork_eth_balance_wei 100_000_000_000_000_000_000
@@ -219,14 +227,28 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
     assert base_supplied == base_added
     assert base_debt == base_owed
 
-    [supply_call, approve_borrow_call, borrow_call, repay_call] = signed_position_manager_calls()
-    assert_destination(supply_call, @giver)
-    assert_destination(approve_borrow_call, @taker)
-    assert_destination(borrow_call, @taker)
-    assert_destination(repay_call, @giver)
+    writes = signed_position_manager_calls()
+    assert_destination(writes.authorize_giver, @main_spoke)
+    assert_destination(writes.supply, @giver)
+    assert_destination(writes.enable_collateral, @main_spoke)
+    assert_destination(writes.authorize_config, @main_spoke)
+    assert_destination(writes.grant_collateral_permission, @config)
+    assert_destination(writes.config_disable_collateral, @config)
+    assert_destination(writes.config_reenable_collateral, @config)
+    assert_destination(writes.authorize_taker, @main_spoke)
+    assert_destination(writes.approve_borrow, @taker)
+    assert_destination(writes.borrow, @taker)
+    assert_destination(writes.repay, @giver)
+    assert_destination(writes.approve_withdraw_tiny, @taker)
+    assert_destination(writes.withdraw_over_allowance, @taker)
+    assert_destination(writes.approve_withdraw, @taker)
+    assert_destination(writes.withdraw, @taker)
+    assert_destination(writes.renounce_borrow, @taker)
+    assert_destination(writes.renounce_withdraw, @taker)
+    assert_destination(writes.revoke_taker, @main_spoke)
 
     fork_opts = fork_opts(rpc_url)
-    {borrow_to, borrow_data} = borrow_call
+    {borrow_to, borrow_data} = writes.borrow
 
     assert {:ok, unauthorized} = EVM.simulate_transaction(borrow_to, borrow_data, fork_opts)
     refute unauthorized.success
@@ -240,14 +262,11 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
           address_bin(@giver),
           @supply_amount + @repay_amount
         ]),
-        encoded_call(@main_spoke, "setUserPositionManager(address,bool)", [
-          address_bin(@giver),
-          true
-        ]),
-        supply_call,
-        encoded_call(@main_spoke, "setUsingAsCollateral(uint256,bool,address)", [
+        writes.authorize_giver,
+        writes.supply,
+        writes.enable_collateral,
+        encoded_call(@main_spoke, "getUserReserveStatus(uint256,address)", [
           @weth_reserve_id,
-          true,
           address_bin(@fork_user)
         ]),
         encoded_call(@main_spoke, "getUserSuppliedAssets(uint256,address)", [
@@ -259,22 +278,11 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
           @weth_asset_id,
           address_bin(@main_spoke)
         ]),
-        encoded_call(@main_spoke, "setUserPositionManager(address,bool)", [
-          address_bin(@taker),
-          true
-        ]),
-        approve_borrow_call,
-        encoded_call(
-          @taker,
-          "borrowAllowance(address,uint256,address,address)",
-          allowance_args()
-        ),
-        borrow_call,
-        encoded_call(
-          @taker,
-          "borrowAllowance(address,uint256,address,address)",
-          allowance_args()
-        ),
+        writes.authorize_taker,
+        writes.approve_borrow,
+        encoded_call(@taker, "borrowAllowance(address,uint256,address,address)", allowance_args()),
+        writes.borrow,
+        encoded_call(@taker, "borrowAllowance(address,uint256,address,address)", allowance_args()),
         encoded_call(@main_spoke, "getUserTotalDebt(uint256,address)", [
           @weth_reserve_id,
           address_bin(@fork_user)
@@ -284,7 +292,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
           @weth_asset_id,
           address_bin(@main_spoke)
         ]),
-        repay_call,
+        writes.repay,
         encoded_call(@main_spoke, "getUserTotalDebt(uint256,address)", [
           @weth_reserve_id,
           address_bin(@fork_user)
@@ -297,13 +305,66 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
         encoded_call(@main_spoke, "getUserSuppliedAssets(uint256,address)", [
           @weth_reserve_id,
           address_bin(@fork_user)
+        ]),
+        encoded_call(@weth, "balanceOf(address)", [address_bin(@fork_user)]),
+        writes.authorize_config,
+        writes.grant_collateral_permission,
+        writes.config_disable_collateral,
+        encoded_call(@main_spoke, "getUserReserveStatus(uint256,address)", [
+          @weth_reserve_id,
+          address_bin(@fork_user)
+        ]),
+        writes.config_reenable_collateral,
+        encoded_call(@main_spoke, "getUserReserveStatus(uint256,address)", [
+          @weth_reserve_id,
+          address_bin(@fork_user)
+        ]),
+        writes.approve_withdraw_tiny,
+        encoded_call(
+          @taker,
+          "withdrawAllowance(address,uint256,address,address)",
+          allowance_args()
+        ),
+        writes.withdraw_over_allowance,
+        writes.approve_withdraw,
+        encoded_call(@taker, "withdrawAllowance(address,uint256,address,address)", allowance_args()),
+        writes.withdraw,
+        encoded_call(@main_spoke, "getUserSuppliedAssets(uint256,address)", [
+          @weth_reserve_id,
+          address_bin(@fork_user)
+        ]),
+        encoded_call(@weth, "balanceOf(address)", [address_bin(@fork_user)]),
+        encoded_call(
+          @taker,
+          "withdrawAllowance(address,uint256,address,address)",
+          allowance_args()
+        ),
+        writes.renounce_borrow,
+        writes.renounce_withdraw,
+        encoded_call(@taker, "borrowAllowance(address,uint256,address,address)", allowance_args()),
+        encoded_call(
+          @taker,
+          "withdrawAllowance(address,uint256,address,address)",
+          allowance_args()
+        ),
+        writes.revoke_taker,
+        encoded_call(@main_spoke, "isPositionManager(address,address)", [
+          address_bin(@fork_user),
+          address_bin(@taker)
         ])
       ]
 
     assert {:ok, results} = EVM.simulate_batch(calls, fork_opts)
 
+    over_allowance_index = Enum.find_index(calls, &(&1 == writes.withdraw_over_allowance))
+    assert is_integer(over_allowance_index)
+
     Enum.with_index(results, fn result, index ->
-      assert result.success, "fork call #{index} reverted with #{result.output}"
+      if index == over_allowance_index do
+        refute result.success, "fork call #{index} should have reverted"
+      else
+        assert result.success, "fork call #{index} reverted with #{result.output}"
+      end
     end)
 
     [
@@ -311,6 +372,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
       _giver_approval,
       supply_result,
       _collateral_enablement,
+      collateral_status_after_enable,
       supplied_result,
       reserve_supplied_result,
       hub_added_result,
@@ -326,7 +388,29 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
       final_user_debt_result,
       final_reserve_debt_result,
       final_hub_owed_result,
-      final_supplied_result
+      final_supplied_result,
+      weth_before_withdraw,
+      _config_approval,
+      _collateral_permission,
+      _config_disable,
+      collateral_status_after_disable,
+      _config_reenable,
+      collateral_status_after_reenable,
+      _approve_withdraw_tiny,
+      tiny_withdraw_allowance_result,
+      over_allowance_withdraw,
+      _approve_withdraw,
+      withdraw_allowance_before_result,
+      withdraw_result,
+      supplied_after_withdraw_result,
+      weth_after_withdraw,
+      withdraw_allowance_after_result,
+      _renounce_borrow,
+      _renounce_withdraw,
+      borrow_allowance_after_renounce,
+      withdraw_allowance_after_renounce,
+      _revoke_taker,
+      taker_authorized_after_revoke
     ] = results
 
     {supplied_shares, supplied_amount} = decode_pair!(supply_result)
@@ -340,6 +424,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
     assert reserve_supplied == base_supplied + supplied_amount
     assert hub_added == base_added + supplied_amount
     assert reserve_supplied == hub_added
+    assert decode_status!(collateral_status_after_enable) == {true, false}
 
     assert decode_uint!(allowance_before_result) == @borrow_amount
 
@@ -363,39 +448,106 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
     assert decode_uint!(final_reserve_debt_result) == base_debt
     assert decode_uint!(final_hub_owed_result) == base_owed
     assert decode_uint!(final_supplied_result) == supplied_assets
+
+    assert decode_status!(collateral_status_after_disable) == {false, false}
+    assert decode_status!(collateral_status_after_reenable) == {true, false}
+
+    assert decode_uint!(tiny_withdraw_allowance_result) == @tiny_withdraw_allowance
+
+    assert {:error, {:insufficient_withdraw_allowance, @tiny_withdraw_allowance, @withdraw_amount}} =
+             PositionManager.decode_revert(over_allowance_withdraw.output)
+
+    assert decode_uint!(withdraw_allowance_before_result) == @withdraw_amount
+
+    {withdrawn_shares, withdrawn_amount} = decode_pair!(withdraw_result)
+    assert withdrawn_shares > 0
+    assert withdrawn_amount == @withdraw_amount
+    assert decode_uint!(supplied_after_withdraw_result) == supplied_assets - @withdraw_amount
+    assert decode_uint!(weth_after_withdraw) == decode_uint!(weth_before_withdraw) + @withdraw_amount
+    assert decode_uint!(withdraw_allowance_after_result) == 0
+    assert decode_uint!(borrow_allowance_after_renounce) == 0
+    assert decode_uint!(withdraw_allowance_after_renounce) == 0
+    refute decode_bool!(taker_authorized_after_revoke)
   end
 
   @spec live_opts!() :: keyword()
   defp live_opts!, do: [block: @evidence_block] ++ RPCCase.rpc_opts!()
 
-  @spec signed_position_manager_calls() :: [{String.t(), String.t()}]
+  @spec signed_position_manager_calls() :: %{atom() => {String.t(), String.t()}}
   defp signed_position_manager_calls do
     seen = start_supervised!({Agent, fn -> [] end})
     url = RPCStub.start(RPCStub.send_tx_handler(@test_tx_hash, seen))
     write_opts = RPCStub.write_opts(url, private_key: @fork_private_key)
 
     actions = [
-      &PositionManager.supply(@main_spoke, @weth_reserve_id, @supply_amount, @fork_user, &1),
-      &PositionManager.approve_borrow(
-        @main_spoke,
-        @weth_reserve_id,
-        @fork_user,
-        @borrow_amount,
-        &1
-      ),
-      &PositionManager.borrow(@main_spoke, @weth_reserve_id, @borrow_amount, @fork_user, &1),
-      &PositionManager.repay(@main_spoke, @weth_reserve_id, @repay_amount, @fork_user, &1)
+      authorize_giver: &PositionManager.set_user_position_manager(@main_spoke, @giver, true, &1),
+      supply: &PositionManager.supply(@main_spoke, @weth_reserve_id, @supply_amount, @fork_user, &1),
+      enable_collateral: &PositionManager.set_using_as_collateral(@main_spoke, @weth_reserve_id, true, @fork_user, &1),
+      authorize_taker: &PositionManager.set_user_position_manager(@main_spoke, @taker, true, &1),
+      approve_borrow: &PositionManager.approve_borrow(@main_spoke, @weth_reserve_id, @fork_user, @borrow_amount, &1),
+      borrow: &PositionManager.borrow(@main_spoke, @weth_reserve_id, @borrow_amount, @fork_user, &1),
+      repay: &PositionManager.repay(@main_spoke, @weth_reserve_id, @repay_amount, @fork_user, &1),
+      authorize_config: &PositionManager.set_user_position_manager(@main_spoke, @config, true, &1),
+      grant_collateral_permission:
+        &PositionManager.set_can_set_using_as_collateral_permission(@main_spoke, @fork_user, true, &1),
+      config_disable_collateral:
+        &PositionManager.set_using_as_collateral_on_behalf_of(
+          @main_spoke,
+          @weth_reserve_id,
+          false,
+          @fork_user,
+          &1
+        ),
+      config_reenable_collateral:
+        &PositionManager.set_using_as_collateral_on_behalf_of(
+          @main_spoke,
+          @weth_reserve_id,
+          true,
+          @fork_user,
+          &1
+        ),
+      approve_withdraw_tiny:
+        &PositionManager.approve_withdraw(
+          @main_spoke,
+          @weth_reserve_id,
+          @fork_user,
+          @tiny_withdraw_allowance,
+          &1
+        ),
+      withdraw_over_allowance:
+        &PositionManager.withdraw(
+          @main_spoke,
+          @weth_reserve_id,
+          @withdraw_amount,
+          @fork_user,
+          &1
+        ),
+      approve_withdraw:
+        &PositionManager.approve_withdraw(
+          @main_spoke,
+          @weth_reserve_id,
+          @fork_user,
+          @withdraw_amount,
+          &1
+        ),
+      withdraw: &PositionManager.withdraw(@main_spoke, @weth_reserve_id, @withdraw_amount, @fork_user, &1),
+      renounce_borrow: &PositionManager.renounce_borrow_allowance(@main_spoke, @weth_reserve_id, @fork_user, &1),
+      renounce_withdraw: &PositionManager.renounce_withdraw_allowance(@main_spoke, @weth_reserve_id, @fork_user, &1),
+      revoke_taker: &PositionManager.set_user_position_manager(@main_spoke, @taker, false, &1)
     ]
 
     actions
     |> Enum.with_index()
-    |> Enum.each(fn {action, nonce} ->
+    |> Enum.each(fn {{_name, action}, nonce} ->
       assert {:ok, @test_tx_hash} = action.(Keyword.put(write_opts, :nonce, nonce))
     end)
 
-    seen
-    |> Agent.get(&Enum.reverse/1)
-    |> Enum.map(&decode_signed_call!/1)
+    decoded =
+      seen
+      |> Agent.get(&Enum.reverse/1)
+      |> Enum.map(&decode_signed_call!/1)
+
+    Map.new(Enum.zip(Keyword.keys(actions), decoded))
   end
 
   @spec decode_signed_call!(String.t()) :: {String.t(), String.t()}
@@ -456,6 +608,18 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
   defp decode_pair!(%{output: output}) do
     assert {:ok, [first, second]} = ABI.decode_types("(uint256,uint256)", output)
     {first, second}
+  end
+
+  @spec decode_bool!(EVM.tx_result()) :: boolean()
+  defp decode_bool!(%{output: output}) do
+    assert {:ok, [value]} = ABI.decode_types("(bool)", output)
+    value
+  end
+
+  @spec decode_status!(EVM.tx_result()) :: {boolean(), boolean()}
+  defp decode_status!(%{output: output}) do
+    assert {:ok, [using_as_collateral, borrowing]} = ABI.decode_types("(bool,bool)", output)
+    {using_as_collateral, borrowing}
   end
 
   @spec address_bin(String.t()) :: binary()

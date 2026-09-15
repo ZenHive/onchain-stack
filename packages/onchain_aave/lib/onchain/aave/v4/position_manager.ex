@@ -1,24 +1,27 @@
 defmodule Onchain.Aave.V4.PositionManager do
   @moduledoc """
-  Aave V4 Giver and Taker Position Manager write wrappers, plus Taker allowances.
+  Aave V4 Giver, Taker, and Config Position Manager write wrappers, plus
+  Spoke position-manager authorization.
 
   V4 has no Pool. Supply and repay go through the Giver Position Manager
   (`:v4_giver_position_manager`); borrow and withdraw go through the Taker
-  (`:v4_taker_position_manager`). Reserves are addressed by a Spoke-scoped
-  `reserve_id` (from `Onchain.Aave.V4.Spoke`), not by asset address.
+  (`:v4_taker_position_manager`); collateral and risk-premium configuration
+  go through the Config Position Manager (`:v4_config_position_manager`) or
+  the Spoke itself. Reserves are addressed by a Spoke-scoped `reserve_id`
+  (from `Onchain.Aave.V4.Spoke`), not by asset address.
 
   Every `*OnBehalfOf` and allowance-gated entrypoint takes the position owner
   as an explicit required argument. The wrappers never default the owner to
-  the signer address. `approve_borrow/5` and `approve_withdraw/5` have no
-  owner argument because the on-chain functions grant allowance from
-  `msg.sender`.
+  the signer address. `approve_borrow/5`, `approve_withdraw/5`,
+  `set_user_position_manager/4`, and `set_can_set_using_as_collateral_permission/4`
+  have no owner argument because the on-chain functions grant from `msg.sender`.
 
   ## Error Format
 
   | Source | Error Shape |
   |--------|-------------|
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
-  | Amount / reserve id | `{:error, {:invalid_amount, input}}`, `{:error, {:invalid_reserve_id, input}}` |
+  | Amount / reserve id / flag | `{:error, {:invalid_amount, input}}`, `{:error, {:invalid_reserve_id, input}}`, `{:error, {:invalid_flag, input}}` |
   | `Onchain.Aave.Contracts.address/2` | `{:error, {:unsupported_network, network}}`, `{:error, {:unknown_contract, key}}` |
   | Taker allowance reverts | `{:error, {:insufficient_borrow_allowance, allowance, required}}`, `{:error, {:insufficient_withdraw_allowance, allowance, required}}` |
   | `Onchain.ABI.encode_call/2` | `{:error, {:encode_error, reason}}` |
@@ -39,6 +42,12 @@ defmodule Onchain.Aave.V4.PositionManager do
   | `renounce_withdraw_allowance/4` | Taker `renounceWithdrawAllowance` |
   | `borrow_allowance/5` | Taker `borrowAllowance` |
   | `withdraw_allowance/5` | Taker `withdrawAllowance` |
+  | `set_user_position_manager/4` | Spoke `setUserPositionManager` |
+  | `set_using_as_collateral/5` | Spoke `setUsingAsCollateral` |
+  | `set_using_as_collateral_on_behalf_of/5` | Config `setUsingAsCollateralOnBehalfOf` |
+  | `update_user_risk_premium_on_behalf_of/3` | Config `updateUserRiskPremiumOnBehalfOf` |
+  | `update_user_dynamic_config_on_behalf_of/3` | Config `updateUserDynamicConfigOnBehalfOf` |
+  | `set_can_set_using_as_collateral_permission/4` | Config `setCanSetUsingAsCollateralPermission` |
   | `decode_revert/1` | Decode Taker allowance custom-error revert data |
   """
 
@@ -57,6 +66,7 @@ defmodule Onchain.Aave.V4.PositionManager do
 
   @giver :v4_giver_position_manager
   @taker :v4_taker_position_manager
+  @config :v4_config_position_manager
 
   @supply_sig "supplyOnBehalfOf(address,uint256,uint256,address)"
   @repay_sig "repayOnBehalfOf(address,uint256,uint256,address)"
@@ -68,6 +78,12 @@ defmodule Onchain.Aave.V4.PositionManager do
   @renounce_withdraw_sig "renounceWithdrawAllowance(address,uint256,address)"
   @borrow_allowance_sig "borrowAllowance(address,uint256,address,address)"
   @withdraw_allowance_sig "withdrawAllowance(address,uint256,address,address)"
+  @set_user_position_manager_sig "setUserPositionManager(address,bool)"
+  @set_using_as_collateral_sig "setUsingAsCollateral(uint256,bool,address)"
+  @set_using_as_collateral_obo_sig "setUsingAsCollateralOnBehalfOf(address,uint256,bool,address)"
+  @update_risk_premium_sig "updateUserRiskPremiumOnBehalfOf(address,address)"
+  @update_dynamic_config_sig "updateUserDynamicConfigOnBehalfOf(address,address)"
+  @set_can_set_collateral_permission_sig "setCanSetUsingAsCollateralPermission(address,address,bool)"
 
   @borrow_allowance_error "InsufficientBorrowAllowance(uint256,uint256)"
   @withdraw_allowance_error "InsufficientWithdrawAllowance(uint256,uint256)"
@@ -78,6 +94,9 @@ defmodule Onchain.Aave.V4.PositionManager do
   @amount_desc "Raw integer amount in underlying token units"
   @owner_desc "Position owner. Required; never defaulted to the signer"
   @spender_desc "Address receiving (or holding) the Taker allowance"
+  @manager_desc "Position manager address to authorize or revoke"
+  @delegatee_desc "Address receiving (or holding) a Config permission"
+  @flag_desc "Boolean flag; rejected unless it is exactly true or false"
   @write_opts_desc "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :network (default :ethereum), :gas_limit"
   @read_opts_desc "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
   @tx_hash_desc "Transaction hash hex string"
@@ -260,6 +279,140 @@ defmodule Onchain.Aave.V4.PositionManager do
     allowance_view(@withdraw_allowance_sig, spoke, reserve_id, owner, spender, opts)
   end
 
+  # --- set_user_position_manager ---
+
+  api(:set_user_position_manager, "Authorize or revoke a position manager on a Spoke for the signer (msg.sender).",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      position_manager: [kind: :value, description: @manager_desc],
+      approve: [kind: :value, description: @flag_desc],
+      opts: [kind: :value, description: @write_opts_desc]
+    ],
+    returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
+  )
+
+  @spec set_user_position_manager(address(), address(), boolean(), keyword()) :: result(String.t())
+  def set_user_position_manager(spoke, position_manager, approve, opts) do
+    with {:ok, _spoke_bin} <- Address.validate(spoke),
+         {:ok, manager_bin} <- Address.validate(position_manager),
+         {:ok, approve} <- validate_bool(approve) do
+      send_spoke_tx(spoke, @set_user_position_manager_sig, [manager_bin, approve], opts)
+    end
+  end
+
+  # --- set_using_as_collateral ---
+
+  api(:set_using_as_collateral, "Toggle a Spoke reserve as collateral on behalf of a position owner.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      reserve_id: [kind: :value, description: @reserve_id_desc],
+      using_as_collateral: [kind: :value, description: @flag_desc],
+      on_behalf_of: [kind: :value, description: @owner_desc],
+      opts: [kind: :value, description: @write_opts_desc]
+    ],
+    returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
+  )
+
+  @spec set_using_as_collateral(address(), non_neg_integer(), boolean(), address(), keyword()) :: result(String.t())
+  def set_using_as_collateral(spoke, reserve_id, using_as_collateral, on_behalf_of, opts) do
+    with {:ok, _spoke_bin} <- Address.validate(spoke),
+         {:ok, reserve_id} <- validate_uint(reserve_id, :invalid_reserve_id),
+         {:ok, using_as_collateral} <- validate_bool(using_as_collateral),
+         {:ok, owner_bin} <- Address.validate(on_behalf_of) do
+      send_spoke_tx(spoke, @set_using_as_collateral_sig, [reserve_id, using_as_collateral, owner_bin], opts)
+    end
+  end
+
+  # --- set_using_as_collateral_on_behalf_of ---
+
+  api(
+    :set_using_as_collateral_on_behalf_of,
+    "Toggle a Spoke reserve as collateral via the Config Position Manager on behalf of a position owner.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      reserve_id: [kind: :value, description: @reserve_id_desc],
+      using_as_collateral: [kind: :value, description: @flag_desc],
+      on_behalf_of: [kind: :value, description: @owner_desc],
+      opts: [kind: :value, description: @write_opts_desc]
+    ],
+    returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
+  )
+
+  @spec set_using_as_collateral_on_behalf_of(address(), non_neg_integer(), boolean(), address(), keyword()) ::
+          result(String.t())
+  def set_using_as_collateral_on_behalf_of(spoke, reserve_id, using_as_collateral, on_behalf_of, opts) do
+    with {:ok, spoke_bin} <- Address.validate(spoke),
+         {:ok, reserve_id} <- validate_uint(reserve_id, :invalid_reserve_id),
+         {:ok, using_as_collateral} <- validate_bool(using_as_collateral),
+         {:ok, owner_bin} <- Address.validate(on_behalf_of) do
+      send_manager_tx(
+        @config,
+        @set_using_as_collateral_obo_sig,
+        [spoke_bin, reserve_id, using_as_collateral, owner_bin],
+        opts
+      )
+    end
+  end
+
+  # --- update_user_risk_premium_on_behalf_of ---
+
+  api(
+    :update_user_risk_premium_on_behalf_of,
+    "Refresh a position owner's Spoke risk premium via the Config Position Manager.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      on_behalf_of: [kind: :value, description: @owner_desc],
+      opts: [kind: :value, description: @write_opts_desc]
+    ],
+    returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
+  )
+
+  @spec update_user_risk_premium_on_behalf_of(address(), address(), keyword()) :: result(String.t())
+  def update_user_risk_premium_on_behalf_of(spoke, on_behalf_of, opts) do
+    config_on_behalf_of_tx(@update_risk_premium_sig, spoke, on_behalf_of, opts)
+  end
+
+  # --- update_user_dynamic_config_on_behalf_of ---
+
+  api(
+    :update_user_dynamic_config_on_behalf_of,
+    "Refresh a position owner's Spoke dynamic config via the Config Position Manager.",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      on_behalf_of: [kind: :value, description: @owner_desc],
+      opts: [kind: :value, description: @write_opts_desc]
+    ],
+    returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
+  )
+
+  @spec update_user_dynamic_config_on_behalf_of(address(), address(), keyword()) :: result(String.t())
+  def update_user_dynamic_config_on_behalf_of(spoke, on_behalf_of, opts) do
+    config_on_behalf_of_tx(@update_dynamic_config_sig, spoke, on_behalf_of, opts)
+  end
+
+  # --- set_can_set_using_as_collateral_permission ---
+
+  api(
+    :set_can_set_using_as_collateral_permission,
+    "Grant or revoke a delegatee's Config permission to toggle collateral from the signer (msg.sender).",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      delegatee: [kind: :value, description: @delegatee_desc],
+      status: [kind: :value, description: @flag_desc],
+      opts: [kind: :value, description: @write_opts_desc]
+    ],
+    returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
+  )
+
+  @spec set_can_set_using_as_collateral_permission(address(), address(), boolean(), keyword()) :: result(String.t())
+  def set_can_set_using_as_collateral_permission(spoke, delegatee, status, opts) do
+    with {:ok, spoke_bin} <- Address.validate(spoke),
+         {:ok, delegatee_bin} <- Address.validate(delegatee),
+         {:ok, status} <- validate_bool(status) do
+      send_manager_tx(@config, @set_can_set_collateral_permission_sig, [spoke_bin, delegatee_bin, status], opts)
+    end
+  end
+
   # --- decode_revert ---
 
   api(:decode_revert, "Decode Taker InsufficientBorrow/WithdrawAllowance custom-error revert data.",
@@ -337,6 +490,25 @@ defmodule Onchain.Aave.V4.PositionManager do
     end
   end
 
+  @spec config_on_behalf_of_tx(String.t(), address(), address(), keyword()) :: result(String.t())
+  defp config_on_behalf_of_tx(signature, spoke, on_behalf_of, opts) do
+    with {:ok, spoke_bin} <- Address.validate(spoke),
+         {:ok, owner_bin} <- Address.validate(on_behalf_of) do
+      send_manager_tx(@config, signature, [spoke_bin, owner_bin], opts)
+    end
+  end
+
+  @spec send_spoke_tx(address(), String.t(), [term()], keyword()) :: result(String.t())
+  defp send_spoke_tx(spoke, signature, args, opts) do
+    {_network_opts, signer_opts} = Opts.split_network(opts)
+
+    with {:ok, calldata_hex} <- ABI.encode_call(signature, args) do
+      spoke
+      |> Signer.send_transaction(Hex.decode!(calldata_hex), signer_opts)
+      |> map_rpc_error()
+    end
+  end
+
   @spec send_manager_tx(atom(), String.t(), [term()], keyword()) :: result(String.t())
   defp send_manager_tx(contract_key, signature, args, opts) do
     {network_opts, signer_opts} = Opts.split_network(opts)
@@ -352,6 +524,10 @@ defmodule Onchain.Aave.V4.PositionManager do
   @spec validate_uint(term(), atom()) :: {:ok, non_neg_integer()} | {:error, {atom(), term()}}
   defp validate_uint(value, _tag) when is_integer(value) and value >= 0, do: {:ok, value}
   defp validate_uint(value, tag), do: {:error, {tag, value}}
+
+  @spec validate_bool(term()) :: {:ok, boolean()} | {:error, {:invalid_flag, term()}}
+  defp validate_bool(value) when is_boolean(value), do: {:ok, value}
+  defp validate_bool(value), do: {:error, {:invalid_flag, value}}
 
   @spec unwrap_uint({:ok, list()} | {:error, term()}) :: result(non_neg_integer())
   defp unwrap_uint({:ok, [value]}) when is_integer(value) and value >= 0, do: {:ok, value}

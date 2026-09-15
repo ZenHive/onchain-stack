@@ -50,7 +50,7 @@ See [V4_SCOPING.md](V4_SCOPING.md) for the pinned address book and naming aliase
 | `Onchain.Aave.Faucet` | Testnet faucet interactions (mint test tokens) |
 | `Onchain.Aave.V4.Hub` | V4 Hub reads across registered Hubs (Ethereum and Avalanche) (member Spokes, credit-line inventory and caps, rate environment, share/asset previews, bound constants) |
 | `Onchain.Aave.V4.Oracle` | V4 Spoke-scoped IAaveOracle reads (reserve prices, sources, decimals) plus Chainlink feeds |
-| `Onchain.Aave.V4.PositionManager` | V4 Giver/Taker writes (supply/repay/borrow/withdraw on-behalf-of) plus Taker allowances |
+| `Onchain.Aave.V4.PositionManager` | V4 Giver/Taker/Config writes (supply/repay/borrow/withdraw on-behalf-of, Spoke position-manager authorization, collateral toggle) plus Taker allowances |
 | `Onchain.Aave.V4.Spoke` | V4 Spoke reads (reserve/user data, position-manager checks) |
 | `Onchain.Aave.V4.TokenizationSpoke` | V4 ERC-4626 Tokenization Spoke reads (`lookup(hub, asset)`, share accounting, Hub/asset metadata) |
 
@@ -130,8 +130,10 @@ rather than replacing it, so the `"storage"` patch above leaves WETH's deployed
 code intact.
 
 `test/onchain/aave/v4/deployed_integration_test.exs` runs the same path against
-V4: it supplies, borrows and repays through the PositionManager against mainnet
-state at a pinned block.
+V4: it supplies, borrows, withdraws and repays through the PositionManager
+against mainnet state at a pinned block, authorizes and revokes position
+managers on the Spoke, and toggles collateral through both Spoke and Config
+wrappers.
 
 ## Configuration
 

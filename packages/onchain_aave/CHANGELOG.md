@@ -25,9 +25,19 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 - Independent evidence for the deployed Ethereum Aave V4 wrappers, pinned to
   mainnet block 25_800_000. Hub/Spoke/Oracle/TokenizationSpoke reads agree on
-  WETH accounting; signed PositionManager supply/borrow/repay calls mutate
-  that accounting on a local `onchain_evm` fork and decode the Taker's
-  `InsufficientBorrowAllowance` revert before approval.
+  WETH accounting; signed PositionManager supply/borrow/repay/withdraw calls
+  mutate that accounting on a local `onchain_evm` fork. The Taker's
+  `InsufficientBorrowAllowance` and `InsufficientWithdrawAllowance` reverts
+  decode before the matching approval; Spoke `setUserPositionManager` /
+  `setUsingAsCollateral` and Config Position Manager on-behalf-of writes
+  replace the previous hand-encoded calldata.
+
+- `Onchain.Aave.V4.PositionManager` wraps Spoke `setUserPositionManager` /
+  `setUsingAsCollateral` and the Config Position Manager on-behalf-of
+  configuration surface (`setUsingAsCollateralOnBehalfOf`,
+  `updateUserRiskPremiumOnBehalfOf`, `updateUserDynamicConfigOnBehalfOf`,
+  `setCanSetUsingAsCollateralPermission`). The owner is an explicit required
+  argument on every `*OnBehalfOf` entrypoint.
 
 ### Changed
 
@@ -107,15 +117,19 @@ Spokes resolved by `{hub, asset}`.
 - `Onchain.Aave.V4.TokenizationSpoke` — ERC-4626 share accounting for supply
   positions, which replace V3's aTokens.
 - `Onchain.Aave.V4.PositionManager` — the V4 write surface. Supply and repay go
-  through the Giver Position Manager, borrow and withdraw through the Taker.
-  Every position action takes the owner as an explicit required argument; none
-  infers it from `msg.sender`, so the wrappers compose under DELEGATECALL from a
-  Safe. Borrow and withdraw send the assets to the *caller* and require an
-  allowance from the owner, so the allowance surface (`approve_borrow`,
-  `approve_withdraw`, the `renounce_*` counterparts, and the two allowance
-  views) ships with them. `InsufficientBorrowAllowance` and
-  `InsufficientWithdrawAllowance` reverts decode to tagged tuples carrying the
-  allowance and the required amount.
+  through the Giver Position Manager, borrow and withdraw through the Taker,
+  and collateral / risk-premium configuration through the Config Position
+  Manager or the Spoke itself. `set_user_position_manager/4` and
+  `set_using_as_collateral/5` wrap ISpoke authorization and collateral
+  toggles; the Config `*OnBehalfOf` entrypoints take the owner as an explicit
+  required argument. Every position action takes the owner as an explicit
+  required argument; none infers it from `msg.sender`, so the wrappers compose
+  under DELEGATECALL from a Safe. Borrow and withdraw send the assets to the
+  *caller* and require an allowance from the owner, so the allowance surface
+  (`approve_borrow`, `approve_withdraw`, the `renounce_*` counterparts, and
+  the two allowance views) ships with them. `InsufficientBorrowAllowance`
+  and `InsufficientWithdrawAllowance` reverts decode to tagged tuples
+  carrying the allowance and the required amount.
 - `Onchain.Aave.Math.V4` — V4 math conversions alongside the V3 helpers.
 
 There is no stable-rate borrowing in V4, and no `UiPoolDataProvider` analog.
