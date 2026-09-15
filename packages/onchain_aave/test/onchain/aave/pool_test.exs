@@ -174,6 +174,14 @@ defmodule Onchain.Aave.PoolTest do
       assert {:error, {:invalid_interest_rate_mode, :fixed}} =
                Pool.borrow(@valid_address, @test_amount, @valid_address_2, interest_rate_mode: :fixed)
     end
+
+    test "rejects :stable locally before any RPC or signing call" do
+      url = RPCStub.start(fn _ -> flunk("RPC was called") end)
+      opts = Keyword.put(RPCStub.write_opts(url), :interest_rate_mode, :stable)
+
+      assert {:error, {:unsupported_interest_rate_mode, :stable}} =
+               Pool.borrow(@valid_address, @test_amount, @valid_address_2, opts)
+    end
   end
 
   describe "borrow!/4" do
@@ -186,6 +194,12 @@ defmodule Onchain.Aave.PoolTest do
     test "raises on invalid interest_rate_mode" do
       assert_raise RuntimeError, ~r/borrow failed.*invalid_interest_rate_mode/, fn ->
         Pool.borrow!(@valid_address, @test_amount, @valid_address_2, interest_rate_mode: :fixed)
+      end
+    end
+
+    test "raises on :stable with the tagged unsupported reason" do
+      assert_raise RuntimeError, ~r/borrow failed.*unsupported_interest_rate_mode.*:stable/, fn ->
+        Pool.borrow!(@valid_address, @test_amount, @valid_address_2, interest_rate_mode: :stable)
       end
     end
   end
@@ -210,6 +224,14 @@ defmodule Onchain.Aave.PoolTest do
       assert {:error, {:invalid_interest_rate_mode, :fixed}} =
                Pool.repay(@valid_address, @test_amount, @valid_address_2, interest_rate_mode: :fixed)
     end
+
+    test "rejects :stable locally before any RPC or signing call" do
+      url = RPCStub.start(fn _ -> flunk("RPC was called") end)
+      opts = Keyword.put(RPCStub.write_opts(url), :interest_rate_mode, :stable)
+
+      assert {:error, {:unsupported_interest_rate_mode, :stable}} =
+               Pool.repay(@valid_address, @test_amount, @valid_address_2, opts)
+    end
   end
 
   describe "repay!/4" do
@@ -222,6 +244,12 @@ defmodule Onchain.Aave.PoolTest do
     test "raises on invalid interest_rate_mode" do
       assert_raise RuntimeError, ~r/repay failed.*invalid_interest_rate_mode/, fn ->
         Pool.repay!(@valid_address, @test_amount, @valid_address_2, interest_rate_mode: :fixed)
+      end
+    end
+
+    test "raises on :stable with the tagged unsupported reason" do
+      assert_raise RuntimeError, ~r/repay failed.*unsupported_interest_rate_mode.*:stable/, fn ->
+        Pool.repay!(@valid_address, @test_amount, @valid_address_2, interest_rate_mode: :stable)
       end
     end
   end
@@ -304,19 +332,6 @@ defmodule Onchain.Aave.PoolTest do
       assert :binary.decode_unsigned(d) == 0
       assert :binary.decode_unsigned(e) == :binary.decode_unsigned(pad_left(obo_bin))
     end
-
-    test "encodes stable rate mode when specified" do
-      {_to, calldata} =
-        capture_signer_args(fn ->
-          assert {:error, {:missing_option, :private_key}} =
-                   Pool.borrow(@valid_address, @test_amount, @valid_address_2, interest_rate_mode: :stable)
-        end)
-
-      <<_selector::binary-size(4), _asset::binary-size(32), _amount::binary-size(32), rate_arg::binary-size(32),
-        _referral::binary-size(32), _obo::binary-size(32)>> = calldata
-
-      assert :binary.decode_unsigned(rate_arg) == 1
-    end
   end
 
   describe "repay calldata verification" do
@@ -343,19 +358,6 @@ defmodule Onchain.Aave.PoolTest do
       assert :binary.decode_unsigned(amount_arg) == @test_amount
       assert :binary.decode_unsigned(rate_arg) == 2
       assert :binary.decode_unsigned(obo_arg) == :binary.decode_unsigned(pad_left(obo_bin))
-    end
-
-    test "encodes stable rate mode when specified" do
-      {_to, calldata} =
-        capture_signer_args(fn ->
-          assert {:error, {:missing_option, :private_key}} =
-                   Pool.repay(@valid_address, @test_amount, @valid_address_2, interest_rate_mode: :stable)
-        end)
-
-      <<_selector::binary-size(4), _asset::binary-size(32), _amount::binary-size(32), rate_arg::binary-size(32),
-        _obo::binary-size(32)>> = calldata
-
-      assert :binary.decode_unsigned(rate_arg) == 1
     end
   end
 
@@ -390,6 +392,68 @@ defmodule Onchain.Aave.PoolTest do
 
       {:ok, arb_pool} = Contracts.address(:pool, network: :arbitrum)
       assert to == arb_pool
+    end
+  end
+
+  describe "get_reserve_variable_debt_token/2" do
+    test "returns error for invalid address" do
+      assert {:error, {:invalid_address, "not_an_address"}} =
+               Pool.get_reserve_variable_debt_token("not_an_address")
+    end
+
+    test "returns error for unsupported network" do
+      assert {:error, {:unsupported_network, :solana}} =
+               Pool.get_reserve_variable_debt_token(@valid_address, network: :solana)
+    end
+  end
+
+  describe "get_reserve_variable_debt_token!/2" do
+    test "raises on invalid address" do
+      assert_raise RuntimeError, ~r/get_reserve_variable_debt_token failed.*invalid_address/, fn ->
+        Pool.get_reserve_variable_debt_token!("bad_address")
+      end
+    end
+
+    test "raises on unsupported network" do
+      assert_raise RuntimeError, ~r/get_reserve_variable_debt_token failed.*unsupported_network/, fn ->
+        Pool.get_reserve_variable_debt_token!(@valid_address, network: :solana)
+      end
+    end
+  end
+
+  describe "get_reserve_variable_debt_token/2 decode path" do
+    test "decodes the dedicated getter into a checksummed address" do
+      seen = start_supervised!({Agent, fn -> [] end})
+      url = start_stub(%{variable_debt_token_selector() => variable_debt_token_payload()}, seen)
+
+      assert {:ok, resolved} = Pool.get_reserve_variable_debt_token(@valid_address, RPCStub.rpc_opts(url))
+      assert resolved == @valid_address_2
+
+      assert [to] = Agent.get(seen, & &1)
+      assert String.downcase(to) == String.downcase(@pool_address)
+    end
+
+    test "propagates a JSON-RPC error instead of decoding it" do
+      url = start_error_stub(%{"code" => -32_000, "message" => "execution reverted"})
+
+      assert {:error, _reason} = Pool.get_reserve_variable_debt_token(@valid_address, RPCStub.rpc_opts(url))
+    end
+  end
+
+  describe "get_reserve_variable_debt_token!/2 decode path" do
+    test "returns the checksummed address unwrapped on success" do
+      url = start_stub(%{variable_debt_token_selector() => variable_debt_token_payload()})
+
+      assert @valid_address_2 ==
+               Pool.get_reserve_variable_debt_token!(@valid_address, RPCStub.rpc_opts(url))
+    end
+
+    test "raises when the node returns an error" do
+      url = start_error_stub(%{"code" => -32_000, "message" => "execution reverted"})
+
+      assert_raise RuntimeError, ~r/get_reserve_variable_debt_token failed/, fn ->
+        Pool.get_reserve_variable_debt_token!(@valid_address, RPCStub.rpc_opts(url))
+      end
     end
   end
 
@@ -534,6 +598,16 @@ defmodule Onchain.Aave.PoolTest do
   @doc false
   defp account_data_selector do
     RPCStub.selector("getUserAccountData(address)", [<<0::160>>])
+  end
+
+  defp variable_debt_token_selector do
+    {:ok, asset_bin} = Onchain.Address.validate(@valid_address)
+    RPCStub.selector("getReserveVariableDebtToken(address)", [asset_bin])
+  end
+
+  defp variable_debt_token_payload do
+    {:ok, token_bin} = Onchain.Address.validate(@valid_address_2)
+    RPCStub.encode("(address)", [{token_bin}])
   end
 
   @doc false

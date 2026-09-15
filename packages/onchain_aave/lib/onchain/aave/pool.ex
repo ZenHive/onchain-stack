@@ -22,7 +22,7 @@ defmodule Onchain.Aave.Pool do
   | `Onchain.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
   | `Onchain.ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
   | `Onchain.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
-  | Interest rate mode validation | `{:error, {:invalid_interest_rate_mode, value}}` |
+  | Interest rate mode validation | `{:error, {:invalid_interest_rate_mode, value}}`, `{:error, {:unsupported_interest_rate_mode, :stable}}` |
 
   ## Functions
 
@@ -32,6 +32,8 @@ defmodule Onchain.Aave.Pool do
   | `get_user_account_data!/2` | Same, raises on error |
   | `get_user_account_data_many/2` | Batch many users' positions in one Multicall3 round-trip |
   | `get_user_account_data_many!/2` | Same, raises on error |
+  | `get_reserve_variable_debt_token/2` | Variable debt-token address for a reserve via `getReserveVariableDebtToken` |
+  | `get_reserve_variable_debt_token!/2` | Same, raises on error |
   | `supply/4` | Supply asset to pool (returns tx hash) |
   | `supply!/4` | Same, raises on error |
   | `withdraw/4` | Withdraw asset from pool (returns tx hash) |
@@ -56,9 +58,9 @@ defmodule Onchain.Aave.Pool do
 
   @referral_code 0
   @variable_rate 2
-  @stable_rate 1
 
   @user_account_data_response "(uint256,uint256,uint256,uint256,uint256,uint256)"
+  @variable_debt_token_response "(address)"
 
   # --- get_user_account_data ---
 
@@ -195,6 +197,66 @@ defmodule Onchain.Aave.Pool do
     end
   end
 
+  # --- get_reserve_variable_debt_token ---
+
+  api(
+    :get_reserve_variable_debt_token,
+    "Resolve a reserve's variable debt-token address via IPool.getReserveVariableDebtToken.",
+    params: [
+      asset: [kind: :value, description: "Underlying reserve asset address"],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
+      ]
+    ],
+    returns: %{
+      type: "{:ok, String.t()} | {:error, term()}",
+      description: "Checksummed variable debt-token contract address"
+    }
+  )
+
+  @spec get_reserve_variable_debt_token(String.t() | binary(), keyword()) ::
+          {:ok, String.t()} | {:error, term()}
+  def get_reserve_variable_debt_token(asset, opts \\ []) do
+    {network_opts, rpc_opts} = Opts.split_network(opts)
+
+    with {:ok, asset_bin} <- Address.validate(asset),
+         {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
+         {:ok, calldata} <- ABI.encode_call("getReserveVariableDebtToken(address)", [asset_bin]),
+         {:ok, hex_result} <- RPC.eth_call(pool_addr, calldata, rpc_opts),
+         {:ok, [debt_token_bin]} <- ABI.decode_response(@variable_debt_token_response, hex_result) do
+      Address.checksum(debt_token_bin)
+    end
+  end
+
+  # --- get_reserve_variable_debt_token! ---
+
+  api(
+    :get_reserve_variable_debt_token!,
+    "Resolve a reserve's variable debt-token address. Raises on error.",
+    params: [
+      asset: [kind: :value, description: "Underlying reserve asset address"],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
+      ]
+    ],
+    returns: %{
+      type: :string,
+      description: "Checksummed variable debt-token contract address"
+    }
+  )
+
+  @spec get_reserve_variable_debt_token!(String.t() | binary(), keyword()) :: String.t()
+  def get_reserve_variable_debt_token!(asset, opts \\ []) do
+    case get_reserve_variable_debt_token(asset, opts) do
+      {:ok, address} -> address
+      {:error, reason} -> raise "get_reserve_variable_debt_token failed: #{inspect(reason)}"
+    end
+  end
+
   # --- supply ---
 
   api(:supply, "Supply an asset to the Aave V3 Pool.",
@@ -325,7 +387,7 @@ defmodule Onchain.Aave.Pool do
       opts: [
         kind: :value,
         description:
-          "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :network (default :ethereum), :interest_rate_mode (:variable default, :stable), :gas_limit (recommend ~300k for borrow)"
+          "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :network (default :ethereum), :interest_rate_mode (:variable default; :stable is rejected locally), :gas_limit (recommend ~300k for borrow)"
       ]
     ],
     returns: %{
@@ -361,7 +423,7 @@ defmodule Onchain.Aave.Pool do
       opts: [
         kind: :value,
         description:
-          "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :network (default :ethereum), :interest_rate_mode (:variable default, :stable), :gas_limit (recommend ~300k for borrow)"
+          "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :network (default :ethereum), :interest_rate_mode (:variable default; :stable is rejected locally), :gas_limit (recommend ~300k for borrow)"
       ]
     ],
     returns: %{type: :string, description: "Transaction hash hex string"}
@@ -386,7 +448,7 @@ defmodule Onchain.Aave.Pool do
       opts: [
         kind: :value,
         description:
-          "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :network (default :ethereum), :interest_rate_mode (:variable default, :stable), :gas_limit (recommend ~200k for repay)"
+          "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :network (default :ethereum), :interest_rate_mode (:variable default; :stable is rejected locally), :gas_limit (recommend ~200k for repay)"
       ]
     ],
     returns: %{
@@ -422,7 +484,7 @@ defmodule Onchain.Aave.Pool do
       opts: [
         kind: :value,
         description:
-          "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :network (default :ethereum), :interest_rate_mode (:variable default, :stable), :gas_limit (recommend ~200k for repay)"
+          "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :network (default :ethereum), :interest_rate_mode (:variable default; :stable is rejected locally), :gas_limit (recommend ~200k for repay)"
       ]
     ],
     returns: %{type: :string, description: "Transaction hash hex string"}
@@ -485,9 +547,13 @@ defmodule Onchain.Aave.Pool do
   end
 
   @doc false
-  # Maps :variable → 2, :stable → 1. Returns error tuple for invalid values.
-  @spec resolve_interest_rate_mode(term()) :: {:ok, pos_integer()} | {:error, {:invalid_interest_rate_mode, term()}}
+  # Maps :variable → 2. Deployed ValidationLogic accepts only VARIABLE; :stable
+  # is rejected locally rather than encoded as vestigial mode 1.
+  @spec resolve_interest_rate_mode(term()) ::
+          {:ok, pos_integer()}
+          | {:error, {:unsupported_interest_rate_mode, :stable}}
+          | {:error, {:invalid_interest_rate_mode, term()}}
   defp resolve_interest_rate_mode(:variable), do: {:ok, @variable_rate}
-  defp resolve_interest_rate_mode(:stable), do: {:ok, @stable_rate}
+  defp resolve_interest_rate_mode(:stable), do: {:error, {:unsupported_interest_rate_mode, :stable}}
   defp resolve_interest_rate_mode(other), do: {:error, {:invalid_interest_rate_mode, other}}
 end

@@ -12,16 +12,14 @@ defmodule Onchain.Aave.DebtToken.IntegrationTest do
   @delegatee "0xF380B8F1e63e2BEd7CA329CA1FdDbC39B52cC0d3"
 
   describe "debt_token_address/3 on Sepolia" do
-    test "resolves variable and stable debt token addresses for USDC" do
+    test "resolves the variable debt token address for USDC" do
       rpc_url = Onchain.SignerCase.sepolia_rpc_url!()
       opts = [network: :sepolia, rpc_url: rpc_url]
 
       assert {:ok, variable_debt} = DebtToken.debt_token_address(@aave_sepolia_usdc, :variable, opts)
-      assert {:ok, stable_debt} = DebtToken.debt_token_address(@aave_sepolia_usdc, :stable, opts)
 
       assert String.starts_with?(variable_debt, "0x")
-      assert String.starts_with?(stable_debt, "0x")
-      refute variable_debt == stable_debt
+      refute variable_debt == @aave_sepolia_usdc
     end
   end
 

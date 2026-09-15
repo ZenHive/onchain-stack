@@ -2,10 +2,15 @@ defmodule Onchain.Aave.DebtToken do
   @moduledoc """
   Aave V3 debt token credit delegation reads and writes.
 
-  Credit delegation lives on the variable/stable debt token contracts, not the Pool.
-  Use `debt_token_address/3` to resolve the debt token for an asset and rate mode via
-  `Pool.getReserveData/1`, then `approve_delegation/4` to grant or revoke (amount `0`)
-  borrowing power and `borrow_allowance/3` to read the current allowance.
+  Credit delegation lives on the variable debt token contracts, not the Pool.
+  Use `debt_token_address/3` to resolve the variable debt token for an asset via
+  `Pool.get_reserve_variable_debt_token/2`, then `approve_delegation/4` to grant
+  or revoke (amount `0`) borrowing power and `borrow_allowance/3` to read the
+  current allowance.
+
+  Deployed ValidationLogic accepts only `DataTypes.InterestRateMode.VARIABLE`.
+  Passing `:stable` returns `{:error, {:unsupported_interest_rate_mode, :stable}}`
+  before any RPC call.
 
   ## Error Format
 
@@ -19,42 +24,34 @@ defmodule Onchain.Aave.DebtToken do
   | `Onchain.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
   | `Onchain.ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
   | `Onchain.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
-  | Interest rate mode validation | `{:error, {:invalid_interest_rate_mode, value}}` |
+  | Interest rate mode validation | `{:error, {:invalid_interest_rate_mode, value}}`, `{:error, {:unsupported_interest_rate_mode, :stable}}` |
 
   ## Functions
 
   | Function | Purpose |
   |----------|---------|
-  | `debt_token_address/3` | Resolve variable/stable debt token address for an asset |
+  | `debt_token_address/3` | Resolve the variable debt token address for an asset |
   | `approve_delegation/4` | Grant or revoke delegated borrow allowance (returns tx hash) |
   | `borrow_allowance/3` | Read delegated borrow allowance between two addresses |
   """
 
   use Descripex, namespace: "/aave/debt_token"
 
-  alias Onchain.Aave.Contracts
-  alias Onchain.Aave.Opts
+  alias Onchain.Aave.Pool
   alias Onchain.ABI
   alias Onchain.Address
   alias Onchain.Contract
   alias Onchain.Hex
   alias Onchain.Signer
 
-  @variable_rate :variable
-  @stable_rate :stable
-
-  @reserve_data_return "((uint256),uint128,uint128,uint128,uint128,uint128,uint40,uint16,address,address,address,address,uint128,uint128,uint128)"
-  @stable_debt_token_index 9
-  @variable_debt_token_index 10
-
   # --- debt_token_address ---
 
-  api(:debt_token_address, "Resolve the variable or stable debt token address for an asset.",
+  api(:debt_token_address, "Resolve the variable debt token address for an asset.",
     params: [
       asset: [kind: :value, description: "Underlying reserve asset address"],
       rate_mode: [
         kind: :value,
-        description: "Interest rate mode: :variable or :stable"
+        description: "Interest rate mode. Only :variable is supported."
       ],
       opts: [
         kind: :value,
@@ -64,28 +61,17 @@ defmodule Onchain.Aave.DebtToken do
     ],
     returns: %{
       type: "{:ok, String.t()} | {:error, term()}",
-      description: "Checksummed debt token contract address"
+      description: "Checksummed variable debt token contract address"
     }
   )
 
-  @spec debt_token_address(String.t() | binary(), :variable | :stable, keyword()) ::
+  @spec debt_token_address(String.t() | binary(), :variable, keyword()) ::
           {:ok, String.t()} | {:error, term()}
   def debt_token_address(asset, rate_mode, opts \\ []) do
-    {network_opts, rpc_opts} = Opts.split_network(opts)
-
-    with {:ok, asset_bin} <- Address.validate(asset),
-         {:ok, rate} <- resolve_interest_rate_mode(rate_mode),
-         {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
-         {:ok, reserve_fields} <-
-           Contract.call(
-             pool_addr,
-             "getReserveData(address)",
-             [asset_bin],
-             @reserve_data_return,
-             rpc_opts
-           ),
-         {:ok, debt_token_bin} <- pick_debt_token_address(reserve_fields, rate) do
-      Address.checksum(debt_token_bin)
+    case rate_mode do
+      :variable -> Pool.get_reserve_variable_debt_token(asset, opts)
+      :stable -> {:error, {:unsupported_interest_rate_mode, :stable}}
+      other -> {:error, {:invalid_interest_rate_mode, other}}
     end
   end
 
@@ -93,7 +79,7 @@ defmodule Onchain.Aave.DebtToken do
 
   api(:approve_delegation, "Approve or revoke credit delegation on a debt token.",
     params: [
-      debt_token: [kind: :value, description: "Variable or stable debt token contract address"],
+      debt_token: [kind: :value, description: "Variable debt token contract address"],
       delegatee: [kind: :value, description: "Address receiving delegated borrowing power"],
       amount: [
         kind: :value,
@@ -125,7 +111,7 @@ defmodule Onchain.Aave.DebtToken do
 
   api(:borrow_allowance, "Read the delegated borrow allowance between two addresses.",
     params: [
-      debt_token: [kind: :value, description: "Variable or stable debt token contract address"],
+      debt_token: [kind: :value, description: "Variable debt token contract address"],
       from_user: [kind: :value, description: "Delegator address"],
       to_user: [kind: :value, description: "Delegatee address"],
       opts: [
@@ -155,37 +141,6 @@ defmodule Onchain.Aave.DebtToken do
              opts
            ) do
       {:ok, allowance}
-    end
-  end
-
-  # --- Private helpers ---
-
-  @variable_rate_mode 2
-  @stable_rate_mode 1
-
-  @doc false
-  @spec resolve_interest_rate_mode(:variable | :stable) ::
-          {:ok, pos_integer()} | {:error, {:invalid_interest_rate_mode, term()}}
-  defp resolve_interest_rate_mode(@variable_rate), do: {:ok, @variable_rate_mode}
-  defp resolve_interest_rate_mode(@stable_rate), do: {:ok, @stable_rate_mode}
-
-  defp resolve_interest_rate_mode(other), do: {:error, {:invalid_interest_rate_mode, other}}
-
-  @doc false
-  @spec pick_debt_token_address([term()], pos_integer()) :: {:ok, binary()} | {:error, term()}
-  defp pick_debt_token_address(reserve_fields, rate_mode) when is_list(reserve_fields) do
-    index =
-      case rate_mode do
-        @variable_rate_mode -> @variable_debt_token_index
-        @stable_rate_mode -> @stable_debt_token_index
-      end
-
-    case Enum.at(reserve_fields, index) do
-      debt_token when is_binary(debt_token) -> {:ok, debt_token}
-      # Unreachable while @reserve_data_return types both debt-token slots as
-      # `address` — it guards the coupling to @variable_debt_token_index /
-      # @stable_debt_token_index, which a changed return signature would break.
-      _ -> {:error, {:invalid_reserve_data, reserve_fields}}
     end
   end
 end

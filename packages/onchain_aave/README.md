@@ -35,11 +35,11 @@ the addresses this package knows about.
 
 | Module | Purpose |
 |--------|---------|
-| `Onchain.Aave.Pool` | Pool read + write calls (getUserAccountData, supply, borrow, repay; `get_user_account_data_many` batches many users via Multicall3) |
+| `Onchain.Aave.Pool` | Pool read + write calls (getUserAccountData, getReserveVariableDebtToken, supply, borrow, repay; `get_user_account_data_many` batches many users via Multicall3). `:stable` interest-rate mode is rejected locally. |
 | `Onchain.Aave.Oracle` | Asset price oracle + Chainlink |
 | `Onchain.Aave.Math` | USD conversion, LTV, health factor, V3 WadRayMath / MathUtils (revm- and mutation-checked) |
 | `Onchain.Aave.Math.V4` | Aave V4 ray/wad math (pinned-bytecode revm and mutation-checked) |
-| `Onchain.Aave.DebtToken` | Variable/stable debt-token credit delegation (approveDelegation, borrowAllowance) |
+| `Onchain.Aave.DebtToken` | Variable debt-token credit delegation (approveDelegation, borrowAllowance) |
 | `Onchain.Aave.Contracts` | Verified address registry (mainnet + multi-chain, V3 + V4) |
 | `Onchain.Aave.UiPoolDataProvider` | Reserves and user reserves data |
 | `Onchain.Aave.Faucet` | Testnet faucet interactions (mint test tokens) |

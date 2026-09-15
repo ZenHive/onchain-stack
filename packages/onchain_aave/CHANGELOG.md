@@ -6,7 +6,22 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Breaking
+
+- **`:stable` interest-rate mode is no longer a public API.** Deployed Aave V3
+  `ValidationLogic` accepts only `DataTypes.InterestRateMode.VARIABLE`; calling
+  `borrow`/`repay` with mode 1 reverts `InvalidInterestRateModeSelected()` even
+  though `getReserveData` still returns a vestigial stable-debt-token address.
+  `Pool.borrow/4`, `Pool.repay/4`, and `DebtToken.debt_token_address/3` now
+  return `{:error, {:unsupported_interest_rate_mode, :stable}}` before any RPC
+  or signing call. Bang variants raise with the same tagged reason.
+
 ### Added
+
+- `Pool.get_reserve_variable_debt_token/2` decodes the dedicated
+  `getReserveVariableDebtToken(address)` getter. `DebtToken.debt_token_address/3`
+  resolves `:variable` through that getter instead of a positional
+  `getReserveData` tuple decode.
 
 - Independent evidence for the deployed Ethereum Aave V4 wrappers, pinned to
   mainnet block 25_800_000. Hub/Spoke/Oracle/TokenizationSpoke reads agree on

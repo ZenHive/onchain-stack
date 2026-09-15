@@ -14,16 +14,8 @@ defmodule Onchain.Aave.DebtTokenTest do
   # constant DebtToken resolves via Contracts.address(:pool, ...).
   @pool_address "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
 
-  # Mirrors the private @reserve_data_return in lib/onchain/aave/debt_token.ex
-  # (getReserveData return tuple). Field order/index is load-bearing for the
-  # variable-vs-stable debt token index assertions below.
-  @reserve_data_return "((uint256),uint128,uint128,uint128,uint128,uint128,uint40,uint16,address,address,address,address,uint128,uint128,uint128)"
-
-  # Two DISTINCT, recognisable 20-byte addresses placed at the variable and
-  # stable debt token slots of the canned getReserveData response, so a test
-  # proves the *right* field was picked for each rate mode.
+  # Canned variable debt-token address returned by the dedicated getter stub.
   @variable_debt_token_hex "0x" <> String.duplicate("11", 18) <> "AAAA"
-  @stable_debt_token_hex "0x" <> String.duplicate("22", 18) <> "BBBB"
 
   @borrow_allowance_raw 42_000_000
 
@@ -40,9 +32,11 @@ defmodule Onchain.Aave.DebtTokenTest do
                DebtToken.debt_token_address(@valid_address, :variable, network: :solana)
     end
 
-    test "returns error for unsupported network with stable rate mode" do
-      assert {:error, {:unsupported_network, :solana}} =
-               DebtToken.debt_token_address(@valid_address, :stable, network: :solana)
+    test "rejects :stable locally before any RPC call" do
+      url = RPCStub.start(fn _ -> flunk("RPC was called") end)
+
+      assert {:error, {:unsupported_interest_rate_mode, :stable}} =
+               DebtToken.debt_token_address(@valid_address, :stable, RPCStub.rpc_opts(url))
     end
 
     test "returns error for invalid interest_rate_mode" do
@@ -123,26 +117,35 @@ defmodule Onchain.Aave.DebtTokenTest do
   end
 
   describe "debt_token_address/3 decode path" do
-    test "resolves the variable debt token address, distinct from the stable one" do
+    test "resolves the variable debt token through getReserveVariableDebtToken, not getReserveData" do
       seen = start_supervised!({Agent, fn -> [] end})
-      url = start_reserve_data_stub(@valid_address, seen)
+      {:ok, asset_bin} = Onchain.Address.validate(@valid_address)
+      {:ok, token_bin} = Onchain.Address.validate(@variable_debt_token_hex)
+      getter = RPCStub.selector("getReserveVariableDebtToken(address)", [asset_bin])
+      reserve_data = RPCStub.selector("getReserveData(address)", [asset_bin])
+      payload = RPCStub.encode("(address)", [{token_bin}])
+
+      url =
+        RPCStub.start(fn
+          %{"method" => "eth_call", "params" => [%{"data" => data, "to" => to} | _]} ->
+            Agent.update(seen, &[to | &1])
+            selector = String.slice(String.downcase(data), 0, 10)
+
+            cond do
+              selector == reserve_data -> flunk("getReserveData was called")
+              selector == getter -> payload
+              true -> flunk("unexpected selector #{selector}")
+            end
+
+          %{"method" => method} ->
+            flunk("stub received an unexpected JSON-RPC method: #{method}")
+        end)
 
       assert {:ok, resolved} = DebtToken.debt_token_address(@valid_address, :variable, RPCStub.rpc_opts(url))
 
       assert resolved == checksum!(@variable_debt_token_hex)
-      refute resolved == checksum!(@stable_debt_token_hex)
-
       assert [to] = Agent.get(seen, & &1)
       assert String.downcase(to) == String.downcase(@pool_address)
-    end
-
-    test "resolves the stable debt token address, distinct from the variable one" do
-      url = start_reserve_data_stub(@valid_address)
-
-      assert {:ok, resolved} = DebtToken.debt_token_address(@valid_address, :stable, RPCStub.rpc_opts(url))
-
-      assert resolved == checksum!(@stable_debt_token_hex)
-      refute resolved == checksum!(@variable_debt_token_hex)
     end
 
     test "propagates a JSON-RPC error instead of decoding it" do
@@ -208,52 +211,5 @@ defmodule Onchain.Aave.DebtTokenTest do
   defp checksum!(hex) do
     {:ok, checksummed} = Onchain.Address.checksum(hex)
     checksummed
-  end
-
-  @doc false
-  # Starts a stub answering getReserveData(asset) with a canned reserve tuple
-  # carrying distinct addresses at the stable (index 9) and variable (index
-  # 10) debt-token slots.
-  defp start_reserve_data_stub(asset_hex, seen \\ nil) do
-    {:ok, asset_bin} = Onchain.Address.validate(asset_hex)
-    selector = RPCStub.selector("getReserveData(address)", [asset_bin])
-    payload = RPCStub.encode(@reserve_data_return, [reserve_data_tuple()])
-    RPCStub.start(RPCStub.payload_handler(%{selector => payload}, seen))
-  end
-
-  @doc false
-  defp reserve_data_tuple do
-    {:ok, a_token_bin} = Onchain.Address.validate(@valid_address_2)
-    {:ok, stable_bin} = Onchain.Address.validate(@stable_debt_token_hex)
-    {:ok, variable_bin} = Onchain.Address.validate(@variable_debt_token_hex)
-    {:ok, strategy_bin} = Onchain.Address.validate(@valid_address)
-
-    {
-      # configuration (uint256) — nested 1-tuple per the outer ABI type
-      {0},
-      # liquidityIndex, currentLiquidityRate, variableBorrowIndex,
-      # currentVariableBorrowRate, currentStableBorrowRate (uint128 x5)
-      0,
-      0,
-      0,
-      0,
-      0,
-      # lastUpdateTimestamp (uint40)
-      0,
-      # id (uint16)
-      0,
-      # aTokenAddress
-      a_token_bin,
-      # stableDebtTokenAddress — index 9
-      stable_bin,
-      # variableDebtTokenAddress — index 10
-      variable_bin,
-      # interestRateStrategyAddress
-      strategy_bin,
-      # accruedToTreasury, unbacked, isolationModeTotalDebt (uint128 x3)
-      0,
-      0,
-      0
-    }
   end
 end

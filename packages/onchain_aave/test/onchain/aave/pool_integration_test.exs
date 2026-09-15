@@ -148,4 +148,16 @@ defmodule Onchain.Aave.Pool.IntegrationTest do
       assert {:ok, []} = Pool.get_user_account_data_many([], Onchain.RPCCase.rpc_opts!())
     end
   end
+
+  describe "get_reserve_variable_debt_token/2 at a pinned block" do
+    @weth "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+    @weth_variable_debt_token "0xeA51d7853EEFb32b6ee06b1C12E6dcCA88Be0fFE"
+    @pinned_block 23_000_000
+
+    test "returns the deployed mainnet WETH variable debt-token address" do
+      opts = Keyword.put(Onchain.RPCCase.rpc_opts!(), :block, @pinned_block)
+
+      assert {:ok, @weth_variable_debt_token} = Pool.get_reserve_variable_debt_token(@weth, opts)
+    end
+  end
 end
