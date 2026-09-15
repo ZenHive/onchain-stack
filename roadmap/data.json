@@ -9489,7 +9489,7 @@
       "bundle": "onchain_aerodrome_bindings",
       "target_repo": "onchain_aerodrome",
       "milestone": "onchain_aerodrome_v0_1",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Bindings.LpSugar — the full read surface and the count()-driven pagination driver",
       "scores": {
         "d": 6,
@@ -9533,6 +9533,7 @@
       ],
       "body": "This is the highest-risk read task in the package, and the risk is a silent one.\n\nLpSugar.all/3 applies its filter argument AFTER fetching the page. With a non-zero filter a full page returns fewer than limit rows while offset still indexes the UNFILTERED space. The obvious loop-until-short-page termination is therefore not a crash but silent data loss: it stops early and reports success. Drive offset to count() unconditionally. count() answered 35,156 on 2026-08-26 and only grows, so the real shape is roughly 71 sequential pages at limit 500.\n\nWrite both tests. The positive one proves the driver reaches count(). The negative one proves a naive implementation under-counts against the short-page fixture, so the trap cannot silently return via a future refactor that looks like a simplification.\n\nMulticall does not help the page loop. One all(500, ...) already returns about 1.1 MB and dominates the eth_call budget; Onchain.Multicall.aggregate3/2 is for per-pool enrichment. Do not parallelise pagination with it.\n\nlimit: 500 is verified working against both the public https://mainnet.base.org and an Alchemy Base endpoint, so it is not a privileged-endpoint assumption. An endpoint with a tighter per-call gas or response cap can still refuse it; document that requirement rather than silently lowering the limit.\n\nThe remaining reads land in the same module and the same diff because they share the module, the signature plumbing and the fixture set; splitting them would force a second full cycle over one file for no coupling gain.\n\nAUTHORITY: priv/abis/lp_sugar.json's all(uint256,uint256,uint256) signature and the task-4 fixtures, specifically the one demonstrating a non-zero filter returning a short page. Not velodrome-finance/sugar's README, which documents the stale two-argument all(limit, offset) that reverts on the deployed contract.\n",
       "created_at": "2026-08-26",
+      "started_at": "2026-09-15",
       "scored_at": "2026-08-26",
       "cross_repo": []
     },

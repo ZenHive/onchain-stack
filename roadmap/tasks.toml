@@ -6288,18 +6288,18 @@ scored_at = "2026-08-26"
 id = 5008
 phase = 5003
 bundle = "onchain_aerodrome_bindings"
-milestone = "onchain_aerodrome_v0_1"
-title = "Bindings.LpSugar — the full read surface and the count()-driven pagination driver"
-status = "pending"
 target_repo = "onchain_aerodrome"
-module = "Onchain.Aerodrome.Bindings.LpSugar"
+milestone = "onchain_aerodrome_v0_1"
+status = "in_progress"
+title = "Bindings.LpSugar — the full read surface and the count()-driven pagination driver"
 scores = { d = 6, b = 9, u = 9 }
 depends_on = [5003, 5004, 5006]
 acceptance_criteria = ["count/1 and single-page all/4 (limit, offset, filter) are implemented via Onchain.RPC.eth_call plus a Bindings.Abi-derived signature, decoding positionally into [%Types.Lp{}]", "The pagination driver drives offset TO count(), never terminating on a short page; a test using the task-4 non-zero-filter fixture (which returns fewer than limit rows mid-sequence) asserts the loop CONTINUES past that short page and the final offset reached equals or exceeds count()", "An explicit anti-regression test encodes the bug by name: a naive stop-when-length(page)-is-less-than-limit implementation is asserted to UNDER-COUNT against the same fixture set, so the suite fails against the bug this task exists to prevent rather than merely passing against the fix", "forSwaps/3, positions/4, positionsByFactory/5, positionsUnstakedConcentrated/4, tokens/5 and almEstimateAmounts/4 are implemented, decoding into [%Types.Swap{}], [%Types.Position{}], [%Types.Token{}] and a three-element amount tuple respectively", "Each of those functions carries an @doc naming which index space its offset walks and the correct termination rule. positions, positionsByFactory, positionsUnstakedConcentrated, forSwaps and tokens iterate a SCANNED index space (pool index or NFT index) that is not the returned-row space — entries are filtered, deduplicated or skipped upstream, so a page shorter than limit is normal mid-enumeration and short-page termination is the same silent-data-loss bug as on all/4; enumeration ends only when the offset has walked the full scanned space. A pagination test consumes the task-4 positions short-page fixture and asserts enumeration CONTINUES past the short page", "The filter argument on all/4 is an opaque non_neg_integer passthrough with an @doc warning that its semantics are undocumented upstream and that fixture drift detection is the only available verification", "Decode correctness is proven against the task-4 fixtures for every function", "mix ci passes"]
 out_of_scope = ["The ergonomic Sugar.Pools wrapper, which is task 23", "The MAX_* cap getters and the internal wiring getters (voter, registry, convertor, cl_helper, alm_factory, alm_map, launcher_map, token_sugar, lp_helper, locker_factory_map) — Contracts.constants() carries the verified pagination caps; further caps the ABI exposes (MAX_FACTORIES, MAX_ITERATIONS) are deliberately unwired, and re-fetching any of them live adds no v0.1 value", "Analytics of any kind"]
-touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/lp_sugar.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/lp_sugar_test.exs"]
 files_to_modify = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/lp_sugar.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/lp_sugar_test.exs"]
+touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/lp_sugar.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/lp_sugar_test.exs"]
 assignee = "codex"
+module = "Onchain.Aerodrome.Bindings.LpSugar"
 model = "gpt-6-astra"
 body = """
 This is the highest-risk read task in the package, and the risk is a silent one.
@@ -6317,6 +6317,7 @@ The remaining reads land in the same module and the same diff because they share
 AUTHORITY: priv/abis/lp_sugar.json's all(uint256,uint256,uint256) signature and the task-4 fixtures, specifically the one demonstrating a non-zero filter returning a short page. Not velodrome-finance/sugar's README, which documents the stale two-argument all(limit, offset) that reverts on the deployed contract.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]
