@@ -5621,7 +5621,7 @@
       "phase": 2000,
       "bundle": "cartouche_rpc_read_surface",
       "target_repo": "cartouche",
-      "status": "in_progress",
+      "status": "done",
       "title": "Multi-endpoint live-test seam so node-portability rule 4 can actually be executed",
       "scores": {
         "d": 3,
@@ -5657,10 +5657,17 @@
         "packages/cartouche/test/rpc_integration_test.exs",
         "packages/cartouche/CHANGELOG.md"
       ],
+      "shipped_in": "19a77ef3c9f8df694686df7c8fe39e72e8c3c042",
       "body": "node-portability.md rule 4 says: \"Verify on a second, unprivileged endpoint before claiming portability. Green on localhost:8545 alone proves nothing. A hosted endpoint's real refusal is evidence; our node's {:ok, _} is not.\" The same file then admits, under Honest limits, that \"Rule 4 has no tooling today — whoever builds it should build it first.\"\n\nThis task builds it first.\n\nThe current seam is single-endpoint by construction. `Cartouche.Test.Live.live_rpc_url/0` (test/support/live.ex) returns one string from `CARTOUCHE_LIVE_NODE_URL`, defaulting to http://127.0.0.1:8545, and `live_opts/0` bakes it into a keyword list used at 56 call sites across three test files. There is no way to express \"this call, on that other endpoint\" inside a test — the dual-endpoint base_fee verification recorded in node-portability.md's worked example was done by manually re-running the whole suite with a different env var, which is not something an acceptance criterion can require of a dispatched agent.\n\nThe consequence is concrete, not theoretical: tasks 127 and 135 both carry criteria demanding a hosted-endpoint observation, and as written neither is satisfiable with the current seam. Five read-surface tasks (128-132) want the same evidence. Every one of them is blocked on infrastructure that does not exist, which is why this is filed as a prerequisite rather than folded into any single one of them.\n\nEndpoints are already available to the operator and need no procurement — ~/.secrets defines ETHEREUM_ALCHEMY_URL, ETHEREUM_INFURA_URL and CLOUDFLARE_ETHEREUM_API_URL (three distinct vendors on mainnet), alongside ETH_RPC_URL / ETHEREUM_API_URL and the Base/Sepolia URLs. Read the variable NAMES from the operator's environment; never print, log, echo or commit a value — these are credentialed URLs and an Alchemy or Infura URL embeds the API key in its path. A test that flunks must name the env var, not interpolate its contents.\n\nDesign note, deliberately left to the implementer: whether the named lane is a keyword/atom map, a per-endpoint module attribute, or a small struct is a judgment call — follow the file's existing style (module attributes + plain functions, no config) rather than introducing a config-driven registry. The one thing that is NOT a judgment call is the assertion shape: a hosted refusal must be a first-class expected outcome. If the helper can only express \"both endpoints returned {:ok, _}\", it has failed to encode rule 4 and would have ratified the base_fee bug.\n\nThe house idioms to reuse verbatim in docs and flunk messages: \"a real result or its real refusal, never a skip\"; \"the consumer's node — not ours — as the case that matters\"; \"the identical green run on both endpoints is what the portability claim rests on\".\n",
       "created_at": "2026-08-27",
       "started_at": "2026-09-15",
+      "done_at": "2026-09-15",
       "scored_at": "2026-08-27",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1789486229090-4a54d097, 19a77ef3c9f8df694686df7c8fe39e72e8c3c042).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1789486229090-4a54d097",
       "cross_repo": []
     },
     {
