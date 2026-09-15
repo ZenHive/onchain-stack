@@ -6153,7 +6153,7 @@ phase = 5001
 bundle = "onchain_aerodrome_foundations"
 target_repo = "onchain_aerodrome"
 milestone = "onchain_aerodrome_v0_1"
-status = "in_progress"
+status = "done"
 title = "Onchain.Aerodrome.RPCCase — the first multi-endpoint portability test seam in the family"
 scores = { d = 4, b = 7, u = 8 }
 markers = ["parallel"]
@@ -6172,9 +6172,16 @@ Never skip on a missing endpoint. A suite that reports zero failures from zero t
 
 AUTHORITY: the public https://mainnet.base.org endpoint and a genuinely separate hosted provider of Alchemy or Infura class are the two authorities. Agreement between them, not agreement with our own archive node, is what portable means. Our node's ok result is not evidence; a hosted endpoint's real refusal is.
 """
+implemented = "Landed by grok via merge-train; reviewer-approved (run run-1789491633333-c5facb71, 11d0fcb635d8ecde548d8afab5037de96e71b6d6)."
+delivered_by = "grok"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1789491633333-c5facb71"
 created_at = "2026-08-26"
 started_at = "2026-09-15"
 scored_at = "2026-08-26"
+done_at = "2026-09-15"
+shipped_in = "11d0fcb635d8ecde548d8afab5037de96e71b6d6"
 
 [[task]]
 id = 5006
