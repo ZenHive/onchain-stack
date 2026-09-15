@@ -69,6 +69,7 @@
 | Task 9004 | ⬜ | 🎁 **monorepo_root_gates** · Drop --summary-only from the six packages that still carry it — it disqualifies ex_unit_json's flaky-retry and hides which test failed [D:2/B:6/U:5 → Eff:2.75] 🎯 |
 | Task 9005 | ⬜ | 🎁 **monorepo_root_gates** · The consolidated root .mcp.json reaches only cartouche's tidewave (port 4013); the other seven packages' dev servers are unaddressable [D:2/B:5/U:4 → Eff:2.25] 🎯 |
 | Task 9011 | ⬜ | 🎁 **monorepo_root_gates** · check.dispatch runs NO tests in onchain_aave, onchain_aerodrome and onchain_evm — the reviewer gate grades three packages without executing their suites [D:4/B:9/U:8 → Eff:2.12] 🎯 |
+| Task 9012 | ⬜ | 🎁 **monorepo_root_gates** · Resolve Mint advisories reported by the Aave cold dependency install [D:3/B:7/U:7 → Eff:2.33] 🎯 |
 <!-- TASKS:END -->
 
 ---

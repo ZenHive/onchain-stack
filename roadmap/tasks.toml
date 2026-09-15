@@ -9246,3 +9246,22 @@ Verify the other two packages' suites actually pass cold before wiring them in; 
 """
 created_at = "2026-09-15"
 scored_at = "2026-09-15"
+
+[[task]]
+id = "9012"
+phase = 0
+bundle = "monorepo_root_gates"
+target_repo = "onchain_stack"
+status = "pending"
+title = "Resolve Mint advisories reported by the Aave cold dependency install"
+scores = { d = 3, b = 7, u = 7 }
+acceptance_criteria = ["Verify the affected and fixed Mint versions for EEF-CVE-2026-82728 and EEF-CVE-2026-82729 against upstream sources and identify affected package locks", "Update affected locks to an available fixed compatible Mint version, or document an evidence-based mitigation if no fix exists; do not suppress the advisories", "Run hex.audit and deps.audit plus the affected packages' checks serially, and report remaining advisories separately"]
+out_of_scope = ["Re-adjudicating the documented gun/cowlib mirror-grouping issue", "Publishing packages or changing unrelated dependency bounds"]
+touches = ["packages/*/mix.lock", "packages/*/mix.exs"]
+assignee = "codex"
+model = "gpt-6-astra"
+body = """
+Discovered during the cc35c2a post-merge audit: mix deps.get in packages/onchain_aave resolved the unchanged mint 1.9.3 lock and reported EEF-CVE-2026-82728 (HIGH, unbounded HTTP/1 status-line and chunk-extension buffering) and EEF-CVE-2026-82729 (MEDIUM, quadratic chunk-size parsing). These are separate from the gun/cowlib findings adjudicated in root CLAUDE.md. The audited feature did not introduce this dependency; handle currency and advisory verification as a bounded follow-up rather than expanding the position-manager test fix. Check other package locks for the same version, verify upstream fixes, and run both advisory sources because their coverage differs.
+"""
+created_at = "2026-09-15"
+scored_at = "2026-09-15"

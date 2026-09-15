@@ -21,7 +21,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
   `InsufficientBorrowAllowance(0, 1_000_000_000_000_000_000)`. After
   `approve_withdraw(1 wei)`, a 1 ETH withdraw returns
   `InsufficientWithdrawAllowance(1, 1_000_000_000_000_000_000)`; a later
-  withdraw of the granted amount moves WETH and both `renounce_*` paths
+  withdraw within the granted amount moves WETH and both `renounce_*` paths
   clear the remaining allowances.
 
   The exercised contracts are specified by Aave's `IHub`, `ISpoke`,
@@ -426,7 +426,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
     assert reserve_supplied == hub_added
     assert decode_status!(collateral_status_after_enable) == {true, false}
 
-    assert decode_uint!(allowance_before_result) == @borrow_amount
+    assert decode_uint!(allowance_before_result) == 2 * @borrow_amount
 
     {borrowed_shares, borrowed_amount} = decode_pair!(borrow_result)
     user_debt = decode_uint!(user_debt_result)
@@ -435,7 +435,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
 
     assert borrowed_shares > 0
     assert borrowed_amount == @borrow_amount
-    assert decode_uint!(allowance_after_result) == 0
+    assert decode_uint!(allowance_after_result) == @borrow_amount - @rounding_delta_wei
     assert user_debt == borrowed_amount + @rounding_delta_wei
     assert reserve_debt == base_debt + user_debt
     assert hub_owed == base_owed + user_debt
@@ -457,14 +457,14 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
     assert {:error, {:insufficient_withdraw_allowance, @tiny_withdraw_allowance, @withdraw_amount}} =
              PositionManager.decode_revert(over_allowance_withdraw.output)
 
-    assert decode_uint!(withdraw_allowance_before_result) == @withdraw_amount
+    assert decode_uint!(withdraw_allowance_before_result) == 2 * @withdraw_amount
 
     {withdrawn_shares, withdrawn_amount} = decode_pair!(withdraw_result)
     assert withdrawn_shares > 0
     assert withdrawn_amount == @withdraw_amount
     assert decode_uint!(supplied_after_withdraw_result) == supplied_assets - @withdraw_amount
     assert decode_uint!(weth_after_withdraw) == decode_uint!(weth_before_withdraw) + @withdraw_amount
-    assert decode_uint!(withdraw_allowance_after_result) == 0
+    assert decode_uint!(withdraw_allowance_after_result) == @withdraw_amount
     assert decode_uint!(borrow_allowance_after_renounce) == 0
     assert decode_uint!(withdraw_allowance_after_renounce) == 0
     refute decode_bool!(taker_authorized_after_revoke)
@@ -484,7 +484,14 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
       supply: &PositionManager.supply(@main_spoke, @weth_reserve_id, @supply_amount, @fork_user, &1),
       enable_collateral: &PositionManager.set_using_as_collateral(@main_spoke, @weth_reserve_id, true, @fork_user, &1),
       authorize_taker: &PositionManager.set_user_position_manager(@main_spoke, @taker, true, &1),
-      approve_borrow: &PositionManager.approve_borrow(@main_spoke, @weth_reserve_id, @fork_user, @borrow_amount, &1),
+      approve_borrow:
+        &PositionManager.approve_borrow(
+          @main_spoke,
+          @weth_reserve_id,
+          @fork_user,
+          2 * @borrow_amount,
+          &1
+        ),
       borrow: &PositionManager.borrow(@main_spoke, @weth_reserve_id, @borrow_amount, @fork_user, &1),
       repay: &PositionManager.repay(@main_spoke, @weth_reserve_id, @repay_amount, @fork_user, &1),
       authorize_config: &PositionManager.set_user_position_manager(@main_spoke, @config, true, &1),
@@ -527,7 +534,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
           @main_spoke,
           @weth_reserve_id,
           @fork_user,
-          @withdraw_amount,
+          2 * @withdraw_amount,
           &1
         ),
       withdraw: &PositionManager.withdraw(@main_spoke, @weth_reserve_id, @withdraw_amount, @fork_user, &1),
