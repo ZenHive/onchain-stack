@@ -1,5 +1,14 @@
 # Unreleased
 
+* **Changed — `ABI.Math.kec/1` hashes on the `ex_keccak` Rust NIF instead of the
+  pure-Elixir `ex_sha3`.** Same algorithm, same bytes: the keccak vectors in the
+  `ABI.Math.kec/1` doctests and all 531 tests pass unchanged. `kec/1` hashes
+  every function selector and every keccak-shaped ABI value, so its cost is paid
+  per encode. Measured on this host at 20,000 iterations: 182.0 us -> 0.31 us for
+  a 32-byte input, 1344.3 us -> 1.32 us for 1 KiB. `ex_keccak` brings
+  `rustler_precompiled`, already shipped elsewhere in this repo, so it adds no new
+  toolchain requirement. Sibling change in cartouche's `Cartouche.Hash.keccak/1`.
+
 * **Added — `{:muex, "~> 0.9", only: [:dev, :test], runtime: false}`,** for
   on-demand mutation-adequacy measurement. It is deliberately **not** a `mix ci`
   gate: it mutates `lib/` in place and spawns a full suite per mutant. The 0.9

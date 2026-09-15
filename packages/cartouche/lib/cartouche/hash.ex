@@ -28,7 +28,7 @@ defmodule Cartouche.Hash do
     ~h[0x9C22FF5F21F0B81B113E63F7DB6DA94FEDEF11B2119B4088B89664FB9A3CB658]
   """
   @spec keccak(binary()) :: <<_::256>>
-  def keccak(message), do: ExSha3.keccak_256(message)
+  def keccak(message), do: ExKeccak.hash_256(message)
 
   api(:keccak_unsigned, "Hash a binary message with Keccak-256 and decode the digest as an unsigned integer.",
     params: [

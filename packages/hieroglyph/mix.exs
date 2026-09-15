@@ -199,7 +199,13 @@ defmodule ABI.Mixfile do
   defp deps do
     [
       {:jason, "~> 1.4"},
-      {:ex_sha3, "~> 0.1.4"},
+      # Keccak-256 on the Rust NIF, not the pure-Elixir ex_sha3 it replaced
+      # (2026-09-15). ABI.Math.kec/1 hashes every function selector and every
+      # keccak-shaped ABI value, so its cost is paid per encode: measured on a
+      # consumer hot path, ex_sha3 ran ~182 us for a 32-byte input and ~1.34 ms
+      # for 1 KiB. Same algorithm, same bytes — the doctests in ABI.Math.kec/1
+      # pin the vectors that prove it.
+      {:ex_keccak, "~> 0.7.8"},
       # Two-segment on purpose: the three-segment cap turned every descripex
       # minor into a forced nine-repo release cascade, while the committed
       # `mix.lock` already blocks a silent in-family upgrade — a new descripex

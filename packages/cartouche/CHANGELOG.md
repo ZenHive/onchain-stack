@@ -14,6 +14,39 @@ All notable changes to this project will be documented in this file.
 <a id="phase-11-hieroglyph-1-0-0-1-4-0-adoption-advisory"></a>
 <a id="phase-12-agent-economy-descripex-adoption"></a>
 
+## [Unreleased]
+
+### Changed
+
+* **`Cartouche.Hash.keccak/1` now hashes on the `ex_keccak` Rust NIF instead of
+  the pure-Elixir `ex_sha3`.** Same algorithm, same bytes — every keccak vector
+  already pinned by the `Cartouche.Hash` doctests and the 1,282-test suite
+  passes unchanged. What changes is the cost, and it is not a rounding error.
+  Measured on this host, 20,000 iterations per size:
+
+  | input | `ex_sha3` (before) | `ex_keccak` (after) |
+  |---|---|---|
+  | 32 bytes | 182.0 us | 0.31 us |
+  | 128 bytes | 197.3 us | 0.22 us |
+  | 1 KiB | 1344.3 us | 1.32 us |
+
+  Roughly **600-1000x**, and it compounds: `keccak/1` is the family's single
+  hash entry point, so every typeHash, domain separator, struct hash and
+  signing digest paid it. One EIP-712 `encode/4` of a two-field message
+  measured 1.03 ms before this change and is now microseconds.
+
+  Found from a consumer hot path: `bourse` migrated its DEX signing onto
+  Cartouche 0.9.0 and its per-order signing cost went from ~0.1 ms to 5.66 ms,
+  of which ~1 ms was EIP-712 hashing. The remaining ~2.8 ms is `curvy`'s
+  pure-Elixir ECDSA sign, which this release does **not** address — see the
+  roadmap task for an `ex_secp256k1` signer backend behind the existing
+  `Cartouche.Signer.Backend` behaviour.
+
+  `ex_keccak` brings `rustler_precompiled`, which this repo already ships
+  (`onchain_evm` embeds revm through the same mechanism), so it adds no new
+  toolchain requirement for consumers. A ZenHive divergence from upstream
+  signet: do not cherry-pick it into a PR branch.
+
 ## [0.9.0] — 2026-08-27
 
 ### Changed

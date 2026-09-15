@@ -67,7 +67,7 @@ defmodule ABI.Math do
   """
   @spec kec(binary()) :: binary()
   def kec(data) do
-    ExSha3.keccak_256(data)
+    ExKeccak.hash_256(data)
   end
 
   api(:pad, "Pad a binary up to the next 32-byte ABI word boundary, with side and fill byte chosen by argument.",

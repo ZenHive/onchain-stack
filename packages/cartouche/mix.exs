@@ -175,7 +175,16 @@ defmodule Cartouche.MixProject do
       # already pulls plug `only: :dev` — a narrower `:only` here fails the
       # env-match check. Still excluded from prod (PLT + published deps).
       {:plug, "~> 1.16", only: [:dev, :test]},
-      {:ex_sha3, "~> 0.1.5"},
+      # Keccak-256 on the Rust NIF, not the pure-Elixir ex_sha3 it replaced
+      # (2026-09-15). Cartouche.Hash.keccak/1 is the family's only hash entry
+      # point: every typeHash, domain separator, struct hash and signing digest
+      # goes through it, so a consumer pays it several times per signature.
+      # Measured on a trading hot path before the swap: ~182 us for a 32-byte
+      # input, ~1.34 ms for 1 KiB, ~1.0 ms for one EIP-712 encode. Same
+      # algorithm and same bytes — pinned by the published Ethereum vectors
+      # in the Cartouche.Hash doctests. A ZenHive divergence from upstream
+      # signet; never cherry-picked into a PR branch.
+      {:ex_keccak, "~> 0.7.8"},
       {:curvy, "~> 0.3.1"},
       {:goth, "~> 1.4.5", optional: true},
       {:ex_rlp, "~> 0.6.0"},
