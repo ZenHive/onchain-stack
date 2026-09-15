@@ -13528,13 +13528,13 @@
       "bundle": "cartouche_release_010",
       "target_repo": "cartouche",
       "status": "pending",
-      "title": "Record task 2134 signing API changes in Cartouche release notes",
+      "title": "Reconcile Cartouche release notes against everything landed since 0.9.1",
       "scores": {
-        "d": 1,
-        "b": 2,
-        "u": 2
+        "d": 2,
+        "b": 7,
+        "u": 7
       },
-      "eff": 2.0,
+      "eff": 3.5,
       "dep_layer": 0,
       "unlocks": 0,
       "markers": [],
@@ -13542,12 +13542,17 @@
       "assignee": "codex",
       "model": "gpt-6-astra",
       "acceptance_criteria": [
-        "The next release notes describe all four task 2134 changes and the packed signature width contract."
+        "The next release notes describe all four task 2134 changes and the packed signature width contract.",
+        "The notes carry a BREAKING entry for the task 2133 bytesN padding flip in Cartouche.Typed.Type.encode_data_value/2,3, deserialize_value!/2 and serialize_value/2: a short bytesN value previously left-padded and now right-pads, so a consumer relying on the old behaviour gets different struct hashes, digests and signatures with no error.",
+        "The notes also record task 2133's int8..int256 support, uintN/intN range rejection, array-of-struct encoding, and the encode_type/2 termination fix.",
+        "The version bump chosen for the release reflects the breaking encoding change rather than treating it as a patch.",
+        "The CHANGELOG is reconciled against `git log packages/cartouche` since the 0.9.1 cut, not only against the two tasks named here, so no further landed change is left unrecorded."
       ],
       "touches": [
-        "packages/cartouche/CHANGELOG.md"
+        "packages/cartouche/CHANGELOG.md",
+        "packages/cartouche/mix.exs"
       ],
-      "body": "Audit 408b2b6 found no release-note entry for the EIP-191 byte-length fix, recover_personal_sign/2, variable-width packed signatures, or explicit chain-id normalization. Harness reserves changelog edits, so record these changes during release preparation without rewriting historical entries.",
+      "body": "Two consecutive audits (408b2b6, 0f5ad9b) found landed Cartouche work with no\nrelease-note entry, so this is a class, not two incidents: harness reserves CHANGELOG\nedits during dispatch, and nothing reconciles them afterwards. Close the class in one\nrelease-preparation pass rather than one entry at a time.\n\nAudit 408b2b6: no entry for task 2134's EIP-191 byte-length fix, recover_personal_sign/2,\nvariable-width packed signatures, or explicit chain-id normalization.\n\nAudit 0f5ad9b: no entry for task 2133 (c3c6ff1a61f4 / 81944554ab4e), which is not\nadditive. EIP-712 fixed-bytes encoding was wrong before (left-padded) and is right now\n(right-padded), so every consumer that passed a short `bytesN` value gets a different\ndigest and therefore a different signature, silently and without an error. Cartouche is a\nsigning library; a consumer discovering this from a rejected on-chain signature is the\nfailure mode to avoid.\n\nWalk the git log for `packages/cartouche` since the 0.9.1 cut and write entries for\neverything found, not only the two tasks above. Decide the version bump against the\npublished 0.9.1 baseline with the breaking behaviour in mind. Do not rewrite historical\nentries.\n",
       "created_at": "2026-09-15",
       "scored_at": "2026-09-15",
       "cross_repo": []

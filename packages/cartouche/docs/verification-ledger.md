@@ -44,9 +44,10 @@ name, and appended after the primary type.
 
 `test/typed_test.exs` pins these rules, including bounded termination tests for
 multiple dependencies and recursive type graphs, every signed integer width and
-its range boundaries, and empty and nested arrays of structs. Struct encodings
-require the type definitions: `Type.encode_data_value(value, type, types)` carries
-them through nested arrays; the existing two-argument primitive API is preserved.
+its range boundaries, unsigned range rejection, and empty and nested arrays of
+structs. Struct encodings require the type definitions:
+`Type.encode_data_value(value, type, types)` carries them through nested arrays;
+the existing two-argument primitive API is preserved.
 
 | Fixture | Source | Version | Coverage |
 |---|---|---|---|

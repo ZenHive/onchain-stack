@@ -3,6 +3,9 @@ const path = require("node:path");
 const assert = require("node:assert/strict");
 const { createRequire } = require("node:module");
 
+const ethersVersion = "6.17.0";
+const viemVersion = "2.55.19";
+
 if (!process.env.VECTOR_TOOL_ROOT) throw new Error("VECTOR_TOOL_ROOT is required");
 const load = createRequire(path.join(process.env.VECTOR_TOOL_ROOT, "package.json"));
 const { Wallet, TypedDataEncoder } = load("ethers");
@@ -26,7 +29,7 @@ const messages = [
   { ...base, people: [alice, bob], groups: [[bob], [], [alice, bob]] },
   { ...base, people: [], groups: [], delta: 0, tick: 8388607 },
 ];
-const generationCommand = "npm install --prefix /tmp/cartouche-vector-tools ethers@6.17.0 viem@2.55.19 && VECTOR_TOOL_ROOT=/tmp/cartouche-vector-tools node test/fixtures/vectors/typed/generate-typed.cjs";
+const generationCommand = `npm install --prefix /tmp/cartouche-vector-tools ethers@${ethersVersion} viem@${viemVersion} && VECTOR_TOOL_ROOT=/tmp/cartouche-vector-tools node test/fixtures/vectors/typed/generate-typed.cjs`;
 
 async function main() {
   const wallet = new Wallet(privateKey);
@@ -51,7 +54,7 @@ async function main() {
     ethersVectors.push({ ...common, ...ethersResult });
     viemVectors.push({ ...common, ...viemResult });
   }
-  for (const [source, version, vectors] of [["ethers", "6.17.0", ethersVectors], ["viem", "2.55.19", viemVectors]]) {
+  for (const [source, version, vectors] of [["ethers", ethersVersion, ethersVectors], ["viem", viemVersion, viemVectors]]) {
     fs.writeFileSync(path.join(__dirname, `typed-${source}-${version}.json`),
       JSON.stringify({ source, version, generationCommand, privateKey, vectors }, null, 2) + "\n");
   }

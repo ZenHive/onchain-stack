@@ -209,7 +209,7 @@
 | Task 2137 | ⬜ | 🎁 **cartouche_rpc_read_surface** · Move the transport hardening into cartouche — retry, telemetry, node-refusal classification, batch [D:5/B:9/U:9 → Eff:1.8] 🚀 |
 | Task 9002 | ⬜ | 🎁 **cartouche_signer_backends** · Put secp256k1 sign and recover behind a native backend — curvy costs ~2.8 ms per signature on the DEX order path [D:5/B:7/U:7 → Eff:1.4] 📋 |
 | Task 9006 | ⬜ | 🎁 **cartouche_correctness_010** · 🔒 Normalize high-s signatures at Cartouche's recovery boundary — recover_public_key_from_digest/2 still hits the curvy#8 recid bug [D:3/B:6/U:5 → Eff:1.83] 🚀 |
-| Task 9007 | ⬜ | 🎁 **cartouche_release_010** · Record task 2134 signing API changes in Cartouche release notes [D:1/B:2/U:2 → Eff:2.0] 🎯 |
+| Task 9007 | ⬜ | 🎁 **cartouche_release_010** · Reconcile Cartouche release notes against everything landed since 0.9.1 [D:2/B:7/U:7 → Eff:3.5] 🎯 |
 | Task 9008 | ⬜ | 🎁 **cartouche_phase7_deps** · Assess Mint advisories reported by Cartouche cold dependency resolution [D:2/B:5/U:4 → Eff:2.25] 🎯 |
 <!-- TASKS:END -->
 

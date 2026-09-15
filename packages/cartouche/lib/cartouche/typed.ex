@@ -24,9 +24,9 @@ defmodule Cartouche.Typed do
 
     @type primitive() ::
             :address
-            | {:uint, number()}
+            | {:uint, pos_integer()}
             | {:int, pos_integer()}
-            | {:bytes, number()}
+            | {:bytes, pos_integer()}
             | :string
             | :bytes
             | {:array, field_type()}
@@ -280,6 +280,11 @@ defmodule Cartouche.Typed do
     expanded to 32-bytes, and dynamic types are hashed. Pass the type map as the
     third argument when encoding structs or arrays containing structs.
 
+    Fixed-width types are constrained to their declared width. `uintN` and `intN`
+    raise `ArgumentError` for a value outside the width's range; `bytesN` accepts
+    a short value and right-pads it, but raises `FunctionClauseError` for a value
+    longer than `N` bytes.
+
     ## Examples
 
         iex> Cartouche.Typed.Type.encode_data_value(<<1::160>>, :address)
@@ -299,6 +304,12 @@ defmodule Cartouche.Typed do
 
         iex> Cartouche.Typed.Type.encode_data_value([<<0xCC, 0xDD>>, <<0xEE>>], {:array, :bytes})
         ~h[134619415A3C9FE841D99F7CFD5C0BCCFC7CF0DAE90743A3D717C748A3961CF5]
+
+        iex> Cartouche.Typed.Type.encode_data_value(256, {:uint, 8})
+        ** (ArgumentError) value out of range for uint8
+
+        iex> Cartouche.Typed.Type.encode_data_value(<<0xCC, 0xDD, 0xEE>>, {:bytes, 2})
+        ** (FunctionClauseError) no function clause matching in Cartouche.Hex.pad_right/2
     """
     @spec encode_data_value(term(), field_type(), Cartouche.Typed.type_map()) :: binary()
     def encode_data_value(value, type, types \\ %{})
