@@ -6029,18 +6029,18 @@ shipped_in = "bdd274ea31b70eccfb72c8dc39e0769a22932abf"
 id = 5002
 phase = 5001
 bundle = "onchain_aerodrome_foundations"
-milestone = "onchain_aerodrome_v0_1"
-title = "Onchain.Aerodrome.Epoch — weekly ve(3,3) epoch arithmetic"
-status = "pending"
 target_repo = "onchain_aerodrome"
-module = "Onchain.Aerodrome.Epoch"
+milestone = "onchain_aerodrome_v0_1"
+status = "in_progress"
+title = "Onchain.Aerodrome.Epoch — weekly ve(3,3) epoch arithmetic"
 scores = { d = 3, b = 7, u = 9 }
 markers = ["parallel"]
 acceptance_criteria = ["Epoch.start/1 returns floor(ts / 604_800) * 604_800, and a stream_data property test asserts the returned instant is a Thursday 00:00:00 UTC (DateTime.from_unix!/1 plus Date.day_of_week/1 == 4) for at least 500 timestamps spanning 2020 to 2030", "Epoch.epochs_per_year/0 returns the integer 52, and its @doc states that 52 * 604_800 is about 364 days and that this is the annualiser Analytics.APR uses, because annualising from a daily rate overstates by roughly 7x", "start/1, end/1, next/1, previous/1, index/1, bounds/1, contains?/2, range/2 and seconds_remaining/1 are exported with @spec and doctests", "Epoch.end/1 is documented as exclusive (the start of the next epoch) and a test asserts contains?(Epoch.end(ts), ts) is false — an off-by-one here silently double-counts an epoch of emissions", "range(from_ts, to_ts) returns epoch starts ascending, inclusive of the epoch containing from_ts, and returns [] when to_ts precedes from_ts rather than raising", "A test asserts Epoch.start(t) equals Contracts.constants().epoch_seconds * div(t, Contracts.constants().epoch_seconds) so the constant is never forked into a second literal", "Negative and pre-1970 timestamps return {:error, {:timestamp_out_of_range, ts}} rather than a negative epoch index", "mix ci passes"]
 out_of_scope = ["Any RPC read of epoch state; RewardsSugar.epochsByAddress belongs to the read layer", "The LpEpoch struct, which is task 7", "Timezone handling beyond UTC — Aerodrome epochs are UTC-only"]
-touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/epoch.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/epoch_test.exs"]
 files_to_modify = ["packages/onchain_aerodrome/lib/onchain/aerodrome/epoch.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/epoch_test.exs"]
+touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/epoch.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/epoch_test.exs"]
 assignee = "grok"
+module = "Onchain.Aerodrome.Epoch"
 model = "grok-4.6"
 body = """
 Pure weekly-epoch arithmetic for Aerodrome's ve(3,3) schedule. Epoch length is 604_800 seconds and epochs flip Thursday 00:00 UTC — not because of a hardcoded offset, but because Unix epoch 0 was itself a Thursday, so floor(ts / 604_800) * 604_800 lands on Thursday midnight with no correction term. Do not add an offset constant; if you feel the need to, your test timestamps are wrong.
@@ -6054,6 +6054,7 @@ OPEN DECISION settled 2026-08-26 (do not re-ask): index/1 is an absolute epoch n
 AUTHORITY: the deployed RewardsSugar at 0x1b121EfDaF4ABb8785a315C51D29BCE0552A7678. cast call WEEK()(uint256) returned 604800 on 2026-08-26, recorded as check 6 in priv/abis/README.md. That contract, not a calendar library, defines the epoch length. If WEEK() ever disagrees with Contracts.constants().epoch_seconds, the contract wins.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]
