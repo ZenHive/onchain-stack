@@ -33,6 +33,10 @@ defmodule OnchainAerodrome do
     modules: [
       Onchain.Aerodrome.Contracts,
       Onchain.Aerodrome.Epoch,
-      Onchain.Aerodrome.Bindings.Abi
+      Onchain.Aerodrome.Bindings.Abi,
+      Onchain.Aerodrome.Types.Lp,
+      Onchain.Aerodrome.Types.Position,
+      Onchain.Aerodrome.Types.Swap,
+      Onchain.Aerodrome.Types.Token
     ]
 end

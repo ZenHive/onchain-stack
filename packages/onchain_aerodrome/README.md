@@ -10,9 +10,10 @@ Aerodrome is a ve(3,3) exchange combining Solidly-style v2 pools (volatile and
 stable) with Slipstream concentrated-liquidity pools. Emissions are directed
 weekly by veAERO voters; an epoch is one week and flips **Thursday 00:00 UTC**.
 
-> **Status: scaffold.** The address registry, weekly epoch arithmetic, and captured
-> ABIs are in place and verified against live Base state. The binding, read,
-> analytics and write layers are scoped in [the monorepo `ROADMAP.md`](https://github.com/ZenHive/onchain-stack/blob/main/ROADMAP.md)
+> **Status: scaffold.** The address registry, weekly epoch arithmetic, captured
+> ABIs, and pool/token structs (`Types.Lp`, `.Position`, `.Swap`, `.Token`) are
+> in place. The binding, read, analytics and write layers are scoped in
+> [the monorepo `ROADMAP.md`](https://github.com/ZenHive/onchain-stack/blob/main/ROADMAP.md)
 > (canonical source `roadmap/tasks.toml` at the repo root, tasks offset +5000) and not yet implemented.
 > Dated protocol notes (official Sugar SDK sibling, tokenized stocks, B20
 > multiplier) live in [`docs/protocol-context.md`](docs/protocol-context.md).

@@ -937,6 +937,11 @@ lib/onchain/aerodrome/
   contracts.ex                  # address registry + verified constants (base layer)
   epoch.ex                      # weekly ve(3,3) epoch arithmetic (base layer)
   bindings/abi.ex               # compile-time signatures from priv/abis (bindings layer)
+  types/lp.ex                   # LpSugar.all row (types layer)
+  types/position.ex             # LpSugar.positions row
+  types/swap.ex                 # LpSugar.forSwaps row
+  types/token.ex                # tokens row (shared with TokenSugar)
+  types/row.ex                  # positional from_raw/4 helper
 lib/mix/tasks/aerodrome.capture_fixtures.ex
                                 # pinned-block Sugar eth_call capture (dev workflow, not mix ci)
 priv/abis/                      # Sourcify-captured deployed ABIs + provenance README
@@ -946,9 +951,10 @@ test/support/aerodrome_fixtures.ex
 test/support/rpc_case.ex        # two-endpoint Base portability seam (not upstreamed)
 test/support/calldata_fixture.ex
                                 # independent cast calldata oracle + Sugar-backed eth_call impersonation
+test/support/types_case.ex      # positional decode + one-to-one assertions for Types.*
 ```
 
-The remaining layers (`types/`, `analytics/`, `sugar/`, `write/`) and the rest of
+The remaining layers (`analytics/`, `sugar/`, `write/`) and the rest of
 `bindings/` are scoped in the root `roadmap/tasks.toml` (offset +5000) and not
 yet implemented. `.reach.exs` already declares them, so the gate is in place
 before those modules land.

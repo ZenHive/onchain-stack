@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Types.Lp`, `Types.Position`, `Types.Swap` and `Types.Token` — positional
+  `from_raw/1` constructors for the Sugar pool and token rows, with ABI
+  field-order drift tests that read `priv/abis/*.json` directly.
+
 - Pinned-block Sugar `eth_call` fixtures under `test/fixtures/aerodrome/`, an
   offline loader (`Onchain.Aerodrome.Fixtures`), and
   `mix aerodrome.capture_fixtures --block N` to re-capture them. The Mix task
