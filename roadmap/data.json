@@ -9097,7 +9097,7 @@
       "bundle": "onchain_aerodrome_foundations",
       "target_repo": "onchain_aerodrome",
       "milestone": "onchain_aerodrome_v0_1",
-      "status": "in_progress",
+      "status": "done",
       "title": "Onchain.Aerodrome.Epoch — weekly ve(3,3) epoch arithmetic",
       "scores": {
         "d": 3,
@@ -9137,10 +9137,17 @@
         "packages/onchain_aerodrome/lib/onchain/aerodrome/epoch.ex",
         "packages/onchain_aerodrome/test/onchain/aerodrome/epoch_test.exs"
       ],
+      "shipped_in": "f8cb202b5180909bf48dfafaf3f9d79ce29223c0",
       "body": "Pure weekly-epoch arithmetic for Aerodrome's ve(3,3) schedule. Epoch length is 604_800 seconds and epochs flip Thursday 00:00 UTC — not because of a hardcoded offset, but because Unix epoch 0 was itself a Thursday, so floor(ts / 604_800) * 604_800 lands on Thursday midnight with no correction term. Do not add an offset constant; if you feel the need to, your test timestamps are wrong.\n\nThe read layer will consume range/2 to build the epoch series for RewardsSugar.epochsByAddress pagination, and Analytics.APR will consume epochs_per_year/0 as its annualiser. Those two are this module's contract with the rest of the package; keep them stable and say so in the moduledoc.\n\nThis module is claimed by the analytics lane. No other module may define a second epoch helper; if a caller needs epoch boundaries, it calls here. Epoch is already declared in the base layer of .reach.exs, so it may depend on nothing but Onchain.Aerodrome.Contracts.\n\nOPEN DECISION settled 2026-08-26 (do not re-ask): index/1 is an absolute epoch number since the Unix epoch. It is large, stable, and joins cleanly against on-chain data. Do not pin an Aerodrome genesis timestamp. Record that choice in the moduledoc.\n\nAUTHORITY: the deployed RewardsSugar at 0x1b121EfDaF4ABb8785a315C51D29BCE0552A7678. cast call WEEK()(uint256) returned 604800 on 2026-08-26, recorded as check 6 in priv/abis/README.md. That contract, not a calendar library, defines the epoch length. If WEEK() ever disagrees with Contracts.constants().epoch_seconds, the contract wins.\n",
       "created_at": "2026-08-26",
       "started_at": "2026-09-15",
+      "done_at": "2026-09-15",
       "scored_at": "2026-08-26",
+      "implemented": "Landed by grok via merge-train; reviewer-approved (run run-1789488050225-fe9e4ca7, f8cb202b5180909bf48dfafaf3f9d79ce29223c0).",
+      "delivered_by": "grok",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1789488050225-fe9e4ca7",
       "cross_repo": []
     },
     {

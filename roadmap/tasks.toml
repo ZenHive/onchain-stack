@@ -6031,7 +6031,7 @@ phase = 5001
 bundle = "onchain_aerodrome_foundations"
 target_repo = "onchain_aerodrome"
 milestone = "onchain_aerodrome_v0_1"
-status = "in_progress"
+status = "done"
 title = "Onchain.Aerodrome.Epoch — weekly ve(3,3) epoch arithmetic"
 scores = { d = 3, b = 7, u = 9 }
 markers = ["parallel"]
@@ -6053,9 +6053,16 @@ OPEN DECISION settled 2026-08-26 (do not re-ask): index/1 is an absolute epoch n
 
 AUTHORITY: the deployed RewardsSugar at 0x1b121EfDaF4ABb8785a315C51D29BCE0552A7678. cast call WEEK()(uint256) returned 604800 on 2026-08-26, recorded as check 6 in priv/abis/README.md. That contract, not a calendar library, defines the epoch length. If WEEK() ever disagrees with Contracts.constants().epoch_seconds, the contract wins.
 """
+implemented = "Landed by grok via merge-train; reviewer-approved (run run-1789488050225-fe9e4ca7, f8cb202b5180909bf48dfafaf3f9d79ce29223c0)."
+delivered_by = "grok"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1789488050225-fe9e4ca7"
 created_at = "2026-08-26"
 started_at = "2026-09-15"
 scored_at = "2026-08-26"
+done_at = "2026-09-15"
+shipped_in = "f8cb202b5180909bf48dfafaf3f9d79ce29223c0"
 
 [[task]]
 id = 5003
