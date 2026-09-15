@@ -70,7 +70,7 @@ defmodule Onchain.Aerodrome.Types.VeNFT do
 
   @spec from_raw(tuple()) :: t()
   def from_raw(raw) do
-    venft = Row.from_raw(__MODULE__, @fields, @address_fields, raw)
+    %__MODULE__{} = venft = Row.from_raw(__MODULE__, @fields, @address_fields, raw)
     %{venft | votes: Enum.map(venft.votes, &Vote.from_raw/1)}
   end
 end

@@ -90,7 +90,7 @@ defmodule Onchain.Aerodrome.Types.LpEpoch do
 
   @spec from_raw(tuple()) :: t()
   def from_raw(raw) do
-    epoch = Row.from_raw(__MODULE__, @fields, @address_fields, raw)
+    %__MODULE__{} = epoch = Row.from_raw(__MODULE__, @fields, @address_fields, raw)
 
     %{
       epoch

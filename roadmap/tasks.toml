@@ -9177,3 +9177,65 @@ Found by the post-merge audit of d0dd07b.
 """
 created_at = "2026-09-15"
 scored_at = "2026-09-15"
+
+[[task]]
+id = "9010"
+phase = 5007
+bundle = "onchain_aerodrome_types"
+target_repo = "onchain_aerodrome"
+status = "pending"
+title = "TypesCase resolves overloaded Sugar ABI entries by name alone — disambiguate by input types like the drift test does"
+scores = { d = 2, b = 4, u = 4 }
+acceptance_criteria = ["Onchain.Aerodrome.TypesCase resolves an ABI function entry by name AND input-type list, matching the disambiguation abi_drift_test.exs already performs, so an overloaded Sugar function cannot silently resolve to the wrong entry", "A named test proves the disambiguation works: given an ABI capture carrying two same-named functions with different input types, the helper selects the one the caller asked for and fails loudly when no entry matches — not silently on hd/1 of an empty match", "Every existing assert_one_to_one/4,5 call site passes its overload's input types (relay_sugar.json all(address) is the live case); the change is confined to test support and test files", "mix check.dispatch passes in packages/onchain_aerodrome"]
+out_of_scope = ["Changing Onchain.Aerodrome.Types.* production modules", "Re-capturing any priv/abis/*.json", "Refactoring abi_drift_test.exs's own ABI reader, which already disambiguates correctly"]
+touches = ["packages/onchain_aerodrome/test/support/types_case.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/types/"]
+assignee = "cursor"
+module = "Onchain.Aerodrome.TypesCase"
+model = "cursor-grok-4.6-high"
+body = """
+Found during the post-merge audit of ead58bc (task 5007's veAERO structs).
+
+`Onchain.Aerodrome.TypesCase.abi_entry/2` (test/support/types_case.ex) finds an ABI entry with `Enum.find(&(&1["type"] == "function" and &1["name"] == abi_function))` — name only. `abi_drift_test.exs` reading the same JSON takes an optional `input_types` argument and matches on it too, and Relay's drift test passes `["address"]` explicitly because `RelaySugar` exposes `all` in more than one arity upstream.
+
+Today the captured `priv/abis/relay_sugar.json` contains exactly one `all` entry, so both readers agree and nothing is wrong — this is latent, not a live bug. The asymmetry is the defect: the drift test is hardened against a re-capture that adds an `all` overload; the shared test helper is not. After such a re-capture, `TypesCase.assert_one_to_one(Relay, {"relay_sugar.json", "all"}, ...)` would compare Relay's fields against whichever overload happens to sit first in the JSON array, and a mismatch there reads as a struct bug rather than a resolution bug. Worse, the two readers would then disagree, so the drift test could stay green while the one-to-one assertions grade against the wrong shape.
+
+Note the failure mode when no entry matches at all: `abi_entry/2` returns `nil` and the following `Map.fetch!/2` raises on nil rather than naming the function it could not resolve. Fix that at the same time — a test-support helper that cannot find its ABI entry should say which file and which signature it was looking for.
+
+Prefer lifting the drift test's existing `function_match?/3` shape into the shared helper over inventing a second mechanism; the point of the task is that there is one resolution rule, not two.
+"""
+created_at = "2026-09-15"
+scored_at = "2026-09-15"
+
+[[task]]
+id = "9011"
+phase = 0
+bundle = "monorepo_root_gates"
+target_repo = "onchain_stack"
+status = "pending"
+title = "check.dispatch runs NO tests in onchain_aave, onchain_aerodrome and onchain_evm — the reviewer gate grades three packages without executing their suites"
+scores = { d = 4, b = 9, u = 8 }
+acceptance_criteria = ["packages/onchain_aave, packages/onchain_aerodrome and packages/onchain_evm each run their test suite as part of mix check.dispatch, consistent with the five packages that already do", "onchain_aerodrome's Foundry-dependent calldata fixture tests are resolved explicitly, not by accident: either Foundry is documented as a required dispatch-node prerequisite in the root CLAUDE.md Harness section AND verified present on the dispatch nodes, or those tests carry an exclusion tag that check.dispatch excludes while mix ci still runs them — state which was chosen and why in the delivery", "mix check.dispatch passes in all three packages on a cold worktree with no Foundry and no RPC credentials, or the delivery names exactly which prerequisite a dispatch node must carry", "The root CLAUDE.md Harness section states that check.dispatch includes a test run in every package, so a future copy of the alias template cannot silently omit it", "mix ci passes at the repo root"]
+out_of_scope = ["Adding agents.check, deps.audit.gated, cold-PLT dialyzer or the coverage pass to check.dispatch — they are deliberately excluded (see root CLAUDE.md Harness)", "The --summary-only migration on precommit.full, which is task 9004", "Changing what mix ci runs in any package"]
+touches = ["packages/onchain_aave/mix.exs", "packages/onchain_aerodrome/mix.exs", "packages/onchain_evm/mix.exs", "CLAUDE.md"]
+assignee = "codex"
+model = "gpt-6-astra"
+body = """
+Found during the post-merge audit of ead58bc, by running the project's own dispatch gate on a cold worktree and noticing the output contained no test summary.
+
+Measured 2026-09-15 across all eight packages' `check.dispatch` aliases:
+
+- WITH a test step: cartouche, hieroglyph, onchain, onchain_js, onchain_tempo
+- WITHOUT any test step: **onchain_aave, onchain_aerodrome, onchain_evm**
+
+The three failing aliases are byte-identical to each other — `format --check-formatted`, `compile --warnings-as-errors`, `credo --strict ...`, `doctor --raise`, `ex_dna --max-clones 0`, `reach.check --arch --smells`, `sobelow --skip --exit low` — one copied template with the test step dropped.
+
+Why this matters more than its size suggests: `check.dispatch` is the project's registered `check_command`. It is what the cross-family reviewer runs, and per the harness contract the reviewer IS the gate. So for three of eight packages the gate proves the code compiles, formats and passes static analysis, and proves nothing about whether it *works*. Concretely, task 5007 landed 47 new `Onchain.Aerodrome.Types.*` tests in this very range and the reviewer worktree never executed one of them. Every green verdict on these three packages has been quieter than it looked.
+
+This is exactly the whole-surface class the root CLAUDE.md describes: no per-task reviewer can see it, because no single task's diff contains it. Fix it in the alias, and write the invariant down so the next copy of the template cannot drop the step again.
+
+One real obstacle, which is why this is a task rather than a one-line edit. `packages/onchain_aerodrome`'s suite does not currently pass on a bare node: `test/onchain/aerodrome/calldata_fixture_test.exs` fails 3 tests with "Foundry cast is required on PATH; never a skip" (verified on this audit node, `cast` absent; landed earlier under task 5026 in fe6faa0 / 6af0864). That refusal-to-skip is deliberate and correct for `mix ci` — an evidence harness that silently skips proves nothing. But naively adding `test.json` to `check.dispatch` would turn every future onchain_aerodrome dispatch red on any node without Foundry. Decide that explicitly: either dispatch nodes carry Foundry and the root CLAUDE.md says so, or the calldata fixture tests get a tag `check.dispatch` excludes while `mix ci` still runs. Do not resolve it by weakening the test.
+
+Verify the other two packages' suites actually pass cold before wiring them in; `onchain_evm` has a Rust NIF build and `onchain_aave` may have integration-tagged tests needing exclusion.
+"""
+created_at = "2026-09-15"
+scored_at = "2026-09-15"

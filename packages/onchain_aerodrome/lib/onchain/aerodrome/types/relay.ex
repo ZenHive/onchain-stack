@@ -127,7 +127,7 @@ defmodule Onchain.Aerodrome.Types.Relay do
 
   @spec from_raw(tuple()) :: t()
   def from_raw(raw) do
-    relay = Row.from_raw(__MODULE__, @fields, @address_fields, raw)
+    %__MODULE__{} = relay = Row.from_raw(__MODULE__, @fields, @address_fields, raw)
 
     %{
       relay

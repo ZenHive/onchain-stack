@@ -21,6 +21,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Types.VeNFT`, `Types.Vote`, `Types.Relay` (+ `Relay.AccountVeNFT`),
+  `Types.LpEpoch` (+ `LpEpoch.TokenAmount`) and `Types.Reward` — the veAERO
+  structs, positional `from_raw/1` over the `VeSugar.byId`,
+  `RelaySugar.all(address)`, `RewardsSugar.epochsLatest` and
+  `RewardsSugar.rewards` rows. **`Types.Vote` is defined once** — the `votes`
+  nested components of `ve_sugar.json` `byId` and `relay_sugar.json`
+  `all(address)` are byte-identical, and the drift test asserts that equality
+  rather than assuming it, so a re-capture that diverges them fails instead of
+  silently decoding one shape as the other. The two lookalike nested pairs stay
+  separate on purpose: `LpEpoch.TokenAmount` (`{token, amount}`) is **not**
+  `Types.Reward` (a flat six-field record), and `Relay.AccountVeNFT`
+  (`{id, amount, earned}`) is neither a `VeNFT` nor a `Vote`; named tests
+  assert each non-identity. Field names in the drift tests are read from
+  `priv/abis/*.json` — including the nested `bribes`/`fees` components — never
+  transcribed, because hand counts of `Relay`'s width have been wrong before.
+  Amounts stay integers; addresses (and `Relay.managers`) are EIP-55
+  checksummed, with the zero address kept as the checksummed zero address
+  rather than rewritten to `nil`.
+
 - `Onchain.Aerodrome.Bindings.LpSugar` — the deployed Base LpSugar read surface:
   `count/1`, `all/4`, `for_swaps/3`, `positions/4`, `positions_by_factory/5`,
   `positions_unstaked_concentrated/4`, `tokens/5` and `alm_estimate_amounts/4`,
