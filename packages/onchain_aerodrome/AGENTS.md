@@ -944,6 +944,8 @@ test/fixtures/aerodrome/        # committed eth_call goldens + manifest.json
 test/support/aerodrome_fixtures.ex
                                 # offline loader for the goldens
 test/support/rpc_case.ex        # two-endpoint Base portability seam (not upstreamed)
+test/support/calldata_fixture.ex
+                                # independent cast calldata oracle + Sugar-backed eth_call impersonation
 ```
 
 The remaining layers (`types/`, `analytics/`, `sugar/`, `write/`) and the rest of
@@ -975,7 +977,7 @@ mix test.json --quiet                          # Unit tests only
 mix test.json --quiet --include integration    # Unit + integration (requires a Base RPC)
 ```
 
-Integration tests require a Base endpoint (`BASE_RPC_URL`, falling back to `https://mainnet.base.org`). Portability assertions also require `BASE_SECONDARY_RPC_URL` (a genuinely different hosted provider; no fallback — missing it flunks, never skips). Use `Onchain.Aerodrome.RPCCase.run_on_both_endpoints/1`. Golden-fixture decode tests need no network at all and are the primary defence against Sugar redeploy drift.
+Integration tests require a Base endpoint (`BASE_RPC_URL`, falling back to `https://mainnet.base.org`). Portability assertions also require `BASE_SECONDARY_RPC_URL` (a genuinely different hosted provider; no fallback — missing it flunks, never skips). Use `Onchain.Aerodrome.RPCCase.run_on_both_endpoints/1`. Golden-fixture decode tests need no network at all and are the primary defence against Sugar redeploy drift. Calldata-shape tests require Foundry `cast` on PATH (`Onchain.Aerodrome.CalldataFixture`); missing cast flunks, never skips.
 
 ## Contract Address Verification
 

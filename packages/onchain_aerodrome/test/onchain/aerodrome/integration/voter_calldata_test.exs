@@ -6,6 +6,7 @@ defmodule Onchain.Aerodrome.Integration.VoterCalldataTest do
   alias Onchain.Aerodrome.CalldataFixture
   alias Onchain.Aerodrome.Contracts
   alias Onchain.Aerodrome.RPCCase
+  alias Onchain.Hex
 
   @moduletag :integration
   @moduletag timeout: 180_000
@@ -30,7 +31,7 @@ defmodule Onchain.Aerodrome.Integration.VoterCalldataTest do
                    timeout: 30_000
                  )
 
-        assert revert == expected_revert
+        assert Hex.decode!(revert) == Hex.decode!(expected_revert)
 
         assert {:ok, "0x" = response} =
                  CalldataFixture.eth_call_as_sugar_owner(Contracts.address!(:voter), calldata, 2,

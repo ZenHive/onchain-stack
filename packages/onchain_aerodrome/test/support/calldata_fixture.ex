@@ -9,6 +9,7 @@ defmodule Onchain.Aerodrome.CalldataFixture do
   alias Onchain.Aerodrome.RPCCase
   alias Onchain.Hex
   alias Onchain.RPC
+  alias Onchain.RPC.Helpers
 
   @doc "Encodes reference calldata with Foundry cast; arguments use cast's CLI syntax (including arrays and tuples)."
   @spec reference!(String.t(), [String.t()]) :: String.t()
@@ -49,18 +50,19 @@ defmodule Onchain.Aerodrome.CalldataFixture do
   or the node's specific revert are evidence; no private key is used.
 
   Returns raw response bytes or the unchanged RPC error (including revert data).
-  Uses the current RPCCase endpoint unless overridden by `:rpc_url`. Pass a hex
-  block tag in `:block` to pin both the Sugar read and impersonation; historical
-  blocks require an archive-capable endpoint. No state overrides are sent.
+  Uses the current RPCCase endpoint unless overridden by `:rpc_url`. Pass a
+  block tag or number in `:block` to pin both the Sugar read and impersonation;
+  historical blocks require an archive-capable endpoint. No state overrides are sent.
   """
   @spec eth_call_as_sugar_owner(String.t(), String.t(), non_neg_integer(), keyword()) ::
           {:ok, String.t()} | {:error, term()}
   def eth_call_as_sugar_owner(to, calldata, owner_id, opts \\ []) do
     opts = Keyword.merge(RPCCase.rpc_opts!(), opts)
 
-    with {:ok, from} <- sugar_owner(owner_id, opts) do
+    with {:ok, block} <- Helpers.normalize_block(Keyword.get(opts, :block, "latest")),
+         {:ok, from} <- sugar_owner(owner_id, Keyword.put(opts, :block, block)) do
       # eth_call/3 omits `from`; core's raw batch API preserves the call object.
-      params = [%{"to" => to, "data" => calldata, "from" => from}, Keyword.get(opts, :block, "latest")]
+      params = [%{"to" => to, "data" => calldata, "from" => from}, block]
 
       with {:ok, [result]} <- RPC.batch([{"eth_call", params}], opts), do: {:ok, result}
     end
@@ -73,13 +75,18 @@ defmodule Onchain.Aerodrome.CalldataFixture do
          {:ok, data} <- ABI.encode_call(signature, [id]),
          {:ok, response} <- RPC.eth_call(Contracts.address!(:ve_sugar), data, opts),
          {:ok, [nft]} <- ABI.decode_response(return_type, response) do
-      case nft do
-        {^id, <<owner::binary-size(20)>>, _, _, _, _, _, _, _, _, _, _, _, _} when owner != <<0::160>> ->
-          {:ok, Hex.encode(owner)}
-
-        _missing ->
-          {:error, {:sugar_owner_not_found, id}}
-      end
+      owner_from_nft(nft, id)
     end
   end
+
+  # Positional: VeNFT.id then VeNFT.account. Trailing field count is not load-bearing.
+  @spec owner_from_nft(term(), non_neg_integer()) :: {:ok, String.t()} | {:error, term()}
+  defp owner_from_nft(nft, id) when is_tuple(nft) and tuple_size(nft) >= 2 and elem(nft, 0) == id do
+    case elem(nft, 1) do
+      <<owner::binary-size(20)>> when owner != <<0::160>> -> {:ok, Hex.encode(owner)}
+      _missing -> {:error, {:sugar_owner_not_found, id}}
+    end
+  end
+
+  defp owner_from_nft(_nft, id), do: {:error, {:sugar_owner_not_found, id}}
 end

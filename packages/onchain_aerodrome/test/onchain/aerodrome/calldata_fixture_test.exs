@@ -54,7 +54,10 @@ defmodule Onchain.Aerodrome.CalldataFixtureTest do
       assert error.message =~ "curl -L https://getfoundry.sh/install | bash"
       assert error.message =~ "foundryup"
     after
-      System.put_env(%{"PATH" => original})
+      case original do
+        path when is_binary(path) -> System.put_env("PATH", path)
+        nil -> System.delete_env("PATH")
+      end
     end
   end
 
@@ -127,6 +130,43 @@ defmodule Onchain.Aerodrome.CalldataFixtureTest do
 
     assert {:error, {:sugar_owner_not_found, 1}} =
              CalldataFixture.eth_call_as_sugar_owner(Contracts.address!(:voter), "0x12345678", 1,
+               rpc_url: "http://stub.invalid",
+               req_options: transport(adapter)
+             )
+  end
+
+  test "an integer block is hex-encoded on the Sugar read and the impersonation" do
+    fixture = Fixtures.load("ve_sugar.byId")
+    {:ok, [nft]} = Fixtures.decode(fixture)
+    owner = Onchain.Hex.encode(elem(nft, 1))
+    voter = Contracts.address!(:voter)
+    block = Onchain.Hex.from_integer(51_348_944)
+
+    adapter = fn request ->
+      case request.body |> IO.iodata_to_binary() |> Jason.decode!() do
+        %{"id" => id, "method" => "eth_call", "params" => [_call, ^block]} ->
+          respond(request, %{"jsonrpc" => "2.0", "id" => id, "result" => fixture["response"]})
+
+        [%{"id" => id, "method" => "eth_call", "params" => [call, ^block]}] ->
+          assert call == %{"to" => voter, "from" => owner, "data" => "0x12345678"}
+          respond(request, [%{"jsonrpc" => "2.0", "id" => id, "result" => "0x"}])
+      end
+    end
+
+    assert {:ok, "0x"} =
+             CalldataFixture.eth_call_as_sugar_owner(voter, "0x12345678", 1,
+               block: 51_348_944,
+               rpc_url: "http://stub.invalid",
+               req_options: transport(adapter)
+             )
+  end
+
+  test "an invalid block is returned without impersonating" do
+    adapter = fn _request -> flunk("must not RPC") end
+
+    assert {:error, {:invalid_block, "0xzz"}} =
+             CalldataFixture.eth_call_as_sugar_owner(Contracts.address!(:voter), "0x12345678", 1,
+               block: "0xzz",
                rpc_url: "http://stub.invalid",
                req_options: transport(adapter)
              )
