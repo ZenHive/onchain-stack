@@ -25,7 +25,7 @@
 - **target_version:** 0.5.0
 - **status:** 🔄 active
 - **hypothesis:** Tests whether onchain_aave can express core V3 position-management and V4 Hub-and-Spoke flows with reproducible evidence against deployed Aave contracts.
-- **pinned tasks:** 1/5 done
+- **pinned tasks:** 2/5 done
 
 ### onchain_aerodrome_v0_1 — [onchain_aerodrome] Full read surface, analytics and prices
 
@@ -425,7 +425,7 @@
 | Task 4053 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · *Onchain.Aave.DebtToken* · Onchain.Aave.DebtToken — wrap approveDelegation + borrowAllowance on variable/stable debt tokens [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
 | Task 4054 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · *(cross-cutting research)* · Mine defi-skills:intent-to-transaction action surface for onchain_aave coverage gaps [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
 | Task 4058 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Onchain.Aave.Pool — eMode: setUserEMode, getUserEMode, category config, and enumeration via getEModes [D:5/B:8/U:7 → Eff:1.5] 🚀 |
-| Task 4059 | 🔄 | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Retire stable-rate APIs and resolve variable debt tokens through the dedicated Pool getter [D:4/B:8/U:7 → Eff:1.88] 🚀 |
+| Task 4059 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Retire stable-rate APIs and resolve variable debt tokens through the dedicated Pool getter [D:4/B:8/U:7 → Eff:1.88] 🚀 |
 | Task 4060 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Onchain.Aave.Pool — setUserUseReserveAsCollateral and repayWithATokens [D:4/B:7/U:7 → Eff:1.75] 🚀 |
 | Task 4061 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Expose typed direct reserve data and normalized index reads [D:4/B:5/U:5 → Eff:1.25] 📋 |
 | Task 4062 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · Make the integration gate settle: bound math_revm runtime so --include integration terminates [D:4/B:7/U:8 → Eff:1.88] 🚀 |

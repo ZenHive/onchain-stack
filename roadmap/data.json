@@ -8363,7 +8363,7 @@
       "bundle": "onchain_aave_v3_write_gaps",
       "target_repo": "onchain_aave",
       "milestone": "onchain_aave_v0_5",
-      "status": "in_progress",
+      "status": "done",
       "title": "Retire stable-rate APIs and resolve variable debt tokens through the dedicated Pool getter",
       "scores": {
         "d": 4,
@@ -8402,10 +8402,17 @@
         "packages/onchain_aave/test/onchain/aave/debt_token_integration_test.exs",
         "packages/onchain_aave/CHANGELOG.md"
       ],
+      "shipped_in": "d245a3fb267026af763157d2b72c394ebcb0d774",
       "body": "Remove a public capability that deployed Aave no longer supports and eliminate the fragile tuple-position dependency used to select debt tokens. Aave's current ValidationLogic accepts only `DataTypes.InterestRateMode.VARIABLE`; the deployed Pool still returns a vestigial stable-debt-token address, but that address does not make stable borrowing a supported operation.\n\nThe public contract is explicit: `:variable` remains supported and `:stable` returns `{:error, {:unsupported_interest_rate_mode, :stable}}` before RPC or signing. Apply that behavior consistently to Pool borrow/repay and DebtToken address resolution, including bang variants and documentation. This is a deliberate breaking correction, not a reviewer-selected policy.\n\n`DebtToken.debt_token_address/3` currently decodes the full 15-field `getReserveData(address)` response and selects a positional slot. Replace that dependency with the deployed `getReserveVariableDebtToken(address)` getter exposed through Pool, preserving the independently observed mainnet address.\n\nAUTHORITY: the deployed Ethereum Pool at 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 plus aave-dao/aave-v3-origin IPool and ValidationLogic. Prove one live variable-token success and the relevant mode-1 protocol rejection on a pinned fork before encoding the local behavior.\n",
       "created_at": "2026-08-23",
       "started_at": "2026-09-15",
+      "done_at": "2026-09-15",
       "scored_at": "2026-08-23",
+      "implemented": "Landed by cursor via merge-train; reviewer-approved (run run-1789502460290-8b12cd93, d245a3fb267026af763157d2b72c394ebcb0d774).",
+      "delivered_by": "cursor",
+      "verified": true,
+      "verified_by": "claude",
+      "verification_ref": "harness-run:run-1789502460290-8b12cd93",
       "cross_repo": []
     },
     {
