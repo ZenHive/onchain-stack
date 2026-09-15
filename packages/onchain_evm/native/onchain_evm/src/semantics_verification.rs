@@ -140,7 +140,14 @@ fn execute_blockchain_case(case: &Value) -> ExecutedVector {
         let mut evm = Context::mainnet()
             .with_block(block_env(header))
             .with_db(&mut db)
-            .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, SpecId::ISTANBUL, false))
+            .modify_cfg_chained(|cfg| {
+                configure_fork_cfg(
+                    cfg,
+                    SpecId::ISTANBUL,
+                    crate::ETHEREUM_MAINNET_CHAIN_ID,
+                    false,
+                )
+            })
             .build_mainnet();
         evm.transact_commit(tx)
             .expect("EmptyDB execution is infallible")
@@ -185,7 +192,12 @@ fn execute_vm_case(case: &Value) -> ExecutedVector {
             .with_block(env)
             .with_db(&mut db)
             .modify_cfg_chained(|cfg| {
-                configure_fork_cfg(cfg, SpecId::FRONTIER, true);
+                configure_fork_cfg(
+                    cfg,
+                    SpecId::FRONTIER,
+                    crate::ETHEREUM_MAINNET_CHAIN_ID,
+                    true,
+                );
                 cfg.disable_balance_check = true;
             })
             .build_mainnet();

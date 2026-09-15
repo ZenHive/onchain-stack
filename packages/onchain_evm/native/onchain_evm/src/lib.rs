@@ -169,8 +169,9 @@ fn resolve_fork_spec_id(
     }
 }
 
-fn configure_fork_cfg(cfg: &mut CfgEnv, spec_id: SpecId, disable_nonce_check: bool) {
+fn configure_fork_cfg(cfg: &mut CfgEnv, spec_id: SpecId, chain_id: u64, disable_nonce_check: bool) {
     cfg.set_spec_and_mainnet_gas_params(spec_id);
+    cfg.chain_id = chain_id;
     cfg.disable_nonce_check = disable_nonce_check;
     cfg.disable_base_fee = true;
 }
@@ -493,7 +494,7 @@ fn build_fork(
     timeout_ms: u64,
     connect_timeout_ms: u64,
     caller_spec_id: Option<&str>,
-) -> Result<(ForkDB, BlockEnv, SpecId), EvmError> {
+) -> Result<(ForkDB, BlockEnv, SpecId, u64), EvmError> {
     let rt = build_current_thread_runtime()?;
 
     let url: reqwest::Url = rpc_url
@@ -546,7 +547,7 @@ fn build_fork(
     let wrapped_db = WrapDatabaseAsync::with_runtime(alloy_db, rt);
     let cache_db = CacheDB::new(wrapped_db);
 
-    Ok((cache_db, block_env, spec_id))
+    Ok((cache_db, block_env, spec_id, chain_id))
 }
 
 fn apply_state_overrides<'a>(
@@ -644,16 +645,18 @@ fn extract_call_params<'a>(params: &HashMap<String, Term<'a>>) -> Result<CallPar
     })
 }
 
-fn build_tx(cp: &CallParams, data: Bytes) -> Result<TxEnv, EvmError> {
-    build_tx_with_nonce(cp, data, None)
+fn build_tx(cp: &CallParams, data: Bytes, chain_id: u64) -> Result<TxEnv, EvmError> {
+    build_tx_with_nonce(cp, data, chain_id, None)
 }
 
 fn build_tx_with_nonce(
     cp: &CallParams,
     data: Bytes,
+    chain_id: u64,
     nonce: Option<u64>,
 ) -> Result<TxEnv, EvmError> {
     let mut tx = TxEnv::builder()
+        .chain_id(Some(chain_id))
         .caller(cp.from)
         .kind(TxKind::Call(cp.to))
         .data(data)
@@ -727,7 +730,7 @@ fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, Ev
     let cp = extract_call_params(params)?;
 
     let caller_spec_id = get_optional_string_param(params, "spec_id")?;
-    let (mut db, block_env, spec_id) = build_fork(
+    let (mut db, block_env, spec_id, chain_id) = build_fork(
         &rpc_url,
         block_id,
         timeout_ms,
@@ -736,11 +739,11 @@ fn do_simulate_call<'a>(params: &HashMap<String, Term<'a>>) -> Result<String, Ev
     )?;
     apply_state_overrides(&mut db, params)?;
 
-    let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
+    let tx = build_tx(&cp, Bytes::from(cp.data.clone()), chain_id)?;
     let mut evm = Context::mainnet()
         .with_block(block_env)
         .with_db(&mut db)
-        .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec_id, true))
+        .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec_id, chain_id, true))
         .build_mainnet();
 
     let result = evm.transact(tx).map_err(classify_transport_error)?;
@@ -769,7 +772,7 @@ fn do_simulate_transaction<'a>(params: &HashMap<String, Term<'a>>) -> Result<TxR
     let cp = extract_call_params(params)?;
 
     let caller_spec_id = get_optional_string_param(params, "spec_id")?;
-    let (mut db, block_env, spec_id) = build_fork(
+    let (mut db, block_env, spec_id, chain_id) = build_fork(
         &rpc_url,
         block_id,
         timeout_ms,
@@ -778,11 +781,11 @@ fn do_simulate_transaction<'a>(params: &HashMap<String, Term<'a>>) -> Result<TxR
     )?;
     apply_state_overrides(&mut db, params)?;
 
-    let tx = build_tx(&cp, Bytes::from(cp.data.clone()))?;
+    let tx = build_tx(&cp, Bytes::from(cp.data.clone()), chain_id)?;
     let mut evm = Context::mainnet()
         .with_block(block_env)
         .with_db(&mut db)
-        .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec_id, true))
+        .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec_id, chain_id, true))
         .build_mainnet();
 
     let result = evm.transact(tx).map_err(classify_transport_error)?;
@@ -820,7 +823,7 @@ fn do_simulate_batch<'a>(params: &HashMap<String, Term<'a>>) -> Result<Vec<TxRes
     }
 
     let caller_spec_id = get_optional_string_param(params, "spec_id")?;
-    let (mut db, block_env, spec_id) = build_fork(
+    let (mut db, block_env, spec_id, chain_id) = build_fork(
         &rpc_url,
         block_id,
         timeout_ms,
@@ -849,11 +852,11 @@ fn do_simulate_batch<'a>(params: &HashMap<String, Term<'a>>) -> Result<Vec<TxRes
             gas_limit,
         };
 
-        let tx = build_tx_with_nonce(&cp, Bytes::from(data), Some(nonce))?;
+        let tx = build_tx_with_nonce(&cp, Bytes::from(data), chain_id, Some(nonce))?;
         let mut evm = Context::mainnet()
             .with_block(block_env.clone())
             .with_db(&mut db)
-            .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec_id, false))
+            .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec_id, chain_id, false))
             .build_mainnet();
 
         let result = evm.transact_commit(tx).map_err(classify_transport_error)?;
@@ -930,8 +933,9 @@ mod tests {
             gas_limit: Some(TEST_GAS_LIMIT),
         };
 
-        let tx = build_tx(&params, data.clone()).expect("valid tx");
+        let tx = build_tx(&params, data.clone(), BASE_MAINNET_CHAIN_ID).expect("valid tx");
 
+        assert_eq!(tx.chain_id, Some(BASE_MAINNET_CHAIN_ID));
         assert_eq!(tx.caller, from);
         assert_eq!(tx.kind, TxKind::Call(to));
         assert_eq!(tx.data, data);
@@ -950,9 +954,16 @@ mod tests {
             gas_limit: None,
         };
 
-        let tx = build_tx_with_nonce(&params, Bytes::new(), Some(TEST_NONCE)).expect("valid tx");
+        let tx = build_tx_with_nonce(
+            &params,
+            Bytes::new(),
+            OPTIMISM_MAINNET_CHAIN_ID,
+            Some(TEST_NONCE),
+        )
+        .expect("valid tx");
 
         assert_eq!(tx.nonce, TEST_NONCE);
+        assert_eq!(tx.chain_id, Some(OPTIMISM_MAINNET_CHAIN_ID));
     }
 
     #[test]
@@ -1104,7 +1115,11 @@ mod tests {
         );
     }
 
-    fn execute_code_under_spec(spec: SpecId, code: Vec<u8>) -> Result<TxResult, EvmError> {
+    fn execute_code_under_spec(
+        spec: SpecId,
+        chain_id: u64,
+        code: Vec<u8>,
+    ) -> Result<TxResult, EvmError> {
         use revm::state::AccountInfo;
         use revm_database::EmptyDB;
 
@@ -1120,20 +1135,42 @@ mod tests {
             AccountInfo::default().with_balance(U256::from(1_000_000_000_000_000u64)),
         );
 
-        let tx = TxEnv::builder()
-            .caller(from)
-            .kind(TxKind::Call(to))
-            .gas_limit(100_000)
-            .build()
-            .expect("valid tx");
+        let params = CallParams {
+            to,
+            from,
+            data: Vec::new(),
+            value: U256::ZERO,
+            gas_limit: Some(TEST_GAS_LIMIT),
+        };
+        let tx = build_tx(&params, Bytes::new(), chain_id).expect("valid tx");
 
         let mut evm = Context::mainnet()
             .with_db(&mut db)
-            .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec, true))
+            .modify_cfg_chained(|cfg| configure_fork_cfg(cfg, spec, chain_id, true))
             .build_mainnet();
 
         let result = evm.transact(tx).map_err(classify_transport_error)?;
         extract_tx_result(result.result)
+    }
+
+    #[test]
+    fn chainid_opcode_uses_fork_chain_even_with_a_caller_spec_override() {
+        // CHAINID; MSTORE(0); RETURN(0, 32), EIP-1344.
+        let code = hex::decode("4660005260206000f3").expect("chainid runtime");
+        // Arbitrum has no schedule: the override must change only the revision.
+        const ARBITRUM_MAINNET_CHAIN_ID: u64 = 42_161;
+        for chain_id in [
+            ETHEREUM_MAINNET_CHAIN_ID,
+            OPTIMISM_MAINNET_CHAIN_ID,
+            BASE_MAINNET_CHAIN_ID,
+            ARBITRUM_MAINNET_CHAIN_ID,
+        ] {
+            let spec = resolve_fork_spec_id(Some("Cancun"), chain_id, 0, 0).unwrap();
+            let result =
+                execute_code_under_spec(spec, chain_id, code.clone()).expect("CHAINID execution");
+            assert!(result.success);
+            assert_eq!(result.output, format!("0x{chain_id:064x}"));
+        }
     }
 
     #[test]
@@ -1148,14 +1185,15 @@ mod tests {
         assert_eq!(base_spec, SpecId::CANCUN);
         assert_eq!(mainnet_spec, SpecId::LONDON);
 
-        let on_base = execute_code_under_spec(base_spec, tload.clone()).expect("cancun tload");
+        let on_base = execute_code_under_spec(base_spec, BASE_MAINNET_CHAIN_ID, tload.clone())
+            .expect("cancun tload");
         assert!(on_base.success);
         assert_eq!(
             on_base.output,
             "0x0000000000000000000000000000000000000000000000000000000000000000"
         );
 
-        match execute_code_under_spec(mainnet_spec, tload) {
+        match execute_code_under_spec(mainnet_spec, ETHEREUM_MAINNET_CHAIN_ID, tload) {
             Err(EvmError::ExecutionError(msg)) => {
                 assert!(msg.contains("halt"), "{msg}");
                 assert!(

@@ -510,6 +510,51 @@ defmodule Onchain.EVM.IntegrationTest do
     end
   end
 
+  describe "fork chain identity" do
+    # EIP-1344: CHAINID; MSTORE(0); RETURN(0, 32).
+    @chain_id_runtime "0x4660005260206000f3"
+
+    defp chain_rpc_url(:ethereum), do: Onchain.RPCCase.rpc_url!()
+    defp chain_rpc_url(:base), do: Onchain.RPCCase.base_rpc_url()
+
+    defp chain_rpc_url(:optimism), do: System.get_env("OPTIMISM_RPC_URL") || "https://mainnet.optimism.io"
+
+    for {network, expected_chain_id} <- [ethereum: 1, optimism: 10, base: 8453] do
+      @tag :chain_id_regression
+      test "#{network} preserves CHAINID in calls, transactions and batches with either revision selection" do
+        chain_id = unquote(expected_chain_id)
+        rpc_url = chain_rpc_url(unquote(network))
+
+        assert {:ok, ^chain_id} = RPC.chain_id(rpc_url: rpc_url)
+        assert {:ok, block} = RPC.block_number(rpc_url: rpc_url)
+
+        opts = [
+          rpc_url: rpc_url,
+          block: block,
+          from: @override_caller,
+          state_overrides: %{
+            @override_contract => %{"code" => @chain_id_runtime},
+            @override_caller => %{"balance" => "0xde0b6b3a7640000", "nonce" => "0"}
+          }
+        ]
+
+        expected = "0x" <> String.pad_leading(String.downcase(Integer.to_string(chain_id, 16)), 64, "0")
+
+        for revision_opts <- [opts, Keyword.put(opts, :spec_id, :shanghai)] do
+          assert {:ok, ^expected} = EVM.simulate_call(@override_contract, "0x", revision_opts)
+
+          assert {:ok, %{success: true, output: ^expected}} =
+                   EVM.simulate_transaction(@override_contract, "0x", revision_opts)
+
+          calls = [{@override_contract, "0x"}, {@override_contract, "0x"}]
+
+          assert {:ok, [%{success: true, output: ^expected}, %{success: true, output: ^expected}]} =
+                   EVM.simulate_batch(calls, revision_opts)
+        end
+      end
+    end
+  end
+
   describe "non-mainnet forks" do
     # Native USDC on Base. Used only to prove a live Base fork executes, not
     # as a golden supply pin — that would require a historical archive block.

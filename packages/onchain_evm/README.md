@@ -100,7 +100,7 @@ Onchain.EVM.simulate_batch(calls, rpc_url: url)
 |--------|---------|
 | `:rpc_url` | RPC endpoint to fork from (required; empty/non-HTTP(S)/hostless rejected) |
 | `:block` | Block to fork at — integer, `"0x…"` hex, or a tag (`"latest"`, `"finalized"`, `"safe"`, `"pending"`, `"earliest"`). Also selects the EVM revision active at that block: Ethereum mainnet (`1`) by block number, OP Mainnet (`10`) and Base (`8453`) by timestamp. Other chain ids are rejected unless `:spec_id` is set |
-| `:spec_id` | Explicit EVM revision (`:cancun`, `"Prague"`, …). Bypasses the built-in schedule for any chain. Unknown values return `{:error, {:invalid_spec_id, _}}` and never fall back |
+| `:spec_id` | Explicit EVM revision (`:cancun`, `"Prague"`, …). Bypasses the built-in schedule for any chain while preserving the RPC chain ID (`CHAINID`). Unknown values return `{:error, {:invalid_spec_id, _}}` and never fall back |
 | `:from` | Sender address (0x hex or 20-byte binary) |
 | `:timeout_ms` | Per-RPC-request timeout (positive integer; default 30s, 5s connect). Surfaces as `{:error, {:timeout, msg}}` |
 | `:value` | 0x-prefixed U256 hex quantity |

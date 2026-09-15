@@ -4,6 +4,15 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- Preserve the RPC chain ID in the EVM and transaction environments for calls,
+  transactions and batches, including explicit `spec_id` overrides. L2 forks
+  now return their own `CHAINID` instead of Ethereum mainnet's `1`. Regression
+  coverage executes the opcode on Ethereum, Optimism and Base forks.
+
 ## [0.7.0] — 2026-08-27
 
 ### Changed
