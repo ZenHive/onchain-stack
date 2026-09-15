@@ -5523,7 +5523,7 @@
       "phase": 2000,
       "bundle": "cartouche_correctness_010",
       "target_repo": "cartouche",
-      "status": "pending",
+      "status": "in_progress",
       "title": "EIP-191 personal_sign byte length, a recovery helper that applies the prefix, and the 65-byte signature invariant",
       "scores": {
         "d": 3,
@@ -5566,6 +5566,7 @@
       ],
       "body": "Three defects on the signing surface, all verified by execution.\n\n`Recover.prefix_eth/1` (recover.ex:75) builds the EIP-191 envelope with `to_string(String.length(msg))` — grapheme clusters, not bytes. Its own `@doc` two lines above (recover.ex:60-63) says \"the byte length of `msg`\", so the implementation contradicts its documentation. go-ethereum's `accounts.TextHash` uses `fmt.Sprintf(\"\\x19Ethereum Signed Message:\\n%d%s\", len(data), data)` over a []byte, and viem's `toPrefixedMessage` uses the byte size — two independent references agree. Reproduced: `prefix_eth(\"café\")` emits `...\\n4café` where every mainstream wallet emits `...\\n5café`, so the digest differs and recovery silently fails. The only doctest uses \"hello\", where grapheme count and byte count coincide — which is why it survived.\n\nThe same module's moduledoc (recover.ex:19-20) sells it as the surface for \"verifying user-supplied signatures (e.g. `personal_sign` payloads from MetaMask, WalletConnect)\", but `recover_eth/2` does not apply the prefix and there is no personal_sign helper. A consumer following the moduledoc recovers the wrong address. Add the helper so the advertised path exists.\n\nThe signature-width defect is a type lie with a latent crash behind it. `sign/3` (signer.ex:307-312) computes `v = chain_id * 2 + 35 + recid` and appends `:binary.encode_unsigned(v)`. For any chain id above 110 — which is every chain in `Cartouche.Chain` except mainnet and the dead testnets — `v` does not fit in one byte, so the \"65-byte signature\" the moduledoc (signer.ex:10-11) and `sign_direct/4` (signer.ex:236) promise is actually 66-68 bytes. `Cartouche.signature()` is typed `<<_::520>>` (cartouche.ex:103) and `RecoveryBit.normalize_signature/2` matches `<<rs::binary-size(64), v>>` (recovery_bit.ex:100), so a Base or Sepolia signature FunctionClauseErrors there. Dialyzer cannot see it because `sign/3`'s spec returns bare `binary()`. The doctest at signer.ex:124-126 asserts the multi-byte behaviour, so again the suite ratifies it.\n\nDecide deliberately which way to resolve the width contract and record the reasoning: either the concatenated form stops carrying EIP-155 v (returning 65 bytes with a parity byte, chain binding living in the transaction envelope where V1 already threads it), or the docs and types stop claiming 65. Do not \"fix\" it by widening the guard in one place and leaving the other two.\n\nWhile in `RecoveryBit`: `recover_base/1` (recovery_bit.ex:143-151, :62) normalizes an EIP-155 v against `config :cartouche, :chain_id` — a process-global — in a library whose `Chain` module knows 24 chains and whose `Transaction.V1` takes a per-call chain id. Either thread the chain through or pin the failure explicitly.\n\nCritical tier: this is signing. Raise coverage to >=95% on each touched module before mutating it.\n",
       "created_at": "2026-08-26",
+      "started_at": "2026-09-15",
       "scored_at": "2026-08-26",
       "cross_repo": []
     },

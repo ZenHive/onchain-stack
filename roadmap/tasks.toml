@@ -3718,15 +3718,15 @@ scored_at = "2026-08-26"
 id = 2134
 phase = 2000
 bundle = "cartouche_correctness_010"
-title = "EIP-191 personal_sign byte length, a recovery helper that applies the prefix, and the 65-byte signature invariant"
-status = "pending"
 target_repo = "cartouche"
+status = "in_progress"
+title = "EIP-191 personal_sign byte length, a recovery helper that applies the prefix, and the 65-byte signature invariant"
 scores = { d = 3, b = 7, u = 6 }
 markers = ["security"]
 acceptance_criteria = ["Recover.prefix_eth/1 uses the UTF-8 BYTE length of the message, matching go-ethereum accounts.TextHash and viem; a test pins a multi-byte message (e.g. \"café\" -> length 5, not 4) and asserts the exact prefixed bytes", "A recover_personal_sign/2 (or equivalently named) function applies the prefix and recovers, so the use case Recover's own moduledoc advertises — verifying MetaMask / WalletConnect personal_sign payloads — works without the caller hand-assembling the envelope", "The signature-width contract is made true or made honest: Signer.sign/3 (signer.ex:307-312) builds v as chain_id*2+35+recid and encodes it with :binary.encode_unsigned/1, so any chain id > 110 yields a 66-68 byte result, while Cartouche.signature() is declared <<_::520>> (cartouche.ex:103) and RecoveryBit.normalize_signature/2 pattern-matches <<rs::binary-size(64), v>> (recovery_bit.ex:100). A test signs on a non-mainnet chain id (e.g. Base 8453) and asserts the documented behaviour end to end, including that normalize_signature/2 does not FunctionClauseError", "Signer.sign/3's @spec is narrowed from bare binary() to the real return type so dialyzer can see the contract; mix ci's MIX_ENV=test dialyzer stays clean", "RecoveryBit's EIP-155 normalization no longer silently reads the process-global :chain_id (recovery_bit.ex:62, :143) when the caller can supply the signature's own chain — or, if the global stays, a test pins the documented failure for a signature from a different chain rather than leaving it to raise 'Invalid EIP-155 Signature' opaquely", "Every touched module is at critical-tier >=95% coverage BEFORE mutating (raise coverage first if below, per the coverage gate)", "mix ci passes"]
 out_of_scope = ["EIP-712 encoding conformance — a separate task owns lib/cartouche/typed.ex and lib/cartouche/hex.ex; do not touch those files", "Transaction.V1.add_signature/2's missing chain-consistency guard — related, but it is a transaction-envelope concern and would collide with the transaction surface's write set", "New signer backends"]
-touches = ["packages/cartouche/CHANGELOG.md"]
 files_to_modify = ["packages/cartouche/lib/cartouche/recover.ex", "packages/cartouche/lib/cartouche/signer.ex", "packages/cartouche/lib/cartouche/recovery_bit.ex", "packages/cartouche/lib/cartouche.ex", "packages/cartouche/test/recover_test.exs", "packages/cartouche/test/signer_test.exs"]
+touches = ["packages/cartouche/CHANGELOG.md"]
 assignee = "cursor"
 model = "cursor-grok-4.6-high"
 body = """
@@ -3745,6 +3745,7 @@ While in `RecoveryBit`: `recover_base/1` (recovery_bit.ex:143-151, :62) normaliz
 Critical tier: this is signing. Raise coverage to >=95% on each touched module before mutating it.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]
