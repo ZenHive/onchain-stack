@@ -304,10 +304,26 @@ defmodule Cartouche.Typed do
     def encode_data_value(value, type, types \\ %{})
 
     def encode_data_value(value, :address, _types), do: Cartouche.Hex.pad(value, 32)
-    def encode_data_value(value, {:uint, _}, _types), do: Cartouche.Hex.encode_bytes(value, 32)
+
+    def encode_data_value(value, {:uint, width}, _types)
+        when is_integer(width) and width in 8..256 and rem(width, 8) == 0 and is_integer(value) do
+      limit = Integer.pow(2, width)
+
+      if value < 0 or value >= limit do
+        raise ArgumentError, "value out of range for uint#{width}"
+      end
+
+      Cartouche.Hex.encode_bytes(value, 32)
+    end
+
     def encode_data_value(value, :string, _types), do: Cartouche.Hash.keccak(value)
     def encode_data_value(value, :bytes, _types), do: Cartouche.Hash.keccak(value)
-    def encode_data_value(value, {:bytes, _}, _types), do: Cartouche.Hex.pad_right(value, 32)
+
+    def encode_data_value(value, {:bytes, n}, _types) when is_integer(n) and n in 1..32 do
+      value
+      |> Cartouche.Hex.pad_right(n)
+      |> Cartouche.Hex.pad_right(32)
+    end
 
     def encode_data_value(value, {:int, width}, _types)
         when is_integer(width) and width in 8..256 and rem(width, 8) == 0 and is_integer(value) do
@@ -798,13 +814,11 @@ defmodule Cartouche.Typed do
   end
 
   @doc ~S"""
-  Encodes the struct type per EIP-712. For this, we basically build an ABI-style value
-  like `Mail(Person from,Person to,string contents)`, but then to that we need to append
-  any other types we've seen, like:
+  Encodes the struct type per EIP-712. The primary type is encoded first as
+  `Name(type1 field1,type2 field2,...)`. Referenced struct types are then
+  collected transitively, sorted by name, and appended, e.g.
 
   `Mail(Person from,Person to,string contents)Person(string name,address wallet)`.
-
-  This is a tail-call optimized implementation to build the types then track and append types that need to be added.
 
   ## Examples
 

@@ -61,8 +61,9 @@ signature bytes, and recovered signers against both committed outputs. ethers 6
 calls the ethers 5 `_TypedDataEncoder` API `TypedDataEncoder`.
 
 Both implementations require exact `bytesN` lengths. The direct Cartouche API's
-existing short-input padding convenience is retained, now padding on the right;
-the short-input assertion is derived from the EIP's byte ordering, while external
+existing short-input padding convenience is retained, now padding on the right to
+the declared width and then to 32 bytes; a value longer than `N` is rejected. The
+short-input assertion is derived from the EIP's byte ordering, while external
 vectors use exact-length inputs. No domain policy changes are included.
 
 ## Mutation adequacy

@@ -12,10 +12,16 @@ defmodule Cartouche.TypedTest do
   describe "EIP-712 conformance" do
     test "fixed bytes pad on the right while addresses and uints pad on the left" do
       assert Type.encode_data_value(<<0xCC>>, {:bytes, 32}) == <<0xCC, 0::248>>
+      assert Type.encode_data_value(<<0xCC>>, {:bytes, 2}) == <<0xCC, 0, 0::240>>
+      assert Type.encode_data_value(<<0xCC, 0xDD>>, {:bytes, 2}) == <<0xCC, 0xDD, 0::240>>
       assert Type.encode_data_value(<<0xCC::160>>, :address) == <<0::248, 0xCC>>
       assert Type.encode_data_value(0xCC, {:uint, 256}) == <<0::248, 0xCC>>
       assert Type.deserialize_value!("0xcc", {:bytes, 2}) == <<0xCC, 0>>
       assert Type.serialize_value(<<0xCC>>, {:bytes, 2}) == "0xcc00"
+
+      assert_raise FunctionClauseError, fn ->
+        Type.encode_data_value(<<0xCC, 0xDD, 0xEE>>, {:bytes, 2})
+      end
     end
 
     test "array dependencies appear in encodeType" do
@@ -106,6 +112,12 @@ defmodule Cartouche.TypedTest do
       for type <- ["int", "int0", "int7", "int264"] do
         assert_raise RuntimeError, fn -> Type.deserialize_type(type) end
       end
+    end
+
+    test "unsigned integer widths reject values outside the declared range" do
+      assert Type.encode_data_value(255, {:uint, 8}) == <<0::248, 255>>
+      assert_raise ArgumentError, fn -> Type.encode_data_value(256, {:uint, 8}) end
+      assert_raise ArgumentError, fn -> Type.encode_data_value(-1, {:uint, 256}) end
     end
   end
 
