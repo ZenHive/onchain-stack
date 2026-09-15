@@ -3779,14 +3779,14 @@ scored_at = "2026-08-26"
 id = 2136
 phase = 2000
 bundle = "cartouche_rpc_read_surface"
-title = "Multi-endpoint live-test seam so node-portability rule 4 can actually be executed"
-status = "pending"
 target_repo = "cartouche"
+status = "in_progress"
+title = "Multi-endpoint live-test seam so node-portability rule 4 can actually be executed"
 scores = { d = 3, b = 8, u = 8 }
 acceptance_criteria = ["Cartouche.Test.Live gains a named-endpoint lane beside the existing single live_rpc_url/0: an endpoint is addressed by name (e.g. :archive, :alchemy, :infura, :cloudflare) and resolves to a URL from a per-endpoint env var, so a test can request the SAME call on two endpoints without the whole suite being re-run under a different env var", "The existing live_opts/0 and live_rpc_url/0 keep working unchanged — all 56 existing call sites across test/rpc_integration_test.exs, test/filter_test.exs and test/rpc_debug_namespace_test.exs stay green with no edit. This is an additive seam, not a migration", "A helper expresses rule 4's actual assertion shape: run one call against the privileged node AND against >=1 hosted endpoint, and assert on BOTH answers — the hosted endpoint's real refusal is as much a pass as its success. A hosted endpoint that answers -32601/-32600 must be recordable as the expected result, not treated as a test error", "Absent env vars flunk with the exact export command for that endpoint, never skip — matching assert_node_available!/0's existing flunk style. A portability test that silently skips on the hosted lane is the exact failure this seam exists to prevent", "assert_node_available!/0's hard chain-id-1 assertion is preserved or generalized per endpoint; a hosted mainnet endpoint must satisfy the same mainnet pin the archive node does", "At least one real portability test uses the seam end to end and is green: re-verify base_fee/1 (task 127's subject) on the archive node and on >=1 hosted endpoint, recording the hosted answer verbatim", "mix ci passes"]
 out_of_scope = ["Rewriting the existing integration tests onto the new lane — additive only; migrating call sites is a later task if ever wanted", "The dev/anvil lane (dev_opts/0, ephemeral anvil boot) — untouched", "Fixing base_fee/1 itself, or writing the trace_* portability docs — tasks 127 and 135 own those; this task only makes their evidence obtainable", "A general RPC provider-abstraction or failover layer in lib/ — this is test infrastructure"]
-touches = ["packages/cartouche/test/rpc_integration_test.exs", "packages/cartouche/CHANGELOG.md"]
 files_to_modify = ["packages/cartouche/test/support/live.ex"]
+touches = ["packages/cartouche/test/rpc_integration_test.exs", "packages/cartouche/CHANGELOG.md"]
 assignee = "codex"
 model = "gpt-6-astra"
 body = """
@@ -3805,6 +3805,7 @@ Design note, deliberately left to the implementer: whether the named lane is a k
 The house idioms to reuse verbatim in docs and flunk messages: "a real result or its real refusal, never a skip"; "the consumer's node — not ours — as the case that matters"; "the identical green run on both endpoints is what the portability claim rests on".
 """
 created_at = "2026-08-27"
+started_at = "2026-09-15"
 scored_at = "2026-08-27"
 
 [[task]]
