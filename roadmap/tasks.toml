@@ -5805,15 +5805,15 @@ scored_at = "2026-08-26"
 id = 4067
 phase = 4005
 bundle = "onchain_aave_v4_support"
-title = "Wrap V4 position configuration and position-manager authorization, and close the Taker fork-evidence gap"
-status = "pending"
 target_repo = "onchain_aave"
-module = "Onchain.Aave.V4.PositionManager"
+status = "in_progress"
+title = "Wrap V4 position configuration and position-manager authorization, and close the Taker fork-evidence gap"
 scores = { d = 4, b = 8, u = 8 }
 acceptance_criteria = ["A user can authorize and revoke a position manager on a Spoke and toggle a reserve's collateral flag through this library's public API, without hand-encoding calldata", "The Config Position Manager's on-behalf-of configuration surface is wrapped with the owner as an explicit required argument, consistent with the Giver/Taker wrappers' rule that no entrypoint infers the owner from msg.sender", "withdraw, approve_withdraw and both renounce_* paths are exercised on a pinned-block mainnet fork with balance and allowance assertions, not only by calldata-shape unit tests", "A withdraw attempted beyond the granted allowance fails on the fork and surfaces the tagged insufficient_withdraw_allowance tuple carrying allowance and required amount", "Each new write is pinned by an encoded-calldata unit test asserting the 4-byte selector and argument encoding", "The raw encoded_call usages in the V4 deployed integration test are replaced by the new wrappers", "mix ci passes"]
 out_of_scope = ["INativeTokenGateway and ISignatureGateway", "The governance surfaces: IHubConfigurator, ISpokeConfigurator, IAaveV4ConfigEngine, IAccessManagerEnumerable", "Tokenization Spoke ERC-4626 writes — its own task"]
 touches = ["packages/onchain_aave/lib/onchain/aave/v4/position_manager.ex", "packages/onchain_aave/lib/onchain/aave/v4/spoke.ex", "packages/onchain_aave/test/onchain/aave/v4/position_manager_test.exs", "packages/onchain_aave/test/onchain/aave/v4/deployed_integration_test.exs", "packages/onchain_aave/CHANGELOG.md"]
 assignee = "cursor"
+module = "Onchain.Aave.V4.PositionManager"
 model = "cursor-grok-4.6-high"
 body = """
 V4's delegation surface is what makes a position programmable — Aave ships the three Position Managers explicitly so third-party contracts can act on a position without governance listing, gated by per-reserve allowances the user grants and can revoke. This library wraps only two thirds of it, and one gap blocks ordinary use: there is no way to enable a position manager or to toggle a reserve as collateral. IConfigPositionManager has zero coverage, and ISpoke's setUserPositionManager / setUsingAsCollateral are reachable today only by hand-encoding — the V4 deployed integration test calls them through raw encoded_call rather than through Spoke (verified 2026-08-26 by reading test/onchain/aave/v4/deployed_integration_test.exs and grepping lib/ for the interface names).
@@ -5825,6 +5825,7 @@ AUTHORITY: the deployed Ethereum V4 Spokes and Position Managers registered in O
 Dispatch trigger: authorization and money-path write surface requiring live external-system evidence.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]
