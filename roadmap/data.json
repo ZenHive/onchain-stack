@@ -9207,7 +9207,7 @@
       "bundle": "onchain_aerodrome_foundations",
       "target_repo": "onchain_aerodrome",
       "milestone": "onchain_aerodrome_v0_1",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Golden-fixture capture harness: pinned-block eth_call fixtures and an offline loader",
       "scores": {
         "d": 4,
@@ -9247,6 +9247,7 @@
       ],
       "body": "Capture real eth_call response hex for every Sugar read function at one pinned Base block, commit it, and build the loader that tests consume. This is the package's only defence against Sugar redeploy drift once bindings land: a decode that starts returning nil or misaligned fields against these fixtures is drift, not a flaky test.\n\nThe capture tool needs a live BASE_RPC_URL (falling back to https://mainnet.base.org per the README) and is explicitly not part of mix ci — it is a dev workflow. What mix ci exercises is the committed fixtures plus the loader, with zero network.\n\nPin the block explicitly on every call. A fixture captured at latest is not a fixture; it is a snapshot of an unrecorded moment, and it makes every later mismatch unattributable.\n\nMake sure at least one all(500, offset, non_zero_filter) capture returns fewer than 500 rows. That single fixture is what makes task 8's pagination-trap regression test possible, and without it that test can only assert the happy path.\n\nAUTHORITY: live eth_call responses from the addresses in lib/onchain/aerodrome/contracts.ex, captured yourself at a block you record in the manifest. Not any remembered Sugar response shape, and not the Sourcify ABI alone — the ABI gives you the shape, not real field values to sanity-check against (for example that Lp.type really does take -1, 0 and positive values in practice).\n",
       "created_at": "2026-08-26",
+      "started_at": "2026-09-15",
       "scored_at": "2026-08-26",
       "cross_repo": []
     },

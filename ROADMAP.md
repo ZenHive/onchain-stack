@@ -467,7 +467,7 @@
 | Task 5001 | ✅ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome* · Close the reach layer-gate holes so analytics-never-touches-the-network is enforced, not documented [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 | Task 5002 `[P]` | ⬜ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Epoch* · Onchain.Aerodrome.Epoch — weekly ve(3,3) epoch arithmetic [D:3/B:7/U:9 → Eff:2.67] 🎯 |
 | Task 5003 | ✅ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.Abi* · Decode strategy and Bindings.Abi signature plumbing from priv/abis [D:5/B:8/U:8 → Eff:1.6] 🚀 |
-| Task 5004 | ⬜ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Mix.Tasks.Aerodrome.CaptureFixtures* · Golden-fixture capture harness: pinned-block eth_call fixtures and an offline loader [D:4/B:7/U:8 → Eff:1.88] 🚀 |
+| Task 5004 | 🔄 | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Mix.Tasks.Aerodrome.CaptureFixtures* · Golden-fixture capture harness: pinned-block eth_call fixtures and an offline loader [D:4/B:7/U:8 → Eff:1.88] 🚀 |
 | Task 5005 `[P]` | ⬜ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.RPCCase* · Onchain.Aerodrome.RPCCase — the first multi-endpoint portability test seam in the family [D:4/B:7/U:8 → Eff:1.88] 🚀 |
 <!-- TASKS:END -->
 

@@ -6096,17 +6096,17 @@ shipped_in = "cc39bb49e755d3df669a85a96ec00d5558c31d3a"
 id = 5004
 phase = 5001
 bundle = "onchain_aerodrome_foundations"
-milestone = "onchain_aerodrome_v0_1"
-title = "Golden-fixture capture harness: pinned-block eth_call fixtures and an offline loader"
-status = "pending"
 target_repo = "onchain_aerodrome"
-module = "Mix.Tasks.Aerodrome.CaptureFixtures"
+milestone = "onchain_aerodrome_v0_1"
+status = "in_progress"
+title = "Golden-fixture capture harness: pinned-block eth_call fixtures and an offline loader"
 scores = { d = 4, b = 7, u = 8 }
 depends_on = [5003]
 acceptance_criteria = ["test/fixtures/aerodrome/manifest.json records block_number, chain_id 8453, captured_at and rpc_endpoint", "Every fixture's eth_call was made with an EXPLICIT block parameter equal to manifest.block_number, never latest, proven by a test asserting every fixture file's recorded block matches the manifest", "mix aerodrome.capture_fixtures --block N re-captures all fixtures; running it twice at the same block produces byte-identical files (idempotency test)", "Fixtures exist for every Sugar read function across lp_sugar, rewards_sugar, ve_sugar, relay_sugar and token_sugar, at minimum: all (two or more normal pages), count, forSwaps, positions, positionsByFactory, positionsUnstakedConcentrated, tokens from both lp_sugar and token_sugar, almEstimateAmounts, epochsLatest, epochsByAddress, rewards, rewardsByAddress, forRoot, VeSugar all/byAccount/byId, RelaySugar all/registries, and TokenSugar safe_balance_of/safe_decimals/safe_symbol", "One fixture is an all(500, offset, non_zero_filter) call that demonstrably returns fewer than 500 rows — the proof artifact task 8's pagination test consumes. A second short-page proof fixture captures positions (or positionsByFactory) returning fewer rows than its limit at an offset with more pools remaining past it, because the position reads walk the pool index space rather than the returned-row space and their mid-enumeration short pages need the same committed evidence", "The offline decode suite loads fixtures and decodes with ZERO network calls and is NOT tagged :integration, so it runs in the default mix test.json and in mix ci", "The capture Mix task lives under lib/mix/tasks/ so it resolves to no declared reach layer and may reach the network without tripping the task-1 gate", "mix ci passes"]
 out_of_scope = ["The per-contract Bindings.* modules, which consume these fixtures", "Tick-math and liquidity goldens, which tasks 13 and 14 generate with their own manifest", "Auto-remediation on drift — the detector in task 32 reports, a human re-captures"]
 touches = ["packages/onchain_aerodrome/lib/mix/tasks/aerodrome.capture_fixtures.ex", "packages/onchain_aerodrome/test/fixtures/aerodrome/manifest.json", "packages/onchain_aerodrome/test/support/aerodrome_fixtures.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/fixtures_test.exs"]
 assignee = "cursor"
+module = "Mix.Tasks.Aerodrome.CaptureFixtures"
 model = "cursor-grok-4.6-high"
 body = """
 Capture real eth_call response hex for every Sugar read function at one pinned Base block, commit it, and build the loader that tests consume. This is the package's only defence against Sugar redeploy drift once bindings land: a decode that starts returning nil or misaligned fields against these fixtures is drift, not a flaky test.
@@ -6120,6 +6120,7 @@ Make sure at least one all(500, offset, non_zero_filter) capture returns fewer t
 AUTHORITY: live eth_call responses from the addresses in lib/onchain/aerodrome/contracts.ex, captured yourself at a block you record in the manifest. Not any remembered Sugar response shape, and not the Sourcify ABI alone — the ABI gives you the shape, not real field values to sanity-check against (for example that Lp.type really does take -1, 0 and positive values in practice).
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]
