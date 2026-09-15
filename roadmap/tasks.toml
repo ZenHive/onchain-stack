@@ -5644,7 +5644,7 @@ id = 4062
 phase = 4006
 bundle = "onchain_aave_v3_write_gaps"
 target_repo = "onchain_aave"
-status = "in_progress"
+status = "done"
 title = "Make the integration gate settle: bound math_revm runtime so --include integration terminates"
 scores = { d = 4, b = 7, u = 8 }
 acceptance_criteria = ["mix test.json --include integration terminates on a healthy archive node and reports a summary, with the wall-clock ceiling stated in the test module or CLAUDE.md", "An unreachable or mid-run-dropped archive RPC fails the affected math_revm test loudly within a bounded time instead of hanging; no test retains timeout: :infinity", "The revm cross-validation still fails on a real divergence — a deliberately wrong expected value in one deterministic vector makes that test red", "The chosen coverage/runtime tradeoff is recorded in the test module's moduledoc, including how to run the exhaustive variant", "mix ci passes"]
@@ -5661,9 +5661,16 @@ Two compounding causes: the math_revm modules set `timeout: :infinity`, and `Onc
 
 Give the suite a bounded, interruptible runtime without giving up the cross-validation guarantee that makes `Onchain.Aave.Math` trustworthy. Decide and document the coverage/runtime tradeoff explicitly rather than silently shrinking the property space: options include a finite per-test timeout, a smaller default `max_runs` with an opt-in exhaustive mode, reusing one fork across vectors instead of one per call, or separating the revm cross-validation into its own tag that the ordinary integration gate does not pull in. Whatever is chosen, `--include integration` must terminate and a dead or flapping RPC must surface as a loud failure, never as a hang.
 """
+implemented = "Landed by grok via merge-train; reviewer-approved (run run-1789495263374-6c931e61, 87c36c5db31fcf7c821ee08909fbbd9aa80d0456)."
+delivered_by = "grok"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1789495263374-6c931e61"
 created_at = "2026-08-23"
 started_at = "2026-09-15"
 scored_at = "2026-08-23"
+done_at = "2026-09-15"
+shipped_in = "87c36c5db31fcf7c821ee08909fbbd9aa80d0456"
 
 [[task]]
 id = 4063
