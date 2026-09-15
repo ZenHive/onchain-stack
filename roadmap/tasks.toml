@@ -6151,17 +6151,17 @@ shipped_in = "2e44d1cac5703ee71b295b3eaa6c3c4de595eebd"
 id = 5005
 phase = 5001
 bundle = "onchain_aerodrome_foundations"
-milestone = "onchain_aerodrome_v0_1"
-title = "Onchain.Aerodrome.RPCCase — the first multi-endpoint portability test seam in the family"
-status = "pending"
 target_repo = "onchain_aerodrome"
-module = "Onchain.Aerodrome.RPCCase"
+milestone = "onchain_aerodrome_v0_1"
+status = "in_progress"
+title = "Onchain.Aerodrome.RPCCase — the first multi-endpoint portability test seam in the family"
 scores = { d = 4, b = 7, u = 8 }
 markers = ["parallel"]
 acceptance_criteria = ["Onchain.Aerodrome.RPCCase in test/support exposes primary_rpc_url!/0 reading BASE_RPC_URL and falling back to https://mainnet.base.org, and secondary_rpc_url!/0 reading BASE_SECONDARY_RPC_URL with NO silent fallback, since it must be a genuinely different unprivileged provider", "Both accessors flunk, never skip, with the exact env var name and an example export command when unset", "run_on_both_endpoints/1 takes a zero-arity function performing one eth_call-shaped action and returns {primary_result, secondary_result}", "At least one integration-tagged test uses the seam against LpSugar.all(500, 0, 0) and asserts identical decoded results from both endpoints, tooling the node-portability rule that a second unprivileged endpoint is what a portability claim rests on", "The moduledoc states that this seam does not exist upstream in onchain core's Onchain.RPCCase and that upstreaming it is a deliberate non-goal here, so the handoff is named rather than silently dropped", "mix ci passes"]
 out_of_scope = ["Upstreaming the seam into onchain core", "A third endpoint", "Retry or backoff logic beyond the retry: option Onchain.RPC already provides"]
 touches = ["packages/onchain_aerodrome/test/support/rpc_case.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/integration/portability_test.exs"]
 assignee = "grok"
+module = "Onchain.Aerodrome.RPCCase"
 model = "grok-4.6"
 body = """
 node-portability.md names this gap explicitly: no multi-endpoint test seam exists yet, and whoever builds one builds it first. Build it locally in this repo, not in onchain core, so every read and write integration test here can assert portability instead of it being a manual step that is easy to skip.
@@ -6173,6 +6173,7 @@ Never skip on a missing endpoint. A suite that reports zero failures from zero t
 AUTHORITY: the public https://mainnet.base.org endpoint and a genuinely separate hosted provider of Alchemy or Infura class are the two authorities. Agreement between them, not agreement with our own archive node, is what portable means. Our node's ok result is not evidence; a hosted endpoint's real refusal is.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]

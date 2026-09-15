@@ -9279,7 +9279,7 @@
       "bundle": "onchain_aerodrome_foundations",
       "target_repo": "onchain_aerodrome",
       "milestone": "onchain_aerodrome_v0_1",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Onchain.Aerodrome.RPCCase — the first multi-endpoint portability test seam in the family",
       "scores": {
         "d": 4,
@@ -9315,6 +9315,7 @@
       ],
       "body": "node-portability.md names this gap explicitly: no multi-endpoint test seam exists yet, and whoever builds one builds it first. Build it locally in this repo, not in onchain core, so every read and write integration test here can assert portability instead of it being a manual step that is easy to skip.\n\nModel it on onchain core's existing single-endpoint Onchain.RPCCase but generalise to two named endpoints plus a helper that runs the same closure against both. Note that test/support is already on elixirc_paths(:test) in mix.exs, so no build config change is needed.\n\nNever skip on a missing endpoint. A suite that reports zero failures from zero tests is a lie; flunk with the exact export command.\n\nAUTHORITY: the public https://mainnet.base.org endpoint and a genuinely separate hosted provider of Alchemy or Infura class are the two authorities. Agreement between them, not agreement with our own archive node, is what portable means. Our node's ok result is not evidence; a hosted endpoint's real refusal is.\n",
       "created_at": "2026-08-26",
+      "started_at": "2026-09-15",
       "scored_at": "2026-08-26",
       "cross_repo": []
     },
