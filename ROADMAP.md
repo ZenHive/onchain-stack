@@ -548,7 +548,7 @@
 | Task | Status | Notes |
 |------|--------|-------|
 | Task 5025 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Contracts* · 🔒 Capture Router, Gauge and NFPM ABIs from Sourcify and extend the registry with two-source-verified addresses [D:5/B:9/U:8 → Eff:1.7] 🚀 |
-| Task 5026 `[P]` | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.CalldataFixture* · 🔒 Golden-calldata evidence harness: an independent cast oracle plus eth_call impersonation, proven on Voter [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 5026 `[P]` | 🔄 | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.CalldataFixture* · 🔒 Golden-calldata evidence harness: an independent cast oracle plus eth_call impersonation, proven on Voter [D:5/B:8/U:8 → Eff:1.6] 🚀 |
 | Task 5027 `[P]` | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Voter* · 🔒 Write.Voter — vote, reset, poke, claims, managed deposits and distribute [D:5/B:7/U:6 → Eff:1.3] 📋 |
 | Task 5028 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Router* · 🔒 Write.Router — swap and liquidity calldata builders with Signer opt-in [D:6/B:8/U:7 → Eff:1.25] 📋 |
 | Task 5029 `[P]` | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Gauge* · 🔒 Write.Gauge — stake, unstake and claim calldata builders [D:4/B:7/U:7 → Eff:1.75] 🚀 |

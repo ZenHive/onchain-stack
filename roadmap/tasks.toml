@@ -6834,11 +6834,10 @@ scored_at = "2026-08-26"
 id = 5026
 phase = 5009
 bundle = "onchain_aerodrome_write"
-milestone = "onchain_aerodrome_v0_2"
-title = "Golden-calldata evidence harness: an independent cast oracle plus eth_call impersonation, proven on Voter"
-status = "pending"
 target_repo = "onchain_aerodrome"
-module = "Onchain.Aerodrome.CalldataFixture"
+milestone = "onchain_aerodrome_v0_2"
+status = "in_progress"
+title = "Golden-calldata evidence harness: an independent cast oracle plus eth_call impersonation, proven on Voter"
 scores = { d = 5, b = 8, u = 8 }
 markers = ["security", "parallel"]
 depends_on = [5005]
@@ -6846,6 +6845,7 @@ acceptance_criteria = ["A CalldataFixture test helper shells out to the local Fo
 out_of_scope = ["Router, Gauge and NFPM specific tests, which land with each contract's write task reusing this harness", "Signing or broadcasting any transaction", "eth_call state-override tricks, which are non-portable per node-portability rule 1 and explicitly not used here"]
 touches = ["packages/onchain_aerodrome/test/support/calldata_fixture.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/write/voter_calldata_test.exs"]
 assignee = "codex"
+module = "Onchain.Aerodrome.CalldataFixture"
 model = "gpt-6-astra"
 body = """
 This is the shared piece every write task depends on, and it must exist before those tasks write a single test that grades our encoder against our encoder — which is a false green, not weak evidence.
@@ -6863,6 +6863,7 @@ Be honest in the docs about the ceiling. With Base simulation blocked, no test h
 AUTHORITY: Foundry's cast, independently implementing ABI encoding, is the oracle for calldata-shape correctness. The deployed Voter at 0x16613524e02ad97eDfeF371bC883F2F5d6C480A5, verified in priv/abis/README.md on 2026-08-26, is the oracle for on-chain revert semantics. Neither is this repo's own encoder.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]

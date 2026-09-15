@@ -10408,7 +10408,7 @@
       "bundle": "onchain_aerodrome_write",
       "target_repo": "onchain_aerodrome",
       "milestone": "onchain_aerodrome_v0_2",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Golden-calldata evidence harness: an independent cast oracle plus eth_call impersonation, proven on Voter",
       "scores": {
         "d": 5,
@@ -10447,6 +10447,7 @@
       ],
       "body": "This is the shared piece every write task depends on, and it must exist before those tasks write a single test that grades our encoder against our encoder — which is a false green, not weak evidence.\n\nBuild two things.\n\nFirst, an independent encoder oracle. Shell out to Foundry's cast to encode the same call the library encodes, and assert byte-for-byte equality. cast is a different codebase in a different language implementing the same ABI specification, which is what makes it an oracle rather than a mirror.\n\nSecond, eth_call impersonation. The from parameter of eth_call lets you simulate a call as if any address sent it, without owning that address's key and without broadcasting, because eth_call never mutates state or requires a valid signature. Use it for real positive evidence (a decoded return from a state-mutating function's simulated execution) or real negative evidence (a specific revert from crafted bad inputs) straight from the deployed bytecode.\n\nProve the whole harness end to end against Voter.reset(uint256), whose ABI is already captured, so this task is not blocked on task 25.\n\nBe honest in the docs about the ceiling. With Base simulation blocked, no test here can prove a write succeeds and commits. Say so, once, plainly, rather than letting a reader infer more from a green suite than it can support.\n\nAUTHORITY: Foundry's cast, independently implementing ABI encoding, is the oracle for calldata-shape correctness. The deployed Voter at 0x16613524e02ad97eDfeF371bC883F2F5d6C480A5, verified in priv/abis/README.md on 2026-08-26, is the oracle for on-chain revert semantics. Neither is this repo's own encoder.\n",
       "created_at": "2026-08-26",
+      "started_at": "2026-09-15",
       "scored_at": "2026-08-26",
       "cross_repo": []
     },
