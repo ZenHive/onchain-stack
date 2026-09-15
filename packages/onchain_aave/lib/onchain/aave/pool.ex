@@ -201,7 +201,12 @@ defmodule Onchain.Aave.Pool do
 
   api(
     :get_reserve_variable_debt_token,
-    "Resolve a reserve's variable debt-token address via IPool.getReserveVariableDebtToken.",
+    """
+    Resolve a reserve's variable debt-token address via IPool.getReserveVariableDebtToken.
+
+    Historical `:block` reads require an archive node; a pruned or plan-limited
+    endpoint may return `-32001` when the requested state is unavailable.
+    """,
     params: [
       asset: [kind: :value, description: "Underlying reserve asset address"],
       opts: [
@@ -234,7 +239,12 @@ defmodule Onchain.Aave.Pool do
 
   api(
     :get_reserve_variable_debt_token!,
-    "Resolve a reserve's variable debt-token address. Raises on error.",
+    """
+    Resolve a reserve's variable debt-token address. Raises on error.
+
+    Historical `:block` reads require an archive node; a pruned or plan-limited
+    endpoint may return `-32001` when the requested state is unavailable.
+    """,
     params: [
       asset: [kind: :value, description: "Underlying reserve asset address"],
       opts: [
