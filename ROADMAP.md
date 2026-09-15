@@ -46,7 +46,7 @@
 - **target_version:** 0.2.0
 - **status:** ⬜ pending
 - **hypothesis:** Tests whether a full Router/Gauge/NFPM/Voter write surface can ship with honest evidence when no local EVM can execute it — calldata graded against an independent encoder and real on-chain reverts, never against our own encoder.
-- **pinned tasks:** 0/8 done
+- **pinned tasks:** 1/8 done
 
 ### onchain_js_v0_4 — [onchain_js] The JS library shelf
 
@@ -548,7 +548,7 @@
 | Task | Status | Notes |
 |------|--------|-------|
 | Task 5025 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Contracts* · 🔒 Capture Router, Gauge and NFPM ABIs from Sourcify and extend the registry with two-source-verified addresses [D:5/B:9/U:8 → Eff:1.7] 🚀 |
-| Task 5026 `[P]` | 🔄 | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.CalldataFixture* · 🔒 Golden-calldata evidence harness: an independent cast oracle plus eth_call impersonation, proven on Voter [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 5026 `[P]` | ✅ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.CalldataFixture* · 🔒 Golden-calldata evidence harness: an independent cast oracle plus eth_call impersonation, proven on Voter [D:5/B:8/U:8 → Eff:1.6] 🚀 |
 | Task 5027 `[P]` | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Voter* · 🔒 Write.Voter — vote, reset, poke, claims, managed deposits and distribute [D:5/B:7/U:6 → Eff:1.3] 📋 |
 | Task 5028 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Router* · 🔒 Write.Router — swap and liquidity calldata builders with Signer opt-in [D:6/B:8/U:7 → Eff:1.25] 📋 |
 | Task 5029 `[P]` | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Gauge* · 🔒 Write.Gauge — stake, unstake and claim calldata builders [D:4/B:7/U:7 → Eff:1.75] 🚀 |

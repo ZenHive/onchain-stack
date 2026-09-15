@@ -6836,7 +6836,7 @@ phase = 5009
 bundle = "onchain_aerodrome_write"
 target_repo = "onchain_aerodrome"
 milestone = "onchain_aerodrome_v0_2"
-status = "in_progress"
+status = "done"
 title = "Golden-calldata evidence harness: an independent cast oracle plus eth_call impersonation, proven on Voter"
 scores = { d = 5, b = 8, u = 8 }
 markers = ["security", "parallel"]
@@ -6862,9 +6862,16 @@ Be honest in the docs about the ceiling. With Base simulation blocked, no test h
 
 AUTHORITY: Foundry's cast, independently implementing ABI encoding, is the oracle for calldata-shape correctness. The deployed Voter at 0x16613524e02ad97eDfeF371bC883F2F5d6C480A5, verified in priv/abis/README.md on 2026-08-26, is the oracle for on-chain revert semantics. Neither is this repo's own encoder.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1789495263370-7062e1d6, fe6faa0a550e1a5771b4d35e315fca8e76870849)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1789495263370-7062e1d6"
 created_at = "2026-08-26"
 started_at = "2026-09-15"
 scored_at = "2026-08-26"
+done_at = "2026-09-15"
+shipped_in = "fe6faa0a550e1a5771b4d35e315fca8e76870849"
 
 [[task]]
 id = 5027
