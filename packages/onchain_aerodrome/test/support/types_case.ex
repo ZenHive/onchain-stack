@@ -26,14 +26,6 @@ defmodule Onchain.Aerodrome.TypesCase do
     assert_one_to_one_components(module, components, row, struct, nested)
   end
 
-  @spec abi_address_fields(String.t(), String.t()) :: [atom()]
-  def abi_address_fields(abi_file, abi_function) do
-    abi_file
-    |> abi_components(abi_function)
-    |> Enum.filter(&(&1["type"] == "address"))
-    |> Enum.map(&String.to_existing_atom(&1["name"]))
-  end
-
   @spec abi_components(String.t(), String.t()) :: [map()]
   def abi_components(abi_file, abi_function) do
     abi_file

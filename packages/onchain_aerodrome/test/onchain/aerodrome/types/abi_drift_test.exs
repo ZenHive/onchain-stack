@@ -94,8 +94,9 @@ defmodule Onchain.Aerodrome.Types.AbiDriftTest do
     end
 
     test "LpEpoch TokenAmount is not Types.Reward" do
+      bribes = nested_components("rewards_sugar.json", "epochsLatest", "bribes")
       refute struct_field_names(LpEpoch.TokenAmount) == struct_field_names(Reward)
-      assert struct_field_names(LpEpoch.TokenAmount) == ["token", "amount"]
+      assert struct_field_names(LpEpoch.TokenAmount) == Enum.map(bribes, & &1["name"])
       assert struct_field_names(Reward) == abi_field_names("rewards_sugar.json", "rewards")
     end
   end
