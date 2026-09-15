@@ -21,6 +21,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Onchain.Aerodrome.Bindings.LpSugar` — the deployed Base LpSugar read surface:
+  `count/1`, `all/4`, `for_swaps/3`, `positions/4`, `positions_by_factory/5`,
+  `positions_unstaked_concentrated/4`, `tokens/5` and `alm_estimate_amounts/4`,
+  decoding positionally into `Types.Lp` / `.Swap` / `.Position` / `.Token`.
+  **Enumeration is driven to `count/1`, never terminated on a short page** —
+  every one of these reads walks a *scanned* index space (pool index or
+  position-NFT index) whose rows are filtered, deduplicated or skipped upstream,
+  so a page shorter than `limit` is normal mid-scan and stopping there silently
+  drops pools. `paginate/3` is the public driver over a caller-supplied bound,
+  and `all_pages/2` obtains the pool count itself; an out-of-range `:limit`
+  fails with `{:error, {:invalid_limit, limit}}` before any RPC call. A named
+  anti-regression test asserts the naive short-page loop *under-counts* against
+  the committed fixtures, so the suite fails against the bug rather than merely
+  passing against the fix. `all/4`'s `filter` is an opaque non-negative integer
+  passthrough — its semantics are undocumented upstream, and fixture drift
+  detection is the only available verification.
+
 - `Types.Lp`, `Types.Position`, `Types.Swap` and `Types.Token` — positional
   `from_raw/1` constructors for the Sugar pool and token rows, with ABI
   field-order drift tests that read `priv/abis/*.json` directly.

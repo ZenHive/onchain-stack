@@ -9118,3 +9118,53 @@ model = "gpt-6-astra"
 body = "During audit 408b2b6, mix deps.get retained locked Mint 1.9.3 and reported two public security advisories. Check current upstream fixes and the dependent packages, update the lock if a compatible fix exists, and run both audit tools plus affected package gates. Do not suppress findings. This is an observed dependency warning, not a demonstrated application exploit."
 created_at = "2026-09-15"
 scored_at = "2026-09-15"
+
+[[task]]
+id = "9009"
+phase = 4005
+bundle = "onchain_aave_v4_support"
+target_repo = "onchain_aave"
+status = "pending"
+title = "Detect V4 address-book drift against upstream instead of only against the committed snapshot"
+scores = { d = 4, b = 7, u = 6 }
+acceptance_criteria = ["An integration-tagged check fetches the AaveV4 namespaces from aave-dao/aave-address-book at HEAD and fails when upstream holds an Ethereum or Avalanche entry that Onchain.Aave.Contracts does not resolve, or resolves to a different address — naming each drifted label and both addresses, not just a count", "The check also fails when upstream has REMOVED or re-pointed a label the registry still serves, since a stale address is the money-losing direction: a re-pointed config engine or Hub is served as if current", "The pinned commit and its row counts live in exactly one place that both the drift check and V4_SCOPING.md read from, so a re-sync cannot update one and leave the other claiming a different commit", "Missing network access flunks with an explicit message and does not silently pass; the default `mix ci` and `mix check.dispatch` runs stay offline and are unaffected in duration", "test/fixtures/v4_safe.csv keeps its role as the offline snapshot the fast registry test reads; this task adds the upstream comparison rather than replacing the offline one", "The re-sync procedure (fetch, diff, regenerate, bump the pinned commit) is written down in V4_SCOPING.md so the next drift is data work, not re-derivation", "mix ci passes"]
+out_of_scope = ["Auto-regenerating @v4_addresses from a fetched CSV at compile time — the registry stays committed source that a human reviews; this task only detects that it has drifted", "V3 address drift, which has a different (CREATE2-canonical) shape and a far slower change rate", "Chainlink price-feed address space, which is a separate namespace from the Aave one", "Adding the check to check.dispatch or to the default mix ci run — it needs network access"]
+files_to_modify = ["packages/onchain_aave/test/onchain/aave/v4/registry_test.exs", "packages/onchain_aave/V4_SCOPING.md"]
+touches = ["packages/onchain_aave/test/onchain/aave/v4/registry_test.exs", "packages/onchain_aave/V4_SCOPING.md"]
+assignee = "codex"
+model = "gpt-6-astra"
+body = """
+Task 4069 re-derived the whole V4 registry from aave-dao/aave-address-book safe.csv
+at commit fdaecf26 and committed the 390 rows it consumed as
+test/fixtures/v4_safe.csv. registry_test.exs then asserts every fixture row resolves
+through the public API with the right address. That test is real and it caught real
+work — but it compares the registry against the same snapshot the registry was
+generated from. It cannot notice that upstream has moved on, which is exactly the
+failure it looks like it is guarding.
+
+The rot rate is measured, not hypothetical. The AaveV4Ethereum namespace went 150
+entries (commit 10c4e9d, 2026-04-16) -> 304 (2026-08-26) -> 317 (fdaecf26,
+2026-09-15) in five months, and task 4069 found that CONFIG_ENGINE had been
+re-pointed from 0xe8096f93... to 0xa1673fbD... in that window. Nothing in the repo
+noticed either fact; a human re-derivation prompted by a roadmap task did. Between
+such tasks the library serves whatever the last snapshot said, with a green suite.
+
+Serving a stale address is worse than serving none: address/2 returns {:ok, addr}
+and callers sign against it. A re-pointed Hub or configurator is a wrong-contract
+call, not a missing-key error.
+
+The check has to be network-tagged — the default gate is deliberately offline (see
+the per-package check.dispatch contract in the root CLAUDE.md) — so this is an
+`@moduletag :integration` comparison, or a mix task the operator runs during a
+re-sync, run on demand rather than on every commit. What matters is that "has
+upstream moved?" becomes one command with a diff, instead of a re-derivation.
+
+AUTHORITY: aave-dao/aave-address-book safe.csv at HEAD for the upstream set, and
+this package's own @v4_addresses / @v4_tokenization_spokes for the served set. The
+committed fixture is the snapshot under test, never the authority for what is
+current.
+
+Found by the post-merge audit of d0dd07b.
+"""
+created_at = "2026-09-15"
+scored_at = "2026-09-15"

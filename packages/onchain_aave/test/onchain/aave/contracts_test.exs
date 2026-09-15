@@ -233,7 +233,7 @@ defmodule Onchain.Aave.ContractsTest do
   end
 
   describe "v4_tokenization_spoke/3" do
-    test "resolves representative spokes across all three hubs" do
+    test "resolves representative spokes across hubs" do
       assert {:ok, "0x7320CF22Ac095bA2a2e0a652F77efB836c2E751b"} =
                Contracts.v4_tokenization_spoke(:core, :weth)
 

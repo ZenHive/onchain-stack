@@ -415,6 +415,7 @@
 | Task 4067 | ⬜ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.V4.PositionManager* · Wrap V4 position configuration and position-manager authorization, and close the Taker fork-evidence gap [D:4/B:8/U:8 → Eff:2.0] 🎯 |
 | Task 4069 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.Contracts* · Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs [D:4/B:9/U:9 → Eff:2.25] 🎯 |
 | Task 4070 | ⬜ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.Contracts* · Register the ether.fi Cash V4 whitelabel instance on Optimism [D:4/B:8/U:8 → Eff:2.0] 🎯 |
+| Task 9009 | ⬜ | 🎁 **onchain_aave_v4_support** · Detect V4 address-book drift against upstream instead of only against the committed snapshot [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 4006: V3 Write Surface Gaps

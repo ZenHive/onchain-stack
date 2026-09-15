@@ -31,6 +31,23 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ### Changed
 
+- **The V4 address registry is re-derived from the pinned address book, and a
+  Hub is no longer one of three hardcoded atoms.** `Onchain.Aave.Contracts`
+  enumerates every `AaveV4Ethereum` and `AaveV4Avalanche` entry of
+  `aave-dao/aave-address-book` `safe.csv` at commit `fdaecf26` — 317 Ethereum
+  and 73 Avalanche rows. **V4 is not Ethereum-mainnet-only:** it is deployed on
+  Ethereum (chain id 1) and Avalanche (43114), and `networks/0` now reports
+  networks that exist only in the V4 registry. Ethereum has a fourth Hub,
+  Global Dollar, and `Onchain.Aave.V4.Hub` / `.TokenizationSpoke` resolve any
+  registered `:v4_<name>_hub` from registry data instead of a `:core | :prime |
+  :plus` map — a new Hub needs no code change, and an unknown atom still
+  returns `{:error, {:unknown_hub, hub}}`. The config engine moved to
+  `0xa1673fbD457747A05e91D9ef904Cb12827916B1E`. Existing `:v4_etherfi_spoke`,
+  Lido and Kelp spellings and the `:plus, :pt_susde` / `:pt_usde` tokenization
+  keys remain aliases. Naming rules and the pinned source are recorded in
+  `V4_SCOPING.md`; `CLAUDE.md`'s verification recipe now names the address
+  book's current canonical org, `aave-dao`.
+
 - **`onchain_evm` 0.6 in dev/test, and the fork-simulation surface is now
   pinned by tests.** 0.6 populates the fork's `BlockEnv` from the forked block
   header and loads an account before amending it, so a `"storage"` override no
@@ -102,8 +119,10 @@ Spokes resolved by `{hub, asset}`.
 - `Onchain.Aave.Math.V4` — V4 math conversions alongside the V3 helpers.
 
 There is no stable-rate borrowing in V4, and no `UiPoolDataProvider` analog.
-V4 is Ethereum-mainnet only, so the write paths are pinned by encoded-calldata
-unit tests rather than testnet sends.
+At v0.4.0 V4 was deployed on Ethereum mainnet only, so the write paths are
+pinned by encoded-calldata unit tests rather than testnet sends. That is no
+longer the deployed reality — see the V4 registry re-sync under
+[Unreleased]; the calldata-pinning rationale still holds.
 
 ### Added — mutation-grade math verification
 
