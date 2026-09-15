@@ -1,7 +1,11 @@
 # Aave V4 Scoping
 
-**Captured:** 2026-04-20 during Task 44
-**Purpose:** enumerate the Aave V4 mainnet contract surface as the basis for follow-on wrapper tasks (see ROADMAP.md Tasks 45+). This doc is the **source of truth for V4 addresses and ABI pointers** — downstream tasks should link here rather than duplicating the data. Which chains and instances exist *now* (including deployments this snapshot does not list) is in [V4_DEPLOYMENTS.md](V4_DEPLOYMENTS.md).
+**Registry re-derived:** 2026-09-15 from aave-dao/aave-address-book commit
+[`fdaecf26c96398e6a9b54c2b6477647fba293a91`](https://github.com/aave-dao/aave-address-book/blob/fdaecf26c96398e6a9b54c2b6477647fba293a91/safe.csv).
+The pinned CSV contains **317 Ethereum entries and 73 Avalanche entries**.
+V4 supports Ethereum (chain ID 1) and Avalanche (43114); it is not Ethereum-only.
+The original architecture/ABI notes below were captured on 2026-04-20 during Task 44.
+**Purpose:** enumerate the Aave V4 mainnet contract surface as the basis for follow-on wrapper tasks (see ROADMAP.md Tasks 45+). The pinned address book is the authority for addresses; this document provides ABI pointers — downstream tasks should link here rather than duplicating the data. Which chains and instances exist *now* (including deployments this snapshot does not list) is in [V4_DEPLOYMENTS.md](V4_DEPLOYMENTS.md).
 
 V4 went live on Ethereum mainnet on **2026-03-30** (AIP executed; Snapshot passed 2026-03-23, 100% support). Deployment uses a **Hub-and-Spoke architecture** that is materially different from V3's single-`Pool` model — this is not a drop-in interface addition. Most user-facing V4 work lands as new wrapper modules under `Onchain.Aave.V4.*` alongside the V3 tree, while shared support modules like `Contracts` are extended in place.
 
@@ -17,7 +21,7 @@ V4 went live on Ethereum mainnet on **2026-03-30** (AIP executed; Snapshot passe
 
 **Contracts / ABIs**
 - Canonical source repo: https://github.com/aave/aave-v4 (Solidity source + audits under `/audits`)
-- Address book (entries we consume): https://github.com/bgd-labs/aave-address-book — `src/AaveV4Ethereum.sol` + `safe.csv`
+- Address book (entries we consume): https://github.com/aave-dao/aave-address-book — `src/AaveV4Ethereum.sol` + `safe.csv`
 - ABI-bearing interface files (in `aave-v4/src/`):
   - `hub/interfaces/` → `IHub.sol`, `IHubBase.sol`, `IHubConfigurator.sol`, `IBasicInterestRateStrategy.sol`, `IAssetInterestRateStrategy.sol`
   - `spoke/interfaces/` → `ISpoke.sol`, `ISpokeConfigurator.sol`, `ITokenizationSpoke.sol`, `ITreasurySpoke.sol`, `IAaveOracle.sol`, `IPriceFeed.sol`, `IPriceOracle.sol`
@@ -25,7 +29,56 @@ V4 went live on Ethereum mainnet on **2026-03-30** (AIP executed; Snapshot passe
   - `config-engine/interfaces/` → `IAaveV4ConfigEngine.sol`
   - `access/interfaces/` → `IAccessManagerEnumerable.sol`
 
-The bgd-labs CSV (`safe.csv`, 5238 rows, 150 of them prefixed `AaveV4Ethereum`) is the same source used for V3 verification per CLAUDE.md. Every address below was pulled from it.
+## Current registry and naming
+
+`lib/onchain/aave/contracts.ex` enumerates the pinned snapshot in full for both
+networks. `test/fixtures/v4_safe.csv` retains the 390 original namespace rows;
+the registry tests check every row through the public API. This includes the
+Aave namespace's per-Spoke price feeds, not the separate Chainlink namespace.
+Array rows are upstream aliases of named contracts, not additional deployments.
+
+Ethereum now has four Hubs: Core, Prime, Plus, and Global Dollar. Avalanche has
+one Core Hub, Main / Forex / AVAX-Correlated Spokes, seven Tokenization Spokes,
+Position Managers, both gateways, Treasury, configurators and access manager.
+Ethereum also adds PAXG Gold, USDG Pendle and USDG Maple e-Spokes, five Global
+Dollar Tokenization Spokes and their interest-rate strategies. Its config engine
+is now `0xa1673fbD457747A05e91D9ef904Cb12827916B1E`.
+
+`address/2` keys are `:v4_` plus the lowercase upstream label. Named-contract
+category prefixes (`HUBS`, `SPOKES`, `POSITION_MANAGERS`, `EXTERNAL_LIBRARIES`,
+`IR_STRATEGIES`, `TOKENIZATION_SPOKES`, `SPOKE_PRICE_FEEDS`) are omitted.
+Array/asset paths retain their prefixes; spaces and punctuation become underscores
+(e.g. `:v4_all_hubs_3`, `:v4_assets_btc_b_underlying`). Per-Spoke feed keys keep
+upstream's `_spoke` infix. The existing `:v4_etherfi_spoke` (and oracle), Lido and
+Kelp spellings remain aliases alongside upstream `_espoke` and historical
+`_e_spoke` spellings.
+
+Nested Tokenization Spoke lookup uses the lowercase Hub and asset label,
+including PT maturity dates (e.g. `:global_dollar, :pt_usdg_24sep2026` and
+Avalanche `:core, :btcb`). Legacy `:plus, :pt_susde` / `:pt_usde` aliases keep
+referring to the 7 May 2026 maturities. Future Hubs need only registry data;
+Hub reads discover the matching `:v4_<name>_hub` key.
+
+The historical Ethereum tables below describe the initial deployment only.
+Use the pinned CSV and registry for the complete current address set.
+Optimism ether.fi Cash and announced Base lending remain outside this registry;
+see [V4_DEPLOYMENTS.md](V4_DEPLOYMENTS.md).
+
+### Live evidence
+
+`test/onchain/aave/v4/registry_integration_test.exs` reads the Global Dollar Hub at
+Ethereum block **25,985,721** and Main Spoke at Avalanche block **95,376,891**.
+On 2026-09-15 both reads returned six entries (assets and reserves, respectively).
+These historical reads require an endpoint retaining state at the pinned blocks.
+Run with:
+
+```sh
+export ETHEREUM_API_URL="https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY"
+export AVALANCHE_RPC_URL="https://api.avax.network/ext/bc/C/rpc"
+mix test test/onchain/aave/v4/registry_integration_test.exs --include integration
+```
+
+Missing endpoint variables fail with explicit export instructions.
 
 ---
 
@@ -33,7 +86,7 @@ The bgd-labs CSV (`safe.csv`, 5238 rows, 150 of them prefixed `AaveV4Ethereum`) 
 
 V4 splits V3's monolithic `Pool` into three layers:
 
-1. **Hubs** (routing + rate environment + credit-line source) — `IHub`. There are three: Core, Prime, Plus. A Hub owns stablecoin inventory and emits credit lines to its member Spokes.
+1. **Hubs** (routing + rate environment + credit-line source) — `IHub`. Ethereum has Core, Prime, Plus and Global Dollar; Avalanche has Core. A Hub owns stablecoin inventory and emits credit lines to its member Spokes.
 2. **Spokes** (risk-isolated borrow venues) — `ISpoke`. Each Spoke has its own collateral set, borrowable set, liquidation params, oracle, and per-Spoke add/draw caps. e-Mode is now per-Spoke (one collateral, one borrowable) rather than a mode flag on a shared pool.
 3. **Tokenization Spokes** (ERC-4626 supply-only positions) — `ITokenizationSpoke`. Every supply position is its own tokenization contract, per (Hub, asset) pair.
 
@@ -177,7 +230,7 @@ ERC-4626 supply-only vaults, one per (Hub, underlying-asset). Interface: `IToken
 | Kelp | 2 |
 | Lido | 2 |
 
-Per-feed addresses are not enumerated here — pull them from `safe.csv` grep `"AaveV4Ethereum SPOKE_PRICE_FEEDS"` or from the `bgd-labs/aave-address-book` Solidity exports. Relevant structure: each (Spoke, asset) pair has one price feed, sometimes shared across Spoke families (e.g. Chainlink WETH/USD is reused).
+Per-feed addresses are not enumerated here — pull them from `safe.csv` grep `"AaveV4Ethereum SPOKE_PRICE_FEEDS"` or from the `aave-dao/aave-address-book` Solidity exports. Relevant structure: each (Spoke, asset) pair has one price feed, sometimes shared across Spoke families (e.g. Chainlink WETH/USD is reused).
 
 ## Underlying Assets (21)
 
@@ -218,7 +271,7 @@ How each current `onchain_aave` V3 module maps to V4:
 
 1. **`IHub` / `ISpoke` read surface + getUserAccountData mapping.** Completed. See "V4 Read Surface Diff vs V3 IPool + IUiPoolDataProvider" below. Minimum read set that mirrors `getUserAccountData` behavior: `ISpoke.getUserAccountData(address)` (per-Spoke) plus supporting `getUser*` / `getReserve*` / `getLiquidation*` reads on the Spoke and price reads on its `IAaveOracle`. Hub reads are additive for credit-line / liquidity accounting (no V3 Pool equivalent).
 2. **Tokenization spoke key shape.** Deferred to Task 45 (per plan).
-3. **UiPoolDataProvider analog.** Completed. No V4 analog exists (no address in bgd-labs/aave-address-book AaveV4Ethereum entries; no `I*DataProvider` or equivalent bulk contract in `aave-v4/src/{hub,spoke,config-engine}/interfaces/`). V4 expects direct or multicall reads against `ISpoke` (per market/Spoke) + `IHub` + `IAaveOracle` + `ITokenizationSpoke` (ERC-4626). Aave Interface / pro.aave.com usage not required for this diff (contracts show the surface); downstream wrappers will compose or later add an aggregator if needed.
+3. **UiPoolDataProvider analog.** Completed. No V4 analog exists (no address in aave-dao/aave-address-book AaveV4Ethereum entries; no `I*DataProvider` or equivalent bulk contract in `aave-v4/src/{hub,spoke,config-engine}/interfaces/`). V4 expects direct or multicall reads against `ISpoke` (per market/Spoke) + `IHub` + `IAaveOracle` + `ITokenizationSpoke` (ERC-4626). Aave Interface / pro.aave.com usage not required for this diff (contracts show the surface); downstream wrappers will compose or later add an aggregator if needed.
 4. **Multi-chain rollout.** Deferred (not in scope for read-surface diff).
 5. **Coordination with Task 42 (V4 math cross-validation via revm).** Deferred (not in scope for read-surface diff).
 

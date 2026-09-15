@@ -110,7 +110,7 @@ Sepolia write tests additionally require `ETH_SEPOLIA_PRIVATE_KEY` and `ETH_SEPO
 When adding or updating addresses in `lib/onchain/aave/contracts.ex`, verify against the **Aave Address Book CSV**:
 
 ```bash
-curl -s "https://raw.githubusercontent.com/bgd-labs/aave-address-book/main/safe.csv" | grep -i "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
+curl -s "https://raw.githubusercontent.com/aave-dao/aave-address-book/main/safe.csv" | grep -i "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
 ```
 
 ## Related Packages

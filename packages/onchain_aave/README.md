@@ -31,6 +31,11 @@ returning stale data. Current-block reads — the default — have no such requi
 The chain you point at must actually have Aave V3 deployed; see `Onchain.Aave.Types` for
 the addresses this package knows about.
 
+V4 addresses cover Ethereum and Avalanche. Resolve any registered Hub by name,
+e.g. `Onchain.Aave.V4.Hub.hub_address(:global_dollar)` or
+`Onchain.Aave.V4.Hub.hub_address(:core, network: :avalanche)`.
+See [V4_SCOPING.md](V4_SCOPING.md) for the pinned address book and naming aliases.
+
 ## Modules
 
 | Module | Purpose |
@@ -43,7 +48,7 @@ the addresses this package knows about.
 | `Onchain.Aave.Contracts` | Verified address registry (mainnet + multi-chain, V3 + V4) |
 | `Onchain.Aave.UiPoolDataProvider` | Reserves and user reserves data |
 | `Onchain.Aave.Faucet` | Testnet faucet interactions (mint test tokens) |
-| `Onchain.Aave.V4.Hub` | V4 Hub reads across Core/Prime/Plus (member Spokes, credit-line inventory and caps, rate environment, share/asset previews, bound constants) |
+| `Onchain.Aave.V4.Hub` | V4 Hub reads across registered Hubs (Ethereum and Avalanche) (member Spokes, credit-line inventory and caps, rate environment, share/asset previews, bound constants) |
 | `Onchain.Aave.V4.Oracle` | V4 Spoke-scoped IAaveOracle reads (reserve prices, sources, decimals) plus Chainlink feeds |
 | `Onchain.Aave.V4.PositionManager` | V4 Giver/Taker writes (supply/repay/borrow/withdraw on-behalf-of) plus Taker allowances |
 | `Onchain.Aave.V4.Spoke` | V4 Spoke reads (reserve/user data, position-manager checks) |

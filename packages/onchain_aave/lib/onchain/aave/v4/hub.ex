@@ -2,7 +2,7 @@ defmodule Onchain.Aave.V4.Hub do
   @moduledoc """
   Aave V4 Hub read operations.
 
-  One module for all three Hubs (Core, Prime, Plus). Wraps Hub-level reads:
+  One module for all registered Hubs. Wraps Hub-level reads:
   member Spokes, credit-line inventory and caps, the Hub rate environment /
   utilization, IHubBase share-to-asset preview converters, and IHub bound
   constants. Amounts stay raw integers (token units, RAY, BPS) — conversion
@@ -23,7 +23,7 @@ defmodule Onchain.Aave.V4.Hub do
 
   | Function | Purpose |
   |----------|---------|
-  | `hub_address/2` | Resolve `:core` / `:prime` / `:plus` to the Hub contract |
+  | `hub_address/2` | Resolve a registered Hub atom to its contract |
   | `get_spoke_count/3` | Member Spokes listed for an asset |
   | `is_spoke_listed/4` | Whether a Spoke is listed for an asset |
   | `get_spoke_address/4` | Spoke address at a list index |
@@ -81,9 +81,7 @@ defmodule Onchain.Aave.V4.Hub do
   alias Onchain.Address
   alias Onchain.Contract
 
-  @type hub :: :core | :prime | :plus
-
-  @hub_contracts %{core: :v4_core_hub, prime: :v4_prime_hub, plus: :v4_plus_hub}
+  @type hub :: atom()
 
   @asset_response "((uint120,uint120,uint8,uint120,uint120,int200,uint120,uint120,uint16,uint120,uint96,uint40,address,address,address,address,uint200))"
   @asset_config_response "((address,uint16,address,address))"
@@ -91,7 +89,7 @@ defmodule Onchain.Aave.V4.Hub do
   @spoke_config_response "((uint40,uint40,uint24,bool,bool))"
 
   @opts_desc "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
-  @hub_desc "Hub atom: :core, :prime, or :plus"
+  @hub_desc "Registered Hub atom, e.g. :core or :global_dollar"
   @asset_id_desc "Hub asset identifier"
   @spoke_desc "Spoke address as 0x hex string or 20-byte binary"
   @assets_desc "Asset amount in token units"
@@ -113,10 +111,17 @@ defmodule Onchain.Aave.V4.Hub do
 
   @spec hub_address(atom(), keyword()) :: {:ok, String.t()} | {:error, term()}
   def hub_address(hub, opts \\ []) do
-    case Map.fetch(@hub_contracts, hub) do
-      {:ok, key} -> Contracts.address(key, opts)
-      :error -> {:error, {:unknown_hub, hub}}
-    end
+    key_name = "v4_#{hub}_hub"
+
+    key =
+      Enum.find_value(Contracts.networks(), fn network ->
+        case Contracts.v4_contracts(network: network) do
+          {:ok, keys} -> Enum.find(keys, &(Atom.to_string(&1) == key_name))
+          {:error, _reason} -> nil
+        end
+      end)
+
+    if key, do: Contracts.address(key, opts), else: {:error, {:unknown_hub, hub}}
   end
 
   # --- get_spoke_count ---

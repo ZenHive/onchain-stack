@@ -183,7 +183,7 @@ defmodule Onchain.Aave.ContractsTest do
   # manager, hub, spoke, per-spoke oracle).
   @v4_singletons %{
     v4_access_manager: "0x08aE3BE30958cDd1847ec58fFfd4C451a87fDF01",
-    v4_config_engine: "0xe8096f931734286a95b6A63eFFCEFD3C56F3f6a9",
+    v4_config_engine: "0xa1673fbD457747A05e91D9ef904Cb12827916B1E",
     v4_treasury_spoke: "0xB9B0b8616f6Bf6841972a52058132BE08d723155",
     v4_giver_position_manager: "0x17A54b8d6D9C68e7fa1C7112AC998EA1BA51d11e",
     v4_native_token_gateway: "0xe68ab4F90Fe026B9873F5F276eD2d7efBbbE42Be",
@@ -298,9 +298,10 @@ defmodule Onchain.Aave.ContractsTest do
   end
 
   describe "v4_contracts/1" do
-    test "lists all 34 V4 singleton keys on ethereum" do
+    test "lists the pinned V4 registry keys on ethereum" do
       assert {:ok, keys} = Contracts.v4_contracts()
-      assert Enum.count_until(keys, 35) == 34
+      assert :v4_global_dollar_hub in keys
+      assert :v4_global_dollar_usdc_ir_strategy in keys
       assert :v4_core_hub in keys
       assert :v4_main_spoke_oracle in keys
     end
