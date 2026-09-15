@@ -6222,7 +6222,7 @@ phase = 5002
 bundle = "onchain_aerodrome_types"
 target_repo = "onchain_aerodrome"
 milestone = "onchain_aerodrome_v0_1"
-status = "pending"
+status = "in_progress"
 title = "Types.Lp, .Position, .Swap and .Token — the pool and token structs, with ABI drift tests"
 scores = { d = 5, b = 8, u = 8 }
 markers = ["parallel"]
