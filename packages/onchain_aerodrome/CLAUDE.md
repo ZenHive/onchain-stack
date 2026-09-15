@@ -157,6 +157,7 @@ lib/onchain/aerodrome/
   contracts.ex                  # address registry + verified constants (base layer)
   epoch.ex                      # weekly ve(3,3) epoch arithmetic (base layer)
   bindings/abi.ex               # compile-time signatures from priv/abis (bindings layer)
+  bindings/lp_sugar.ex          # LpSugar reads + count-driven pagination (bindings layer)
   types/lp.ex                   # LpSugar.all row (types layer)
   types/position.ex             # LpSugar.positions row
   types/swap.ex                 # LpSugar.forSwaps row
@@ -174,9 +175,10 @@ test/support/calldata_fixture.ex
 test/support/types_case.ex      # positional decode + one-to-one assertions for Types.*
 ```
 
-The remaining layers (`analytics/`, `sugar/`, `write/`) and the rest of
-`bindings/` are scoped in the root `roadmap/tasks.toml` (offset +5000) and not
-yet implemented. `.reach.exs` already declares them, so the gate is in place
+The remaining layers (`analytics/`, `sugar/`, `write/`) and the remaining
+Sugar bindings (`ve_sugar`, `rewards_sugar`, `relay_sugar`, `token_sugar`)
+are scoped in the root `roadmap/tasks.toml` (offset +5000) and not yet
+implemented. `.reach.exs` already declares them, so the gate is in place
 before those modules land.
 
 ## Dependencies from onchain core

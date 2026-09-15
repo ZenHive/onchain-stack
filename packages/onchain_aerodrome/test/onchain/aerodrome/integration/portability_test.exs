@@ -11,8 +11,8 @@ defmodule Onchain.Aerodrome.Integration.PortabilityTest do
   # Two 180s RPC calls plus blockNumber exceed ExUnit's 60s default.
   @moduletag timeout: 600_000
 
-  # Bindings.LpSugar is a later task; the deployed all(uint256,uint256,uint256)
-  # at Contracts.address!(:lp_sugar) is the authority this seam tools against.
+  # Encodes all(uint256,uint256,uint256) directly so endpoint agreement does
+  # not depend on Bindings.LpSugar.all/4 wrapping the same call.
   @limit 500
   @offset 0
   @filter 0

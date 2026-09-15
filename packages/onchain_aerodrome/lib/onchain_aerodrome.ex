@@ -34,6 +34,7 @@ defmodule OnchainAerodrome do
       Onchain.Aerodrome.Contracts,
       Onchain.Aerodrome.Epoch,
       Onchain.Aerodrome.Bindings.Abi,
+      Onchain.Aerodrome.Bindings.LpSugar,
       Onchain.Aerodrome.Types.Lp,
       Onchain.Aerodrome.Types.Position,
       Onchain.Aerodrome.Types.Swap,
