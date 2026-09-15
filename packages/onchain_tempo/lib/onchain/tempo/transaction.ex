@@ -289,6 +289,10 @@ defmodule Onchain.Tempo.Transaction do
   and `fee_payer_signature` (`<<0x00>>`) — the fee payer fills those in
   afterward — so they are reset before the signing payload is reconstructed.
 
+  High-s encodings are accepted: `s` and the recovery bit are flipped together
+  to BIP-62 low-s form before recovery, so a complement-s envelope returns the
+  same address. The original `raw` is not rewritten.
+
   Returns `{:ok, address_binary}` or `{:error, reason}`.
   """
   @dialyzer {:nowarn_function, sender: 1}
@@ -408,7 +412,9 @@ defmodule Onchain.Tempo.Transaction do
   @dialyzer {:nowarn_function, recover_sender: 2}
   defp recover_sender(signing_payload, <<r::unsigned-big-size(256), s::unsigned-big-size(256), v::8>>) do
     recid = if v >= 27, do: v - 27, else: v
-    # Curvy 0.3.1 captures recid before its internal normalization flips it.
+    # Curvy 0.3.1 binds recid before Signature.normalize/1 flips it
+    # (https://github.com/libitx/curvy/issues/8). Pre-normalize so complement-s
+    # encodings recover the same sender.
     sig = CurvySig.normalize(%CurvySig{crv: :secp256k1, r: r, s: s, recid: recid})
     {:ok, Recover.recover_eth(signing_payload, sig)}
   rescue

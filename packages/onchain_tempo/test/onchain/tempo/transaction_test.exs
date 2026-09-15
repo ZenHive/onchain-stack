@@ -579,11 +579,13 @@ defmodule Onchain.Tempo.TransactionTest do
       assert s <= div(n, 2)
       high_s = n - s
       assert high_s > div(n, 2)
-      recid = Bitwise.bxor(v - 27, 1)
+      orig_recid = if v >= 27, do: v - 27, else: v
+      complement_recid = Bitwise.bxor(orig_recid, 1)
 
-      for recovery_byte <- [recid, recid + 27] do
+      for recovery_byte <- [complement_recid, complement_recid + 27] do
         fields = List.replace_at(tx.fields, -1, <<r::256, high_s::256, recovery_byte::8>>)
         raw = "0x76" <> Base.encode16(ExRLP.encode(fields), case: :lower)
+        refute raw == tx.raw
         assert {:ok, complement} = Transaction.deserialize(raw)
         assert {:ok, ^expected} = Transaction.sender(complement)
       end
