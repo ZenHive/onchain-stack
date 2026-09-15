@@ -8720,7 +8720,7 @@ id = "8014"
 phase = 8003
 bundle = "onchain_tempo_verification"
 target_repo = "onchain_tempo"
-status = "pending"
+status = "in_progress"
 title = "Normalize ECDSA signatures to low-s before Curvy recovery in Onchain.Tempo.Transaction and report the curvy recover_key recid bug upstream"
 scores = { d = 3, b = 6, u = 5 }
 markers = ["security"]
@@ -8736,6 +8736,7 @@ Consequence today is fail-closed (a verifier comparing the recovered address to 
 
 Do: normalize to BIP-62 low-s (flip s and recid together) at the recovery boundary in `Onchain.Tempo.Transaction` before calling Curvy, or reject high-s outright with an explicit error — pick one and document it; audit `builder.ex` and any other Curvy recovery call in the eight packages for the same pattern; add a test that feeds the complement-s encoding and asserts either the identical sender or the explicit rejection. Report the bug upstream to libitx/curvy with a minimal reproduction (the maintainer-facing issue text is public-safe; nothing here is embargoed)."""
 created_at = "2026-09-11"
+started_at = "2026-09-15"
 scored_at = "2026-09-11"
 
 [[task]]
