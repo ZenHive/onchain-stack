@@ -1,6 +1,8 @@
 defmodule Onchain.Aerodrome.FixturesTest do
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureIO
+
   alias ABI.FunctionSelector
   alias Mix.Tasks.Aerodrome.CaptureFixtures
   alias Onchain.Aerodrome.Fixtures
@@ -66,9 +68,15 @@ defmodule Onchain.Aerodrome.FixturesTest do
       [limit, offset, filter] = short["args"]
       assert limit == 500
       assert filter > 0
-      assert short["row_count"] < 500
       assert offset + limit < count
       assert short["block_number"] == manifest["block_number"]
+
+      # The short page is proven from the committed hex, not from the recorded
+      # `row_count` — a capture that mis-reported the count would otherwise
+      # satisfy the very assertion task 8's pagination test depends on.
+      assert {:ok, [rows]} = Fixtures.decode(short)
+      assert length(rows) == short["row_count"]
+      assert length(rows) < limit
     end
 
     test "positions short page is shorter than its limit with pools remaining past the offset" do
@@ -77,8 +85,11 @@ defmodule Onchain.Aerodrome.FixturesTest do
 
       assert fixture["function"] == "positions"
       [limit, offset, _account] = fixture["args"]
-      assert fixture["row_count"] < limit
       assert offset + limit < count
+
+      assert {:ok, [rows]} = Fixtures.decode(fixture)
+      assert length(rows) == fixture["row_count"]
+      assert length(rows) < limit
     end
 
     test "offline decode of every fixture succeeds" do
@@ -151,8 +162,15 @@ defmodule Onchain.Aerodrome.FixturesTest do
     @tag :tmp_dir
     test "two stubbed captures at the same block write byte-identical files", %{tmp_dir: dir} do
       opts = stub_opts(Path.join(dir, "first"))
-      assert :ok = CaptureFixtures.capture(opts)
-      assert :ok = CaptureFixtures.capture(Keyword.put(opts, :out, Path.join(dir, "second")))
+
+      # The task narrates every call through `Mix.shell()`; capture_io/1 keeps
+      # ~30 lines of stub chatter out of the gate output. Process-local, so it
+      # stays safe under `async: true`.
+      capture_io(fn ->
+        assert :ok = CaptureFixtures.capture(opts)
+        assert :ok = CaptureFixtures.capture(Keyword.put(opts, :out, Path.join(dir, "second")))
+      end)
+
       assert_same_tree(Path.join(dir, "first"), Path.join(dir, "second"))
 
       manifest = dir |> Path.join("first/manifest.json") |> File.read!() |> Jason.decode!()

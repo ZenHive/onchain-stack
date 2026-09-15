@@ -82,6 +82,10 @@ defmodule OnchainAerodrome.MixProject do
       # path dep a `< 1.0.0` ceiling here makes the family unresolvable.
       {:descripex, "~> 1.0"},
       {:decimal, "~> 3.1"},
+      # Used from lib/ by the capture Mix task, so it is a real runtime
+      # dependency of the tarball — not something to leave arriving
+      # transitively through onchain. Same two-segment bound onchain declares.
+      {:jason, "~> 1.4"},
 
       # Dev/test tooling
       sibling(:onchain_evm, "~> 0.6", only: [:dev, :test]),
