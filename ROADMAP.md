@@ -203,7 +203,7 @@
 | Task 2131 | ⬜ | 🎁 **cartouche_rpc_read_surface** · Own the node-introspection surface in cartouche — and mark the three methods no tagged spec carries [D:3/B:6/U:6 → Eff:2.0] 🎯 |
 | Task 2132 | ⬜ | 🎁 **cartouche_rpc_read_surface** · Own eth_simulateV1 in cartouche — the portable simulation entry point [D:5/B:8/U:6 → Eff:1.4] 📋 |
 | Task 2133 | ⬜ | 🎁 **cartouche_correctness_010** · 🔒 EIP-712 conformance: encode_type non-termination, bytesN padding direction, array-of-struct support, int types [D:4/B:9/U:8 → Eff:2.12] 🎯 |
-| Task 2134 | 🔄 | 🎁 **cartouche_correctness_010** · 🔒 EIP-191 personal_sign byte length, a recovery helper that applies the prefix, and the 65-byte signature invariant [D:3/B:7/U:6 → Eff:2.17] 🎯 |
+| Task 2134 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 EIP-191 personal_sign byte length, a recovery helper that applies the prefix, and the 65-byte signature invariant [D:3/B:7/U:6 → Eff:2.17] 🎯 |
 | Task 2135 | ⬜ | 🎁 **cartouche_rpc_correctness** · Portability contract for the non-standard read surface: trace_* and debug_traceCall [D:3/B:7/U:7 → Eff:2.33] 🎯 |
 | Task 2136 | ✅ | 🎁 **cartouche_rpc_read_surface** · Multi-endpoint live-test seam so node-portability rule 4 can actually be executed [D:3/B:8/U:8 → Eff:2.67] 🎯 |
 | Task 2137 | ⬜ | 🎁 **cartouche_rpc_read_surface** · Move the transport hardening into cartouche — retry, telemetry, node-refusal classification, batch [D:5/B:9/U:9 → Eff:1.8] 🚀 |

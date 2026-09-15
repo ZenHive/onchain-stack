@@ -3719,7 +3719,7 @@ id = 2134
 phase = 2000
 bundle = "cartouche_correctness_010"
 target_repo = "cartouche"
-status = "in_progress"
+status = "done"
 title = "EIP-191 personal_sign byte length, a recovery helper that applies the prefix, and the 65-byte signature invariant"
 scores = { d = 3, b = 7, u = 6 }
 markers = ["security"]
@@ -3744,9 +3744,16 @@ While in `RecoveryBit`: `recover_base/1` (recovery_bit.ex:143-151, :62) normaliz
 
 Critical tier: this is signing. Raise coverage to >=95% on each touched module before mutating it.
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1789498849283-d7efca80, a93e20075c59a4c3897b368d06a333e9d331039f)."
+delivered_by = "cursor"
+verified = true
+verified_by = "claude"
+verification_ref = "harness-run:run-1789498849283-d7efca80"
 created_at = "2026-08-26"
 started_at = "2026-09-15"
 scored_at = "2026-08-26"
+done_at = "2026-09-15"
+shipped_in = "a93e20075c59a4c3897b368d06a333e9d331039f"
 
 [[task]]
 id = 2135
