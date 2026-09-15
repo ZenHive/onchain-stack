@@ -155,7 +155,7 @@ truth; sibling/3 calls are the source):
 
 - hieroglyph → `descripex ~> 1.0`
 - cartouche → `sibling(:hieroglyph, "~> 1.6")`, `descripex ~> 1.0`
-- onchain → `sibling(:cartouche, ...)`, `descripex ~> ...`, `zen_websocket ~> 0.7.0`
+- onchain → `sibling(:cartouche, ...)`, `descripex ~> ...`, `zen_websocket ~> 0.9.0`
 - onchain_aerodrome → `sibling(:onchain, ...)`, `descripex ~> ...`, plus a
   dev/test-only `sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])` — ABI
   parsing and codegen only, never simulation (revm rejects non-mainnet chain
@@ -164,7 +164,7 @@ truth; sibling/3 calls are the source):
 - onchain_tempo → `sibling(:onchain, ...)`, `sibling(:cartouche, ...)`,
   `descripex ~> ...`
 - onchain_aave → `sibling(:onchain, ...)`, `descripex ~> ...`, plus a
-  dev/test-only `sibling(:onchain_evm, "~> 0.5", only: [:dev, :test])` — **a
+  dev/test-only `sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])` — **a
   Hex dependency, not a raw path dep**, exactly because of the publish trap
   above
 - mpp (standalone) → `onchain`, `cartouche`, `onchain_tempo`, `descripex` —
@@ -336,10 +336,9 @@ existed and should be migrated to load `shared/mix_helpers.exs` instead.
 **Consolidated config, root-owned:** `.tool-versions`, `.mix_audit_ignore`
 (one shared entry, six per-package symlinks — see the adjudication below),
 and the ExSlop/`.credo.exs` base policy now live once at the repo root instead
-of eight near-identical copies. `cartouche` and `onchain` still carry their
-own `.credo.exs` on top of the root policy — verify whether that's an
-intentional per-package override or leftover drift before trusting it as
-either.
+of eight near-identical copies. There is no per-package override left: all
+eight `packages/<name>/.credo.exs` are symlinks to the root `.credo.exs`, so
+editing the root policy is the only way to change any package's credo rules.
 
 ### The gates are real — do not re-decorate them
 
@@ -673,8 +672,9 @@ change warrants it.
   natural growth point for `fleet-health.sh` once it's updated for the
   monorepo layout (a scratch-clone write-ish mode, never the working tree).
 - **`--summary-only` on `test.json --cover` hides both the failure identity
-  and disqualifies the automatic flaky-retry** in whichever packages still
-  carry that flag in their `precommit.full` — check each package's own
-  `CLAUDE.md`/`mix.exs` for current status; it was being dropped
-  package-by-package in the standalone era and that migration's completeness
-  across all eight has not been re-verified since the merge.
+  and disqualifies the automatic flaky-retry**, and six of the eight packages
+  still carry that flag in their `precommit.full` — hieroglyph, cartouche,
+  onchain, onchain_evm, onchain_js, onchain_tempo. Only onchain_aave and
+  onchain_aerodrome have dropped it. The package-by-package migration started
+  in the standalone era and the merge did not finish it; measured 2026-09-15,
+  tracked as task 9004.

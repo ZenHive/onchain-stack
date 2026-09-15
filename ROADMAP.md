@@ -58,6 +58,20 @@
 
 ---
 
+## monorepo
+
+### Phase 0: Root tooling & gates
+
+<!-- TASKS:BEGIN phase=0 -->
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 9003 | ⬜ | 🎁 **monorepo_root_gates** · advisory_freshness/1 resolves the freshness prover through ~/_DATA/code/onchain-stack, so every other checkout skips the gate [D:3/B:7/U:6 → Eff:2.17] 🎯 |
+| Task 9004 | ⬜ | 🎁 **monorepo_root_gates** · Drop --summary-only from the six packages that still carry it — it disqualifies ex_unit_json's flaky-retry and hides which test failed [D:2/B:6/U:5 → Eff:2.75] 🎯 |
+| Task 9005 | ⬜ | 🎁 **monorepo_root_gates** · The consolidated root .mcp.json reaches only cartouche's tidewave (port 4013); the other seven packages' dev servers are unaddressable [D:2/B:5/U:4 → Eff:2.25] 🎯 |
+<!-- TASKS:END -->
+
+---
+
 ## hieroglyph
 
 ### Phase 1001: Upstream & Fork Bug Fixes

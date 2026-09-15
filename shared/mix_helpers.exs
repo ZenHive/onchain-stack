@@ -17,10 +17,14 @@
 defmodule OnchainMonorepo.MixHelpers do
   @moduledoc false
 
-  # Both gates shell out to scripts that live OUTSIDE this repo, on the
-  # developer host: the AGENTS.md renderer needs the claude-marketplace checkout
-  # plus ~/.claude/includes, and the advisory-freshness prover needs the local
-  # mix_audit mirror. Neither exists on a CI runner or in a harness worktree, and
+  # Both gates shell out through absolute host paths: the AGENTS.md renderer
+  # genuinely lives OUTSIDE this repo (it needs the claude-marketplace checkout
+  # plus ~/.claude/includes), while the advisory-freshness prover is resolved
+  # through the canonical `~/_DATA/code/onchain-stack` checkout even though the
+  # script itself has lived in-repo at `bin/advisory-freshness.sh` since the
+  # monorepo migration — so any other clone takes the skip branch below. That
+  # asymmetry is accidental, not designed; task 9003 decides which way it goes.
+  # Neither path exists on a CI runner or in a harness worktree, and
   # `mix cmd` with an absent path exits non-zero — which aborted the whole
   # `mix ci` alias, and since these steps precede test.json/dialyzer it took the
   # test, coverage and dialyzer signal down with it. Skip loudly when the script

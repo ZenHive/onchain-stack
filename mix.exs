@@ -18,9 +18,10 @@ defmodule OnchainStack.MixProject do
 
   def application, do: [extra_applications: [:logger]]
 
-  # The root project ships no runtime code, so this is analyzer-only. `.credo.exs`
-  # here is cartouche's policy verbatim — Phase 2 promotes it to the family-wide
-  # root policy; it already governs the root's own `lib/mix/tasks/`.
+  # The root project ships no runtime code, so this is analyzer-only. The root
+  # `.credo.exs` is now the family-wide policy: all eight
+  # `packages/<name>/.credo.exs` are symlinks to it, and it governs the root's
+  # own `lib/mix/tasks/` too.
   defp deps do
     [
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

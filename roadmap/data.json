@@ -4,6 +4,11 @@
   "default_branch": "main",
   "vision": "Monorepo of the eight-package EVM cascade — hieroglyph, cartouche, onchain and the five consumers (aave, aerodrome, evm, js, tempo). One repository, verified at HEAD in a single mix ci through path deps; eight unchanged Hex packages published outward. Task ids carry their package's thousand-range (hieroglyph 1xxx … onchain_tempo 8xxx; 9xxx is reserved for onchain_morpho, the ninth package task 9001 founds) and target_repo names the package a task lands in.",
   "phases": {
+    "0": {
+      "name": "[monorepo] Root tooling & gates",
+      "order": 0,
+      "status": "pending"
+    },
     "1001": {
       "name": "[hieroglyph] Upstream & Fork Bug Fixes",
       "order": 1001,
@@ -455,6 +460,11 @@
       "phase": 1003,
       "order": 3,
       "description": "Typespec/doc gap closure, README refresh, padding-helper extraction, Credo strict cleanup, predicate rename, address-payable note."
+    },
+    "monorepo_root_gates": {
+      "phase": 0,
+      "order": 1,
+      "description": "Root-owned tooling the monorepo migration left half-adapted — gate scripts still resolved through the pre-monorepo developer checkout, per-package flags the consolidation did not sweep, and config the 8-into-1 merge collapsed onto one package."
     },
     "onchain_aave_actions_write": {
       "phase": 4002,
@@ -13247,6 +13257,127 @@
         "packages/cartouche/mix.exs"
       ],
       "body": "Cartouche's default signer runs secp256k1 in pure Elixir through `curvy`, and that is now\nthe dominant cost of every signature it produces.\n\nMeasured 2026-09-15 from `bourse` (the DEX client consuming this package) against its\nsigning path, as synchronous scheduler time:\n\n    Cartouche.Signer.Curvy sign_hash          2.788 ms\n    Cartouche.Recover recover_signer_address  2.030 ms\n    one signed hyperliquid order (end to end) 5.657 ms\n\nThe keccak half of that figure is already gone: commit 54539cb swapped both\n`Cartouche.Hash.keccak/1` and `Hieroglyph`'s `ABI.Math.kec/1` from `ex_sha3` onto the\n`ex_keccak` Rust NIF, taking a 32-byte keccak from 181.96 us to 0.306 us. What remains in\nthe 5.657 ms is curvy's ECDSA. A consumer that signs on request — bourse places orders\nper-call, synchronously — pays that per order.\n\nTasks 2104, 2116 and 2118 built and hardened the contract this work plugs into:\n`Cartouche.Signer.Backend` is a behaviour with `sign_payload/2`, `public_key/1` and\n`algorithm/1`, implemented by `Cartouche.Signer.Curvy` and `Cartouche.Signer.CloudKMS`.\nWhat none of them supplied is a native implementation. `ex_secp256k1` is the obvious\ncandidate: it ships precompiled through `rustler_precompiled`, which this repo already\ndepends on for `ex_keccak` and for revm in `onchain_evm`, so it adds no new toolchain\nrequirement.\n\nRecovery does not sit behind that contract yet: `Cartouche.Recover.recover_public_key_from_digest/2`\ncalls `Curvy.recover_key/3` directly. Recovery is 2.030 ms of the measurement above, so\nleaving it on curvy captures barely half the win.\n\nOpen decisions, decided here so an implementer does not answer them silently:\n\n1. **The NIF backend is additive, not the default, in this change.** Curvy stays the\n   default so no consumer's signatures change shape without opting in. Flipping the default\n   is a separate decision once the equivalence evidence below exists.\n2. **`ex_secp256k1` unless a live probe disproves it.** If it cannot produce a recoverable\n   signature carrying the recovery id that `Cartouche.Recover` and EIP-155/EIP-712 need,\n   say so in the delivery with the observed output and use `libsecp256k1` instead — do not\n   paper over it with a curvy fallback inside the backend.\n3. **Recovery moves behind the same behaviour.** Splitting sign and recover across two\n   mechanisms is what made this cost hard to see. Say so in the delivery if a `recover/2`\n   callback cannot be shaped for CloudKMS, which cannot recover at all.\n\nLow-s stays a library-wide invariant per task 2118 — a new backend must not reintroduce the\nbypass that task closed.\n\nThe measurement is the reason this is worth doing; it is not a claim that anyone has\ncomplained about latency.\n",
+      "created_at": "2026-09-15",
+      "scored_at": "2026-09-15",
+      "cross_repo": []
+    },
+    {
+      "id": "9003",
+      "phase": 0,
+      "bundle": "monorepo_root_gates",
+      "status": "pending",
+      "title": "advisory_freshness/1 resolves the freshness prover through ~/_DATA/code/onchain-stack, so every other checkout skips the gate",
+      "scores": {
+        "d": 3,
+        "b": 7,
+        "u": 6
+      },
+      "eff": 2.17,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "`OnchainMonorepo.MixHelpers.advisory_freshness/1` resolves `bin/advisory-freshness.sh` relative to the monorepo root it is loaded from (the file lives at `<root>/shared/mix_helpers.exs`, so `__DIR__` names the root), not through a hardcoded `~/_DATA/code/onchain-stack` path",
+        "A `mix ci` run from a clone at any path — the server mirror `/data/postgresql/code/onchain-stack` included — runs the prover instead of printing the `[skip] ... absent in CI` line",
+        "The decision about harness worktrees is explicit and written into the helper's comment: either the gate runs there too (and the serial-`mix ci` rule is what keeps the shared advisory clone from racing), or the skip is deliberately retained behind a named predicate — not an accident of an absolute path",
+        "The stale comment claiming both gates shell out to scripts that live OUTSIDE this repo is corrected: only the AGENTS.md renderer does; `bin/advisory-freshness.sh` has been in-repo since the monorepo migration",
+        "`cd packages/onchain && mix ci` passes"
+      ],
+      "out_of_scope": [
+        "Any change to bin/advisory-freshness.sh itself — the script is already checkout-agnostic, it only ever operates on $MIX_AUDIT_ADVISORY_PATH",
+        "agents_check/1, whose renderer genuinely does live outside this repo",
+        "Adding deps.audit.gated to check.dispatch"
+      ],
+      "files_to_modify": [
+        "shared/mix_helpers.exs"
+      ],
+      "body": "`shared/mix_helpers.exs` resolves the advisory-freshness prover as an absolute path into\nthe canonical developer checkout:\n\n    def advisory_freshness(_args) do\n      host_script(\"~/_DATA/code/onchain-stack/bin/advisory-freshness.sh\", [], ...)\n    end\n\nThat path predates the monorepo: before 2026-08-27, `onchain-stack` was a separate\ncoordination repo and each of the eight packages genuinely had to reach outside itself to\nfind the script. It does not anymore — `bin/advisory-freshness.sh` is a tracked file in\nthis repo, two levels up from any package, and `shared/mix_helpers.exs` sits at the root\nthat owns it.\n\nWhy it matters. The prover exists because `mix_audit` discards its own sync exit status\n(mirego/mix_audit#61): a database that can no longer sync still prints \"No vulnerabilities\nfound\" and exits 0. `deps.audit.gated` runs the prover first so a dead database fails\nloudly. With the path hardcoded, any checkout that is not literally\n`~/_DATA/code/onchain-stack` — the server mirror `/data/postgresql/code/onchain-stack`\nthat harness registers as this project's source, every dispatch worktree, any fresh clone\n— takes the `File.regular?/1` false branch and prints\n\n    [skip] advisory-mirror freshness check: ... not found (developer-host script, absent in CI).\n\nSo the anti-silent-green gate is itself skipped, and `mix deps.audit` goes on to report\ngreen against whatever the mirror happens to hold. It is a visible skip rather than a\nsilent one, which is the only reason this is a 3 on difficulty rather than a defect.\n\nThe script itself needs no change: it operates entirely on\n`$MIX_AUDIT_ADVISORY_PATH`/`$HOME/.local/share/elixir-security-advisories-mirego` and never\ninspects the checkout it was invoked from, so running the in-repo copy is behaviourally\nidentical to running the canonical checkout's copy.\n\nThe one judgement call is harness worktrees. `check.dispatch` deliberately omits\n`deps.audit.gated` because the shared advisory clone cannot take concurrent worktrees, so\nthe reviewer never reaches this code — but a `mix ci` inside a worktree would, once the\npath resolves. Decide that deliberately and write the decision into the comment; the\ncurrent behaviour is the accidental consequence of an absolute path, which is the thing\nworth removing whichever way the decision goes.\n\nFound by the post-merge audit of e750a22.\n",
+      "created_at": "2026-09-15",
+      "scored_at": "2026-09-15",
+      "cross_repo": []
+    },
+    {
+      "id": "9004",
+      "phase": 0,
+      "bundle": "monorepo_root_gates",
+      "status": "pending",
+      "title": "Drop --summary-only from the six packages that still carry it — it disqualifies ex_unit_json's flaky-retry and hides which test failed",
+      "scores": {
+        "d": 2,
+        "b": 6,
+        "u": 5
+      },
+      "eff": 2.75,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "cursor",
+      "model": "cursor-grok-4.6-high",
+      "acceptance_criteria": [
+        "No `mix.exs` under packages/ passes `--summary-only` to `test.json` in any alias — verified by `grep -rn 'summary-only' packages/*/mix.exs` returning only comment lines, if any",
+        "Each edited package keeps its existing `--cover` / `--cover-threshold` value unchanged; this task removes one flag and changes nothing else about the test step",
+        "The rationale comment onchain_aerodrome's mix.exs already carries (the flag is in ex_unit_json's `retry_disqualified_opts?/1` list, so it silently disables retry-on-flaky) is carried into each edited package, or stated once in the root CLAUDE.md and referenced",
+        "The root CLAUDE.md Open Item that tracked this migration's completeness is closed out, and its AGENTS.md render updated to match",
+        "`cd packages/<name> && mix ci` passes for each of the six edited packages, run serially"
+      ],
+      "out_of_scope": [
+        "onchain_aave and onchain_aerodrome, which already dropped the flag",
+        "Changing any coverage threshold",
+        "Changing the `--exclude integration` / `--exclude dev_node` filters",
+        "Any change to ex_unit_json itself"
+      ],
+      "files_to_modify": [
+        "packages/hieroglyph/mix.exs",
+        "packages/cartouche/mix.exs",
+        "packages/onchain/mix.exs",
+        "packages/onchain_evm/mix.exs",
+        "packages/onchain_js/mix.exs",
+        "packages/onchain_tempo/mix.exs"
+      ],
+      "body": "Six of the eight packages still pass `--summary-only` to `test.json --cover` in their\n`precommit.full` / `ci` alias:\n\n    packages/hieroglyph/mix.exs:189     --cover-threshold 95  --summary-only\n    packages/cartouche/mix.exs:312      --cover-threshold 85  --summary-only\n    packages/onchain/mix.exs:227        --cover-threshold 70  --summary-only\n    packages/onchain_evm/mix.exs:226    --cover-threshold 85  --summary-only\n    packages/onchain_js/mix.exs:224     --cover-threshold 25  --summary-only\n    packages/onchain_tempo/mix.exs:216  --cover-threshold 90  --summary-only\n\nOnly `onchain_aave` and `onchain_aerodrome` have dropped it. The flag was being removed\npackage-by-package during the standalone era; the monorepo merge did not finish the sweep,\nand the root CLAUDE.md has carried it as an unverified Open Item ever since. This audit\nmeasured it: 6 of 8, listed above.\n\nWhat the flag costs, quoting the rationale onchain_aerodrome's mix.exs already carries:\n`--summary-only` is in ex_unit_json's `retry_disqualified_opts?/1` list, so passing it\nsilently disables the tool's own automatic retry-on-flaky. Two things are lost at once —\na real flake no longer retries and heals (it blocks the gate instead of being reported in\na `flaky` array), and a confirmed failure prints a bare summary line instead of the\nassertion detail that names which test failed and why. The default output mode is already\nquiet on a green run (an empty `tests` array), so dropping the flag costs nothing when\nnothing fails.\n\nStraight mechanical sweep. The only care needed is running each package's `mix ci` serially\nafterwards — never two at once — because every package's `deps.audit.gated` step pulls the\none shared advisory clone at ~/.local/share/elixir-security-advisories-mirego, and\nconcurrent pulls interleave into one FETCH_HEAD and red a package whose code is fine.\n\nFound by the post-merge audit of e750a22.\n",
+      "created_at": "2026-09-15",
+      "scored_at": "2026-09-15",
+      "cross_repo": []
+    },
+    {
+      "id": "9005",
+      "phase": 0,
+      "bundle": "monorepo_root_gates",
+      "status": "pending",
+      "title": "The consolidated root .mcp.json reaches only cartouche's tidewave (port 4013); the other seven packages' dev servers are unaddressable",
+      "scores": {
+        "d": 2,
+        "b": 5,
+        "u": 4
+      },
+      "eff": 2.25,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "grok",
+      "model": "grok-4.6",
+      "acceptance_criteria": [
+        "Every package whose `mix.exs` declares a `tidewave` alias is reachable through the repo's MCP config, or the config documents in CLAUDE.md which single package it serves and why the other seven were dropped — the current state names neither",
+        "Whatever shape is chosen, the port each entry targets matches that package's `mix tidewave` alias: hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010, onchain_aave 4012, cartouche 4013, onchain_js 4028, onchain_aerodrome 4035",
+        "If per-package entries are added, the cost is acknowledged explicitly: seven of eight will be connection-refused in any session where that package's dev server is not running, and the decision records that this is accepted",
+        "CLAUDE.md gains a line naming the repo's MCP convention, and AGENTS.md is re-rendered to match"
+      ],
+      "out_of_scope": [
+        "The harness / harness_eval / chrome-devtools entries",
+        "Changing any package's tidewave port assignment",
+        "Starting or supervising the dev servers themselves"
+      ],
+      "files_to_modify": [
+        ".mcp.json",
+        "CLAUDE.md",
+        "AGENTS.md"
+      ],
+      "body": "Commit f9d6102 (\"mcp: consolidate 8 package .mcp.json into one root config\") merged eight\nper-package MCP configs into one at the repo root. Eight tidewave entries could not survive\nthat merge — they point at eight different ports, one per package — and the consolidation\nkept exactly one:\n\n    \"tidewave\": { \"type\": \"http\", \"url\": \"http://localhost:4013/tidewave/mcp\" }\n\n4013 is cartouche. The other seven packages each still declare a `tidewave` alias on their\nown port (hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010, onchain_aave\n4012, onchain_js 4028, onchain_aerodrome 4035), and none of them is addressable from an\nagent session in this repo anymore. Nothing records that the entry is cartouche-specific,\nso the natural reading — \"this repo has a tidewave server\" — is wrong seven times out of\neight.\n\nTwo defensible shapes. Either declare all eight as separately named servers\n(`tidewave_cartouche`, `tidewave_onchain`, …), which restores the capability at the cost of\nseven connection-refused entries in any session where those dev servers are not up; or keep\none entry and say in CLAUDE.md which package it serves and that reaching another package's\nTidewave means editing the config first. What is not defensible is the current state, where\nthe config silently means \"cartouche\" and says nothing.\n\nLow stakes — a dev-tooling reachability gap, not a correctness or release issue — but it is\na consolidation artifact that will read as a bug to the next agent that tries to use\nTidewave against onchain or onchain_evm.\n\nFound by the post-merge audit of e750a22.\n",
       "created_at": "2026-09-15",
       "scored_at": "2026-09-15",
       "cross_repo": []
