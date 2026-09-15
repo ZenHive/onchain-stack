@@ -6180,11 +6180,10 @@ scored_at = "2026-08-26"
 id = 5006
 phase = 5002
 bundle = "onchain_aerodrome_types"
-milestone = "onchain_aerodrome_v0_1"
-title = "Types.Lp, .Position, .Swap and .Token — the pool and token structs, with ABI drift tests"
-status = "pending"
 target_repo = "onchain_aerodrome"
-module = "Onchain.Aerodrome.Types.Lp"
+milestone = "onchain_aerodrome_v0_1"
+status = "in_progress"
+title = "Types.Lp, .Position, .Swap and .Token — the pool and token structs, with ABI drift tests"
 scores = { d = 5, b = 8, u = 8 }
 markers = ["parallel"]
 depends_on = [5003, 5004]
@@ -6192,6 +6191,7 @@ acceptance_criteria = ["Types.Lp defstruct carries every field of lp_sugar.json'
 out_of_scope = ["APR, valuation or any analytics logic", "Any RPC call", "The veAERO structs, which are task 7"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/types/lp.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/types/position.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/types/swap.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/types/token.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/types/lp_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/types/position_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/types/swap_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/types/token_test.exs"]
 assignee = "cursor"
+module = "Onchain.Aerodrome.Types.Lp"
 model = "cursor-grok-4.6-high"
 body = """
 Define the four structs the pool and token read surface decodes into. They are one task because they share one load-bearing invariant, not because they are each small: positional decode means ABI source order is semantic, so every one of them carries the same field-count and order drift test, and one reviewer verifies that pattern once across a single coherent diff.
@@ -6205,6 +6205,7 @@ Types.Token is shared across two ABIs. Confirm the shapes are byte-identical wit
 AUTHORITY: priv/abis/lp_sugar.json and priv/abis/token_sugar.json — specifically the outputs[0].components arrays of all, positions, forSwaps and tokens. Not velodrome-finance/sugar's struct documentation, which is exactly the source already proven stale by the all/2 versus all/3 arity mismatch.
 """
 created_at = "2026-08-26"
+started_at = "2026-09-15"
 scored_at = "2026-08-26"
 
 [[task]]
