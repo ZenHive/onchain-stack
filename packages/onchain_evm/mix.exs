@@ -45,7 +45,8 @@ defmodule OnchainEvm.MixProject do
         integration: :test,
         ci: :test,
         precommit: :test,
-        "precommit.full": :test
+        "precommit.full": :test,
+        "check.dispatch": :test
       ]
     ]
   end
