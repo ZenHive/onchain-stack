@@ -265,6 +265,11 @@ defmodule Onchain.Aerodrome.Epoch do
 
   Inclusive of the epoch containing `from_ts` and of the epoch containing
   `to_ts`. Returns `[]` when `to_ts` precedes `from_ts` rather than raising.
+
+  The window is closed on `to_ts`. Because `end/1` is the next epoch's start,
+  `range(ts, end(ts))` includes two starts; pass `end(ts) - 1` for only the
+  epoch containing `ts`.
+
   The read layer uses this to build the epoch series for RewardsSugar
   `epochsByAddress` pagination.
 

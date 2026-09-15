@@ -934,6 +934,7 @@ The family-wide law is `node-portability.md` (`@`-imported above). This package'
 lib/onchain_aerodrome.ex        # Descripex.Discoverable roster
 lib/onchain/aerodrome/
   contracts.ex                  # address registry + verified constants (base layer)
+  epoch.ex                      # weekly ve(3,3) epoch arithmetic (base layer)
   bindings/abi.ex               # compile-time signatures from priv/abis (bindings layer)
 lib/mix/tasks/aerodrome.capture_fixtures.ex
                                 # pinned-block Sugar eth_call capture (dev workflow, not mix ci)

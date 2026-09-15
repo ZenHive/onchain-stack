@@ -111,6 +111,12 @@ defmodule Onchain.Aerodrome.EpochTest do
       assert Epoch.range(@thursday_2024, @thursday_2024 - 1) == []
       assert Epoch.range(10, 0) == []
     end
+
+    test "closed to_ts means range(ts, end(ts)) includes the next epoch start" do
+      finish = Epoch.end(@thursday_2024)
+      assert Epoch.range(@thursday_2024, finish) == [@thursday_2024, finish]
+      assert Epoch.range(@thursday_2024, finish - 1) == [@thursday_2024]
+    end
   end
 
   describe "seconds_remaining/1" do
