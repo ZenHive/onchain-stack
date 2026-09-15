@@ -9021,7 +9021,7 @@
       "bundle": "onchain_aerodrome_foundations",
       "target_repo": "onchain_aerodrome",
       "milestone": "onchain_aerodrome_v0_1",
-      "status": "in_progress",
+      "status": "pending",
       "title": "Close the reach layer-gate holes so analytics-never-touches-the-network is enforced, not documented",
       "scores": {
         "d": 5,
