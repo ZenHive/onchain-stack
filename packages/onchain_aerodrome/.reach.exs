@@ -31,8 +31,13 @@
   # alone cannot catch calls to these external, undeclared modules.
   calls: [
     forbidden: [
-      {["Onchain.Aerodrome.Analytics.*", "Onchain.Aerodrome.Math*"],
-       ["Onchain.RPC.*", "Onchain.Contract.*", "Onchain.Multicall.*", "Req.*", ":httpc.*"]}
+      {[
+         "Onchain.Aerodrome.Analytics.*",
+         "Onchain.Aerodrome.Types.*",
+         "Onchain.Aerodrome.Math*",
+         "Onchain.Aerodrome.Contracts",
+         "Onchain.Aerodrome.Epoch"
+       ], ["Onchain.RPC.*", "Onchain.Contract.*", "Onchain.Multicall.*", "Req.*", ":httpc.*"]}
     ]
   ],
   smells: [strict: true]

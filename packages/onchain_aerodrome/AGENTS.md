@@ -896,7 +896,7 @@ and Math remain together in base so analytics can use `Contracts.constants()`.
 
 Reach only builds layer edges when both modules match a declared layer, and
 same-layer calls are exempt. The separate forbidden-call rule rejects calls
-from `Analytics.*` and `Math*` to `Onchain.RPC.*`, `Onchain.Contract.*`,
+from `Analytics.*`, `Types.*`, and base (`Contracts`, `Epoch`, `Math*`) to `Onchain.RPC.*`, `Onchain.Contract.*`,
 `Onchain.Multicall.*`, `Req.*` and `:httpc.*`, including resolved aliases.
 This is a static boundary for those calls, not a proof against dynamic dispatch
 or arbitrary external network wrappers, nor a check of the APR denominator
