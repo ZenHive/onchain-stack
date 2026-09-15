@@ -190,6 +190,23 @@ the same block is byte-identical (`captured_at` is the block timestamp).
 Golden-fixture decode tests require no network and are the primary defence
 against Sugar redeploy drift.
 
+Calldata tests require Foundry `cast` on PATH (missing cast flunks). Install:
+
+```bash
+curl -L https://getfoundry.sh/install | bash
+source ~/.bashrc  # or source ~/.zshrc
+foundryup
+```
+
+`Onchain.Aerodrome.CalldataFixture.assert_calldata/3` compares library output
+against an independent `cast calldata` invocation; pass cast arguments as CLI
+strings. `eth_call_as_sugar_owner/4` discovers a sender via VeSugar.byId and
+preserves simulated return bytes or RPC revert data. Its Voter.reset integration
+test requires both endpoints to serve historical block 51,348,944 and asserts
+the exact `NotApprovedOrOwner()` revert bytes for a non-owner, then decodes the
+simulated void return for the actual owner. See the helper's `@doc` for the
+limits of this evidence model.
+
 ## Related packages
 
 - [`onchain`](https://hex.pm/packages/onchain) — core Ethereum primitives
