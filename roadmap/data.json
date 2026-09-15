@@ -5473,7 +5473,7 @@
       "phase": 2000,
       "bundle": "cartouche_correctness_010",
       "target_repo": "cartouche",
-      "status": "in_progress",
+      "status": "done",
       "title": "EIP-712 conformance: encode_type non-termination, bytesN padding direction, array-of-struct support, int types",
       "scores": {
         "d": 4,
@@ -5513,10 +5513,17 @@
         "packages/cartouche/CHANGELOG.md",
         "packages/cartouche/test/fixtures/vectors/"
       ],
+      "shipped_in": "c3c6ff1a61f44bf1312272efcc73b2e581aff06e",
       "body": "`Cartouche.Typed` is the EIP-712 path the stack signs permits and orders through — task 69 records that ERC-2612 permit \"already expresses it\". It has four confirmed spec defects. All four were verified by executing the compiled module, not by reading it; the reproductions are below and should be turned into the failing tests before any fix.\n\n1. `encode_type/2` DOES NOT TERMINATE for a type referencing 2+ distinct struct types. `do_encode_type/4` (typed.ex:811-836) updates its pending queue as `next_new_types = rest ++ Enum.reverse(new_types_r)` (typed.ex:831). When `rest` is non-empty and the current type discovers no new struct, `rest` is re-appended to itself instead of shrinking, so the queue never drains. Reproduced live: `Root` with fields `{\"z\",\"Zebra\"},{\"a\",\"Apple\"}` did not return in 4s. This is not an exotic shape — any `Order{maker: Person, item: Item}` hits it. It was never caught because every existing doctest uses exactly one distinct referenced type (`Person` twice, for `from`/`to`), and `test/typed_test.exs` (88 lines) never calls `encode_type` at all.\n\n2. Referenced struct types are appended in field-discovery order. EIP-712 requires them \"collected, sorted by name and appended\". Fixing (1) without also sorting produces a terminating but still non-conforming `typeHash`.\n\n3. `bytesN` is LEFT-padded. `encode_data_value(value, {:bytes, _})` (typed.ex:296) calls `Cartouche.Hex.pad(value, 32)`, and `pad/2` (hex.ex:632-635) prepends zeros. EIP-712: \"bytes1 to bytes31 ... are zero-padded at the end to bytes32\". The doctest at typed.ex:279-280 asserts the wrong answer, so the test suite ratifies the bug — this is the coverage-ratifies-the-constant pattern from CLAUDE.md, and the doctest must be corrected as part of the fix. Note carefully that the SAME `pad/2` is correct at typed.ex:292 for `:address`, because address is uint160 and numeric types are big-endian left-padded. One function is serving two opposite alignments; separate them and pin both in one test so this cannot regress.\n\n4. Arrays of structs are broken in both directions. `encode_data_value(value, {:array, ty})` (typed.ex:300-304) recurses with a struct-name `ty` that has no matching clause -> FunctionClauseError (reproduced). And `do_encode_type`'s discovery guard (typed.ex:820) tests `is_binary(type)`, which is false for `{:array, \"Person\"}`, so `encode_type` returns `\"Root(Person[] people)\"` with `Person` silently omitted — a wrong hash even where nothing crashes.\n\nSeparately, `Type.primitive()` (typed.ex:25-33) has no int variant and `deserialize_type(\"int256\")` raises `\"unknown type: int256\"`. EIP-712 defines int8..int256; signed fields (ticks, deltas, funding) are unrepresentable.\n\nSeverity ordering for the implementer: (3) and the array half of (4) are SILENT wrong signatures — no error, no validation failure until a counterparty rejects. (1) is a hang. (2) is a wrong hash. The int gap is a loud raise. Fix all of them, but write the silent ones' tests first.\n\nAuthority is the EIP-712 text plus two independent implementations — ethers `_TypedDataEncoder` and viem `hashTypedData`. Where the EIP is terse, agreement across those two is the spec in practice; a single implementation's behaviour is not.\n",
       "created_at": "2026-08-26",
       "started_at": "2026-09-15",
+      "done_at": "2026-09-15",
       "scored_at": "2026-08-26",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1789502460286-5f32ea91, c3c6ff1a61f44bf1312272efcc73b2e581aff06e).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1789502460286-5f32ea91",
       "cross_repo": []
     },
     {

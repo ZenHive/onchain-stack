@@ -3684,7 +3684,7 @@ id = 2133
 phase = 2000
 bundle = "cartouche_correctness_010"
 target_repo = "cartouche"
-status = "in_progress"
+status = "done"
 title = "EIP-712 conformance: encode_type non-termination, bytesN padding direction, array-of-struct support, int types"
 scores = { d = 4, b = 9, u = 8 }
 markers = ["security"]
@@ -3711,9 +3711,16 @@ Severity ordering for the implementer: (3) and the array half of (4) are SILENT 
 
 Authority is the EIP-712 text plus two independent implementations — ethers `_TypedDataEncoder` and viem `hashTypedData`. Where the EIP is terse, agreement across those two is the spec in practice; a single implementation's behaviour is not.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1789502460286-5f32ea91, c3c6ff1a61f44bf1312272efcc73b2e581aff06e)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1789502460286-5f32ea91"
 created_at = "2026-08-26"
 started_at = "2026-09-15"
 scored_at = "2026-08-26"
+done_at = "2026-09-15"
+shipped_in = "c3c6ff1a61f44bf1312272efcc73b2e581aff06e"
 
 [[task]]
 id = 2134
