@@ -5532,7 +5532,7 @@
       },
       "eff": 2.17,
       "dep_layer": 0,
-      "unlocks": 0,
+      "unlocks": 1,
       "markers": [
         "security"
       ],
@@ -13450,6 +13450,58 @@
         "AGENTS.md"
       ],
       "body": "Commit f9d6102 (\"mcp: consolidate 8 package .mcp.json into one root config\") merged eight\nper-package MCP configs into one at the repo root. Eight tidewave entries could not survive\nthat merge — they point at eight different ports, one per package — and the consolidation\nkept exactly one:\n\n    \"tidewave\": { \"type\": \"http\", \"url\": \"http://localhost:4013/tidewave/mcp\" }\n\n4013 is cartouche. The other seven packages each still declare a `tidewave` alias on their\nown port (hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010, onchain_aave\n4012, onchain_js 4028, onchain_aerodrome 4035), and none of them is addressable from an\nagent session in this repo anymore. Nothing records that the entry is cartouche-specific,\nso the natural reading — \"this repo has a tidewave server\" — is wrong seven times out of\neight.\n\nTwo defensible shapes. Either declare all eight as separately named servers\n(`tidewave_cartouche`, `tidewave_onchain`, …), which restores the capability at the cost of\nseven connection-refused entries in any session where those dev servers are not up; or keep\none entry and say in CLAUDE.md which package it serves and that reaching another package's\nTidewave means editing the config first. What is not defensible is the current state, where\nthe config silently means \"cartouche\" and says nothing.\n\nLow stakes — a dev-tooling reachability gap, not a correctness or release issue — but it is\na consolidation artifact that will read as a bug to the next agent that tries to use\nTidewave against onchain or onchain_evm.\n\nFound by the post-merge audit of e750a22.\n",
+      "created_at": "2026-09-15",
+      "scored_at": "2026-09-15",
+      "cross_repo": []
+    },
+    {
+      "id": "9006",
+      "phase": 2000,
+      "bundle": "cartouche_correctness_010",
+      "target_repo": "cartouche",
+      "status": "pending",
+      "title": "Normalize high-s signatures at Cartouche's recovery boundary — recover_public_key_from_digest/2 still hits the curvy#8 recid bug",
+      "scores": {
+        "d": 3,
+        "b": 6,
+        "u": 5
+      },
+      "eff": 1.83,
+      "dep_layer": 1,
+      "unlocks": 0,
+      "markers": [
+        "security"
+      ],
+      "depends_on": [
+        2134
+      ],
+      "assignee": "cursor",
+      "model": "cursor-grok-4.6-high",
+      "acceptance_criteria": [
+        "`Cartouche.Recover.recover_public_key_from_digest/2` returns the same public key for the low-s and complement-s encodings of one signature, or rejects the high-s encoding with an explicit error — the choice is documented in the function's @doc, matching whatever `Onchain.Tempo.Transaction` chose in task 8014 (it normalizes; it does not reject)",
+        "A test constructs the complement-s encoding (s -> n - s, recid bxor 1) of a known-good signature over a fixed digest and asserts the pinned behaviour for BOTH input shapes the function accepts: a `%Curvy.Signature{}` struct and a 65-byte binary",
+        "`Cartouche.Transaction.V1/V3/V4/V_2930.recover_signer` inherit the fix (they route through `Recover.recover_eth/2`), proven by at least one envelope-level test that recovers the same address from a complement-s encoded signed transaction",
+        "`normalize_low_s/1` is either reused or explicitly left alone with the reason recorded: it sets `recid: nil` for the signing path's recid re-derivation, so it is NOT directly usable at the recovery boundary, where `s` and `recid` must flip together",
+        "`Onchain.AA.recover_address/2` (packages/onchain/lib/onchain/aa.ex:613) is either fixed the same way or documented as safe with the argument — today it only ever sees locally generated low-s signatures during the recid search",
+        "CHANGELOG entry under cartouche's Unreleased section; touched critical modules stay at >=95% coverage; `mix ci` passes in every package touched"
+      ],
+      "out_of_scope": [
+        "Replacing curvy with a native secp256k1 backend — that is task 9002, which explicitly keeps curvy as the default and must not be pre-empted here",
+        "Rejecting high-s on the signing/emission side — the library-wide low-s emission invariant is task 3149's territory",
+        "Any change to Onchain.Tempo.Transaction — already fixed in task 8014 (shipped 36a9d91bd016)"
+      ],
+      "files_to_modify": [
+        "packages/cartouche/lib/cartouche/recover.ex",
+        "packages/cartouche/test/recover_test.exs",
+        "packages/cartouche/CHANGELOG.md"
+      ],
+      "touches": [
+        "packages/cartouche/lib/cartouche/transaction/v3.ex",
+        "packages/cartouche/lib/cartouche/transaction/v4.ex",
+        "packages/cartouche/lib/cartouche/transaction.ex",
+        "packages/onchain/lib/onchain/aa.ex"
+      ],
+      "body": "Sibling check (DD-8): 8014 is the same DEFECT CLASS but a different surface and is already done\n— it fixed onchain_tempo only. 2091/2092 are Solana signature-count guards, unrelated. This task\nstates the class invariant once for the packages 8014 left untouched: no recovery path in the\nfamily may call `Curvy.recover_key/3` on a signature it has not normalized.\n\nTask 8014 fixed the curvy high-s recovery defect in `Onchain.Tempo.Transaction` and reported it\nupstream as libitx/curvy#8 (issue confirmed open, titled \"recover_key/3 uses pre-normalization\nrecovery ID for high-s signatures\"). That task's delivery also audited every Curvy recovery call\nsite in `packages/` and found one still unnormalized — then the write-up carrying that finding was\ndeleted as a stray file in 36a9d91 without a task replacing it. This is that task.\n\n`Cartouche.Recover.recover_public_key_from_digest/2` (recover.ex:126-130) pipes the caller's\nsignature straight into `Curvy.recover_key/3`. curvy 0.3.1 binds `recid` from the input struct,\nthen calls `Signature.normalize/1` — which for `s > n/2` replaces `s` with `n - s` AND flips\n`recid` — and passes the PRE-normalization recid to `Point.from_signature/3`. A high-s input\ntherefore recovers a well-formed but WRONG public key.\n\nThis is the shared recovery API, not a leaf: `recover_public_key/2` and `recover_eth/2` both\nfunnel through it, and `Cartouche.Transaction.V1/V3/V4/V_2930.recover_signer` call `recover_eth/2`\non signatures that arrive from outside the library. Every one of those inherits the defect.\n\nConsequence is fail-closed, as in 8014 — a verifier comparing the recovered address against an\nexpected signer rejects a valid complement-s encoding rather than accepting a forgery. An attacker\ncan already submit any (r, s, recid) triple directly, so the mis-recovered point is reachable\nwithout this bug. It is a correctness defect at a boundary cartouche owns: one signature has two\nvalid encodings and both must recover the same key.\n\nThe fix in 8014 was three lines: `CurvySig.normalize(%CurvySig{...})` before the recovery call\n(onchain_tempo/lib/onchain/tempo/transaction.ex:412-419). Watch the trap that makes this more than\na copy-paste: cartouche's own `Recover.normalize_low_s/1` (recover.ex:143-147) deliberately sets\n`recid: nil`, because the signing path re-derives the recid afterward via `find_recid_from_digest/3`.\nAt the recovery boundary the recid must be FLIPPED, not dropped — reusing `normalize_low_s/1`\nunchanged would break recovery for every high-s input instead of fixing it.\n\nOrdered after task 2134, which is in flight on the same file (recover.ex) — do not dispatch both\nagainst the same write set concurrently.\n\nDiscovered 2026-09-15 by the post-merge audit of 428556c.\n",
       "created_at": "2026-09-15",
       "scored_at": "2026-09-15",
       "cross_repo": []

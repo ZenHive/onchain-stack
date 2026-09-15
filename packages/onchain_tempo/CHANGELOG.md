@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **`Transaction.sender/1` recovers the same address from both encodings of a
+  signature.** A high-`s` envelope previously recovered a well-formed *wrong*
+  address: curvy 0.3.1 binds the recovery id before `Curvy.Signature.normalize/1`
+  flips it, so the normalized `s` was recovered against the un-flipped recid
+  ([libitx/curvy#8](https://github.com/libitx/curvy/issues/8)). `recover_sender/2`
+  now pre-normalizes to BIP-62 low-`s` — flipping `s` and the recovery bit
+  together — before calling into `Cartouche.Recover`. The original `raw` is not
+  rewritten, and successful recovery still does not imply broadcast acceptance
+  (Moderato rejects high-`s` at submission). Fail-closed before the fix, so no
+  forgery vector; this is verification of never-broadcast envelopes. Task 8014.
+
 ## v0.10.0 — node portability docs + descripex 1.0 floor + monorepo (2026-08-27)
 
 ### Documentation
