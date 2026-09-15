@@ -97,6 +97,38 @@ defmodule Cartouche.RecoverTest do
 
       assert Recover.recover_eth("test", hex_signature) == @address
     end
+
+    test "recovers from a packed signature whose EIP-155 v is wider than one byte" do
+      {:ok, sig} = Cartouche.Signer.Curvy.sign("test", @priv_key)
+      {:ok, recid} = Recover.find_recid("test", sig, @address)
+      packed = <<sig.r::256, sig.s::256>> <> :binary.encode_unsigned(8453 * 2 + 35 + recid)
+
+      assert byte_size(packed) == 66
+      assert Recover.recover_eth("test", packed) == @address
+    end
+  end
+
+  describe "EIP-191 personal_sign" do
+    test "prefix_eth/1 uses UTF-8 byte length, not grapheme count" do
+      # "café" is 4 graphemes and 5 UTF-8 bytes (`é` is 0xC3 0xA9).
+      assert String.length("café") == 4
+      assert byte_size("café") == 5
+
+      assert Recover.prefix_eth("café") == "\x19Ethereum Signed Message:\n5café"
+
+      assert Recover.prefix_eth("café") ==
+               <<"\x19Ethereum Signed Message:\n5", 99, 97, 102, 195, 169>>
+    end
+
+    test "recover_personal_sign/2 applies the prefix so a wallet signature recovers" do
+      prefixed = Recover.prefix_eth("café")
+      {:ok, sig} = Cartouche.Signer.Curvy.sign(prefixed, @priv_key)
+      {:ok, recid} = Recover.find_recid(prefixed, sig, @address)
+      packed = <<sig.r::256, sig.s::256, 27 + recid>>
+
+      assert Recover.recover_personal_sign("café", packed) == @address
+      refute Recover.recover_eth("café", packed) == @address
+    end
   end
 end
 

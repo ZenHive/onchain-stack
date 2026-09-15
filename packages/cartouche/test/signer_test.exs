@@ -74,6 +74,24 @@ defmodule Cartouche.SignerTest do
       assert Cartouche.Recover.recover_eth("test", sig) == @address
     end
 
+    test "sign/3 on Base packs multi-byte EIP-155 v and normalize_signature/2 accepts it", %{
+      signer: signer
+    } do
+      assert {:ok, sig} = Signer.sign("test", signer, chain_id: 8453)
+      assert byte_size(sig) == 66
+
+      <<_rs::binary-size(64), v_bin::binary>> = sig
+      v = :binary.decode_unsigned(v_bin)
+      assert (v - (8453 * 2 + 35)) in [0, 1]
+
+      normalized = Cartouche.RecoveryBit.normalize_signature(sig, :base, 8453)
+      assert byte_size(normalized) == 65
+      <<_::binary-size(64), base>> = normalized
+      assert base in [0, 1]
+
+      assert Cartouche.Recover.recover_eth("test", sig) == @address
+    end
+
     test "sign/2 uses the cached address on a subsequent call", %{signer: signer} do
       assert {:ok, sig1} = Signer.sign("test", signer)
       assert {:ok, sig2} = Signer.sign("test", signer)

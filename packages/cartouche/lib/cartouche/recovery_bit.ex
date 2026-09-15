@@ -7,6 +7,11 @@ defmodule Cartouche.RecoveryBit do
   * `:eip155`: In the range `{35+chain_id*2,35+chain_id*2+1}`, as defined in EIP-155
 
   This module provides tools between switching through these choices.
+
+  EIP-155 conversion takes an explicit `chain_id`. Omitting it falls back to
+  `config :cartouche, :chain_id` (via `Cartouche.Chain.chain_id_value/1`). A
+  signature from a different chain than the one supplied (or configured)
+  raises `Invalid EIP-155 Signature` naming both `recovery_bit` and `chain_id`.
   """
 
   use Descripex, namespace: "/ethereum/recovery_bit"
@@ -24,6 +29,12 @@ defmodule Cartouche.RecoveryBit do
         kind: :value,
         default: :eip155,
         description: "Target convention: `:base`, `:ethereum`, or `:eip155`."
+      ],
+      chain_id: [
+        kind: :value,
+        default: nil,
+        description:
+          "Chain id used when reading or producing EIP-155 `v`. `nil` falls back to `config :cartouche, :chain_id`."
       ]
     ],
     returns: %{
@@ -47,9 +58,10 @@ defmodule Cartouche.RecoveryBit do
       iex> Cartouche.RecoveryBit.normalize(27, :base)
       0
   """
-  @spec normalize(non_neg_integer(), rec_type()) :: non_neg_integer() | no_return()
-  def normalize(recovery_bit, rec_type \\ :eip155) when rec_type in @rec_types do
-    base = recover_base(recovery_bit)
+  @spec normalize(non_neg_integer(), rec_type(), integer() | atom() | nil) ::
+          non_neg_integer() | no_return()
+  def normalize(recovery_bit, rec_type \\ :eip155, chain_id \\ nil) when rec_type in @rec_types do
+    base = recover_base(recovery_bit, chain_id)
 
     case rec_type do
       :base ->
@@ -59,20 +71,26 @@ defmodule Cartouche.RecoveryBit do
         base + 27
 
       :eip155 ->
-        35 + Cartouche.Application.chain_id() * 2 + base
+        35 + Cartouche.Chain.chain_id_value(chain_id) * 2 + base
     end
   end
 
-  api(:normalize_signature, "Normalize the recovery byte of a 65-byte Ethereum signature.",
+  api(:normalize_signature, "Normalize the recovery bytes of a packed `r <> s <> v` Ethereum signature.",
     params: [
       signature: [
         kind: :value,
-        description: "65-byte Ethereum signature encoded as `r <> s <> v`."
+        description: "Packed `r <> s <> v` signature. `v` is one or more bytes (65 bytes total when it fits in one byte)."
       ],
       rec_type: [
         kind: :value,
         default: :eip155,
-        description: "Target convention for the final `v` byte: `:base`, `:ethereum`, or `:eip155`."
+        description: "Target convention for the trailing `v`: `:base`, `:ethereum`, or `:eip155`."
+      ],
+      chain_id: [
+        kind: :value,
+        default: nil,
+        description:
+          "Chain id used when reading or producing EIP-155 `v`. `nil` falls back to `config :cartouche, :chain_id`."
       ]
     ],
     returns: %{
@@ -96,11 +114,14 @@ defmodule Cartouche.RecoveryBit do
       iex> Cartouche.RecoveryBit.normalize_signature(<<1::256, 2::256, 27>>, :base)
       <<1::256, 2::256, 0>>
   """
-  @spec normalize_signature(Cartouche.signature(), rec_type()) :: Cartouche.signature() | no_return()
-  def normalize_signature(<<rs::binary-size(64), v>>, rec_type \\ :eip155) when rec_type in @rec_types do
-    v_normalized = normalize(v, rec_type)
+  @spec normalize_signature(Cartouche.signature(), rec_type(), integer() | atom() | nil) ::
+          Cartouche.signature() | no_return()
+  def normalize_signature(<<rs::binary-size(64), v_bin::binary>>, rec_type \\ :eip155, chain_id \\ nil)
+      when byte_size(v_bin) >= 1 and rec_type in @rec_types do
+    v = :binary.decode_unsigned(v_bin)
+    v_normalized = normalize(v, rec_type, chain_id)
 
-    <<rs::binary-size(64), v_normalized::8>>
+    rs <> :binary.encode_unsigned(v_normalized)
   end
 
   api(:recover_base, "Convert a recovery bit from any supported convention into base form.",
@@ -108,6 +129,11 @@ defmodule Cartouche.RecoveryBit do
       v: [
         kind: :value,
         description: "Recovery bit in base (`0` or `1`), Ethereum (`27` or `28`), or EIP-155 form."
+      ],
+      chain_id: [
+        kind: :value,
+        default: nil,
+        description: "Chain id used to reduce an EIP-155 `v`. `nil` falls back to `config :cartouche, :chain_id`."
       ]
     ],
     returns: %{
@@ -118,6 +144,10 @@ defmodule Cartouche.RecoveryBit do
 
   @doc """
   Normalizes a recovery bit to be either 0 or 1.
+
+  EIP-155 values are reduced against `chain_id`. Omitting it falls back to
+  `config :cartouche, :chain_id`. A `v` from a different chain raises
+  `Invalid EIP-155 Signature` naming both `recovery_bit` and `chain_id`.
 
   ## Examples
 
@@ -134,19 +164,23 @@ defmodule Cartouche.RecoveryBit do
       1
 
       iex> Cartouche.RecoveryBit.recover_base(2)
-      ** (FunctionClauseError) no function clause matching in Cartouche.RecoveryBit.recover_base/1
+      ** (FunctionClauseError) no function clause matching in Cartouche.RecoveryBit.recover_base/2
   """
-  @spec recover_base(non_neg_integer()) :: 0 | 1 | no_return()
-  def recover_base(v) when v in [0, 1], do: v
-  def recover_base(v) when v in [27, 28], do: v - 27
+  @spec recover_base(non_neg_integer(), integer() | atom() | nil) :: 0 | 1 | no_return()
+  def recover_base(v, chain_id \\ nil)
 
-  def recover_base(v) when v >= 35 do
-    case v - Cartouche.Application.chain_id() * 2 - 35 do
+  def recover_base(v, _chain_id) when v in [0, 1], do: v
+  def recover_base(v, _chain_id) when v in [27, 28], do: v - 27
+
+  def recover_base(v, chain_id) when v >= 35 do
+    id = Cartouche.Chain.chain_id_value(chain_id)
+
+    case v - id * 2 - 35 do
       base when base in [0, 1] ->
         base
 
       _ ->
-        raise "Invalid EIP-155 Signature: recovery_bit=#{v}, chain_id=#{Cartouche.Application.chain_id()}"
+        raise "Invalid EIP-155 Signature: recovery_bit=#{v}, chain_id=#{id}"
     end
   end
 end

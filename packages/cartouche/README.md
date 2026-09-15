@@ -216,7 +216,7 @@ Each signer process keeps its own public key, and signatures are verified agains
 The `Cartouche.Signer` GenServer is for **keys you operate** — relayers, fee payers, treasury wallets, attestation oracles. It is **not** a place to plug in end-user wallets; users on-chain sign in their own wallet (MetaMask, Phantom, Ledger, WalletConnect) and your backend's job is to **verify** what they sent. The relevant primitives:
 
 - **EIP-712 typed data** (`eth_signTypedData_v4`) — `Cartouche.Typed` for domain / type encoding and the digest a wallet would have produced.
-- **`personal_sign` / raw signature recovery** — `Cartouche.Recover.recover_eth/2` (with `prefix_eth/1` for the `\x19Ethereum Signed Message:\n` envelope) and `Cartouche.Recover.find_recid/3` when only `(r, s)` arrived.
+- **`personal_sign` / raw signature recovery** — `Cartouche.Recover.recover_personal_sign/2` for MetaMask / WalletConnect payloads (applies the EIP-191 envelope internally). `recover_eth/2` plus `prefix_eth/1` when you already have the envelope, and `find_recid/3` when only `(r, s)` arrived.
 - **Recovery-bit normalisation** — `Cartouche.RecoveryBit` between `:base` / `:ethereum` / `:eip155` representations.
 
 Solana mirrors this with `Cartouche.Solana.Keys` for Phantom-signed payload verification on the user side and `Cartouche.Solana.Signer` (Ed25519 / Cloud KMS) for the operator side.
@@ -357,7 +357,7 @@ Cartouche.Wei.to_wei({2, :gwei})               # 2_000_000_000
 | `Cartouche.Sleuth` | Batched read-only contract queries via a deployed Sleuth contract |
 | `Cartouche.OpenChain` | Selector lookup against the OpenChain signature database |
 | `Cartouche.Typed` | EIP-712 typed-data domain / type encoder, digest builder |
-| `Cartouche.Recover` | EIP-191 `personal_sign` recovery — `recover_eth/2`, `recover_public_key/2`, `find_recid/3` |
+| `Cartouche.Recover` | EIP-191 `personal_sign` recovery — `recover_personal_sign/2`, `recover_eth/2`, `recover_public_key/2`, `find_recid/3` |
 | `Cartouche.RecoveryBit` | Convert `v` between `:base` (`0/1`), `:ethereum` (`27/28`), `:eip155` |
 | `Cartouche.Hex` / `Cartouche.Hash` | `~h` sigil, encode/decode helpers, keccak digests |
 | `Cartouche.Wei` | `to_wei/1` — accepts integers or `{n, :gwei}` |

@@ -7,10 +7,17 @@ defmodule Cartouche.Signer do
   `{module, function, args}` MFA is also accepted so existing call sites
   (`Cartouche.Signer.sign_direct/4`, and `start_link/1` handed a 3-tuple)
   keep working. In either case, start the GenServer and call
-  `Cartouche.Signer.sign(MySigner, "message")` to get a 65-byte Ethereum
-  signature.
+  `Cartouche.Signer.sign(MySigner, "message")` to get a packed
+  `r || s || v` Ethereum signature (`Cartouche.signature()`).
 
-  This library never emits a 65-byte Ethereum signature with `s > n/2`
+  The packed form is 65 bytes when EIP-155 `v` fits in one byte (chain id
+  ≤ 110) and 66–68 bytes otherwise. Chain binding for legacy transactions
+  lives in that trailing `v` because `Transaction.V1.add_signature/2` copies
+  it into the RLP `v` field; emitting a parity-only byte here would silently
+  drop EIP-155 replay protection. Typed transactions already take y-parity
+  from whatever width they receive.
+
+  This library never emits a packed Ethereum signature with `s > n/2`
   (EIP-2). Low-s canonicalization is applied at the emission funnel, not by
   the configured backend: both the `{backend, config}` path and the legacy
   MFA path pass through `Cartouche.Recover.normalize_low_s/1` before the
@@ -104,7 +111,7 @@ defmodule Cartouche.Signer do
     returns: %{
       type: :ok_error_tuple,
       description:
-        "`{:ok, signature}` with the 65-byte Ethereum signature, or `{:error, reason}` when signing or recovery fails."
+        "`{:ok, signature}` with the packed `r || s || v` Ethereum signature (`Cartouche.signature()`), or `{:error, reason}` when signing or recovery fails."
     },
     composes_with: [:sign_direct]
   )
@@ -126,7 +133,7 @@ defmodule Cartouche.Signer do
       0x05f5e0ff * 2 + 35 + 1
   """
   @spec sign(String.t(), GenServer.server(), Keyword.t()) ::
-          {:ok, binary()} | {:error, term()}
+          {:ok, Cartouche.signature()} | {:error, term()}
   def sign(message, name \\ Default, opts \\ []) do
     chain_id = Keyword.get(opts, :chain_id, GenServer.call(name, :get_chain_id))
     GenServer.call(name, {:sign, {message, chain_id}})
@@ -225,7 +232,7 @@ defmodule Cartouche.Signer do
     returns: %{
       type: :ok_error_tuple,
       description:
-        "`{:ok, signature}` with the 65-byte Ethereum signature, or `{:error, reason}` when signing or recovery fails."
+        "`{:ok, signature}` with the packed `r || s || v` Ethereum signature (`Cartouche.signature()`), or `{:error, reason}` when signing or recovery fails."
     }
   )
 
@@ -233,11 +240,12 @@ defmodule Cartouche.Signer do
   Directly sign a message, not using a signer process.
 
   This is mostly used internally, but can be used safely externally as well.
-  The returned 65-byte signature is always low-s (EIP-2), regardless of
-  whether the MFA backend normalized.
+  The returned packed `r || s || v` signature is always low-s (EIP-2), regardless of
+  whether the MFA backend normalized. Width follows `Cartouche.signature()`:
+  65 bytes when EIP-155 `v` fits in one byte, longer when it does not.
   """
   @spec sign_direct(String.t(), binary(), {module(), atom(), [any()]}, integer() | atom() | nil) ::
-          {:ok, binary()} | {:error, String.t()}
+          {:ok, Cartouche.signature()} | {:error, String.t()}
   def sign_direct(message, address, {mod, fun, args}, chain_id_or_name) do
     with {:ok, %Curvy.Signature{crv: :secp256k1, recid: nil} = signature} <-
            apply(mod, fun, [message] ++ args) do
@@ -273,7 +281,7 @@ defmodule Cartouche.Signer do
           String.t(),
           binary(),
           integer() | atom() | nil
-        ) :: {:ok, binary()} | {:error, term()}
+        ) :: {:ok, Cartouche.signature()} | {:error, term()}
   defp backend_sign({backend, config}, message, address, chain_id_or_name) when is_atom(backend) do
     with :ok <- Backend.expect_algorithm(backend, config, :secp256k1),
          digest = keccak(message),
@@ -286,11 +294,11 @@ defmodule Cartouche.Signer do
     sign_direct(message, address, mfa, chain_id_or_name)
   end
 
-  # Sole 65-byte emission funnel. Low-s is applied here, before recid search,
+  # Sole packed-signature emission funnel. Low-s is applied here, before recid search,
   # so a high-s backend cannot produce a malleable signature and flipping s
   # cannot leave a stale recovery bit.
   @spec emit_signature(<<_::256>>, Curvy.Signature.t(), binary(), integer() | atom() | nil) ::
-          {:ok, binary()} | {:error, term()}
+          {:ok, Cartouche.signature()} | {:error, term()}
   defp emit_signature(digest, raw_signature, address, chain_id_or_name) do
     signature = Cartouche.Recover.normalize_low_s(raw_signature)
 
@@ -299,11 +307,18 @@ defmodule Cartouche.Signer do
     end
   end
 
-  # Assemble the 65-byte EIP-155 signature from a recovered secp256k1 signature.
+  # Assemble the packed EIP-155 signature from a recovered secp256k1 signature.
   # A `nil` chain id defaults to the application chain, mirroring how `V1.new`/
   # `V2.new` already resolve the transaction's `v` field — so the default-signer
   # path (no `chain_id:` option) signs for the configured chain instead of crashing.
-  @spec encode_eip155(Curvy.Signature.t(), 0..1, integer() | atom() | nil) :: binary()
+  #
+  # Trailing `v` is `chain_id*2+35+recid` encoded with `:binary.encode_unsigned/1`,
+  # so chain ids above 110 yield 66–68 byte signatures. That is deliberate: V1's
+  # RLP `v` field *is* the chain binding, and `V1.add_signature/2` copies these
+  # bytes into it. A parity-only 65-byte form would write 0/1 or 27/28 into V1.v
+  # and silently drop EIP-155 replay protection. Typed transactions already
+  # extract y-parity from whatever width they receive.
+  @spec encode_eip155(Curvy.Signature.t(), 0..1, integer() | atom() | nil) :: Cartouche.signature()
   defp encode_eip155(%Curvy.Signature{r: r, s: s}, recid, chain_id_or_name) do
     chain_id = Cartouche.Chain.chain_id_value(chain_id_or_name)
     v = if chain_id == 0, do: 27 + recid, else: chain_id * 2 + 35 + recid

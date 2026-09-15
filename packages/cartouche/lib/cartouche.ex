@@ -100,7 +100,10 @@ defmodule Cartouche do
   @descripex_summary_names Map.new(@descripex_aliases, fn {short_name, module} -> {module, short_name} end)
 
   @type address :: <<_::160>>
-  @type signature :: <<_::520>>
+  # Packed `r (32) || s (32) || v`. `v` is one or more bytes: 65 bytes when
+  # EIP-155 `v` fits in a single byte (chain id ≤ 110), 66–68 bytes on every
+  # chain in `Cartouche.Chain` except mainnet and the dead testnets.
+  @type signature :: <<_::520, _::_*8>>
   @type bytes32 :: <<_::256>>
   @type contract :: address() | atom()
 

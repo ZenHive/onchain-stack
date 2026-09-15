@@ -2,17 +2,18 @@ defmodule Cartouche.Recover do
   @moduledoc """
   EIP-191 (`personal_sign`) signature recovery primitives.
 
-  Given a message and a 65-byte secp256k1 signature, recover the signer's
+  Given a message and a packed secp256k1 signature, recover the signer's
   public key (`recover_public_key/2`) or Ethereum address (`recover_eth/2`).
-  When the signature arrived without a recovery bit (e.g. some HSM / KMS
-  backends return only `(r, s)`), `find_recid/3` brute-forces the two valid
-  recids against an expected address.
+  `recover_personal_sign/2` is the MetaMask / WalletConnect path: it wraps the
+  message in the EIP-191 envelope before recovering. When the signature arrived
+  without a recovery bit (e.g. some HSM / KMS backends return only `(r, s)`),
+  `find_recid/3` brute-forces the two valid recids against an expected address.
 
   Signatures may be supplied either as a `Curvy.Signature` struct (when the
-  recovery bit lives in `:recid`) or as the raw 65-byte
-  `<<r::256, s::256, v::8>>` form. The `v` byte is interpreted as recid `0`/`1`
-  (raw form), `27`/`28` (`personal_sign`), or `35 + 2 * chain_id + recid`
-  (EIP-155).
+  recovery bit lives in `:recid`) or as packed `r <> s <> v` bytes. `v` is one
+  or more bytes (65 bytes total when it fits in a single byte; longer when
+  EIP-155 `v` exceeds 255). It is interpreted as recid `0`/`1` (raw form),
+  `27`/`28` (`personal_sign`), or `35 + 2 * chain_id + recid` (EIP-155).
 
   Used internally by `Cartouche.Signer` for the recover-and-verify sanity check
   after each sign call, and exposed as the public surface for consumers
@@ -29,7 +30,8 @@ defmodule Cartouche.Recover do
   @secp256k1_n 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
   @secp256k1_half_n div(@secp256k1_n, 2)
 
-  @spec decode_signature(Curvy.Signature.t() | String.t() | <<_::520>>) :: Curvy.Signature.t() | :invalid_hex
+  @spec decode_signature(Curvy.Signature.t() | String.t() | Cartouche.signature()) ::
+          Curvy.Signature.t() | :invalid_hex
   defp decode_signature(%Curvy.Signature{} = s), do: s
 
   defp decode_signature("0x" <> _signature_hex = signature) do
@@ -38,8 +40,10 @@ defmodule Cartouche.Recover do
     end
   end
 
-  defp decode_signature(<<r::integer-size(256), s::integer-size(256), v::integer-size(8)>>),
-    do: %Curvy.Signature{
+  defp decode_signature(<<r::integer-size(256), s::integer-size(256), v_bin::binary>>) when byte_size(v_bin) >= 1 do
+    v = :binary.decode_unsigned(v_bin)
+
+    %Curvy.Signature{
       crv: :secp256k1,
       r: r,
       s: s,
@@ -50,6 +54,7 @@ defmodule Cartouche.Recover do
           rem(v + 1, 2)
         end
     }
+  end
 
   @doc """
   Wraps a message in the EIP-191 `personal_sign` envelope.
@@ -71,8 +76,8 @@ defmodule Cartouche.Recover do
     iex> Cartouche.Recover.prefix_eth("hello")
     "\x19Ethereum Signed Message:\\n5hello"
   """
-  @spec prefix_eth(String.t()) :: String.t()
-  def prefix_eth(msg), do: "\x19Ethereum Signed Message:\n" <> to_string(String.length(msg)) <> msg
+  @spec prefix_eth(binary()) :: binary()
+  def prefix_eth(msg), do: "\x19Ethereum Signed Message:\n" <> Integer.to_string(byte_size(msg)) <> msg
 
   @doc """
   Recovers a signer's public key from a signed message. The message will be
@@ -166,6 +171,33 @@ defmodule Cartouche.Recover do
     message
     |> recover_public_key(signature)
     |> from_public_key()
+  end
+
+  @doc """
+  Recovers the signer of an EIP-191 `personal_sign` payload (MetaMask,
+  WalletConnect, and any wallet that hashes the `\x19Ethereum Signed Message:\\n`
+  envelope).
+
+  Applies `prefix_eth/1` then `recover_eth/2`. Use this rather than calling
+  `recover_eth/2` on the raw message — wallets sign the prefixed envelope, not
+  the bare UTF-8 bytes.
+
+  ## Examples
+
+      iex> use Cartouche.Hex
+      iex> priv_key = ~h[0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf]
+      iex> prefixed = Cartouche.Recover.prefix_eth("hello")
+      iex> {:ok, sig} = Cartouche.Signer.Curvy.sign(prefixed, priv_key)
+      iex> {:ok, recid} = Cartouche.Recover.find_recid(prefixed, sig, ~h[0x63CC7C25E0CDB121ABB0FE477A6B9901889F99A7])
+      iex> packed = <<sig.r::256, sig.s::256, 27 + recid>>
+      iex> Cartouche.Recover.recover_personal_sign("hello", packed) |> to_hex()
+      "0x63cc7c25e0cdb121abb0fe477a6b9901889f99a7"
+  """
+  @spec recover_personal_sign(binary(), Curvy.Signature.t() | binary()) :: <<_::160>>
+  def recover_personal_sign(message, signature) do
+    message
+    |> prefix_eth()
+    |> recover_eth(signature)
   end
 
   @doc """
