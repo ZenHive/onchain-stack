@@ -9063,6 +9063,56 @@ OPEN DECISIONS - answer these before writing code, do not infer them:
 VERIFY BY RUNNING, NOT BY READING. The alias is a Bandit.start_link inside `mix run
 --no-halt`; whether it binds is a runtime fact. Start tidewave in at least two packages
 afterwards and confirm the MCP endpoint answers.
+
+--- DECISIONS ANSWERED 2026-09-16 (commit 0fb58a6) ---
+
+Two of the three open decisions above are now settled by the user, and the work
+is already built. What remains of this task is the leftover, listed at the end.
+
+1. One shared port, or eight? ANSWERED: EIGHT. No port convergence. The eight
+   distinct per-package ports are a deliberate pre-monorepo feature - they let
+   eight package dev servers run in parallel - so converging them on 4013 was
+   the wrong fix, and the session that tried it was reverted. The registry line
+   claiming "all 8 packages share 4013" is the thing that is wrong, not the
+   aliases.
+2. Does a root-level tidewave entry point earn its keep? ANSWERED: YES, and it
+   is ADDITIVE, on a NEW port 4037 - never 4013. The root mix.exs now derives
+   the eight packages from File.ls!("packages") as `only: :dev, override: true`
+   path deps, adds {:bandit, "~> 1.0"} and {:tidewave, "~> 0.9"} dev-only, and
+   defines a `tidewave` alias serving Tidewave on 4037. Root .mcp.json gained a
+   second entry, `tidewave_all` -> localhost:4037, alongside the existing
+   `tidewave` -> 4013 (still cartouche). Root .cursor/mcp.json, .codex/config.toml
+   and .grok/config.toml were created pointing at 4037.
+   Verified by running it, not by reading: all eight applications load in one
+   node (210 modules) and a single expression crosses package boundaries -
+   Cartouche.Address.from_public_key/1 into ABI.encode_call("transfer(address,uint256)",
+   ...) returned selector a9059cbb, 68 bytes.
+   Note this overrides the original out_of_scope line "Adding tidewave or bandit
+   as runtime deps of the root project": they are `only: :dev`, never runtime,
+   and the user directed the change.
+3. Rewrite the 21 per-package mirrors, or replace them with root files?
+   PARTIALLY ANSWERED: the root replacements now exist. Whether the 21
+   per-package mirrors are rewritten, left as-is, or removed is still open.
+
+CORRECTION to verified fact 3 above: "the repo root has no .cursor/, .codex/ or
+.grok/ at all" was true when written and is now false - 0fb58a6 created all
+three at the root, pointing at 4037. The 21 per-package mirrors are untouched
+and still point at their pre-merge ports.
+
+WHAT IS LEFT IN THIS TASK:
+
+- The 21 per-package .cursor/.codex/.grok files still name pre-merge ports and
+  some still name the pre-rename `harness_tidewave` server. Since ports are NOT
+  being retired, "pointing at a retired port" no longer applies to the seven
+  package ports themselves - but the server name and the harness entry may
+  still be stale. Decide per file; do not bulk-delete.
+- ~/.claude/tidewave-ports.md now contradicts itself: the 4013 row still reads
+  "all 8 packages share this one port" while the new 4037 row states "4013 is
+  cartouche's alone, never the family's." Fix the 4013 row, and un-retire the
+  seven package rows to match the aliases, since convergence was rejected.
+- CLAUDE.md and root AGENTS.md were updated for the 4037 aggregate in the same
+  session that recorded these answers; re-check them if the remaining items
+  change anything.
 """
 created_at = "2026-09-15"
 started_at = "2026-09-15"
@@ -9174,7 +9224,7 @@ id = "9008"
 phase = 2000
 bundle = "cartouche_phase7_deps"
 target_repo = "cartouche"
-status = "in_progress"
+status = "done"
 title = "Assess Mint advisories reported by Cartouche cold dependency resolution"
 scores = { d = 2, b = 5, u = 4 }
 acceptance_criteria = ["Current public Mint advisories and upstream fix availability are checked.", "An available compatible fix is applied and affected package gates run serially, or the upstream blocker is documented."]
@@ -9182,9 +9232,12 @@ touches = ["packages/cartouche/mix.lock"]
 assignee = "codex"
 model = "gpt-6-astra"
 body = "During audit 408b2b6, mix deps.get retained locked Mint 1.9.3 and reported two public security advisories. Check current upstream fixes and the dependent packages, update the lock if a compatible fix exists, and run both audit tools plus affected package gates. Do not suppress findings. This is an observed dependency warning, not a demonstrated application exploit."
+implemented = "Mint 1.9.3 -> 1.10.0 in all seven package locks that resolve it (cartouche, onchain, onchain_aave, onchain_aerodrome, onchain_evm, onchain_js, onchain_tempo); hieroglyph has no Mint. Landed in 51bc9f5. Verified serially, not concurrently: the root 'mix ci' ran all eight package gates in order under 1.10.0 and returned EXIT=0 with zero test failures, and every package printed 'advisory-freshness: OK - at upstream tip 5246bcc 2026-09-04 (clean)' followed by 'No vulnerabilities found.' No 'VULNERABLE!' line appeared anywhere in the run, so both advisories are cleared by the bump rather than suppressed - nothing was added to .mix_audit_ignore."
 created_at = "2026-09-15"
 started_at = "2026-09-15"
 scored_at = "2026-09-15"
+done_at = "2026-09-16"
+shipped_in = "51bc9f5a5d8d87d61890659c72ef26a088cd12ba"
 
 [[task]]
 id = "9009"
