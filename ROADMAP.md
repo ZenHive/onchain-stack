@@ -213,6 +213,10 @@
 | Task 9006 | ⬜ | 🎁 **cartouche_correctness_010** · 🔒 Normalize high-s signatures at Cartouche's recovery boundary — recover_public_key_from_digest/2 still hits the curvy#8 recid bug [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 | Task 9007 | ⬜ | 🎁 **cartouche_release_010** · Reconcile Cartouche release notes against everything landed since 0.9.1 [D:2/B:7/U:7 → Eff:3.5] 🎯 |
 | Task 9008 | ✅ | 🎁 **cartouche_phase7_deps** · Assess Mint advisories reported by Cartouche cold dependency resolution [D:2/B:5/U:4 → Eff:2.25] 🎯 |
+| Task 9013 `[P]` | ⬜ | 🎁 **cartouche_chain_registry** · Cartouche.Chain as a generated chain registry — ids, currency, RPC URLs, explorers, well-known contracts — and route Multicall/ENS addresses through it [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 9014 | ⬜ | 🎁 **cartouche_transport_fallback** · Cartouche fallback transport — ranked multi-endpoint RPC with health tracking, failing over on transport errors and node refusals but never on application errors [D:5/B:7/U:7 → Eff:1.4] 📋 |
+| Task 9015 | ⬜ | 🎁 **cartouche_local_keys** · 🔒 Local key material for Cartouche.Signer — BIP-39 mnemonics, BIP-32/44 HD derivation, and Web3 Secret Storage (keystore v3) import/export [D:5/B:6/U:6 → Eff:1.2] 📋 |
+| Task 9016 `[P]` | ⬜ | 🎁 **cartouche_dev_node_actions** · Typed dev-node control wrappers — anvil_*/hardhat_*/evm_* (balance, storage, code, nonce, impersonation, mining, time, snapshots, fork reset) under the non-standard-namespace portability contract [D:3/B:5/U:6 → Eff:1.83] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 2001: Spec corrections (immediate onchain wins)
@@ -329,6 +333,8 @@
 | Task 3054 | ✅ | 🎁 **onchain_rpc_composition** · *Onchain.RPC* · Opt-in retry/backoff wrapper over Signet.RPC.send_rpc/3 [D:4/B:5/U:4 → Eff:1.12?] 📋 |
 | Task 3081 | ✅ | 🎁 **onchain_rpc_composition** · *Onchain.RPC* · Audit-surfaced: RPC batch + block decode crash on malformed node responses [D:2/B:3/U:4 → Eff:1.75?] 🚀 |
 | Task 3082 | ✅ | 🎁 **onchain_rpc_composition** · Add eth_estimateGas RPC helper + auto-estimate gas in send_transaction [D:3/B:5/U:6 → Eff:1.83?] 🚀 |
+| Task 9017 | ⬜ | 🎁 **onchain_client** · Onchain.Client — one struct binding chain, transport and optional signer, accepted everywhere `rpc_url` is today, with wait_for_transaction_receipt (confirmations, timeout, replacement detection) [D:6/B:9/U:8 → Eff:1.42] 📋 |
+| Task 9018 | ⬜ | 🎁 **onchain_siwe** · 🔒 Onchain.SIWE — EIP-4361 Sign-In with Ethereum: build, parse and verify messages, EIP-191 for EOAs and EIP-1271 for contract wallets [D:4/B:5/U:4 → Eff:1.12] 📋 |
 <!-- TASKS:END -->
 
 ### Phase 3012: Code Health

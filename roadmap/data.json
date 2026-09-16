@@ -276,6 +276,11 @@
       "order": 13,
       "description": "Phase 0.5 cross-repo bug triage (defi-skills mining bubble-up)"
     },
+    "cartouche_chain_registry": {
+      "phase": 2000,
+      "order": 30,
+      "description": "Structured chain definitions (ids, currency, RPC URLs, explorers, well-known contract addresses) generated from an upstream source, replacing the atom->id map and the per-module hardcoded addresses."
+    },
     "cartouche_correctness_010": {
       "phase": 2000,
       "order": 1,
@@ -285,6 +290,11 @@
       "phase": 2000,
       "order": 5,
       "description": "Phase 0.5 pre-mutation coverage pushes (Typed, VM, KMS, RPC)"
+    },
+    "cartouche_dev_node_actions": {
+      "phase": 2000,
+      "order": 33,
+      "description": "Typed wrappers for anvil/hardhat dev-node control methods (balance, storage, code, impersonation, mining, snapshots) under the non-standard-namespace portability contract."
     },
     "cartouche_eip_opcode_followups": {
       "phase": 2000,
@@ -300,6 +310,11 @@
       "phase": 2000,
       "order": 12,
       "description": "Phase 0.5 KMS signer test-mocking follow-ups"
+    },
+    "cartouche_local_keys": {
+      "phase": 2000,
+      "order": 32,
+      "description": "Commodity local key material next to the KMS backends: BIP-39 mnemonics, BIP-32/44 derivation, Web3 Secret Storage keystore files."
     },
     "cartouche_phase10_upstream": {
       "phase": 2010,
@@ -400,6 +415,11 @@
       "phase": 2000,
       "order": 6,
       "description": "Phase 0.5 Trace deserialize hardening (missing/nil traceAddress)"
+    },
+    "cartouche_transport_fallback": {
+      "phase": 2000,
+      "order": 31,
+      "description": "Multi-endpoint transport: ranked/fallback RPC endpoints with health tracking, composed over the retry and refusal classification the read-surface bundle moves into cartouche."
     },
     "cartouche_wei_units": {
       "phase": 2000,
@@ -566,6 +586,11 @@
       "order": 1,
       "description": "Router/Gauge/NFPM/Voter calldata builders with signing opt-in, graded by an independent encoder and real deployed reverts."
     },
+    "onchain_client": {
+      "phase": 3010,
+      "order": 2,
+      "description": "A viem-shaped client facade: one struct binding chain + transport, threaded through the read/write/simulate surface, with receipt polling and confirmation tracking."
+    },
     "onchain_dex": {
       "phase": 3007,
       "order": 1,
@@ -675,6 +700,11 @@
       "phase": 3012,
       "order": 8,
       "description": "Adopt cartouche 0.8.0's enforced signer-backend contracts on the transaction signing path."
+    },
+    "onchain_siwe": {
+      "phase": 3010,
+      "order": 3,
+      "description": "Sign-In with Ethereum (EIP-4361): message build, parse, and verification incl. EIP-1271 contract wallets."
     },
     "onchain_subscription_hardening": {
       "phase": 3012,
@@ -5599,7 +5629,7 @@
       },
       "eff": 2.33,
       "dep_layer": 1,
-      "unlocks": 0,
+      "unlocks": 1,
       "markers": [],
       "depends_on": [
         2136,
@@ -5646,7 +5676,7 @@
       },
       "eff": 2.67,
       "dep_layer": 0,
-      "unlocks": 7,
+      "unlocks": 8,
       "markers": [],
       "depends_on": [],
       "assignee": "codex",
@@ -5700,7 +5730,7 @@
       },
       "eff": 1.8,
       "dep_layer": 0,
-      "unlocks": 6,
+      "unlocks": 8,
       "markers": [],
       "depends_on": [],
       "assignee": "codex",
@@ -6905,6 +6935,7 @@
         "A kind: :log poller substitutes for a Subscription {:logs, filter} consumer against an HTTP rpc_url on a known mainnet Transfer log, asserted on address and topic0 rather than on shape",
         "kind: :block and kind: :pending each have a test that receives a hash list",
         "The delivered message shapes are documented next to Onchain.Subscription's, so a caller can see which transport gives which",
+        "A `kind: :log` poller given an ABI event (or a module generated from one) decodes matching logs through the existing `Onchain.Log` decode path before delivery, so a consumer gets typed event fields — the viem `watchContractEvent` shape — rather than raw logs (added 2026-09-16, viem-parity review)",
         "mix ci passes"
       ],
       "out_of_scope": [
@@ -6913,7 +6944,7 @@
         "eth_createAccessList, eth_baseFee, eth_blobBaseFee, eth_config and eth_capabilities — other 0.8.0 additions, unrelated to filters",
         "hieroglyph strict decode — task 88 owns that"
       ],
-      "body": "`Onchain.Subscription` is WebSocket-only — it documents `:new_heads`, `:pending_transactions` and `{:logs, filter_map}` and drives them through `eth_subscribe` (lib/onchain/subscription.ex:3 and 205). The default RPC URL this library ships is HTTP Infura (lib/onchain/rpc.ex:121). So a caller who takes the default and follows the subscription docs has no working path, and the only log retrieval left is `Transfer.fetch/2`, a one-shot `eth_get_logs` (lib/onchain/transfer.ex:247-254) rather than anything that keeps delivering.\n\ncartouche 0.8.0 completed the HTTP sibling for exactly this: `Cartouche.Filter` takes `kind: :log | :block | :pending`, delivers `{:event, :log}` for log filters and `{:hashes, hashes}` for the other two, recovers from an expired filter on all three kinds, and uninstalls the node-side filter in `terminate/2` so a supervised restart no longer registers an abandoned filter per cycle. Nothing in this repo starts it.\n\nAdd an HTTP polling facade over `Cartouche.Filter` covering the same three kinds, delivering messages the way `Subscription` delivers its `eth_subscribe` notifications so a consumer can move between transports without rewriting its receive loop. Lean on cartouche's `terminate/2` for the uninstall rather than tracking filter ids here — the leak it closes is the reason to delegate. `Onchain.Subscription` itself is not modified; the WebSocket path stays exactly as it is.\n\nDepends on task 89 only for the lock: `Cartouche.Filter`'s block and pending kinds do not exist below cartouche 0.8.0, and 89 is what lands that bump.\n",
+      "body": "`Onchain.Subscription` is WebSocket-only — it documents `:new_heads`, `:pending_transactions` and `{:logs, filter_map}` and drives them through `eth_subscribe` (lib/onchain/subscription.ex:3 and 205). The default RPC URL this library ships is HTTP Infura (lib/onchain/rpc.ex:121). So a caller who takes the default and follows the subscription docs has no working path, and the only log retrieval left is `Transfer.fetch/2`, a one-shot `eth_get_logs` (lib/onchain/transfer.ex:247-254) rather than anything that keeps delivering.\n\ncartouche 0.8.0 completed the HTTP sibling for exactly this: `Cartouche.Filter` takes `kind: :log | :block | :pending`, delivers `{:event, :log}` for log filters and `{:hashes, hashes}` for the other two, recovers from an expired filter on all three kinds, and uninstalls the node-side filter in `terminate/2` so a supervised restart no longer registers an abandoned filter per cycle. Nothing in this repo starts it.\n\nAdd an HTTP polling facade over `Cartouche.Filter` covering the same three kinds, delivering messages the way `Subscription` delivers its `eth_subscribe` notifications so a consumer can move between transports without rewriting its receive loop. Lean on cartouche's `terminate/2` for the uninstall rather than tracking filter ids here — the leak it closes is the reason to delegate. `Onchain.Subscription` itself is not modified; the WebSocket path stays exactly as it is.\n\nDepends on task 89 only for the lock: `Cartouche.Filter`'s block and pending kinds do not exist below cartouche 0.8.0, and 89 is what lands that bump.\n\n2026-09-16 (viem-parity review): widened by one acceptance criterion — decoded contract-event delivery over the log poller. This task is the family's `watch_blocks` / `watch_contract_event` equivalent; no separate task is filed for those names. The client facade (task 9017) stays out of here.\n",
       "created_at": "2026-08-25",
       "scored_at": "2026-08-25",
       "cross_repo": []
@@ -13820,6 +13851,282 @@
       "body": "Discovered during the cc35c2a post-merge audit: mix deps.get in packages/onchain_aave resolved the unchanged mint 1.9.3 lock and reported EEF-CVE-2026-82728 (HIGH, unbounded HTTP/1 status-line and chunk-extension buffering) and EEF-CVE-2026-82729 (MEDIUM, quadratic chunk-size parsing). These are separate from the gun/cowlib findings adjudicated in root CLAUDE.md. The audited feature did not introduce this dependency; handle currency and advisory verification as a bounded follow-up rather than expanding the position-manager test fix. Check other package locks for the same version, verify upstream fixes, and run both advisory sources because their coverage differs.\n",
       "created_at": "2026-09-15",
       "scored_at": "2026-09-15",
+      "cross_repo": []
+    },
+    {
+      "id": "9013",
+      "phase": 2000,
+      "bundle": "cartouche_chain_registry",
+      "target_repo": "cartouche",
+      "status": "pending",
+      "title": "Cartouche.Chain as a generated chain registry — ids, currency, RPC URLs, explorers, well-known contracts — and route Multicall/ENS addresses through it",
+      "scores": {
+        "d": 5,
+        "b": 8,
+        "u": 8
+      },
+      "eff": 1.6,
+      "dep_layer": 0,
+      "unlocks": 1,
+      "markers": [
+        "parallel"
+      ],
+      "depends_on": [],
+      "assignee": "grok",
+      "model": "grok-4.6",
+      "acceptance_criteria": [
+        "`Cartouche.Chain` exposes a struct per known chain with at least: id, name, native currency (name/symbol/decimals), public RPC URLs, block explorer URLs, a testnet flag, and a well-known-contracts map carrying Multicall3, the ENS registry and universal resolver, and EntryPoint v0.6/v0.7 where deployed; `parse_id/1` and every existing caller keep working unchanged",
+        "The chain data is generated, not hand-typed: a Mix task regenerates the definitions file from the named upstream source and the committed file is byte-identical to a fresh run of that task (a test asserts this, so drift between source and generated file fails the gate)",
+        "Every chain the current atom->id map names (all 24) resolves to a full struct with a non-empty RPC URL list, and the generated set covers at least the chains viem ships for the same ids — spot-checked by a test against five ids taken from viem's `chains/definitions` at a named commit",
+        "`Onchain.Multicall` and `Onchain.ENS` resolve their contract addresses through the registry for the chain in effect instead of module attributes; default behaviour on mainnet is unchanged, pinned by the existing tests still passing without edits",
+        "A live test resolves the Multicall3 address for Base and Arbitrum from the registry and performs one real aggregate3 read on each through a registry-supplied public RPC URL, asserting decoded domain values",
+        "Upstream licence and attribution for the generation source are recorded in the generated file header and in the package README",
+        "`mix onchain.bounds` passes and `mix ci` passes in cartouche and onchain"
+      ],
+      "out_of_scope": [
+        "Chain-specific transaction formatters (OP Stack deposit type 0x7e, zkSync 0x71, Celo) — separate task if a consumer hits one; onchain_tempo shows the pattern",
+        "A fallback or ranked transport over the RPC URL list — that is the transport-fallback task; this registry only supplies the URLs",
+        "Protocol address tables (Aave, Aerodrome) — they stay in their packages; only chain-level, protocol-agnostic contracts belong here"
+      ],
+      "touches": [
+        "packages/cartouche/lib/cartouche/chain.ex",
+        "packages/cartouche/lib/cartouche/chain/",
+        "packages/cartouche/lib/mix/",
+        "packages/onchain/lib/onchain/multicall.ex",
+        "packages/onchain/lib/onchain/ens.ex"
+      ],
+      "body": "Decide first (vetoable defaults written in so an unattended implementer is not guessing):\n\n1. Generation source. Default: ethereum-lists/chains (`_data/chains/eip155-<id>.json`, CC0) for id, name, currency, RPC URLs, explorers and testnet status, plus a small hand-curated overlay file in the repo for well-known contract addresses (Multicall3 from mds1/multicall `deployments.json`, ENS from the ENS docs, EntryPoint from eth-infinitism). viem's `src/chains/definitions` is the cross-check, not the source: it is MIT with attribution required, hand-maintained TypeScript, and carries per-chain formatters this task does not want. If viem turns out to be the only source with a field the registry needs, switch and record the attribution.\n\n2. Scope of chains. Default: every non-deprecated chain in the source, filtered to the ones that have at least one public RPC URL. That is a few hundred structs — fine for a compiled module map. Do not hand-pick; hand-picking is how the current 24-entry map fell behind.\n\nWhy: `Cartouche.Chain` today is a 96-line atom->chain-id map (packages/cartouche/lib/cartouche/chain.ex, read 2026-09-16). Nothing in the family can answer what a chain's native currency is, which explorer to link, or which RPC to try, and the Multicall3 address is a module attribute in `Onchain.Multicall` (multicall.ex:32) — correct only because Multicall3 happens to be deterministically deployed at one address nearly everywhere. This is the largest structural gap between the stack and viem by ratio, and the `Onchain.Client` task builds directly on it.\n\nKeep the struct shape small and additive; the registry is data, and consumers should be able to override or extend entries at runtime (a private chain, a custom RPC) without a regeneration.\n\nAuthority: the upstream JSON at a named commit for the generated data; the live chain for the well-known-contract addresses (the live aggregate3 read in the acceptance criteria is what proves an address, not the overlay file).\n\nDispatch trigger: cross-package change (cartouche + onchain adoption) with a generated-artifact invariant that needs an independent reviewer to check the regeneration test actually gates.\n",
+      "created_at": "2026-09-16",
+      "scored_at": "2026-09-16",
+      "cross_repo": []
+    },
+    {
+      "id": "9014",
+      "phase": 2000,
+      "bundle": "cartouche_transport_fallback",
+      "target_repo": "cartouche",
+      "status": "pending",
+      "title": "Cartouche fallback transport — ranked multi-endpoint RPC with health tracking, failing over on transport errors and node refusals but never on application errors",
+      "scores": {
+        "d": 5,
+        "b": 7,
+        "u": 7
+      },
+      "eff": 1.4,
+      "dep_layer": 1,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [
+        2137
+      ],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "A caller can hand `send_rpc/3` (or its documented equivalent) an ordered list of endpoints instead of one URL; the first healthy endpoint serves the request and the result shape is identical to the single-URL path",
+        "Failover happens on transport failures (connect refused, timeout, 5xx, malformed JSON) and on node-refusal classes from task 2137 (method-not-found, namespace-unavailable), because another provider may serve the method; it never happens on JSON-RPC application errors (execution reverted, invalid params) — pinned by tests for each class",
+        "Endpoint health is tracked per endpoint (recent failure count and latency) and the ranking reorders on it; the ranking is observable through a documented function so an operator can see why an endpoint was skipped",
+        "A live test lists a deliberately unreachable URL first followed by two real hosted mainnet endpoints and asserts a successful `eth_blockNumber`; a second live test asserts an `eth_call` that reverts is returned as the revert from the first endpoint without any call reaching the second (asserted via request counting, not timing)",
+        "Telemetry from task 2137 carries the endpoint that served each request and each failover event",
+        "Single-URL callers see no behaviour change; the existing cartouche suite passes without edits",
+        "`mix ci` passes"
+      ],
+      "out_of_scope": [
+        "WebSocket and IPC transports — HTTP only; zen_websocket owns the socket path",
+        "Automatic transparent request batching (viem `batch: true`) — the array batch primitive is task 2137's; making it implicit is a separate decision",
+        "Any change in onchain — `Onchain.Client` adopts this in its own task"
+      ],
+      "touches": [
+        "packages/cartouche/lib/cartouche/rpc.ex",
+        "packages/cartouche/lib/cartouche/http.ex",
+        "packages/cartouche/lib/cartouche/transport/"
+      ],
+      "body": "The family has exactly one transport shape: one URL, one request. Task 2137 moves retry, refusal classification, telemetry and the array-batch primitive down into cartouche; this task composes the next layer on top of them — several endpoints, ranked by health, with failover. It depends on 2137 for the classification, because the interesting failover decision (a provider that does not serve `trace_*` or `eth_getBlockReceipts` should not fail the call when a second provider does) is only expressible once refusals are tagged rather than opaque strings. Task 2136's multi-endpoint live-test seam is the test infrastructure to reuse here; it is a test seam, not a runtime transport.\n\nThe one rule that must not be got wrong: application errors are final. A revert, an invalid-params error, a nonce-too-low — retrying those on another endpoint is at best wasted and at worst double-submits a transaction. Transport failures and capability refusals fail over; everything the node answered with a JSON-RPC error object that is not a refusal class is returned as-is from the endpoint that produced it.\n\nDesign freedom: whether this is a new module, an option on `send_rpc/3`, or both, is the implementer's call — read how `Cartouche.RPC` threads its `:decode` option and follow that convention rather than inventing a second one. Health tracking needs process state; keep it an explicit, supervised, optional component so a caller who passes a single URL pays nothing.\n\nAuthority: the live endpoints. Provider documentation on which methods they serve is reference material; the request-counting live test is the evidence.\n\nDispatch trigger: transport-layer change on the money path with a live-evidence requirement, and a sequenced dependency on 2137 that a reviewer must confirm was actually built on, not around.\n",
+      "created_at": "2026-09-16",
+      "scored_at": "2026-09-16",
+      "cross_repo": []
+    },
+    {
+      "id": "9015",
+      "phase": 2000,
+      "bundle": "cartouche_local_keys",
+      "target_repo": "cartouche",
+      "status": "pending",
+      "title": "Local key material for Cartouche.Signer — BIP-39 mnemonics, BIP-32/44 HD derivation, and Web3 Secret Storage (keystore v3) import/export",
+      "scores": {
+        "d": 5,
+        "b": 6,
+        "u": 6
+      },
+      "eff": 1.2,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [
+        "security"
+      ],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "BIP-39: generate a 12/15/18/21/24-word English mnemonic from `:crypto.strong_rand_bytes`, validate checksum, and derive the 64-byte seed with an optional passphrase; every Trezor reference vector (english) round-trips",
+        "BIP-32/44 over secp256k1: hardened and non-hardened child derivation from the seed, path parsing (`m/44'/60'/0'/0/i`), private key and address out; the standard anvil/hardhat mnemonic `test test test test test test test test test test test junk` derives the ten well-known default accounts at indices 0..9 (address 0 is 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266), and BIP-32 test vectors 1 and 2 match on the derived private keys",
+        "Web3 Secret Storage v3: decrypt keystore JSON with both `scrypt` and `pbkdf2` (hmac-sha256) KDFs and `aes-128-ctr`, verifying the keccak MAC before decrypting; the two reference vectors from the Web3 Secret Storage definition (password `testpassword`) decrypt to the documented private key; wrong password and tampered ciphertext are distinct, explicit errors",
+        "Encrypt to keystore v3 with scrypt at the standard parameters (n=262144, r=8, p=1) and a caller-chosen lighter profile; a fresh encrypt->decrypt round-trip test and a cross-check that a file this code writes is accepted by one external reference implementation (geth `ethkey` or `cast wallet`) are both present",
+        "scrypt performance is measured, not assumed: the task records how long the standard-parameter vector takes on the dev machine and either ships a pure implementation (if under the threshold named in the body) or adds a NIF-backed Hex dependency with the reason in CHANGELOG",
+        "A derived or decrypted key plugs into `Cartouche.Signer` as a local backend through the existing `{backend, config}` carrier and signs a real transaction that a dev node accepts (live test on anvil)",
+        "No key material leaks through `inspect/1`, logs, or error messages — structs holding seeds, private keys and mnemonics have a redacting `Inspect` implementation, pinned by tests",
+        "Sobelow and `mix ci` pass; no new `.sobelow-skips` entry is added"
+      ],
+      "out_of_scope": [
+        "Non-secp256k1 derivation (ed25519 / SLIP-0010 for the Solana tree) — separate task if the Solana signer needs it",
+        "Hardware wallet or browser wallet integration",
+        "Non-English BIP-39 wordlists",
+        "Any keystore format other than Web3 Secret Storage v3"
+      ],
+      "touches": [
+        "packages/cartouche/lib/cartouche/keys.ex",
+        "packages/cartouche/lib/cartouche/keys/",
+        "packages/cartouche/lib/cartouche/signer/",
+        "packages/cartouche/mix.exs"
+      ],
+      "body": "Decide first: the scrypt implementation. Pure Elixir scrypt at n=262144 is expected to be slow; the threshold is 2 seconds for the reference vector on the dev machine. Under it, ship pure Elixir (no native build, no supply-chain surface). Over it, add a NIF-backed Hex package — evaluate what is maintained on Hex at implementation time, prefer one already depending only on OTP, and record the choice. pbkdf2 needs no decision: `:crypto.pbkdf2_hmac/5` is in OTP since 24.\n\nWhy: key handling in cartouche is oddly shaped — Google Cloud KMS signing is a first-class backend for both EVM and Solana, but the commodity local paths every Ethereum library ships (mnemonic, HD derivation, keystore file) do not exist anywhere in the family (grep for bip39/mnemonic/keystore/scrypt across all eight packages, 2026-09-16: zero hits). A developer with an anvil mnemonic or a geth keystore file cannot get a signer out of this stack without a second library.\n\nPoint arithmetic for non-hardened derivation needs secp256k1 point addition; cartouche already depends on `curvy` for signing (signer/curvy.ex) — read what it exposes before adding a dependency.\n\nAuthority: the BIP-39 and BIP-32 specifications and their published test vectors; the Web3 Secret Storage definition and its two vectors; anvil's derived accounts as a live cross-check; one external reference tool accepting a keystore this code writes.\n\nDispatch trigger: signing and key-material surface — security-marked, needs an independent reviewer on redaction and KDF correctness.\n",
+      "created_at": "2026-09-16",
+      "scored_at": "2026-09-16",
+      "cross_repo": []
+    },
+    {
+      "id": "9016",
+      "phase": 2000,
+      "bundle": "cartouche_dev_node_actions",
+      "target_repo": "cartouche",
+      "status": "pending",
+      "title": "Typed dev-node control wrappers — anvil_*/hardhat_*/evm_* (balance, storage, code, nonce, impersonation, mining, time, snapshots, fork reset) under the non-standard-namespace portability contract",
+      "scores": {
+        "d": 3,
+        "b": 5,
+        "u": 6
+      },
+      "eff": 1.83,
+      "dep_layer": 2,
+      "unlocks": 0,
+      "markers": [
+        "parallel"
+      ],
+      "depends_on": [
+        2135
+      ],
+      "assignee": "cursor",
+      "model": "cursor-grok-4.6-high",
+      "acceptance_criteria": [
+        "Wrappers exist for: set balance, set code, set storage slot, set nonce, impersonate / stop impersonating an account, mine N blocks, set next block timestamp, increase time, snapshot / revert, drop a pending transaction, and reset to a fork; each accepts and returns cartouche's usual typed values (integers, `Cartouche.Hex` addresses, binaries), not raw hex strings",
+        "hardhat-prefixed aliases are exposed for the methods hardhat names differently, dispatching to the same implementation",
+        "Every wrapper follows the portability contract task 2135 defines for the non-standard read surface (namespace marking, refusal classification) so a call against a hosted node fails with the tagged refusal, not a decode crash — pinned by one live test against a real hosted mainnet endpoint",
+        "A live test suite against a real anvil exercises every wrapper at least once and asserts the state change through a standard read (e.g. set balance then `eth_getBalance`; snapshot, mutate, revert, then read back the original), so a wrapper that returns ok without effect fails",
+        "The cartouche test helpers that today hand-roll these calls (test/support/live.ex, rpc_dev_node_test.exs) use the new wrappers, and onchain_evm's integration tests are checked for the same duplication and pointed at them where they call anvil directly",
+        "`mix ci` passes"
+      ],
+      "out_of_scope": [
+        "Starting or supervising an anvil process from Elixir — callers own the node lifecycle",
+        "Simulation — onchain_evm's revm NIF is the in-process path; these wrappers drive a real node",
+        "Ganache or other dev-node dialects"
+      ],
+      "touches": [
+        "packages/cartouche/lib/cartouche/rpc/",
+        "packages/cartouche/test/support/live.ex"
+      ],
+      "body": "viem's test client (`setBalance`, `impersonateAccount`, `mine`, `snapshot`, `revert`, ...) is what makes integration tests against a fork cheap to write; nothing in the family wraps these methods (grep for `anvil_`, `evm_mine`, `evm_snapshot` across lib/ and test/ 2026-09-16: hits only in cartouche's live test helper, cartouche's dev-node test, and onchain_evm's integration tests — all raw strings, each spelling the calls independently).\n\nWrap the surface, typed, and fold the existing hand-rolled call sites onto it. The interesting part is not the wrappers, it is the contract: these are node-privileged, non-standard methods, and task 2135 owns how cartouche marks and classifies such a surface. Build on that contract; do not invent a second marking scheme.\n\nAuthority: the foundry repository's anvil RPC implementation (`crates/anvil/src/eth/api.rs` at a named tag) and the hardhat network reference; the live anvil decides semantics. Note anvil and hardhat disagree in places (task 2131's body records one such divergence for a standard method) — where they do, pin anvil's behaviour and document the hardhat difference.\n\nDispatch trigger: parallel-safe, self-contained, and gives the family's integration tests a shared surface — worth a reviewer confirming the state-change assertions are real rather than shape checks.\n",
+      "created_at": "2026-09-16",
+      "scored_at": "2026-09-16",
+      "cross_repo": []
+    },
+    {
+      "id": "9017",
+      "phase": 3010,
+      "bundle": "onchain_client",
+      "target_repo": "onchain",
+      "status": "pending",
+      "title": "Onchain.Client — one struct binding chain, transport and optional signer, accepted everywhere `rpc_url` is today, with wait_for_transaction_receipt (confirmations, timeout, replacement detection)",
+      "scores": {
+        "d": 6,
+        "b": 9,
+        "u": 8
+      },
+      "eff": 1.42,
+      "dep_layer": 1,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [
+        "9013"
+      ],
+      "assignee": "cursor",
+      "model": "cursor-grok-4.6-high",
+      "acceptance_criteria": [
+        "`Onchain.Client.new/1` builds a struct from a chain (registry atom, id, or `Cartouche.Chain` struct) plus transport options (one URL, a list of URLs, or nothing to use the registry's public URLs) and an optional signer carrier; the struct is inspectable without leaking signer secrets",
+        "Every public onchain function that reads `opts[:rpc_url]` today also accepts `client: %Onchain.Client{}` in `opts` and resolves URL and chain from it through one shared helper; `rpc_url` keeps working unchanged and a test asserts the two paths produce identical requests",
+        "`wait_for_transaction_receipt(client, hash, opts)` polls with a configurable interval and timeout, returns the receipt once `confirmations:` blocks have followed it, returns an explicit timeout error, and detects a replacement (same sender, same nonce mined under a different hash) returning the replacement receipt tagged as such — replacement detection is pinned by an anvil test that sends, then replaces with a higher fee before mining",
+        "A live mainnet test waits on an already-mined known hash and returns immediately with decoded domain fields; a live anvil test with automine off sends a transaction, mines after a delay, and asserts the wait resolves",
+        "`Onchain.Signer.send_transaction/3` accepts the client's signer so `client |> send_transaction(tx) |> wait_for_transaction_receipt()` is a working pipeline end to end on anvil",
+        "Moduledocs show the client as the primary entry point in README and the package CLAUDE.md, with the bare `rpc_url` form documented as still supported",
+        "`mix ci` passes in onchain"
+      ],
+      "out_of_scope": [
+        "The chain registry itself — cartouche task in bundle cartouche_chain_registry (a dependency)",
+        "Fallback transport internals — the cartouche transport-fallback task; the client passes a URL list through when that lands and a single URL until then",
+        "Removing the `rpc_url` option — deprecation is a later, separate decision",
+        "`watch_*` polling facades — task 3090 owns log/block/pending polling"
+      ],
+      "touches": [
+        "packages/onchain/lib/onchain/client.ex",
+        "packages/onchain/lib/onchain/rpc.ex",
+        "packages/onchain/lib/onchain/contract.ex",
+        "packages/onchain/lib/onchain/signer.ex",
+        "packages/onchain/lib/onchain/multicall.ex",
+        "packages/onchain/lib/onchain/ens.ex"
+      ],
+      "body": "Decide first (defaults written in, vetoable):\n\n1. Does the client carry a signer? Default yes, optional — the `{backend, config}` carrier task 3089 routes `Onchain.Signer` through — so one struct covers viem's public+wallet client split. Read-only clients simply leave it nil.\n\n2. How is the client threaded through the existing surface? Default: an `opts[:client]` key resolved by one helper next to wherever `rpc_url` is read today, so no public arity changes and every existing call site keeps working. A positional client argument is more viem-like but is a breaking change across ~30 functions; not this task.\n\nWhy: the substrate is strong and the client layer is missing. Every onchain function takes `rpc_url` in opts, there is no notion of which chain a call is for beyond the URL, and there is no `waitForTransactionReceipt` equivalent anywhere in the family (grep for receipt polling 2026-09-16: none) — the single most-used viem DX affordance after `readContract`. Replacement detection matters in practice: a fee-bumped resend under a new hash makes a naive poll on the old hash hang until timeout.\n\nReplacement detection design hint, not a mandate: viem does it by remembering the sender and nonce from `eth_getTransactionByHash` at the start and, when the original hash stops being found, scanning newly mined blocks for a transaction with that sender and nonce. Any approach that passes the anvil replacement test is fine.\n\nAuthority: the live node (mainnet for the mined-receipt case, anvil for the pending and replacement cases); `ethereum/execution-apis` for receipt and transaction object shapes.\n\nDispatch trigger: cross-cutting change through the whole read/write surface plus a money-path pipeline (send then wait) with live evidence — earns an independent reviewer.\n",
+      "created_at": "2026-09-16",
+      "scored_at": "2026-09-16",
+      "cross_repo": []
+    },
+    {
+      "id": "9018",
+      "phase": 3010,
+      "bundle": "onchain_siwe",
+      "target_repo": "onchain",
+      "status": "pending",
+      "title": "Onchain.SIWE — EIP-4361 Sign-In with Ethereum: build, parse and verify messages, EIP-191 for EOAs and EIP-1271 for contract wallets",
+      "scores": {
+        "d": 4,
+        "b": 5,
+        "u": 4
+      },
+      "eff": 1.13,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [
+        "security"
+      ],
+      "depends_on": [],
+      "assignee": "grok",
+      "model": "grok-4.6",
+      "acceptance_criteria": [
+        "A message struct renders to the exact EIP-4361 string format (field order, blank lines, optional fields, resources list) and parses back from that string per the spec ABNF; every case in spruceid/siwe's `parsing_positive.json` parses to the documented fields and every case in `parsing_negative.json` is rejected",
+        "Verification checks: signature recovers to the stated address (EIP-191 personal_sign), domain matches the expected domain, nonce meets the spec minimum, and issued-at / expiration-time / not-before are enforced against a caller-supplied clock; every case in spruceid/siwe's `verification_positive.json` and `verification_negative.json` behaves as documented",
+        "Contract-wallet verification calls `isValidSignature` (EIP-1271) via `eth_call` when the address has code, and a live test verifies one real EIP-1271 signature against a deployed smart-account on a testnet or a mainnet fixture; a second live test pins the rejection when the contract returns a non-magic value",
+        "Nonce generation is exposed and uses `:crypto.strong_rand_bytes`; the library does not store or check nonce uniqueness (the application owns that) and the moduledoc says so",
+        "`mix ci` passes; Sobelow reports nothing new"
+      ],
+      "out_of_scope": [
+        "Session storage, nonce replay protection, or a Plug/Phoenix integration — mpp or the consuming app owns that",
+        "EIP-6492 (predeploy signature validation) — a follow-up if a consumer needs counterfactual accounts",
+        "Any wallet-side (signing) UI flow"
+      ],
+      "touches": [
+        "packages/onchain/lib/onchain/siwe.ex",
+        "packages/onchain/lib/onchain/siwe/"
+      ],
+      "body": "Honest score: no consumer in the family needs this today; the demand signal is the viem-parity review of 2026-09-16 and the fact that mpp is a Phoenix app that will eventually authenticate wallets. B and U are set accordingly — this is the lowest-priority task in the parity set and should be picked up last.\n\nBuild EIP-4361 as a pure library: construct, render, parse, verify. The rendering format is byte-sensitive (clients sign the exact string), so the spec's ABNF and the spruceid reference vectors are the contract, not a hand-written template. EIP-191 recovery already exists in `Cartouche.Recover` (`prefix_eth/1`) — reuse it. EIP-1271 needs an `eth_call` with the `isValidSignature(bytes32,bytes)` selector against the address when it has code; `Onchain.Contract.call/5` and hieroglyph cover the encoding.\n\nAuthority: EIP-4361 text and the spruceid/siwe repository's JSON test vectors at a named commit; a live EIP-1271 verification against a real deployed contract wallet for the smart-account path.\n\nDispatch trigger: authentication-adjacent signature verification — security-marked, and the reference-vector suite gives a reviewer something concrete to check the implementation against.\n",
+      "created_at": "2026-09-16",
+      "scored_at": "2026-09-16",
       "cross_repo": []
     }
   ]
