@@ -559,11 +559,13 @@ aggregate covers the common case — evaluating across the family — not that o
 
 Two residual facts, deliberately left alone rather than "tidied":
 
-- `~/.claude/tidewave-ports.md` retired the seven non-cartouche ports on
-  2026-08-27 and still registers 4013 as "onchain-stack, all 8 packages share
-  this one port." That line is wrong — 4013 is cartouche alone — and the
-  registry's own 4037 row now says so. The `mix.exs` aliases never followed the
-  retirement either, so the registry and the repo still disagree about the seven.
+- `~/.claude/tidewave-ports.md` was reconciled with this repo on 2026-09-16:
+  the seven package ports are un-retired, 4013 names cartouche rather than "all
+  8 packages", and a note records that the convergence was rejected. It also
+  flags one latent collision worth knowing: **4007 (onchain) is `live_debugger`'s
+  default port** — harmless while onchain is a library with no Phoenix dev
+  server, but any Phoenix app running alongside must pin `live_debugger` to the
+  registry's `41xx` band instead of taking the default.
 - Seven packages still carry `.cursor/mcp.json`, `.codex/config.toml` and
   `.grok/config.toml` (21 tracked files) pointing at their pre-merge port, and
   some at the pre-rename `harness_tidewave` server name. f9d6102 consolidated
