@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## v0.10.1 — low-s signature recovery (2026-09-16)
 
 ### Fixed
 
