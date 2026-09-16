@@ -25,6 +25,19 @@ All notable changes to this project will be documented in this file.
 
 ## [0.9.1] — 2026-09-15
 
+### Added
+
+* **`docs/coming-from-ethers-viem.md` — a translation table from ethers v6 /
+  viem to Cartouche, by area.** Name mappings for hex, units, hashing, keys,
+  messages and EIP-712, transactions, RPC reads, contract calls (pointing into
+  hieroglyph's `ABI.*`), filters, node-managed accounts and chains, with a
+  *Difference* column wherever the semantics diverge — `Signer.sign/3` adding
+  no EIP-191 prefix and defaulting `v` to EIP-155, `to_wei/1` raising where
+  viem rounds, no checksum validation anywhere, `execute_trx/3` simulating by
+  default. Gaps are named with their roadmap task ids (9013–9018) or the
+  package that owns them. Shipped in the Hex tarball (`docs/` is now in
+  `files:`) and as an ExDoc extra.
+
 ### Changed
 
 * **`Cartouche.Hash.keccak/1` now hashes on the `ex_keccak` Rust NIF instead of

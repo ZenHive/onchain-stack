@@ -34,7 +34,7 @@ defmodule Cartouche.MixProject do
       source_url: @source_url,
       docs: [
         main: "readme",
-        extras: ["README.md", "CHANGELOG.md"],
+        extras: ["README.md", "CHANGELOG.md", "docs/coming-from-ethers-viem.md"],
         # CHANGELOG entries reference hidden generated modules (e.g.
         # `Cartouche.Contract.IConsole`, which has `@moduledoc false`) as
         # historical narrative — not as API documentation. ex_doc otherwise
@@ -107,7 +107,7 @@ defmodule Cartouche.MixProject do
 
   defp package do
     [
-      files: ["lib", "mix.exs", "README*", "LICENSE*", "CHANGELOG*"],
+      files: ["lib", "docs", "mix.exs", "README*", "LICENSE*", "CHANGELOG*"],
       maintainers: ["ZenHive"],
       licenses: ["MIT"],
       links: %{
