@@ -4,7 +4,7 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## [Unreleased]
+## v0.5.0 — V4 position wrappers, debt-token reads, stable-rate retirement (2026-09-16)
 
 ### Fixed
 

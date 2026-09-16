@@ -7,7 +7,7 @@ Aave V3 and V4 protocol wrappers for Elixir -- V3 pool reads/writes, V4 Hub-and-
 ```elixir
 def deps do
   [
-    {:onchain_aave, "~> 0.3"}
+    {:onchain_aave, "~> 0.5"}
   ]
 end
 ```
