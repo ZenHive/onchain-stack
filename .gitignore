@@ -9,3 +9,6 @@
 erl_crash.dump
 *.ez
 .hex-docs/
+
+# Local state written by the dependency-advisory watch hook — per-machine, not shared.
+.dep-audit-watch.json
