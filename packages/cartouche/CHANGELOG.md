@@ -14,16 +14,7 @@ All notable changes to this project will be documented in this file.
 <a id="phase-11-hieroglyph-1-0-0-1-4-0-adoption-advisory"></a>
 <a id="phase-12-agent-economy-descripex-adoption"></a>
 
-## [Unreleased]
-
-### Fixed
-
-- Normalize high-s signatures with their recovery bit before public-key recovery,
-  avoiding Curvy's stale-recovery-bit bug. Digest, Ethereum message, personal-sign,
-  and transaction recovery now preserve the signer across equivalent low-s and
-  complement-s encodings. Signing-path normalization is unchanged (task 9006).
-
-## [0.9.1] — 2026-09-15
+## [0.9.1] — 2026-09-16
 
 ### Added
 
@@ -79,6 +70,13 @@ All notable changes to this project will be documented in this file.
   (`onchain_evm` embeds revm through the same mechanism), so it adds no new
   toolchain requirement for consumers. A ZenHive divergence from upstream
   signet: do not cherry-pick it into a PR branch.
+
+### Fixed
+
+- Normalize high-s signatures with their recovery bit before public-key recovery,
+  avoiding Curvy's stale-recovery-bit bug. Digest, Ethereum message, personal-sign,
+  and transaction recovery now preserve the signer across equivalent low-s and
+  complement-s encodings. Signing-path normalization is unchanged (task 9006).
 
 ## [0.9.0] — 2026-08-27
 

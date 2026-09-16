@@ -22,7 +22,7 @@ serialized bytes for the bare-address shorthand.
 ```elixir
 def deps do
   [
-    {:cartouche, "~> 0.8"}
+    {:cartouche, "~> 0.9"}
   ]
 end
 ```
