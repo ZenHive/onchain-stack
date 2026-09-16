@@ -527,35 +527,52 @@ The root `mix.exs` also defines `check.dispatch` — as a **loud failure** that
 prints this instruction and exits nonzero, so a reviewer that runs it at the
 root gets guidance instead of a silent "task not found" or a cheap green.
 
-### MCP config — the root `tidewave` entry means cartouche, nothing broader
+### MCP config — two tidewave ports, and they mean different things
 
-The root `.mcp.json` carries **one** `tidewave` entry, `localhost:4013`, and
-4013 is **cartouche's** dev server. Commit f9d6102 consolidated eight
-per-package `.mcp.json` files into that one root file; eight tidewave entries
-could not survive the merge (they point at eight different ports, one per
-package) and cartouche's was the copy that carried over. The other seven
-packages each still declare their own port in their `mix.exs` `tidewave`
-alias — hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010,
-onchain_aave 4012, onchain_js 4028, onchain_aerodrome 4035 — and **none of
-them is addressable from an agent session in this repo**. Reaching another
-package's Tidewave means editing `.mcp.json` to that package's port first.
+The root `.mcp.json` carries **two** tidewave entries:
 
-Two further facts, deliberately left alone rather than "tidied":
+- **`tidewave` → `localhost:4013` is cartouche's dev server, nothing broader.**
+  Commit f9d6102 consolidated eight per-package `.mcp.json` files into that one
+  root file; eight tidewave entries could not survive the merge (they point at
+  eight different ports, one per package) and cartouche's was the copy that
+  carried over. It has meant "cartouche" ever since, despite sitting at the root.
+- **`tidewave_all` → `localhost:4037` is the monorepo-root aggregate**, added
+  2026-09-16 (`0fb58a6`). The root `mix.exs` declares all eight packages as
+  `only: :dev, override: true` path deps and runs a standalone Bandit serving
+  `Tidewave` on 4037, so one `project_eval` sees all eight applications in a
+  single node and can cross package boundaries in one expression.
 
-- `~/.claude/tidewave-ports.md` retired those seven ports on 2026-08-27 and
-  registers 4013 as "onchain-stack, all 8 packages share this one port." The
-  `mix.exs` aliases never followed, so the registry and the repo disagree.
-  Reconciling them is a **port reassignment**, which is a different decision
-  from documenting what is true today.
+**The eight per-package ports stay as they are — that is a decision, not an
+oversight.** Each package's `mix.exs` still declares its own `tidewave` alias
+(hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010,
+onchain_aave 4012, cartouche 4013, onchain_js 4028, onchain_aerodrome 4035),
+and distinct ports are the feature: eight package dev servers can run in
+parallel. Converging them on one port was considered and **rejected** — the fix
+for "only cartouche is reachable" is the *additive* root aggregate above, not
+a reassignment. Do not "tidy" these ports into one; a 2026-09-16 session tried
+exactly that and it was reverted.
+
+What this leaves true: reaching one *specific* package's own dev server (say
+onchain_evm on 4009) still means pointing `.mcp.json` at that port first. The
+aggregate covers the common case — evaluating across the family — not that one.
+
+Two residual facts, deliberately left alone rather than "tidied":
+
+- `~/.claude/tidewave-ports.md` retired the seven non-cartouche ports on
+  2026-08-27 and still registers 4013 as "onchain-stack, all 8 packages share
+  this one port." That line is wrong — 4013 is cartouche alone — and the
+  registry's own 4037 row now says so. The `mix.exs` aliases never followed the
+  retirement either, so the registry and the repo still disagree about the seven.
 - Seven packages still carry `.cursor/mcp.json`, `.codex/config.toml` and
   `.grok/config.toml` (21 tracked files) pointing at their pre-merge port, and
   some at the pre-rename `harness_tidewave` server name. f9d6102 consolidated
-  only the Claude Code config; the repo root has no `.cursor/`, `.codex/` or
-  `.grok/` at all.
+  only the Claude Code config. The repo root did gain its own `.cursor/`,
+  `.codex/` and `.grok/` in `0fb58a6`, all pointing at the 4037 aggregate — the
+  21 per-package mirrors were left untouched.
 
 Both are folded into task 9005, which owns this whole surface. Do not resolve
 either by changing ports or deleting those files as a side effect of unrelated
-work — a 2026-09-16 session did exactly that and it was reverted.
+work.
 
 ---
 
