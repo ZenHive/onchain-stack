@@ -16,7 +16,7 @@ The package can be installed by adding `hieroglyph` to your list of dependencies
 ```elixir
 def deps do
   [
-    {:hieroglyph, "~> 1.7"}
+    {:hieroglyph, "~> 1.8"}
   ]
 end
 ```
