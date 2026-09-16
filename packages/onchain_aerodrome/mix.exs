@@ -157,11 +157,8 @@ defmodule OnchainAerodrome.MixProject do
       tidewave: [
         "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4035) end)'"
       ],
-      # Dispatch-scale gate — what the harness reviewer runs per run (registered
-      # as the project's `check_command`). Static checks only: no dialyzer (cold
-      # PLT dominates a fresh worktree), no coverage, no test run — the reviewer
-      # picks focused `mix test.json` invocations for the behavior it touched.
-      # `mix ci` stays the landed-base gate.
+      # Dispatch runs the offline suite as well as static checks. Keep the
+      # heavier coverage, dialyzer and shared advisory sync in mix ci only.
       "check.dispatch": [
         "format --check-formatted",
         "compile --warnings-as-errors",
@@ -169,7 +166,8 @@ defmodule OnchainAerodrome.MixProject do
         "doctor --raise",
         "ex_dna --max-clones 0",
         "reach.check --dead-code --arch --smells",
-        "sobelow --skip --exit low"
+        "sobelow --skip --exit low",
+        ~s(cmd env MIX_ENV=test sh -c 'PATH="$HOME/.foundry/bin:$PATH" exec mix test.json --exclude integration')
       ],
       # Fast local pre-commit loop — skips the cold-PLT dialyzer and the coverage
       # pass so it stays quick on incremental edits.

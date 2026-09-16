@@ -6,6 +6,10 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- Run the offline test suite in `mix check.dispatch`, so a failing test blocks harness review.
+
 ### Breaking
 
 - **`:stable` interest-rate mode is no longer a public API.** Deployed Aave V3

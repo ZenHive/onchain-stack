@@ -44,10 +44,10 @@ defmodule Onchain.Aerodrome.CalldataFixture do
   @doc """
   Simulates calldata with `from` discovered by a live VeSugar.byId read of `owner_id`.
 
-  This evidence cannot prove that a state-mutating call succeeds and commits
-  on-chain: Base simulation is blocked in onchain_evm, and broadcasting a real
-  transaction is out of scope for a test suite. Only the simulated return bytes
-  or the node's specific revert are evidence; no private key is used.
+  This stateless call proves only the simulated return bytes or the node's
+  specific revert, not persisted state. Use a pinned Onchain.EVM fork for
+  stateful evidence; never broadcast a real transaction from this helper.
+  No private key is used.
 
   Returns raw response bytes or the unchanged RPC error (including revert data).
   Uses the current RPCCase endpoint unless overridden by `:rpc_url`. Pass a

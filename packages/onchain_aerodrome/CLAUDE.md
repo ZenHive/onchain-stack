@@ -25,8 +25,8 @@ carries only what's specific to this package.
 
 Canonical gate: **`mix ci`** (= `mix precommit.full`), same shape as every
 other package (root `CLAUDE.md` § Gates). `mix check.dispatch` is the
-per-dispatch reviewer gate (static checks only) and is what this package
-registers as its harness `check_command` reference.
+per-dispatch reviewer gate (static checks plus the complete offline test suite)
+and is what this package registers as its harness `check_command` reference.
 
 - **The coverage floor lives in `mix.exs` (`--cover-threshold`) — read the
   current value there, never from prose**; it was set from a measured
@@ -42,18 +42,17 @@ registers as its harness `check_command` reference.
 - `deps.audit.gated` runs against `.mix_audit_ignore` (symlinked from the
   root file — see root `CLAUDE.md` § Adjudicated findings).
 
-## 🚨 Base simulation is blocked — do not write revm fork tests
+## Base fork simulation
 
-`onchain_evm`'s revm binding **hard-rejects any chain id other than 1**. `spec_id_for_fork` in `native/onchain_evm/src/lib.rs:98-101` returns an error because "the hardfork schedule is known only for Ethereum mainnet"; the Elixir side documents it at `lib/onchain/evm.ex:38-39`. Forking Base (8453) returns `{:error, {:fork_error, _}}`.
+`onchain_evm` supports the Base/Optimism hardfork schedule and preserves the
+fork chain ID in calls, transactions and batches. A caller can select `:spec_id`
+explicitly when testing a particular EVM revision. Pinned Base fork tests are
+supported; the engine still models EVM execution, not every OP Stack system rule.
 
-Consequences, all of them load-bearing:
-
-- **Do not** write `Onchain.EVM` fork tests against a pinned Base block. They cannot run. An external spec for this package prescribed exactly that; it is wrong.
-- **Do not** "fix" it by patching `deps/onchain_evm/`. Never edit anything under `deps/`.
-- `onchain_evm` is still a legitimate dev/test dependency here — for `Onchain.Solidity` ABI parsing and `Onchain.Contract.Generator` codegen, **not** for simulation.
-- **Determinism comes from golden fixtures plus a pinned block number**, not from a local EVM. Capture real `eth_call` return data once, commit it, and decode against it offline.
-
-**Un-block condition:** an upstream `onchain_evm` change adding an OP-Stack/Base `spec_id` mapping, or a caller-supplied `:spec_id` option. A task for that is filed in the root roadmap (offset +6000 for onchain_evm). When it lands, simulation-backed write tests become possible and this section should be rewritten, not deleted.
+Golden fixtures remain the offline evidence for deployed Sugar responses.
+Use stateful fork simulation when a test must observe changes across calls;
+`eth_call` alone proves only return bytes or a revert, not persisted state.
+Never patch a dependency or broadcast a real transaction for these tests.
 
 ## 🚨 Sugar drift is the standing hazard
 
@@ -231,5 +230,5 @@ There is no Basescan/Etherscan API key on this host — Sourcify v2 is the ABI s
 
 - **onchain** — Core Ethereum primitives: `sibling(:onchain, "~> 0.13")`
 - **onchain_aave** — The sibling protocol wrapper this package's shape is modelled on
-- **onchain_evm** — Rust NIFs + codegen: `sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])` (ABI parsing and codegen only — **simulation against Base is blocked**, see above)
+- **onchain_evm** — Rust NIFs + codegen: `sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])` (ABI parsing, codegen and pinned Base fork simulation)
 - **descripex** — Runtime API discovery (`OnchainAerodrome.describe/0..2`)

@@ -156,8 +156,8 @@ truth; sibling/3 calls are the source):
 - onchain → `sibling(:cartouche, ...)`, `descripex ~> ...`, `zen_websocket ~> 0.9.0`
 - onchain_aerodrome → `sibling(:onchain, ...)`, `descripex ~> ...`, plus a
   dev/test-only `sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])` — ABI
-  parsing and codegen only, never simulation (revm rejects non-mainnet chain
-  ids, so Base forks are impossible today)
+  parsing, codegen and pinned Base fork simulation (with the Base hardfork
+  schedule and fork chain identity preserved)
 - onchain_evm / onchain_js → `sibling(:onchain, ...)`, `descripex ~> ...`
 - onchain_tempo → `sibling(:onchain, ...)`, `sibling(:cartouche, ...)`,
   `descripex ~> ...`
@@ -546,7 +546,13 @@ registrations from the standalone era are retired — write-set collisions that
 used to require cross-repo coordination now happen naturally inside one repo,
 and harness serializes overlapping waves on its own.
 
-The dispatch-scale gate is **per package**: each package defines its own
+The dispatch-scale gate is **per package**: every package's `check.dispatch`
+runs its offline test suite as well as static checks. Aerodrome requires
+Foundry `cast` for independent calldata tests; its dispatch test command prepends
+`$HOME/.foundry/bin` to PATH (the standard Foundry installation directory).
+Verified on `blockwatch-harness`: `~/.foundry/bin/cast` version 1.8.3 is installed;
+the service PATH alone does not include it. Missing cast fails with installation
+instructions. Each package defines its own
 `check.dispatch` (a lighter gate than `mix ci` — no `agents.check`, since
 harness writes an ephemeral `AGENTS.md` preamble into the reviewer worktree
 that would always read as drift; no `deps.audit.gated`, whose shared advisory

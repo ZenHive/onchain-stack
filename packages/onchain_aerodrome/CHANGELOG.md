@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Run the offline test suite in `mix check.dispatch`, so a failing test blocks harness review.
+
 ### Changed
 
 - ABI function entries are resolved by **name and input types**, through one
