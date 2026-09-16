@@ -23,8 +23,9 @@ where the `ABI.*` modules live.
 2. **`Cartouche.Signer.sign/3` is not `signMessage`.** It keccaks the bytes it
    is given and signs that digest — **no EIP-191 prefix**, and `v` is
    EIP-155-encoded (`chain_id * 2 + 35 + recid`) by default, which can exceed
-   one byte. To produce what a wallet or `verifyMessage` expects, prefix and
-   force `v` to 27/28 yourself: `Cartouche.Signer.sign(Cartouche.Recover.prefix_eth(msg), signer, chain_id: 0)`.
+   one byte. `Cartouche.Signer.sign_message/3` is the wallet-compatible form —
+   it adds the prefix and fixes `v` to 27/28; use it wherever ethers or viem
+   would call `signMessage`.
 3. **A signer is a process, not a value.** `new Wallet(pk)` becomes a supervised
    `Cartouche.Signer` GenServer (started from config or
    `Cartouche.Signer.start_link/1`), addressed by name or pid through the
@@ -88,7 +89,7 @@ precision — there is no `BigNumber`/`bigint` distinction anywhere.
 
 | ethers v6 | viem | Cartouche | Difference |
 |---|---|---|---|
-| `signer.signMessage(msg)` | `signMessage` | `Cartouche.Signer.sign(Cartouche.Recover.prefix_eth(msg), signer, chain_id: 0)` | **two divergences** — no automatic EIP-191 prefix, and `v` is EIP-155 unless `chain_id: 0`; see rule 2 |
+| `signer.signMessage(msg)` | `signMessage` | `Cartouche.Signer.sign_message/3` | — (`sign/3` is the unprefixed, EIP-155 primitive — see rule 2) |
 | `hashMessage(msg)` | `hashMessage` | `Cartouche.Hash.keccak(Cartouche.Recover.prefix_eth(msg))` | — |
 | `verifyMessage(msg, sig)` | `recoverMessageAddress` / `verifyMessage` | `Cartouche.Recover.recover_personal_sign/2` | returns the 20-byte address — compare it yourself; accepts packed `r‖s‖v` with `v` in `{0, 1, 27, 28, EIP-155}` or a `%Curvy.Signature{}` |
 | `recoverAddress(digest, sig)` | `recoverAddress` | `Cartouche.Recover.recover_eth_from_digest/2` | — |

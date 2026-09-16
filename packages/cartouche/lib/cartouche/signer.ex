@@ -140,6 +140,47 @@ defmodule Cartouche.Signer do
     GenServer.call(name, {:sign, {message, chain_id}})
   end
 
+  api(:sign_message, "Sign a message the way a wallet's personal_sign / ethers signMessage does.",
+    params: [
+      message: [kind: :value, description: "Message bytes or string; the EIP-191 envelope is added here."],
+      name: [kind: :value, default: Default, description: "Signer GenServer name or pid."],
+      opts: [kind: :value, default: [], description: "Keyword options forwarded to `sign/3`; `:chain_id` is fixed to 0."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, signature}` as a 65-byte `r || s || v` with `v` in 27/28, verifiable with `Cartouche.Recover.recover_personal_sign/2`, or `{:error, reason}`."
+    },
+    composes_with: [:sign]
+  )
+
+  @doc """
+  Signs a message as `personal_sign` / ethers `signMessage` / viem `signMessage` do.
+
+  Two differences from `sign/3`, both of which trip callers coming from
+  JavaScript libraries: the EIP-191 `"\\x19Ethereum Signed Message:\\n"` prefix is
+  applied before hashing, and `v` is 27/28 rather than the EIP-155 form.
+  `sign/3` remains the primitive for transaction and EIP-712 digests, which
+  must **not** carry the prefix.
+
+  ## Examples
+
+      iex> signer_proc = Cartouche.Test.Signer.start_signer()
+      iex> {:ok, sig} = Cartouche.Signer.sign_message("hello", signer_proc)
+      iex> Cartouche.Recover.recover_personal_sign("hello", sig) |> Cartouche.Hex.to_address()
+      "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
+
+      iex> signer_proc = Cartouche.Test.Signer.start_signer()
+      iex> {:ok, <<_r::256, _s::256, v>>} = Cartouche.Signer.sign_message("hello", signer_proc)
+      iex> v in [27, 28]
+      true
+  """
+  @spec sign_message(binary(), GenServer.server(), Keyword.t()) ::
+          {:ok, Cartouche.signature()} | {:error, term()}
+  def sign_message(message, name \\ Default, opts \\ []) do
+    sign(Cartouche.Recover.prefix_eth(message), name, Keyword.put(opts, :chain_id, 0))
+  end
+
   api(:address, "Get the Ethereum address controlled by a signer process.",
     params: [
       name: [kind: :value, default: Default, description: "Signer GenServer name or pid."]

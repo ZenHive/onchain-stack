@@ -27,6 +27,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+* **`Cartouche.Signer.sign_message/3`** — the `personal_sign` / ethers
+  `signMessage` form: applies the EIP-191 envelope and returns a 65-byte
+  signature with `v` in 27/28, verifiable with `Recover.recover_personal_sign/2`.
+  `sign/3` is unchanged as the unprefixed, EIP-155 primitive for transaction
+  and EIP-712 digests; the new function exists because every caller arriving
+  from ethers/viem assumed `sign/3` was `signMessage`, and the two divergences
+  (no prefix, EIP-155 `v`) only surfaced at the wallet.
 * **`docs/coming-from-ethers-viem.md` — a translation table from ethers v6 /
   viem to Cartouche, by area.** Name mappings for hex, units, hashing, keys,
   messages and EIP-712, transactions, RPC reads, contract calls (pointing into
