@@ -1,0 +1,28 @@
+# Mirrors the repo-root .mcp.json for Grok. Only the HTTP servers are mirrored;
+# .mcp.json's chrome-devtools entry is stdio and is deliberately left out rather
+# than guessed at.
+#
+# `tidewave_all` (4037) is the monorepo-root server: `mix tidewave` at the root
+# loads all eight packages into one node, so a single project_eval crosses
+# package boundaries. `tidewave` (4013) is cartouche's own dev server and
+# nothing broader — the other seven packages each bind their own port
+# (hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010,
+# onchain_aave 4012, onchain_js 4028, onchain_aerodrome 4035) so that several
+# package dev servers can run in parallel, and none of those is reachable from
+# here without pointing a client at that port.
+
+[mcp_servers.tidewave]
+url = "http://localhost:4013/tidewave/mcp"
+enabled = true
+
+[mcp_servers.tidewave_all]
+url = "http://localhost:4037/tidewave/mcp"
+enabled = true
+
+[mcp_servers.harness]
+url = "http://localhost:4018/harness/mcp"
+enabled = true
+
+[mcp_servers.harness_eval]
+url = "http://localhost:4018/tidewave/mcp"
+enabled = true
