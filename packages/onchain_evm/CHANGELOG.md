@@ -4,7 +4,7 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## [Unreleased]
+## [0.7.1] — 2026-09-16
 
 ### Fixed
 
