@@ -213,7 +213,13 @@ defmodule OnchainTempo.MixProject do
         "reach.check --arch --smells",
         "sobelow --skip --exit low",
         "deps.audit.gated",
-        "cmd env MIX_ENV=test mix test.json --cover --cover-threshold 90 --summary-only --exclude integration",
+        # `--summary-only` is deliberately OMITTED here: the flag is in
+        # ex_unit_json's `retry_disqualified_opts?/1` list, so it silently
+        # disables the tool's own automatic retry-on-flaky. Dropping it
+        # restores both: real flakes retry and heal (exit 0, named in a
+        # `flaky` array instead of blocking), and a confirmed failure prints
+        # full assertion detail instead of a bare summary line.
+        "cmd env MIX_ENV=test mix test.json --cover --cover-threshold 90 --exclude integration",
         "dialyzer",
         # AGENTS.md is what the cross-family (codex/cursor/grok) reviewers read;
         # a stale render makes them gate against rules that already changed.

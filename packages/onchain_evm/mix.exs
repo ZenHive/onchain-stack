@@ -215,6 +215,13 @@ defmodule OnchainEvm.MixProject do
         "test.json --exclude integration"
       ],
       # Comprehensive gate — landed-base Architect/QA pass and `mix ci` target.
+      #
+      # `--summary-only` is deliberately OMITTED from the test.json step below:
+      # the flag is in ex_unit_json's `retry_disqualified_opts?/1` list, so it
+      # silently disables the tool's own automatic retry-on-flaky. Dropping it
+      # restores both: real flakes retry and heal (exit 0, named in a `flaky`
+      # array instead of blocking), and a confirmed failure prints full
+      # assertion detail instead of a bare summary line.
       "precommit.full": [
         "compile --warnings-as-errors",
         "format --check-formatted",
@@ -224,7 +231,7 @@ defmodule OnchainEvm.MixProject do
         "reach.check --arch --smells",
         "sobelow --skip --exit low",
         "deps.audit.gated",
-        "test.json --cover --cover-threshold 85 --summary-only --exclude integration",
+        "test.json --cover --cover-threshold 85 --exclude integration",
         &cargo_test/1,
         &cargo_clippy/1,
         "dialyzer",

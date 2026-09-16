@@ -215,6 +215,13 @@ defmodule Onchain.MixProject do
       # in .github/workflows/harness.yml (measured baseline: 79.04%). reach's
       # analysis scope (see .reach.exs) includes the `dev` root in addition to
       # `lib`/`src` — do not narrow it.
+      #
+      # `--summary-only` is deliberately OMITTED from the test.json step below:
+      # the flag is in ex_unit_json's `retry_disqualified_opts?/1` list, so it
+      # silently disables the tool's own automatic retry-on-flaky. Dropping it
+      # restores both: real flakes retry and heal (exit 0, named in a `flaky`
+      # array instead of blocking), and a confirmed failure prints full
+      # assertion detail instead of a bare summary line.
       "precommit.full": [
         "compile --warnings-as-errors",
         "format --check-formatted",
@@ -224,7 +231,7 @@ defmodule Onchain.MixProject do
         "reach.check --arch --smells",
         "sobelow --skip --exit low",
         "deps.audit.gated",
-        "cmd env MIX_ENV=test mix test.json --cover --cover-threshold 70 --summary-only --exclude integration",
+        "cmd env MIX_ENV=test mix test.json --cover --cover-threshold 70 --exclude integration",
         "dialyzer",
         # AGENTS.md is what the cross-family (codex/cursor/grok) reviewers read;
         # a stale render makes them gate against rules that already changed.

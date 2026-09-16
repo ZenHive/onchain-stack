@@ -183,10 +183,17 @@ defmodule ABI.Mixfile do
   # 95% coverage gate. Spawns a child `mix` in :test (alias steps ignore
   # `cli/0` preferred_envs); a non-zero exit — test failure or sub-threshold
   # coverage — aborts the precommit run.
+  #
+  # `--summary-only` is deliberately OMITTED: the flag is in ex_unit_json's
+  # `retry_disqualified_opts?/1` list, so it silently disables the tool's own
+  # automatic retry-on-flaky. Dropping it restores both: real flakes retry
+  # and heal (exit 0, named in a `flaky` array instead of blocking), and a
+  # confirmed failure prints full assertion detail instead of a bare summary
+  # line.
   @spec cover_gate([String.t()]) :: nil
   defp cover_gate(_args) do
     args =
-      ~w(test.json --quiet --cover --cover-threshold 95 --summary-only --exclude integration)
+      ~w(test.json --quiet --cover --cover-threshold 95 --exclude integration)
 
     {_out, status} =
       System.cmd("mix", args, env: [{"MIX_ENV", "test"}], into: IO.stream())
