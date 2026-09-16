@@ -33,7 +33,7 @@ than failing the gate). Coverage floor is **85%**.
 
 - **Do not add the cargo steps to `mix check.dispatch`** — a harness worktree
   has no `target/`, so a cold Rust build would be paid on every dispatch.
-- **`reach.check --arch --smells`'s `smells.ignore.paths` entry is scoped to
+- **`reach.check --dead-code --arch --smells`'s `smells.ignore.paths` entry is scoped to
   one metaprogramming-inherent finding** (see the comment in `.reach.exs`) —
   never add to that list to make a new finding disappear.
 - **Rustler NIF + `cover` incompatibility (read before touching coverage).**

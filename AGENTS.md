@@ -448,10 +448,33 @@ remains:
 - **onchain_js** ran `reach.check --arch` **only** for the same crash (JS nodes
   the QuickBEAM plugin contributes carry `source: nil`, and `plugins:` is not a
   `.reach.exs` key, so there was nothing to exclude). Restored 2026-09-16 under
-  reach 2.8.4 — it now runs `reach.check --dead-code --arch --smells`, verified
-  green (Architecture Policy OK, Dead Code none, no smell issues, exit 0). It is
-  now the family's one package running `--dead-code`; the other seven still run
-  `--arch --smells`.
+  reach 2.8.4, verified green by running it.
+
+**`--dead-code` is being rolled out, and four packages are not on it yet.** The
+gate flag is `reach.check --dead-code --arch --smells`; as of 2026-09-16
+hieroglyph, onchain, onchain_evm and onchain_js run it and pass. The other four
+do not, for two different measured reasons — neither is a style preference:
+
+- **cartouche cannot run `--dead-code` at all.** At 67 files in scope
+  (`lib, sol/src, src, test/support`) the pass dies with
+  `** (exit) exited in: Task.Supervised.stream(30000) ** (EXIT) time out` from
+  `Reach.CLI.Pipe.safely/1`, after Architecture Policy has already printed OK.
+  It is a reach-side timeout on the largest package in the family, not a
+  finding. Do not "fix" it by narrowing `.reach.exs` scope — that would hide
+  real analysis to satisfy a tool limit.
+- **onchain_aave, onchain_aerodrome and onchain_tempo are already red on the
+  smell step they run today**, before `--dead-code` is added. reach 2.8.4 ships
+  smell detectors 2.8.2 did not ("Repeated map shapes", "bare rescue",
+  "Suboptimal patterns"), so the reach bump in `51bc9f5` turned three gates red
+  on pre-existing `test/support/` code that nobody changed. Measured
+  2026-09-16 with `MIX_ENV=test mix reach.check --arch --smells`: aave 2
+  findings (`test/support/rpc_stub.ex:42` unused `flunk` result;
+  `test/support/aave_math_mutator.ex` `String.split/2 |> hd/1`, an 11× repeated
+  map shape and a bare rescue), aerodrome 1 (`test/support/types_case.ex:105`
+  `Enum.at/2` inside a loop — from harness delivery `1313135`, not from the
+  2026-09-16 ABI work), tempo 2 (`test/support/tempo_verification/campaign.ex`
+  11× repeated map shape and a bare rescue). Fix the findings, then add the
+  flag; adding the flag first just stacks a second failure on a red gate.
 
 **Never hand-patch `deps/reach` (or anything under any package's `deps/`) to
 work around this.** A hand-edited unpacked tarball makes `mix ci` pass on your

@@ -681,8 +681,9 @@ sobelow). This file carries only what's specific to this package.
 Canonical gate: **`mix ci`** (= `mix precommit.full`), same shape as every
 other package (root `CLAUDE.md` § Gates), with two package-specific notes:
 
-- **This is the family's one package running `reach.check --dead-code --arch
-  --smells`**; the other seven run `--arch --smells`. It spent 2026-08 to
+- **Gate flag is `reach.check --dead-code --arch --smells`** (shared with
+  hieroglyph, onchain and onchain_evm; the other four are not on `--dead-code`
+  yet — root `CLAUDE.md` § Adjudicated findings says why). It spent 2026-08 to
   2026-09 on `--arch` only, because reach ≤ 2.8.2 crashed its whole smell pass
   on the JavaScript nodes the QuickBEAM plugin contributes (`source: nil`, and
   `plugins:` is not a `.reach.exs` key, so there was nothing to exclude).

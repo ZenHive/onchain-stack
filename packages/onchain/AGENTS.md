@@ -925,7 +925,7 @@ Canonical gate: **`mix ci`** (= `precommit.full`), same shape as every other
 package (root `CLAUDE.md` § Gates). Coverage floor here is **70%**. `mix
 precommit` is the fast local loop (no dialyzer/coverage).
 
-- **`reach.check --arch --smells` is scanned across `roots=dev, lib, src`** —
+- **`reach.check --dead-code --arch --smells` is scanned across `roots=dev, lib, src`** —
   do not narrow that scope.
 - **`deps.audit.gated`** runs against `.mix_audit_ignore` (symlinked from the
   root file — see root `CLAUDE.md` § Adjudicated findings for the gun/cowlib

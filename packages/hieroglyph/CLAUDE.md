@@ -62,11 +62,11 @@ coverage gate (`test.json --cover --cover-threshold 95 --exclude integration`)
   a `.hieroglyph-mutants.orig` sidecar; a leftover sidecar means an
   interrupted run and the task refuses to start until cleared
   (`git checkout -- lib/ && rm lib/**/*.hieroglyph-mutants.orig`).
-- **`reach.check --arch --smells` needs `.reach.exs` scoped to
-  `source_paths: ["lib", "test/support"]`** — this package is one of the two
-  reach #36 workarounds (root `CLAUDE.md` § Adjudicated findings): without
-  the scope, reach's smell pass crashes on the yecc/leex-generated Erlang
-  under `src/`, which is unfixable-by-definition anyway.
+- **`reach.check --dead-code --arch --smells` needs `.reach.exs` scoped to
+  `source_paths: ["lib", "test/support"]`** — the scope predates
+  elixir-vibe/reach#36 (fixed upstream in 2.8.3) and outlives it: a smell in
+  the yecc/leex-generated Erlang under `src/` is unfixable by definition, so
+  excluding it is right regardless of the bug. Keep it.
 - **`.sobelow-skips` here has only 2 lines and suppresses nothing** (this
   package sits at zero sobelow findings even without `--skip`) — it's
   vestigial; deleting it is the cheaper fix if you're ever touching it,

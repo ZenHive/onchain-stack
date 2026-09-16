@@ -159,7 +159,7 @@ defmodule ABI.Mixfile do
         # because Mix runs a given task name at most once per VM.
         &manifest_check/1,
         "ex_dna --max-clones 0",
-        "reach.check --arch --smells",
+        "reach.check --dead-code --arch --smells",
         "deps.audit.gated",
         "dialyzer.json --quiet",
         "agents.check"
