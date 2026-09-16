@@ -525,6 +525,36 @@ The root `mix.exs` also defines `check.dispatch` — as a **loud failure** that
 prints this instruction and exits nonzero, so a reviewer that runs it at the
 root gets guidance instead of a silent "task not found" or a cheap green.
 
+### MCP config — the root `tidewave` entry means cartouche, nothing broader
+
+The root `.mcp.json` carries **one** `tidewave` entry, `localhost:4013`, and
+4013 is **cartouche's** dev server. Commit f9d6102 consolidated eight
+per-package `.mcp.json` files into that one root file; eight tidewave entries
+could not survive the merge (they point at eight different ports, one per
+package) and cartouche's was the copy that carried over. The other seven
+packages each still declare their own port in their `mix.exs` `tidewave`
+alias — hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010,
+onchain_aave 4012, onchain_js 4028, onchain_aerodrome 4035 — and **none of
+them is addressable from an agent session in this repo**. Reaching another
+package's Tidewave means editing `.mcp.json` to that package's port first.
+
+Two further facts, deliberately left alone rather than "tidied":
+
+- `~/.claude/tidewave-ports.md` retired those seven ports on 2026-08-27 and
+  registers 4013 as "onchain-stack, all 8 packages share this one port." The
+  `mix.exs` aliases never followed, so the registry and the repo disagree.
+  Reconciling them is a **port reassignment**, which is a different decision
+  from documenting what is true today.
+- Seven packages still carry `.cursor/mcp.json`, `.codex/config.toml` and
+  `.grok/config.toml` (21 tracked files) pointing at their pre-merge port, and
+  some at the pre-rename `harness_tidewave` server name. f9d6102 consolidated
+  only the Claude Code config; the repo root has no `.cursor/`, `.codex/` or
+  `.grok/` at all.
+
+Both are folded into task 9005, which owns this whole surface. Do not resolve
+either by changing ports or deleting those files as a side effect of unrelated
+work — a 2026-09-16 session did exactly that and it was reverted.
+
 ---
 
 ## Health & publish tooling
@@ -669,10 +699,3 @@ change warrants it.
   stopped holding is invisible until a consumer trips on it. This is a
   natural growth point for `fleet-health.sh` once it's updated for the
   monorepo layout (a scratch-clone write-ish mode, never the working tree).
-- **`--summary-only` on `test.json --cover` hides both the failure identity
-  and disqualifies the automatic flaky-retry**, and six of the eight packages
-  still carry that flag in their `precommit.full` — hieroglyph, cartouche,
-  onchain, onchain_evm, onchain_js, onchain_tempo. Only onchain_aave and
-  onchain_aerodrome have dropped it. The package-by-package migration started
-  in the standalone era and the merge did not finish it; measured 2026-09-15,
-  tracked as task 9004.
