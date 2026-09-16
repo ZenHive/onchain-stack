@@ -17,7 +17,7 @@ defmodule Onchain.Aerodrome.Types.LpEpochTest do
 
       assert %LpEpoch{} = epoch
 
-      TypesCase.assert_one_to_one(LpEpoch, {"rewards_sugar.json", "epochsLatest"}, row, epoch, %{
+      TypesCase.assert_one_to_one(LpEpoch, {"rewards_sugar.json", "epochsLatest", ["uint256", "uint256"]}, row, epoch, %{
         bribes: TokenAmount,
         fees: TokenAmount
       })

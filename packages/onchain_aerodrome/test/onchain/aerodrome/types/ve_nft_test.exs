@@ -14,7 +14,7 @@ defmodule Onchain.Aerodrome.Types.VeNFTTest do
       venft = VeNFT.from_raw(row)
 
       assert %VeNFT{} = venft
-      TypesCase.assert_one_to_one(VeNFT, {"ve_sugar.json", "byId"}, row, venft, %{votes: Vote})
+      TypesCase.assert_one_to_one(VeNFT, {"ve_sugar.json", "byId", ["uint256"]}, row, venft, %{votes: Vote})
       TypesCase.refute_floats(venft)
     end
 
@@ -34,7 +34,7 @@ defmodule Onchain.Aerodrome.Types.VeNFTTest do
       row = Enum.find(TypesCase.decode_rows("ve_sugar.all"), &(elem(&1, 9) != []))
       venft = VeNFT.from_raw(row)
 
-      TypesCase.assert_one_to_one(VeNFT, {"ve_sugar.json", "byId"}, row, venft, %{votes: Vote})
+      TypesCase.assert_one_to_one(VeNFT, {"ve_sugar.json", "byId", ["uint256"]}, row, venft, %{votes: Vote})
       assert [%Vote{} | _] = venft.votes
       assert hd(venft.votes).lp == Address.checksum!(elem(hd(elem(row, 9)), 0))
       assert hd(venft.votes).weight == elem(hd(elem(row, 9)), 1)

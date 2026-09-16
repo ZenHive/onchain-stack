@@ -20,7 +20,14 @@ defmodule Onchain.Aerodrome.Types.RewardTest do
       reward = Reward.from_raw(@raw)
 
       assert %Reward{} = reward
-      TypesCase.assert_one_to_one(Reward, {"rewards_sugar.json", "rewards"}, @raw, reward)
+
+      TypesCase.assert_one_to_one(
+        Reward,
+        {"rewards_sugar.json", "rewards", ["uint256", "uint256", "uint256"]},
+        @raw,
+        reward
+      )
+
       TypesCase.refute_floats(reward)
     end
 

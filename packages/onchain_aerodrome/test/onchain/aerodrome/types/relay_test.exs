@@ -14,7 +14,7 @@ defmodule Onchain.Aerodrome.Types.RelayTest do
 
       assert %Relay{} = relay
 
-      TypesCase.assert_one_to_one(Relay, {"relay_sugar.json", "all"}, row, relay, %{
+      TypesCase.assert_one_to_one(Relay, {"relay_sugar.json", "all", ["address"]}, row, relay, %{
         votes: Vote,
         account_venfts: AccountVeNFT
       })
@@ -45,7 +45,7 @@ defmodule Onchain.Aerodrome.Types.RelayTest do
       assert hd(relay.account_venfts).amount == amount
       assert hd(relay.account_venfts).earned == earned
 
-      TypesCase.assert_one_to_one(Relay, {"relay_sugar.json", "all"}, row, relay, %{
+      TypesCase.assert_one_to_one(Relay, {"relay_sugar.json", "all", ["address"]}, row, relay, %{
         votes: Vote,
         account_venfts: AccountVeNFT
       })

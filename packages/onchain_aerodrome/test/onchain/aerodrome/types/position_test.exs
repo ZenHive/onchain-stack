@@ -42,7 +42,14 @@ defmodule Onchain.Aerodrome.Types.PositionTest do
       position = Position.from_raw(@raw)
 
       assert %Position{} = position
-      TypesCase.assert_one_to_one(Position, {"lp_sugar.json", "positions"}, @raw, position)
+
+      TypesCase.assert_one_to_one(
+        Position,
+        {"lp_sugar.json", "positions", ["uint256", "uint256", "address"]},
+        @raw,
+        position
+      )
+
       TypesCase.refute_floats(position)
     end
 

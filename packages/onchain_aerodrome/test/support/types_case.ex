@@ -19,20 +19,63 @@ defmodule Onchain.Aerodrome.TypesCase do
     row
   end
 
-  @spec assert_one_to_one(module(), {String.t(), String.t()}, tuple(), struct()) :: :ok
-  @spec assert_one_to_one(module(), {String.t(), String.t()}, tuple(), struct(), map()) :: :ok
-  def assert_one_to_one(module, {abi_file, abi_function}, row, struct, nested \\ %{}) do
-    components = abi_components(abi_file, abi_function)
+  @spec assert_one_to_one(module(), {String.t(), String.t(), [String.t()]}, tuple(), struct()) :: :ok
+  @spec assert_one_to_one(module(), {String.t(), String.t(), [String.t()]}, tuple(), struct(), map()) :: :ok
+  def assert_one_to_one(module, {abi_file, abi_function, input_types}, row, struct, nested \\ %{})
+      when is_list(input_types) do
+    components = abi_components(abi_file, abi_function, input_types)
     assert_one_to_one_components(module, components, row, struct, nested)
   end
 
-  @spec abi_components(String.t(), String.t()) :: [map()]
-  def abi_components(abi_file, abi_function) do
-    abi_file
-    |> abi_entry(abi_function)
-    |> Map.fetch!("outputs")
-    |> hd()
-    |> Map.fetch!("components")
+  @spec abi_components(String.t(), String.t(), [String.t()] | nil) :: [map()]
+  def abi_components(abi_file, abi_function, input_types \\ nil) do
+    entry = abi_entry(abi_file, abi_function, input_types)
+
+    case entry["outputs"] do
+      [%{"components" => components} | _] ->
+        components
+
+      outputs ->
+        flunk("""
+        #{abi_file}: #{signature(abi_function, input_types)} has no tuple output carrying "components"
+        outputs: #{inspect(outputs)}\
+        """)
+    end
+  end
+
+  @spec abi_entry(String.t(), String.t(), [String.t()] | nil) :: map()
+  def abi_entry(abi_file, abi_function, input_types \\ nil) do
+    :onchain_aerodrome
+    |> Application.app_dir("priv/abis")
+    |> Path.join(abi_file)
+    |> File.read!()
+    |> Jason.decode!()
+    |> resolve_entry(abi_file, abi_function, input_types)
+  end
+
+  # The one ABI-entry resolution rule in this package. `input_types` nil means
+  # "match on name alone", which is only legal while the name is unique in the
+  # file: a capture that grows an overload must fail loudly here rather than
+  # silently grade against whichever entry sits first in the JSON array.
+  @spec resolve_entry([map()], String.t(), String.t(), [String.t()] | nil) :: map()
+  def resolve_entry(entries, source, abi_function, input_types) do
+    case Enum.filter(entries, &function_match?(&1, abi_function, input_types)) do
+      [entry] ->
+        entry
+
+      [] ->
+        flunk("""
+        #{source}: no ABI function entry matching #{signature(abi_function, input_types)}
+        candidates named "#{abi_function}": #{candidate_list(entries, abi_function)}\
+        """)
+
+      matches ->
+        flunk("""
+        #{source}: #{length(matches)} ABI function entries match #{signature(abi_function, input_types)}
+        matches: #{Enum.map_join(matches, ", ", &entry_signature/1)}
+        pass the overload's input types explicitly\
+        """)
+    end
   end
 
   @spec refute_floats(term()) :: :ok
@@ -98,14 +141,35 @@ defmodule Onchain.Aerodrome.TypesCase do
     :ok
   end
 
-  @spec abi_entry(String.t(), String.t()) :: map()
-  defp abi_entry(abi_file, abi_function) do
-    :onchain_aerodrome
-    |> Application.app_dir("priv/abis")
-    |> Path.join(abi_file)
-    |> File.read!()
-    |> Jason.decode!()
-    |> Enum.find(&(&1["type"] == "function" and &1["name"] == abi_function))
+  @spec function_match?(map(), String.t(), [String.t()] | nil) :: boolean()
+  defp function_match?(%{"type" => "function", "name" => name}, abi_function, nil) when name == abi_function do
+    true
+  end
+
+  defp function_match?(%{"type" => "function", "name" => name, "inputs" => inputs}, abi_function, input_types)
+       when name == abi_function do
+    Enum.map(inputs, & &1["type"]) == input_types
+  end
+
+  defp function_match?(_entry, _abi_function, _input_types), do: false
+
+  @spec signature(String.t(), [String.t()] | nil) :: String.t()
+  defp signature(abi_function, nil), do: "#{abi_function}(<any inputs>)"
+  defp signature(abi_function, input_types), do: "#{abi_function}(#{Enum.join(input_types, ",")})"
+
+  @spec entry_signature(map()) :: String.t()
+  defp entry_signature(entry) do
+    signature(entry["name"], entry |> Map.get("inputs", []) |> Enum.map(& &1["type"]))
+  end
+
+  @spec candidate_list([map()], String.t()) :: String.t()
+  defp candidate_list(entries, abi_function) do
+    entries
+    |> Enum.filter(&(&1["type"] == "function" and &1["name"] == abi_function))
+    |> case do
+      [] -> "(none)"
+      candidates -> Enum.map_join(candidates, ", ", &entry_signature/1)
+    end
   end
 
   @spec refute_float_value(atom(), term()) :: :ok

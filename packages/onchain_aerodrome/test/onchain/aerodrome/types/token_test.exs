@@ -12,7 +12,14 @@ defmodule Onchain.Aerodrome.Types.TokenTest do
       token = Token.from_raw(row)
 
       assert %Token{} = token
-      TypesCase.assert_one_to_one(Token, {"lp_sugar.json", "tokens"}, row, token)
+
+      TypesCase.assert_one_to_one(
+        Token,
+        {"lp_sugar.json", "tokens", ["uint256", "uint256", "address", "address[]"]},
+        row,
+        token
+      )
+
       TypesCase.refute_floats(token)
       assert is_integer(token.account_balance)
       assert is_boolean(token.listed)

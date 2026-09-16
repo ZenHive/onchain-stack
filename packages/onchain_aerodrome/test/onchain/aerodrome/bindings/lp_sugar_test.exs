@@ -44,7 +44,7 @@ defmodule Onchain.Aerodrome.Bindings.LpSugarTest do
 
       for {raw, row} <- Enum.zip(raw_rows, rows) do
         assert row.__struct__ == unquote(module)
-        TypesCase.assert_one_to_one(unquote(module), {"lp_sugar.json", fixture["function"]}, raw, row)
+        TypesCase.assert_one_to_one(unquote(module), abi_target(fixture), raw, row)
       end
     end
   end
@@ -123,7 +123,7 @@ defmodule Onchain.Aerodrome.Bindings.LpSugarTest do
       assert {:ok, [%Position{} = position]} =
                apply(LpSugar, function, fixture["args"] ++ [fixture_opts(fixture)])
 
-      TypesCase.assert_one_to_one(Position, {"lp_sugar.json", fixture["function"]}, position_row(), position)
+      TypesCase.assert_one_to_one(Position, abi_target(fixture), position_row(), position)
     end
   end
 
@@ -185,6 +185,22 @@ defmodule Onchain.Aerodrome.Bindings.LpSugarTest do
     assert {:error, {:invalid_address, _}} = LpSugar.tokens(10, 0, <<1::160>>, ["bad"])
     assert {:error, {:invalid_address, _}} = LpSugar.alm_estimate_amounts("bad", 1, 1)
   end
+
+  # The fixture's captured `signature` is the overload the eth_call actually
+  # hit, so it is what the ABI entry must be resolved by.
+  defp abi_target(fixture) do
+    [name, args] =
+      fixture
+      |> Map.fetch!("signature")
+      |> String.trim_trailing(")")
+      |> String.split("(", parts: 2)
+
+    assert name == fixture["function"]
+    {"lp_sugar.json", name, input_types(args)}
+  end
+
+  defp input_types(""), do: []
+  defp input_types(args), do: String.split(args, ",")
 
   defp fixture_opts(fixture) do
     rpc_opts(fn data ->

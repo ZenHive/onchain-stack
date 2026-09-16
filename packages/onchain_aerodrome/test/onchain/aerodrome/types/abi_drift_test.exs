@@ -10,14 +10,16 @@ defmodule Onchain.Aerodrome.Types.AbiDriftTest do
   alias Onchain.Aerodrome.Types.Token
   alias Onchain.Aerodrome.Types.VeNFT
   alias Onchain.Aerodrome.Types.Vote
+  alias Onchain.Aerodrome.TypesCase
 
   @types_dir Path.expand("../../../../lib/onchain/aerodrome/types", __DIR__)
 
-  # Drift tests read the captured ABI JSON themselves. Types must not go
-  # through Bindings.Abi: the layer contract forbids that edge, and a helper
-  # that shared Bindings' parse would hide a Sugar re-capture that the
-  # bindings layer had already absorbed.
-  @abi_dir Application.app_dir(:onchain_aerodrome, "priv/abis")
+  # Drift tests resolve against the captured ABI JSON through TypesCase, the
+  # single ABI-entry resolution rule in this package, so the drift check and
+  # the one-to-one assertions can never disagree about which overload a name
+  # means. Types must not go through Bindings.Abi: the layer contract forbids
+  # that edge, and a helper that shared Bindings' parse would hide a Sugar
+  # re-capture that the bindings layer had already absorbed.
 
   describe "ABI field-order drift" do
     test "Lp fields match lp_sugar.json all components in ABI order" do
@@ -123,24 +125,6 @@ defmodule Onchain.Aerodrome.Types.AbiDriftTest do
   end
 
   defp abi_components(file, function, input_types \\ nil) do
-    @abi_dir
-    |> Path.join(file)
-    |> File.read!()
-    |> Jason.decode!()
-    |> Enum.find(&function_match?(&1, function, input_types))
-    |> Map.fetch!("outputs")
-    |> hd()
-    |> Map.fetch!("components")
+    TypesCase.abi_components(file, function, input_types)
   end
-
-  defp function_match?(%{"type" => "function", "name" => name}, function, nil) when name == function do
-    true
-  end
-
-  defp function_match?(%{"type" => "function", "name" => name, "inputs" => inputs}, function, input_types)
-       when name == function do
-    Enum.map(inputs, & &1["type"]) == input_types
-  end
-
-  defp function_match?(_entry, _function, _input_types), do: false
 end

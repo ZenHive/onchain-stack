@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- ABI function entries are resolved by **name and input types**, through one
+  rule shared by `test/support/types_case.ex` and the Types drift test. The
+  drift test already disambiguated overloads (`relay_sugar.json`
+  `all(address)`); `TypesCase.abi_entry/2` matched on the name alone, so a
+  re-capture that grew a second `all` would have graded `Types.Relay` against
+  whichever overload sat first in the JSON array while the drift test stayed
+  green. `assert_one_to_one/4,5` now takes `{file, function, input_types}`, an
+  unresolvable lookup fails naming the file, the sought signature and the
+  candidates it did find instead of raising on `nil`, and a bare-name lookup
+  that matches more than one entry is rejected rather than guessed.
+
 - The `.reach.exs` layer contract now **enforces** what it documents. The 0.1.0
   entry below records that it did not: the gate forbade `bindings -> types`
   which the layer table requires, and nothing stopped an analytics or math
