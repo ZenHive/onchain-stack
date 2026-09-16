@@ -17,6 +17,17 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
   `BASE_RPC_URL` is used when `--rpc-url` is omitted, falling back to
   `https://mainnet.base.org`. `captured_at` is the block timestamp so two runs
   at the same block produce byte-identical files.
+
+  `--nonempty` captures two positive decode witnesses in the separate
+  `test/fixtures/aerodrome/nonempty/` collection, preserving the original empty
+  pagination cases. It requires explicit `--position-account`,
+  `--reward-venft-id`, and `--reward-pool`; `--position-offset` defaults to zero.
+  The capture fails before writing if either response has no rows.
+
+      mix aerodrome.capture_fixtures --nonempty --block 51348944 \\
+        --rpc-url https://mainnet.base.org \\
+        --position-account 0x50f0249b824033cf0af0c8b9fe1c67c2842a34d5 \\
+        --reward-venft-id 10 --reward-pool 0x42d4a22CaD0F5a49681a5715cE994Af73A43B76b
   """
 
   use Mix.Task
@@ -48,13 +59,15 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
     |> capture()
   end
 
-  @doc "Capture and write fixtures. Accepts `:block`, `:rpc_url`, `:out`, and RPC stubs."
+  @doc "Capture fixtures with `:block`, `:rpc_url`, `:out`, optional `:nonempty` selectors, and RPC stubs."
   @spec capture(keyword()) :: :ok
   def capture(opts) do
     block = required_block!(opts)
     rpc_url = opts[:rpc_url] || System.get_env("BASE_RPC_URL") || @default_rpc
-    out_dir = opts[:out] || @default_out
-    ctx = context(opts, block, rpc_url, out_dir)
+    selection = nonempty_selection!(opts)
+    default_out = if selection, do: Path.join(@default_out, "nonempty"), else: @default_out
+    out_dir = opts[:out] || default_out
+    ctx = opts |> context(block, rpc_url, out_dir) |> Map.put(:selection, selection)
 
     Mix.shell().info("capturing Sugar fixtures at block #{block} via #{rpc_url}")
 
@@ -82,7 +95,18 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
 
   defp parse_cli!(args) do
     {opts, _rest, invalid} =
-      OptionParser.parse(args, strict: [block: :integer, rpc_url: :string, out: :string])
+      OptionParser.parse(args,
+        strict: [
+          block: :integer,
+          rpc_url: :string,
+          out: :string,
+          nonempty: :boolean,
+          position_account: :string,
+          position_offset: :integer,
+          reward_venft_id: :integer,
+          reward_pool: :string
+        ]
+      )
 
     if invalid != [] do
       Mix.raise("invalid arguments: #{inspect(invalid)}")
@@ -90,6 +114,33 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
 
     opts
   end
+
+  defp nonempty_selection!(opts) do
+    if opts[:nonempty] do
+      %{
+        account: required_address!(opts, :position_account),
+        offset: required_nonnegative!(Keyword.put_new(opts, :position_offset, 0), :position_offset),
+        venft_id: required_nonnegative!(opts, :reward_venft_id),
+        pool: required_address!(opts, :reward_pool)
+      }
+    end
+  end
+
+  defp required_address!(opts, key) do
+    case Onchain.Address.validate(opts[key]) do
+      {:ok, address} -> Onchain.Hex.encode(address)
+      {:error, _} -> Mix.raise("--#{cli_name(key)} must be an explicit address for --nonempty")
+    end
+  end
+
+  defp required_nonnegative!(opts, key) do
+    case opts[key] do
+      value when is_integer(value) and value >= 0 -> value
+      _ -> Mix.raise("--#{cli_name(key)} must be a non-negative integer for --nonempty")
+    end
+  end
+
+  defp cli_name(key), do: key |> Atom.to_string() |> String.replace("_", "-")
 
   defp required_block!(opts) do
     case Keyword.get(opts, :block) do
@@ -154,6 +205,19 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
     end
   end
 
+  defp capture_sugar(%{selection: selection} = ctx) when is_map(selection) do
+    ctx
+    |> record_nonempty!("lp_sugar.positions", :lp_sugar, "positions", [
+      @max_positions,
+      selection.offset,
+      selection.account
+    ])
+    |> record_nonempty!("rewards_sugar.rewardsByAddress", :rewards_sugar, "rewardsByAddress", [
+      selection.venft_id,
+      selection.pool
+    ])
+  end
+
   defp capture_sugar(ctx) do
     ctx
     |> capture_lp_pages()
@@ -166,6 +230,13 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
     |> capture_rewards()
     |> capture_relay()
     |> capture_token_safes()
+  end
+
+  defp record_nonempty!(ctx, id, contract, function, args) do
+    case record(ctx, id, contract, function, args) do
+      {next, [[_ | _]], _fixture} -> next
+      _ -> Mix.raise("#{id} returned no rows at block #{ctx.block}; select an account or veNFT/pool with data")
+    end
   end
 
   defp capture_lp_pages(ctx) do

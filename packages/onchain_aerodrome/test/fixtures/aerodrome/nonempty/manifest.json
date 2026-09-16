@@ -1,0 +1,10 @@
+{
+  "block_number": 51348944,
+  "captured_at": "2026-09-15T15:47:15Z",
+  "chain_id": 8453,
+  "fixtures": [
+    "lp_sugar.positions",
+    "rewards_sugar.rewardsByAddress"
+  ],
+  "rpc_endpoint": "https://mainnet.base.org"
+}

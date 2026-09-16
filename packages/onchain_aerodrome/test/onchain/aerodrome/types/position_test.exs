@@ -11,9 +11,7 @@ defmodule Onchain.Aerodrome.Types.PositionTest do
     lp_sugar.positionsUnstakedConcentrated
   )
 
-  # Task-4 goldens captured positions for an account that holds none, so
-  # from_raw/1 is exercised against an ABI-shaped tuple. The fixture loop
-  # still runs so a recapture that starts returning rows is decoded.
+  # Keep the synthetic boundary case alongside the live nonempty witness.
   @zero_address_bin <<0::160>>
   @lp <<1::160>>
   @raw {
@@ -38,6 +36,25 @@ defmodule Onchain.Aerodrome.Types.PositionTest do
   }
 
   describe "from_raw/1" do
+    test "maps every field of a nonempty live position response" do
+      rows = TypesCase.decode_rows("nonempty/lp_sugar.positions")
+      assert [raw] = rows
+      position = Position.from_raw(raw)
+
+      TypesCase.assert_one_to_one(
+        Position,
+        {"lp_sugar.json", "positions", ["uint256", "uint256", "address"]},
+        raw,
+        position
+      )
+
+      TypesCase.refute_floats(position)
+      assert position.lp == "0x723AEf6543aecE026a15662Be4D3fb3424D502A9"
+      assert position.liquidity == 35_959_093_315_076
+      assert position.amount0 == 130_352_112_252_769_249
+      assert position.amount1 == 9_927_634_734
+    end
+
     test "maps a positional row one to one" do
       position = Position.from_raw(@raw)
 

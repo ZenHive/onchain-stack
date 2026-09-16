@@ -148,6 +148,92 @@ defmodule Onchain.Aerodrome.FixturesTest do
     end
   end
 
+  describe "nonempty decode witnesses" do
+    test "the separate manifest pins real nonempty responses and their input selectors" do
+      manifest = Fixtures.load("nonempty/manifest")
+      assert manifest["chain_id"] == 8453
+      assert manifest["block_number"] == 51_348_944
+      assert manifest["rpc_endpoint"] == "https://mainnet.base.org"
+
+      assert manifest["fixtures"] == ["lp_sugar.positions", "rewards_sugar.rewardsByAddress"]
+
+      for id <- manifest["fixtures"] do
+        fixture = Fixtures.load("nonempty/" <> id)
+        assert fixture["block_number"] == manifest["block_number"]
+        assert {:ok, [rows]} = Fixtures.decode(fixture)
+        assert [_ | _] = rows
+        assert length(rows) == fixture["row_count"]
+
+        args =
+          Enum.map(fixture["args"], fn
+            "0x" <> _ = address -> Onchain.Hex.decode!(address)
+            integer -> integer
+          end)
+
+        assert {:ok, data} = Onchain.ABI.encode_call(fixture["signature"], args)
+        assert String.downcase(data) == fixture["calldata"]
+      end
+    end
+
+    test "missing or invalid selectors fail before RPC" do
+      assert_raise Mix.Error, ~r/--position-account/, fn ->
+        CaptureFixtures.run(["--nonempty", "--block", "1"])
+      end
+
+      for {key, value, message} <- [
+            {:position_account, "bad", ~r/--position-account/},
+            {:position_offset, -1, ~r/--position-offset/},
+            {:reward_venft_id, nil, ~r/--reward-venft-id/},
+            {:reward_pool, "bad", ~r/--reward-pool/}
+          ] do
+        opts = "unused" |> nonempty_opts() |> Keyword.put(key, value)
+        assert_raise Mix.Error, message, fn -> CaptureFixtures.capture(opts) end
+      end
+    end
+
+    @tag :tmp_dir
+    test "explicit selectors reproduce both fixtures without changing the original collection", %{tmp_dir: dir} do
+      opts = nonempty_opts(dir)
+      capture_io(fn -> assert :ok = CaptureFixtures.capture(opts) end)
+
+      for id <- ["lp_sugar.positions", "rewards_sugar.rewardsByAddress"] do
+        captured = dir |> Path.join(id <> ".json") |> File.read!() |> Jason.decode!()
+        original = Fixtures.load("nonempty/" <> id)
+        assert captured["args"] == original["args"]
+        assert captured["response"] == original["response"]
+        assert captured["row_count"] == original["row_count"]
+      end
+
+      assert {:ok, [[]]} = Fixtures.decode(Fixtures.load("lp_sugar.positions.short"))
+      assert {:ok, [[]]} = Fixtures.decode(Fixtures.load("rewards_sugar.rewardsByAddress"))
+    end
+
+    @tag :tmp_dir
+    test "either empty response rejects the whole capture before any file is written", %{tmp_dir: dir} do
+      for function <- ["positions", "rewardsByAddress"] do
+        out = Path.join(dir, function)
+        opts = nonempty_opts(out)
+        positive = Keyword.fetch!(opts, :eth_call)
+
+        opts =
+          Keyword.put(opts, :eth_call, fn contract, name, args, address, data, block ->
+            if name == function do
+              # ABI encoding of one empty dynamic array: offset then zero length.
+              {:ok, Onchain.Hex.encode(<<32::256, 0::256>>)}
+            else
+              positive.(contract, name, args, address, data, block)
+            end
+          end)
+
+        capture_io(fn ->
+          assert_raise Mix.Error, ~r/returned no rows/, fn -> CaptureFixtures.capture(opts) end
+        end)
+
+        refute File.exists?(out)
+      end
+    end
+  end
+
   describe "capture Mix task" do
     test "run/1 refuses a missing --block so latest cannot sneak in" do
       assert_raise Mix.Error, ~r/--block N is required/, fn ->
@@ -183,6 +269,28 @@ defmodule Onchain.Aerodrome.FixturesTest do
   defp count_fixture do
     assert {:ok, [count]} = Fixtures.decode(Fixtures.load("lp_sugar.count"))
     count
+  end
+
+  defp nonempty_opts(out) do
+    [limit, offset, account] = Fixtures.load("nonempty/lp_sugar.positions")["args"]
+    [venft_id, pool] = Fixtures.load("nonempty/rewards_sugar.rewardsByAddress")["args"]
+    assert limit == 200
+
+    out
+    |> stub_opts()
+    |> Keyword.merge(
+      nonempty: true,
+      position_account: account,
+      position_offset: offset,
+      reward_venft_id: venft_id,
+      reward_pool: pool,
+      eth_call: fn contract, function, args, _address, data, _block ->
+        fixture = Fixtures.load("nonempty/#{contract}.#{function}")
+        assert args == fixture["args"]
+        assert data == fixture["calldata"]
+        {:ok, fixture["response"]}
+      end
+    )
   end
 
   defp assert_same_tree(a, b) do

@@ -190,6 +190,18 @@ mix aerodrome.capture_fixtures --block N      # live Base RPC; not part of mix c
 `BASE_SECONDARY_RPC_URL` (Alchemy/Infura-class Base URL; no fallback).
 `--block` is required: a capture at `latest` is not a fixture. Re-running at
 the same block is byte-identical (`captured_at` is the block timestamp).
+For positive Position/Reward decode evidence, capture the separate `nonempty/`
+collection with explicit selectors; either empty response fails before writing:
+
+```bash
+mix aerodrome.capture_fixtures --nonempty --block 51348944 \
+  --rpc-url https://mainnet.base.org \
+  --position-account 0x50f0249b824033cf0af0c8b9fe1c67c2842a34d5 \
+  --reward-venft-id 10 --reward-pool 0x42d4a22CaD0F5a49681a5715cE994Af73A43B76b
+```
+
+The original empty pagination fixtures remain in the main collection.
+
 Golden-fixture decode tests require no network and are the primary defence
 against Sugar redeploy drift.
 

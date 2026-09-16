@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Pinned, nonempty Position and Reward response fixtures at Base block
+  51,348,944, with full ABI-field assertions and fixed liquidity/amount checks.
+  The capture task's `--nonempty` mode requires explicit account, veNFT and
+  pool selectors and rejects empty responses before writing its separate
+  collection. Existing empty pagination fixtures remain as regression cases.
+
 - `Types.VeNFT`, `Types.Vote`, `Types.Relay` (+ `Relay.AccountVeNFT`),
   `Types.LpEpoch` (+ `LpEpoch.TokenAmount`) and `Types.Reward` — the veAERO
   structs, positional `from_raw/1` over the `VeSugar.byId`,

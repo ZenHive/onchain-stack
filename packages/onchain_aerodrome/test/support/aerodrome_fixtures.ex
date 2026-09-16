@@ -2,7 +2,9 @@ defmodule Onchain.Aerodrome.Fixtures do
   @moduledoc """
   Offline loader for committed Sugar `eth_call` fixtures.
 
-  Reads `test/fixtures/aerodrome/` with no network. Decode uses
+  Reads `test/fixtures/aerodrome/` with no network. The `nonempty/` subcollection
+  has its own manifest and positive Position/Reward witnesses; load it with
+  `load("nonempty/manifest")` and `load("nonempty/" <> id)`. Decode uses
   `Bindings.Abi.return_type/2` and `Onchain.ABI.decode_response/2`.
   """
 

@@ -55,6 +55,23 @@ defmodule Onchain.Aerodrome.Bindings.LpSugarTest do
     assert {:ok, ^expected} = LpSugar.count(fixture_opts(fixture))
   end
 
+  test "positions decodes the nonempty live witness through the RPC binding" do
+    fixture = Fixtures.load("nonempty/lp_sugar.positions")
+    assert {:ok, [[raw]]} = Fixtures.decode(fixture)
+
+    assert {:ok, [%Position{} = position]} =
+             apply(LpSugar, :positions, fixture["args"] ++ [fixture_opts(fixture)])
+
+    TypesCase.assert_one_to_one(
+      Position,
+      {"lp_sugar.json", "positions", ["uint256", "uint256", "address"]},
+      raw,
+      position
+    )
+
+    assert position.liquidity == 35_959_093_315_076
+  end
+
   test "alm_estimate_amounts returns the three captured amounts as a tuple" do
     fixture = Fixtures.load("lp_sugar.almEstimateAmounts")
     assert {:ok, [[first, second, third]]} = Fixtures.decode(fixture)
