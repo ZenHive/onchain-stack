@@ -65,8 +65,8 @@
 <!-- TASKS:BEGIN phase=0 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 9003 | ⬜ | 🎁 **monorepo_root_gates** · advisory_freshness/1 resolves the freshness prover through ~/_DATA/code/onchain-stack, so every other checkout skips the gate [D:3/B:7/U:6 → Eff:2.17] 🎯 |
-| Task 9004 | ⬜ | 🎁 **monorepo_root_gates** · Drop --summary-only from the six packages that still carry it — it disqualifies ex_unit_json's flaky-retry and hides which test failed [D:2/B:6/U:5 → Eff:2.75] 🎯 |
+| Task 9003 | ✅ | 🎁 **monorepo_root_gates** · advisory_freshness/1 resolves the freshness prover through ~/_DATA/code/onchain-stack, so every other checkout skips the gate [D:3/B:7/U:6 → Eff:2.17] 🎯 |
+| Task 9004 | ✅ | 🎁 **monorepo_root_gates** · Drop --summary-only from the six packages that still carry it — it disqualifies ex_unit_json's flaky-retry and hides which test failed [D:2/B:6/U:5 → Eff:2.75] 🎯 |
 | Task 9005 | ⬜ | 🎁 **monorepo_root_gates** · The consolidated root .mcp.json reaches only cartouche's tidewave (port 4013); the other seven packages' dev servers are unaddressable [D:2/B:5/U:4 → Eff:2.25] 🎯 |
 | Task 9011 | ⬜ | 🎁 **monorepo_root_gates** · check.dispatch runs NO tests in onchain_aave, onchain_aerodrome and onchain_evm — the reviewer gate grades three packages without executing their suites [D:4/B:9/U:8 → Eff:2.12] 🎯 |
 | Task 9012 | ⬜ | 🎁 **monorepo_root_gates** · Resolve Mint advisories reported by the Aave cold dependency install [D:3/B:7/U:7 → Eff:2.33] 🎯 |
@@ -212,7 +212,7 @@
 | Task 9002 | ⬜ | 🎁 **cartouche_signer_backends** · Put secp256k1 sign and recover behind a native backend — curvy costs ~2.8 ms per signature on the DEX order path [D:5/B:7/U:7 → Eff:1.4] 📋 |
 | Task 9006 | ⬜ | 🎁 **cartouche_correctness_010** · 🔒 Normalize high-s signatures at Cartouche's recovery boundary — recover_public_key_from_digest/2 still hits the curvy#8 recid bug [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 | Task 9007 | ⬜ | 🎁 **cartouche_release_010** · Reconcile Cartouche release notes against everything landed since 0.9.1 [D:2/B:7/U:7 → Eff:3.5] 🎯 |
-| Task 9008 | ⬜ | 🎁 **cartouche_phase7_deps** · Assess Mint advisories reported by Cartouche cold dependency resolution [D:2/B:5/U:4 → Eff:2.25] 🎯 |
+| Task 9008 | 🔄 | 🎁 **cartouche_phase7_deps** · Assess Mint advisories reported by Cartouche cold dependency resolution [D:2/B:5/U:4 → Eff:2.25] 🎯 |
 <!-- TASKS:END -->
 
 ### Phase 2001: Spec corrections (immediate onchain wins)
@@ -536,7 +536,7 @@
 |------|--------|-------|
 | Task 5023 `[P]` | ⬜ | 🎁 **onchain_aerodrome_read_api** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Sugar.Pools* · Sugar.Pools and Sugar.Tokens — the ergonomic pool and token read API [D:4/B:8/U:8 → Eff:2.0] 🎯 |
 | Task 5024 `[P]` | ⬜ | 🎁 **onchain_aerodrome_read_api** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Sugar.Positions* · Sugar.Positions, .VeNfts, .Rewards and .Relays — the account-scoped read API [D:4/B:7/U:7 → Eff:1.75] 🚀 |
-| Task 9010 | ⬜ | 🎁 **onchain_aerodrome_types** · *Onchain.Aerodrome.TypesCase* · TypesCase resolves overloaded Sugar ABI entries by name alone — disambiguate by input types like the drift test does [D:2/B:4/U:4 → Eff:2.0] 🎯 |
+| Task 9010 | ✅ | 🎁 **onchain_aerodrome_types** · *Onchain.Aerodrome.TypesCase* · TypesCase resolves overloaded Sugar ABI entries by name alone — disambiguate by input types like the drift test does [D:2/B:4/U:4 → Eff:2.0] 🎯 |
 <!-- TASKS:END -->
 
 ### Phase 5008: Evidence & Release

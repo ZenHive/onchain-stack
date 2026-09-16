@@ -13399,7 +13399,7 @@
       "id": "9003",
       "phase": 0,
       "bundle": "monorepo_root_gates",
-      "status": "pending",
+      "status": "done",
       "title": "advisory_freshness/1 resolves the freshness prover through ~/_DATA/code/onchain-stack, so every other checkout skips the gate",
       "scores": {
         "d": 3,
@@ -13430,14 +13430,18 @@
       ],
       "body": "`shared/mix_helpers.exs` resolves the advisory-freshness prover as an absolute path into\nthe canonical developer checkout:\n\n    def advisory_freshness(_args) do\n      host_script(\"~/_DATA/code/onchain-stack/bin/advisory-freshness.sh\", [], ...)\n    end\n\nThat path predates the monorepo: before 2026-08-27, `onchain-stack` was a separate\ncoordination repo and each of the eight packages genuinely had to reach outside itself to\nfind the script. It does not anymore — `bin/advisory-freshness.sh` is a tracked file in\nthis repo, two levels up from any package, and `shared/mix_helpers.exs` sits at the root\nthat owns it.\n\nWhy it matters. The prover exists because `mix_audit` discards its own sync exit status\n(mirego/mix_audit#61): a database that can no longer sync still prints \"No vulnerabilities\nfound\" and exits 0. `deps.audit.gated` runs the prover first so a dead database fails\nloudly. With the path hardcoded, any checkout that is not literally\n`~/_DATA/code/onchain-stack` — the server mirror `/data/postgresql/code/onchain-stack`\nthat harness registers as this project's source, every dispatch worktree, any fresh clone\n— takes the `File.regular?/1` false branch and prints\n\n    [skip] advisory-mirror freshness check: ... not found (developer-host script, absent in CI).\n\nSo the anti-silent-green gate is itself skipped, and `mix deps.audit` goes on to report\ngreen against whatever the mirror happens to hold. It is a visible skip rather than a\nsilent one, which is the only reason this is a 3 on difficulty rather than a defect.\n\nThe script itself needs no change: it operates entirely on\n`$MIX_AUDIT_ADVISORY_PATH`/`$HOME/.local/share/elixir-security-advisories-mirego` and never\ninspects the checkout it was invoked from, so running the in-repo copy is behaviourally\nidentical to running the canonical checkout's copy.\n\nThe one judgement call is harness worktrees. `check.dispatch` deliberately omits\n`deps.audit.gated` because the shared advisory clone cannot take concurrent worktrees, so\nthe reviewer never reaches this code — but a `mix ci` inside a worktree would, once the\npath resolves. Decide that deliberately and write the decision into the comment; the\ncurrent behaviour is the accidental consequence of an absolute path, which is the thing\nworth removing whichever way the decision goes.\n\nFound by the post-merge audit of e750a22.\n",
       "created_at": "2026-09-15",
+      "started_at": "2026-09-15",
+      "done_at": "2026-09-15",
       "scored_at": "2026-09-15",
+      "implemented": "advisory_freshness/1 resolves bin/advisory-freshness.sh off __DIR__ (Path.expand(\"../bin/...\", __DIR__)) instead of the hardcoded ~/_DATA/code/onchain-stack path, so every checkout runs the prover instead of printing the skip line. agents_check/1 keeps its absolute host path (the AGENTS.md renderer genuinely lives outside the repo). The harness-worktree question is answered explicitly in the comment: the gate does run there, the serial-mix-ci rule guards the shared advisory clone, and check.dispatch omits deps.audit.gated anyway. Verified by running deps.audit.gated (prover fired: 'advisory-freshness: OK - at upstream tip 5246bcc') and by a fake-clone probe from cwd=/ resolving to the clone's own bin/.",
+      "delivered_by": "claude",
       "cross_repo": []
     },
     {
       "id": "9004",
       "phase": 0,
       "bundle": "monorepo_root_gates",
-      "status": "pending",
+      "status": "done",
       "title": "Drop --summary-only from the six packages that still carry it — it disqualifies ex_unit_json's flaky-retry and hides which test failed",
       "scores": {
         "d": 2,
@@ -13474,7 +13478,11 @@
       ],
       "body": "Six of the eight packages still pass `--summary-only` to `test.json --cover` in their\n`precommit.full` / `ci` alias:\n\n    packages/hieroglyph/mix.exs:189     --cover-threshold 95  --summary-only\n    packages/cartouche/mix.exs:312      --cover-threshold 85  --summary-only\n    packages/onchain/mix.exs:227        --cover-threshold 70  --summary-only\n    packages/onchain_evm/mix.exs:226    --cover-threshold 85  --summary-only\n    packages/onchain_js/mix.exs:224     --cover-threshold 25  --summary-only\n    packages/onchain_tempo/mix.exs:216  --cover-threshold 90  --summary-only\n\nOnly `onchain_aave` and `onchain_aerodrome` have dropped it. The flag was being removed\npackage-by-package during the standalone era; the monorepo merge did not finish the sweep,\nand the root CLAUDE.md has carried it as an unverified Open Item ever since. This audit\nmeasured it: 6 of 8, listed above.\n\nWhat the flag costs, quoting the rationale onchain_aerodrome's mix.exs already carries:\n`--summary-only` is in ex_unit_json's `retry_disqualified_opts?/1` list, so passing it\nsilently disables the tool's own automatic retry-on-flaky. Two things are lost at once —\na real flake no longer retries and heals (it blocks the gate instead of being reported in\na `flaky` array), and a confirmed failure prints a bare summary line instead of the\nassertion detail that names which test failed and why. The default output mode is already\nquiet on a green run (an empty `tests` array), so dropping the flag costs nothing when\nnothing fails.\n\nStraight mechanical sweep. The only care needed is running each package's `mix ci` serially\nafterwards — never two at once — because every package's `deps.audit.gated` step pulls the\none shared advisory clone at ~/.local/share/elixir-security-advisories-mirego, and\nconcurrent pulls interleave into one FETCH_HEAD and red a package whose code is fine.\n\nFound by the post-merge audit of e750a22.\n",
       "created_at": "2026-09-15",
+      "started_at": "2026-09-15",
+      "done_at": "2026-09-15",
       "scored_at": "2026-09-15",
+      "implemented": "Dropped --summary-only from the test.json step in hieroglyph, cartouche, onchain, onchain_evm, onchain_js and onchain_tempo, carrying onchain_aave's rationale comment (the flag is in ex_unit_json's retry_disqualified_opts?/1, so it silently disables retry-on-flaky and hides which test failed) into each. Thresholds 95/85/70/85/25/90 and all other flags untouched; grep now finds the string only in comments. Closes the root CLAUDE.md Open Item that tracked the unfinished migration.",
+      "delivered_by": "claude",
       "cross_repo": []
     },
     {
@@ -13499,11 +13507,16 @@
         "Every package whose `mix.exs` declares a `tidewave` alias is reachable through the repo's MCP config, or the config documents in CLAUDE.md which single package it serves and why the other seven were dropped — the current state names neither",
         "Whatever shape is chosen, the port each entry targets matches that package's `mix tidewave` alias: hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010, onchain_aave 4012, cartouche 4013, onchain_js 4028, onchain_aerodrome 4035",
         "If per-package entries are added, the cost is acknowledged explicitly: seven of eight will be connection-refused in any session where that package's dev server is not running, and the decision records that this is accepted",
-        "CLAUDE.md gains a line naming the repo's MCP convention, and AGENTS.md is re-rendered to match"
+        "CLAUDE.md gains a line naming the repo's MCP convention, and AGENTS.md is re-rendered to match",
+        "Tidewave actually starts after the change, proven by running it rather than reading the alias: `cd packages/<name> && iex -S mix tidewave` for at least two different packages",
+        "The 21 per-package .cursor/.codex/.grok configs either carry the chosen port and the current server name (harness_eval, not harness_tidewave), or are replaced by repo-root equivalents - no file is left pointing at a port the chosen answer retired",
+        "~/.claude/tidewave-ports.md and the repo agree afterwards; whichever way the decision goes, the registry is updated to match rather than left contradicting the aliases",
+        "A root-level `mix tidewave` entry point exists and is documented, or CLAUDE.md states explicitly that tidewave is per-package-only and names the working invocation"
       ],
       "out_of_scope": [
         "The harness / harness_eval / chrome-devtools entries",
-        "Changing any package's tidewave port assignment",
+        "Adding tidewave or bandit as runtime deps of the root project, which ships no runtime code",
+        "Any change to what mix ci or check.dispatch run",
         "Starting or supervising the dev servers themselves"
       ],
       "files_to_modify": [
@@ -13511,8 +13524,9 @@
         "CLAUDE.md",
         "AGENTS.md"
       ],
-      "body": "Commit f9d6102 (\"mcp: consolidate 8 package .mcp.json into one root config\") merged eight\nper-package MCP configs into one at the repo root. Eight tidewave entries could not survive\nthat merge — they point at eight different ports, one per package — and the consolidation\nkept exactly one:\n\n    \"tidewave\": { \"type\": \"http\", \"url\": \"http://localhost:4013/tidewave/mcp\" }\n\n4013 is cartouche. The other seven packages each still declare a `tidewave` alias on their\nown port (hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010, onchain_aave\n4012, onchain_js 4028, onchain_aerodrome 4035), and none of them is addressable from an\nagent session in this repo anymore. Nothing records that the entry is cartouche-specific,\nso the natural reading — \"this repo has a tidewave server\" — is wrong seven times out of\neight.\n\nTwo defensible shapes. Either declare all eight as separately named servers\n(`tidewave_cartouche`, `tidewave_onchain`, …), which restores the capability at the cost of\nseven connection-refused entries in any session where those dev servers are not up; or keep\none entry and say in CLAUDE.md which package it serves and that reaching another package's\nTidewave means editing the config first. What is not defensible is the current state, where\nthe config silently means \"cartouche\" and says nothing.\n\nLow stakes — a dev-tooling reachability gap, not a correctness or release issue — but it is\na consolidation artifact that will read as a bug to the next agent that tries to use\nTidewave against onchain or onchain_evm.\n\nFound by the post-merge audit of e750a22.\n",
+      "body": "Commit f9d6102 (\"mcp: consolidate 8 package .mcp.json into one root config\") merged eight\nper-package MCP configs into one at the repo root. Eight tidewave entries could not survive\nthat merge — they point at eight different ports, one per package — and the consolidation\nkept exactly one:\n\n    \"tidewave\": { \"type\": \"http\", \"url\": \"http://localhost:4013/tidewave/mcp\" }\n\n4013 is cartouche. The other seven packages each still declare a `tidewave` alias on their\nown port (hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010, onchain_aave\n4012, onchain_js 4028, onchain_aerodrome 4035), and none of them is addressable from an\nagent session in this repo anymore. Nothing records that the entry is cartouche-specific,\nso the natural reading — \"this repo has a tidewave server\" — is wrong seven times out of\neight.\n\nTwo defensible shapes. Either declare all eight as separately named servers\n(`tidewave_cartouche`, `tidewave_onchain`, …), which restores the capability at the cost of\nseven connection-refused entries in any session where those dev servers are not up; or keep\none entry and say in CLAUDE.md which package it serves and that reaching another package's\nTidewave means editing the config first. What is not defensible is the current state, where\nthe config silently means \"cartouche\" and says nothing.\n\nLow stakes — a dev-tooling reachability gap, not a correctness or release issue — but it is\na consolidation artifact that will read as a bug to the next agent that tries to use\nTidewave against onchain or onchain_evm.\n\nFound by the post-merge audit of e750a22.\n\n--- widened 2026-09-16, after a session resolved this the wrong way and was reverted ---\n\nThree sources disagree about how many tidewave ports this monorepo has, and each looks\nauthoritative alone. Nothing is broken today; the risk is that the next session resolves\nthe contradiction in whichever direction it reads first, as a side effect of unrelated\nwork. That already happened: a session converged all eight aliases on 4013 and deleted the\n21 per-package agent configs, which this task's own out_of_scope had forbidden. Reverted.\n\nVerified 2026-09-16:\n\n1. The eight mix.exs aliases declare eight distinct ports - hieroglyph 4006, onchain 4007,\n   onchain_evm 4009, onchain_tempo 4010, onchain_aave 4012, cartouche 4013, onchain_js\n   4028, onchain_aerodrome 4035. No collisions; every package has the alias.\n2. ~/.claude/tidewave-ports.md retired seven of those on 2026-08-27 and registers 4013 as\n   \"onchain-stack - all 8 packages share this one port.\" The aliases never followed.\n3. Seven packages still carry .cursor/mcp.json + .codex/config.toml + .grok/config.toml\n   (21 tracked files) on their pre-merge port, some naming the pre-rename\n   harness_tidewave server. f9d6102 consolidated only the Claude Code config; the repo\n   root has no .cursor/, .codex/ or .grok/ at all. cartouche never had mirrors.\n4. `iex -S mix tidewave` at the repo root fails with \"The task tidewave could not be\n   found\" - the root project has no alias and no tidewave/bandit deps, by design. The\n   working invocation is `cd packages/<name> && iex -S mix tidewave`.\n\nOPEN DECISIONS - answer these before writing code, do not infer them:\n\n- One shared port, or eight? Eight restores per-package addressability at the cost of\n  seven dead MCP entries per session; one matches the registry and the root config at the\n  cost of never running two dev servers at once. The registry already claims the one-port\n  answer, so \"follow the registry\" is the cheaper story - but it IS a port reassignment,\n  which this task originally ruled out, so it must be said out loud, not slid in.\n- Rewrite the 21 per-package agent configs, or replace them with three files at the repo\n  root? Root files complete the consolidation f9d6102 started; rewriting keeps a working\n  config for an agent launched with cwd inside a package. Deleting them without a root\n  replacement is the one option that loses capability.\n- Does a root-level `mix tidewave` entry point earn its keep? A root alias delegating into\n  a named package fixes the ergonomic without adding runtime deps to the root project.\n\nVERIFY BY RUNNING, NOT BY READING. The alias is a Bandit.start_link inside `mix run\n--no-halt`; whether it binds is a runtime fact. Start tidewave in at least two packages\nafterwards and confirm the MCP endpoint answers.\n",
       "created_at": "2026-09-15",
+      "started_at": "2026-09-15",
       "scored_at": "2026-09-15",
       "cross_repo": []
     },
@@ -13608,7 +13622,7 @@
       "phase": 2000,
       "bundle": "cartouche_phase7_deps",
       "target_repo": "cartouche",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Assess Mint advisories reported by Cartouche cold dependency resolution",
       "scores": {
         "d": 2,
@@ -13631,6 +13645,7 @@
       ],
       "body": "During audit 408b2b6, mix deps.get retained locked Mint 1.9.3 and reported two public security advisories. Check current upstream fixes and the dependent packages, update the lock if a compatible fix exists, and run both audit tools plus affected package gates. Do not suppress findings. This is an observed dependency warning, not a demonstrated application exploit.",
       "created_at": "2026-09-15",
+      "started_at": "2026-09-15",
       "scored_at": "2026-09-15",
       "cross_repo": []
     },
@@ -13686,7 +13701,7 @@
       "phase": 5007,
       "bundle": "onchain_aerodrome_types",
       "target_repo": "onchain_aerodrome",
-      "status": "pending",
+      "status": "done",
       "title": "TypesCase resolves overloaded Sugar ABI entries by name alone — disambiguate by input types like the drift test does",
       "scores": {
         "d": 2,
@@ -13718,7 +13733,11 @@
       ],
       "body": "Found during the post-merge audit of ead58bc (task 5007's veAERO structs).\n\n`Onchain.Aerodrome.TypesCase.abi_entry/2` (test/support/types_case.ex) finds an ABI entry with `Enum.find(&(&1[\"type\"] == \"function\" and &1[\"name\"] == abi_function))` — name only. `abi_drift_test.exs` reading the same JSON takes an optional `input_types` argument and matches on it too, and Relay's drift test passes `[\"address\"]` explicitly because `RelaySugar` exposes `all` in more than one arity upstream.\n\nToday the captured `priv/abis/relay_sugar.json` contains exactly one `all` entry, so both readers agree and nothing is wrong — this is latent, not a live bug. The asymmetry is the defect: the drift test is hardened against a re-capture that adds an `all` overload; the shared test helper is not. After such a re-capture, `TypesCase.assert_one_to_one(Relay, {\"relay_sugar.json\", \"all\"}, ...)` would compare Relay's fields against whichever overload happens to sit first in the JSON array, and a mismatch there reads as a struct bug rather than a resolution bug. Worse, the two readers would then disagree, so the drift test could stay green while the one-to-one assertions grade against the wrong shape.\n\nNote the failure mode when no entry matches at all: `abi_entry/2` returns `nil` and the following `Map.fetch!/2` raises on nil rather than naming the function it could not resolve. Fix that at the same time — a test-support helper that cannot find its ABI entry should say which file and which signature it was looking for.\n\nPrefer lifting the drift test's existing `function_match?/3` shape into the shared helper over inventing a second mechanism; the point of the task is that there is one resolution rule, not two.\n",
       "created_at": "2026-09-15",
+      "started_at": "2026-09-15",
+      "done_at": "2026-09-15",
       "scored_at": "2026-09-15",
+      "implemented": "TypesCase.abi_entry/3 and a new public resolve_entry/4 disambiguate by name AND input types, using the drift test's own function_match?/3 clause moved verbatim - one resolution rule, not two. abi_drift_test.exs now consumes the shared helper (its private copies deleted). No-match and ambiguous-match both flunk naming the file, the sought signature and the candidates, replacing a nil-then-Map.fetch! crash; assert_one_to_one's 2-tuple form is gone so no call site can fall back to name-alone. All call sites pass their overload's types; the two lp_sugar_test sites derive them from the fixture's captured signature. New types_case_test.exs proves selection and both loud-failure paths against an in-test two-overload ABI. 73 tests green.",
+      "delivered_by": "claude",
       "cross_repo": []
     },
     {
