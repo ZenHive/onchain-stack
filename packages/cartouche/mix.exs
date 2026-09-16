@@ -34,14 +34,14 @@ defmodule Cartouche.MixProject do
       source_url: @source_url,
       docs: [
         main: "readme",
-        extras: ["README.md", "CHANGELOG.md", "docs/coming-from-ethers-viem.md"],
+        extras: ["README.md", "CHANGELOG.md", "docs/coming-from-ethers-viem.md", "docs/verification-ledger.md"],
         # CHANGELOG entries reference hidden generated modules (e.g.
         # `Cartouche.Contract.IConsole`, which has `@moduledoc false`) as
         # historical narrative — not as API documentation. ex_doc otherwise
         # warns and `mix docs --warnings-as-errors` (the pre-commit hook)
         # blocks the commit. Skip on CHANGELOG.md only; README and source
         # docstrings remain strict.
-        skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
+        skip_undefined_reference_warnings_on: ["CHANGELOG.md", "docs/verification-ledger.md"],
         source_ref: "cartouche-v#{@version}",
         # ExDoc builds file links relative to the package root, but the
         # monorepo puts the package two levels below the repo root — without

@@ -14,6 +14,12 @@ All notable changes to this project will be documented in this file.
 <a id="phase-11-hieroglyph-1-0-0-1-4-0-adoption-advisory"></a>
 <a id="phase-12-agent-economy-descripex-adoption"></a>
 
+## [Unreleased]
+
+### Documentation
+
+* `docs/verification-ledger.md` is now an ExDoc extra, so the README's link to the EIP-712 conformance section resolves on hexdocs instead of only on GitHub.
+
 ## [0.9.1] — 2026-09-16
 
 ### Added
