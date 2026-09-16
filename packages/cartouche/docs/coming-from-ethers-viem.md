@@ -96,7 +96,7 @@ precision — there is no `BigNumber`/`bigint` distinction anywhere.
 | — | — | `Cartouche.Recover.recover_eth/2` | keccaks the message first and applies **no** prefix — the inverse of `Cartouche.Signer.sign/3`, with no ethers equivalent |
 | `TypedDataEncoder.encode(d, t, v)` | — | `Cartouche.Typed.encode/1` | same `0x1901 ‖ domainSeparator ‖ hashStruct` bytes |
 | `TypedDataEncoder.hash(d, t, v)` | `hashTypedData` | `Cartouche.Hash.keccak(Cartouche.Typed.encode(typed))` | — |
-| `signer.signTypedData(d, t, v)` | `signTypedData` | `Cartouche.Signer.sign(Cartouche.Typed.encode(typed), signer, chain_id: 0)` | plain `sign/3` is right here (no prefix wanted) — still pass `chain_id: 0` for a 27/28 `v` |
+| `signer.signTypedData(d, t, v)` | `signTypedData` | `Cartouche.Signer.sign_typed_data/3` | — (`sign/3` on `Typed.encode/1` gives the same digest with an EIP-155 `v`) |
 | `verifyTypedData` | `recoverTypedDataAddress` | `Cartouche.Recover.recover_eth(Cartouche.Typed.encode(typed), sig)` | — |
 | `TypedDataEncoder.hashStruct` | `hashStruct` | `Cartouche.Typed.hash_struct/3` | — |
 | `TypedDataEncoder.hashDomain` | `hashDomain` | `Cartouche.Typed.domain_seperator/1` | note the spelling |

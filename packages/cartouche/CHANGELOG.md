@@ -34,6 +34,10 @@ All notable changes to this project will be documented in this file.
   and EIP-712 digests; the new function exists because every caller arriving
   from ethers/viem assumed `sign/3` was `signMessage`, and the two divergences
   (no prefix, EIP-155 `v`) only surfaced at the wallet.
+* **`Cartouche.Signer.sign_typed_data/3`** — the `eth_signTypedData_v4` /
+  ethers `signTypedData` form over a `%Cartouche.Typed{}`: signs the `0x1901`
+  payload from `Typed.encode/1` with `v` in 27/28. Same digest as
+  `sign/3` on the encoded payload, wallet-shaped `v`.
 * **`docs/coming-from-ethers-viem.md` — a translation table from ethers v6 /
   viem to Cartouche, by area.** Name mappings for hex, units, hashing, keys,
   messages and EIP-712, transactions, RPC reads, contract calls (pointing into

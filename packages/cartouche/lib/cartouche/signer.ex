@@ -181,6 +181,50 @@ defmodule Cartouche.Signer do
     sign(Cartouche.Recover.prefix_eth(message), name, Keyword.put(opts, :chain_id, 0))
   end
 
+  api(:sign_typed_data, "Sign EIP-712 typed data the way eth_signTypedData_v4 / ethers signTypedData does.",
+    params: [
+      typed: [kind: :value, description: "`%Cartouche.Typed{}` with domain, types and value."],
+      name: [kind: :value, default: Default, description: "Signer GenServer name or pid."],
+      opts: [kind: :value, default: [], description: "Keyword options forwarded to `sign/3`; `:chain_id` is fixed to 0."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, signature}` as a 65-byte `r || s || v` with `v` in 27/28 over the `0x1901` payload, verifiable with `Cartouche.Recover.recover_eth/2` on `Cartouche.Typed.encode/1`, or `{:error, reason}`."
+    },
+    composes_with: [:sign]
+  )
+
+  @doc """
+  Signs EIP-712 typed data as `eth_signTypedData_v4` / ethers `signTypedData` /
+  viem `signTypedData` do.
+
+  Encodes the `0x1901 || domainSeparator || hashStruct` payload with
+  `Cartouche.Typed.encode/1` and signs it with `v` in 27/28. No EIP-191
+  prefix is involved — that is `sign_message/3`. `sign/3` with the encoded
+  payload gives the same digest with an EIP-155 `v` instead.
+
+  ## Examples
+
+      iex> signer_proc = Cartouche.Test.Signer.start_signer()
+      iex> typed = %Cartouche.Typed{
+      ...>   domain: %Cartouche.Typed.Domain{name: "Complex Array", version: "1"},
+      ...>   types: %{"Array" => %Cartouche.Typed.Type{fields: [{"a", {:uint, 256}}, {"b", {:uint, 256}}, {"c", :string}, {"d", :bool}]}},
+      ...>   value: %{"a" => 55, "b" => 66, "c" => "Hello", "d" => true}
+      ...> }
+      iex> {:ok, sig} = Cartouche.Signer.sign_typed_data(typed, signer_proc)
+      iex> Cartouche.Recover.recover_eth(Cartouche.Typed.encode(typed), sig) |> Cartouche.Hex.to_address()
+      "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
+      iex> <<_r::256, _s::256, v>> = sig
+      iex> v in [27, 28]
+      true
+  """
+  @spec sign_typed_data(Cartouche.Typed.t(), GenServer.server(), Keyword.t()) ::
+          {:ok, Cartouche.signature()} | {:error, term()}
+  def sign_typed_data(%Cartouche.Typed{} = typed, name \\ Default, opts \\ []) do
+    sign(Cartouche.Typed.encode(typed), name, Keyword.put(opts, :chain_id, 0))
+  end
+
   api(:address, "Get the Ethereum address controlled by a signer process.",
     params: [
       name: [kind: :value, default: Default, description: "Signer GenServer name or pid."]
