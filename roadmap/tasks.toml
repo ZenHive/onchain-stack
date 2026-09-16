@@ -9566,10 +9566,12 @@ Replacement detection design hint, not a mandate: viem does it by remembering th
 Authority: the live node (mainnet for the mined-receipt case, anvil for the pending and replacement cases); `ethereum/execution-apis` for receipt and transaction object shapes.
 
 Dispatch trigger: cross-cutting change through the whole read/write surface plus a money-path pipeline (send then wait) with live evidence — earns an independent reviewer.
+
+2026-09-16 (ethers/viem table review): replacement detection needs `eth_getTransactionByHash` (sender, nonce, block number in one read) and cartouche has no wrapper for it today — task 2129 owns that method (with the three by-block variants) under the read-surface bundle, so it is now a dependency. Do not add a private `eth_getTransactionByHash` here; build on 2129's.
 """
 created_at = "2026-09-16"
 scored_at = "2026-09-16"
-depends_on = ["9013", 3089]
+depends_on = ["9013", 3089, 2129]
 
 [[task]]
 id = "9018"

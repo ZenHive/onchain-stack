@@ -34,8 +34,8 @@ All notable changes to this project will be documented in this file.
   *Difference* column wherever the semantics diverge — `Signer.sign/3` adding
   no EIP-191 prefix and defaulting `v` to EIP-155, `to_wei/1` raising where
   viem rounds, no checksum validation anywhere, `execute_trx/3` simulating by
-  default. Gaps are named with their roadmap task ids (9013–9018) or the
-  package that owns them. Shipped in the Hex tarball (`docs/` is now in
+  default. Gaps are named with their roadmap task ids (2128–2130, 9013–9018) or
+  the package that owns them. Shipped in the Hex tarball (`docs/` is now in
   `files:`) and as an ExDoc extra.
 
 ### Changed

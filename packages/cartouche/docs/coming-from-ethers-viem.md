@@ -133,18 +133,18 @@ client struct is roadmap task 9017 in `onchain`.
 | `getBalance(addr)` | `getBalance` | `Cartouche.RPC.get_balance/2` | integer wei |
 | `getTransactionCount(addr)` | `getTransactionCount` | `Cartouche.RPC.get_nonce/2` | `block_number: "pending"` for the pending nonce |
 | `getCode(addr)` | `getCode` / `getBytecode` | `Cartouche.RPC.get_code/2` | raw bytes |
-| `getStorage(addr, slot)` | `getStorageAt` | — | `send_rpc("eth_getStorageAt", …)` |
+| `getStorage(addr, slot)` | `getStorageAt` | — | roadmap task 2130; `send_rpc("eth_getStorageAt", …)` until then |
 | `getBlockNumber()` | `getBlockNumber` | `Cartouche.RPC.eth_block_number/1` | — |
 | `getNetwork().chainId` | `getChainId` | `Cartouche.RPC.eth_chain_id/1` | — |
 | `getBlock(tag, prefetchTxs)` | `getBlock` | `Cartouche.RPC.get_block_by_number/2`, `get_block_by_hash/2` → `%Cartouche.Block{}` | `include_transaction_details: true` for full transactions |
 | `getTransactionReceipt(hash)` | `getTransactionReceipt` | `Cartouche.RPC.get_trx_receipt/2` → `%Cartouche.Receipt{} \| nil` | — |
-| `getTransaction(hash)` | `getTransaction` | — | no `eth_getTransactionByHash` wrapper; `send_rpc` |
+| `getTransaction(hash)` | `getTransaction` | — | roadmap task 2129; `send_rpc("eth_getTransactionByHash", …)` until then |
 | `waitForTransaction(hash)` | `waitForTransactionReceipt` | — | roadmap task 9017 |
 | `getFeeData()` | `estimateFeesPerGas` | `Cartouche.RPC.gas_price/1`, `max_priority_fee_per_gas/1`, `base_fee/1`, `fee_history/1` → `%Cartouche.FeeHistory{}` | no combined fee struct; `execute_trx/3` derives fees itself (`base_fee_buffer`, `priority_fee` options) |
 | `estimateGas(tx)` | `estimateGas` | `Cartouche.RPC.estimate_gas/2` | takes a V1/V2/`%Cartouche.Transaction.Call{}` struct |
 | `call(tx)` | `call` | `Cartouche.RPC.call_trx/2` | returns raw return bytes; a revert is `{:error, %{code: 3, message: _, revert: bytes}}`, decoded when `errors: ["MyError(uint256)"]` is passed |
 | — | `createAccessList` | `Cartouche.RPC.create_access_list/2` | — |
-| `getLogs(filter)` | `getLogs` | — | no `eth_getLogs` wrapper; node-side filters only (below), or `send_rpc` |
+| `getLogs(filter)` | `getLogs` | — | roadmap task 2128; node-side filters only (below), or `send_rpc`, until then |
 | `FallbackProvider` | `fallback([...])` | — | roadmap task 9014 |
 | — | — | `Cartouche.RPC.debug_trace_call/2`, `trace_call/2`, `trace_call_many/2`, `trace_trx/2` | typed tracing wrappers, first-class |
 
@@ -215,4 +215,5 @@ the Cloud KMS backends, and the whole `Cartouche.Solana.*` tree.
 | chain objects | roadmap task 9013 |
 | test client (`setBalance`, `impersonateAccount`, `mine`, `snapshot`) | roadmap task 9016 |
 | SIWE (`siwe`) | roadmap task 9018 (`onchain`) |
-| `getLogs`, `getTransaction`, `getStorage`, `formatUnits`, `getCreate2Address`, checksum validation | no wrapper today — `send_rpc/3` or a few lines of Elixir |
+| `getLogs`, `getTransaction`, `getStorage` | roadmap tasks 2128, 2129, 2130 (bundle `cartouche_rpc_read_surface`, behind the 2137 transport move) |
+| `formatUnits`, `getCreate2Address`, checksum validation | no wrapper and no task today — a few lines of Elixir |
