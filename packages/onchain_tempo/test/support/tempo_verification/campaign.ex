@@ -1,14 +1,15 @@
-defmodule Onchain.Tempo.Verification.Campaign do
+defmodule Onchain.Tempo.Verification.Campaign.Mutant do
   @moduledoc false
 
-  alias Onchain.Tempo.Transaction
-  alias Onchain.Tempo.Transaction.Builder
-  alias Onchain.Tempo.Verification.Vectors
+  # One planted mutation: which file to patch, the exact literal to swap, and
+  # how to classify the result. Eleven call sites built this as a bare map with
+  # the same seven keys; reach's "repeated map shapes" check is right that it
+  # is a contract, so it is one here.
 
-  @tx_path "lib/onchain/tempo/transaction.ex"
-  @builder_path "lib/onchain/tempo/transaction/builder.ex"
+  @enforce_keys [:id, :canary?, :surface, :file, :replace, :with, :class]
+  defstruct [:id, :canary?, :surface, :file, :replace, :with, :class]
 
-  @type mutant :: %{
+  @type t :: %__MODULE__{
           id: String.t(),
           canary?: boolean(),
           surface: :transaction | :builder,
@@ -17,11 +18,25 @@ defmodule Onchain.Tempo.Verification.Campaign do
           with: String.t(),
           class: atom()
         }
+end
+
+defmodule Onchain.Tempo.Verification.Campaign do
+  @moduledoc false
+
+  alias Onchain.Tempo.Transaction
+  alias Onchain.Tempo.Transaction.Builder
+  alias Onchain.Tempo.Verification.Campaign.Mutant
+  alias Onchain.Tempo.Verification.Vectors
+
+  @tx_path "lib/onchain/tempo/transaction.ex"
+  @builder_path "lib/onchain/tempo/transaction/builder.ex"
+
+  @type mutant :: Mutant.t()
 
   @spec mutants() :: [mutant()]
   def mutants do
     [
-      %{
+      %Mutant{
         id: "canary_calls_index",
         canary?: true,
         surface: :transaction,
@@ -30,7 +45,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
         with: "@calls_index 3",
         class: :field_index
       },
-      %{
+      %Mutant{
         id: "canary_fee_payer_domain",
         canary?: true,
         surface: :transaction,
@@ -39,7 +54,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
         with: "@fee_payer_domain 0x76",
         class: :signing_domain
       },
-      %{
+      %Mutant{
         id: "type_byte_builder",
         canary?: false,
         surface: :builder,
@@ -48,7 +63,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
         with: "@tempo_tx_type 0x77",
         class: :type_byte
       },
-      %{
+      %Mutant{
         id: "type_byte_deserialize",
         canary?: false,
         surface: :transaction,
@@ -57,7 +72,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
         with: "@tempo_tx_type 0x75",
         class: :type_byte
       },
-      %{
+      %Mutant{
         id: "fee_token_index",
         canary?: false,
         surface: :transaction,
@@ -66,7 +81,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
         with: "@fee_token_index 11",
         class: :field_index
       },
-      %{
+      %Mutant{
         id: "fee_payer_sig_index",
         canary?: false,
         surface: :transaction,
@@ -75,7 +90,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
         with: "@fee_payer_sig_index 10",
         class: :field_index
       },
-      %{
+      %Mutant{
         id: "swap_nonce_fields",
         canary?: false,
         surface: :builder,
@@ -84,7 +99,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
         with: "encode_uint(nonce),\n        encode_uint(nonce_key),",
         class: :field_order
       },
-      %{
+      %Mutant{
         id: "numeric_zero_byte",
         canary?: false,
         surface: :builder,
@@ -93,7 +108,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
         with: "defp encode_uint(0), do: <<0>>",
         class: :numeric_encoding
       },
-      %{
+      %Mutant{
         id: "signature_v_raw_recid",
         canary?: false,
         surface: :builder,
@@ -102,7 +117,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
         with: "v = recid",
         class: :signature_recovery
       },
-      %{
+      %Mutant{
         id: "skip_placeholder_reset",
         canary?: false,
         surface: :transaction,
@@ -111,7 +126,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
         with: "|> List.replace_at(@fee_payer_sig_index, <<>>)",
         class: :fee_payer_data
       },
-      %{
+      %Mutant{
         id: "recover_ignore_legacy_v",
         canary?: false,
         surface: :transaction,
@@ -179,8 +194,12 @@ defmodule Onchain.Tempo.Verification.Campaign do
         {^module, _} -> {:ok, module}
         nil -> {:error, {:module_missing, Enum.map(compiled, &elem(&1, 0))}}
       end
-    rescue
-      e -> {:error, Exception.message(e)}
+    catch
+      # Deliberately `catch`, not `rescue`: this compiles attacker-shaped
+      # source, and a mutated module can exit or throw as well as raise — a
+      # `rescue` would let those escape and abort the campaign instead of
+      # recording the mutant as uncompilable.
+      kind, reason -> {:error, Exception.format_banner(kind, reason)}
     after
       Code.put_compiler_option(:ignore_module_conflict, previous)
     end

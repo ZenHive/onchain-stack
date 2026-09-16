@@ -168,7 +168,7 @@ defmodule OnchainAerodrome.MixProject do
         "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
         "doctor --raise",
         "ex_dna --max-clones 0",
-        "reach.check --arch --smells",
+        "reach.check --dead-code --arch --smells",
         "sobelow --skip --exit low"
       ],
       # Fast local pre-commit loop — skips the cold-PLT dialyzer and the coverage
@@ -203,7 +203,7 @@ defmodule OnchainAerodrome.MixProject do
         "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
         "doctor --raise",
         "ex_dna --max-clones 0",
-        "reach.check --arch --smells",
+        "reach.check --dead-code --arch --smells",
         "sobelow --skip --exit low",
         "deps.audit.gated",
         "cmd env MIX_ENV=test mix test.json --cover --cover-threshold 65 --exclude integration",

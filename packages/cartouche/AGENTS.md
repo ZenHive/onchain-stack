@@ -796,8 +796,16 @@ are pinned to `MIX_ENV=test` via `def cli`.
   `format --check-formatted`, `credo --strict` (ignoring TODO/FIXME tags;
   ExSlop plugin enabled), `doctor --raise`, `ex_dna --max-clones 0`,
   `reach.check --arch --smells`, `sobelow --config`, `deps.audit.gated`,
-  `test.json --cover --cover-threshold 85 --summary-only --exclude integration
+  `test.json --cover --cover-threshold 85 --exclude integration
   --exclude dev_node`, `dialyzer`, `agents.check`.
+- **Two family-wide gate flags are deliberately absent here.**
+  `--summary-only` was dropped from the `test.json` step in every package
+  (task 9004) because it disables ex_unit_json's retry-on-flaky and hides
+  which test failed. `--dead-code` on `reach.check` is on in the other seven
+  packages but **not** here: at 67 files in scope the pass times out inside
+  reach itself (`Task.Supervised.stream(30000)`), which is a tool limit, not a
+  finding — see root `CLAUDE.md` § Adjudicated findings. Do not narrow
+  `.reach.exs` scope to make it fit.
 - **This package's dialyzer runs under `MIX_ENV=test`**, so it compiles and
   analyzes `test/support/`; a bare `mix dialyzer` (dev) does not. A clean
   `mix dialyzer` therefore does **not** imply a clean `mix ci`. When `mix ci`

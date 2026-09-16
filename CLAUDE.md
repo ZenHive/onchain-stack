@@ -448,10 +448,9 @@ remains:
   `.reach.exs` key, so there was nothing to exclude). Restored 2026-09-16 under
   reach 2.8.4, verified green by running it.
 
-**`--dead-code` is being rolled out, and four packages are not on it yet.** The
-gate flag is `reach.check --dead-code --arch --smells`; as of 2026-09-16
-hieroglyph, onchain, onchain_evm and onchain_js run it and pass. The other four
-do not, for two different measured reasons — neither is a style preference:
+**`--dead-code` is on in seven of eight packages; cartouche is the exception.**
+The gate flag is `reach.check --dead-code --arch --smells` everywhere except
+cartouche, which runs `--arch --smells`.
 
 - **cartouche cannot run `--dead-code` at all.** At 67 files in scope
   (`lib, sol/src, src, test/support`) the pass dies with
@@ -459,20 +458,27 @@ do not, for two different measured reasons — neither is a style preference:
   `Reach.CLI.Pipe.safely/1`, after Architecture Policy has already printed OK.
   It is a reach-side timeout on the largest package in the family, not a
   finding. Do not "fix" it by narrowing `.reach.exs` scope — that would hide
-  real analysis to satisfy a tool limit.
-- **onchain_aave, onchain_aerodrome and onchain_tempo are already red on the
-  smell step they run today**, before `--dead-code` is added. reach 2.8.4 ships
-  smell detectors 2.8.2 did not ("Repeated map shapes", "bare rescue",
-  "Suboptimal patterns"), so the reach bump in `51bc9f5` turned three gates red
-  on pre-existing `test/support/` code that nobody changed. Measured
-  2026-09-16 with `MIX_ENV=test mix reach.check --arch --smells`: aave 2
-  findings (`test/support/rpc_stub.ex:42` unused `flunk` result;
-  `test/support/aave_math_mutator.ex` `String.split/2 |> hd/1`, an 11× repeated
-  map shape and a bare rescue), aerodrome 1 (`test/support/types_case.ex:105`
-  `Enum.at/2` inside a loop — from harness delivery `1313135`, not from the
-  2026-09-16 ABI work), tempo 2 (`test/support/tempo_verification/campaign.ex`
-  11× repeated map shape and a bare rescue). Fix the findings, then add the
-  flag; adding the flag first just stacks a second failure on a red gate.
+  real analysis to satisfy a tool limit. Re-test the flag after any reach
+  upgrade.
+- **The reach 2.8.4 bump turned three gates red before the flag was added, and
+  they were repaired rather than suppressed.** 2.8.4 ships smell detectors
+  2.8.2 did not ("Repeated map shapes", "bare rescue", "Suboptimal patterns",
+  "trivial forwarder"), so `51bc9f5` red-lit onchain_aave, onchain_aerodrome
+  and onchain_tempo on pre-existing `test/support/` code nobody had touched.
+  Fixed 2026-09-16: the two 11×-repeated map shapes became real structs
+  (`Onchain.Aave.MathMutator.Site`, `Onchain.Tempo.Verification.Campaign.Mutant`),
+  the trivial `flatten/1` forwarder was deleted, `Enum.at/2`-in-a-loop became
+  `Enum.zip/2`, `String.split/2 |> hd/1` gained `parts: 2`, and a `receive`
+  result is bound so `flunk/1`'s value is used. **Nothing was added to any
+  `.reach.exs` ignore list.**
+- **Both bare rescues became `catch kind, reason`, which is a fix and not a
+  rename.** Both sites run deliberately-broken code — a mutated arithmetic
+  expression, a recompiled mutated module — where every failure mode is a
+  result to record. `rescue` catches only raises, so a mutant that exits or
+  throws would have escaped and aborted the campaign; `catch` records it. If
+  you ever see a bare `rescue` reintroduced there, it is a regression in
+  behaviour, not just in style.
+
 
 **Never hand-patch `deps/reach` (or anything under any package's `deps/`) to
 work around this.** A hand-edited unpacked tarball makes `mix ci` pass on your

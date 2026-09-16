@@ -200,7 +200,7 @@ defmodule OnchainTempo.MixProject do
         "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
         "doctor --raise",
         "ex_dna --max-clones 0",
-        "reach.check --arch --smells",
+        "reach.check --dead-code --arch --smells",
         "sobelow --skip --exit low",
         "cmd env MIX_ENV=test mix test.json --exclude integration"
       ],
@@ -210,7 +210,7 @@ defmodule OnchainTempo.MixProject do
         "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
         "doctor --raise",
         "ex_dna --max-clones 0",
-        "reach.check --arch --smells",
+        "reach.check --dead-code --arch --smells",
         "sobelow --skip --exit low",
         "deps.audit.gated",
         # `--summary-only` is deliberately OMITTED here: the flag is in

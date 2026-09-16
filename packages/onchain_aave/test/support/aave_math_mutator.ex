@@ -1,3 +1,16 @@
+defmodule Onchain.Aave.MathMutator.Site do
+  @moduledoc false
+
+  # What one mutated AST site changed. Eleven call sites built this as a bare
+  # `%{kind:, from:, to:}` map; reach's "repeated map shapes" check is right
+  # that it is a contract, so it is one here.
+
+  @enforce_keys [:kind, :from, :to]
+  defstruct [:kind, :from, :to]
+
+  @type t :: %__MODULE__{kind: atom(), from: String.t(), to: String.t()}
+end
+
 defmodule Onchain.Aave.MathMutator do
   @moduledoc false
 
@@ -6,6 +19,7 @@ defmodule Onchain.Aave.MathMutator do
   # overwritten.
 
   alias Onchain.Aave.MathDomains
+  alias Onchain.Aave.MathMutator.Site
   alias Onchain.Aave.MathOracle
 
   @math_v3 Path.expand("../../lib/onchain/aave/math.ex", __DIR__)
@@ -313,9 +327,19 @@ defmodule Onchain.Aave.MathMutator do
     else
       {:disagree, "#{vector.op} #{inspect(vector.args)} mutant=#{inspect(actual)} golden=#{expected}"}
     end
-  rescue
-    exception ->
-      {:raised, :error |> Exception.format(exception) |> String.split("\n") |> hd()}
+  catch
+    # Deliberately `catch`, not `rescue`: running a mutant is exactly the case
+    # where every failure mode is a result, and a mutated expression can exit
+    # or throw as well as raise — a `rescue` would let those escape and abort
+    # the campaign instead of recording them.
+    kind, reason ->
+      first_line =
+        kind
+        |> Exception.format(reason, __STACKTRACE__)
+        |> String.split("\n", parts: 2)
+        |> hd()
+
+      {:raised, first_line}
   end
 
   @spec classify_survivor(mutant()) :: map()
@@ -350,7 +374,7 @@ defmodule Onchain.Aave.MathMutator do
     end
   end
 
-  @spec apply_site(Macro.t(), non_neg_integer()) :: {Macro.t(), map()}
+  @spec apply_site(Macro.t(), non_neg_integer()) :: {Macro.t(), Site.t()}
   defp apply_site(ast, index) do
     {new_ast, acc} =
       walk_bodies(ast, %{index: 0, target: index, info: nil}, fn node, acc ->
@@ -362,7 +386,7 @@ defmodule Onchain.Aave.MathMutator do
         end
       end)
 
-    {new_ast, acc.info || %{kind: :unknown, from: "?", to: "?"}}
+    {new_ast, acc.info || %Site{kind: :unknown, from: "?", to: "?"}}
   end
 
   @spec walk_bodies(Macro.t(), term(), (Macro.t(), term() -> {Macro.t(), term()})) :: {Macro.t(), term()}
@@ -441,45 +465,45 @@ defmodule Onchain.Aave.MathMutator do
   defp mutable_site?({:{}, _, _}), do: false
   defp mutable_site?(_), do: false
 
-  @spec mutate_node(Macro.t()) :: {Macro.t(), map()}
+  @spec mutate_node(Macro.t()) :: {Macro.t(), Site.t()}
   defp mutate_node({:+, meta, args}) do
-    {{:-, meta, args}, %{kind: :arithmetic, from: "+", to: "-"}}
+    {{:-, meta, args}, %Site{kind: :arithmetic, from: "+", to: "-"}}
   end
 
   defp mutate_node({:-, meta, args}) do
-    {{:+, meta, args}, %{kind: :arithmetic, from: "-", to: "+"}}
+    {{:+, meta, args}, %Site{kind: :arithmetic, from: "-", to: "+"}}
   end
 
   defp mutate_node({:*, meta, args}) do
-    {{:+, meta, args}, %{kind: :arithmetic, from: "*", to: "+"}}
+    {{:+, meta, args}, %Site{kind: :arithmetic, from: "*", to: "+"}}
   end
 
   defp mutate_node({:<, meta, args}) do
-    {{:<=, meta, args}, %{kind: :comparison, from: "<", to: "<="}}
+    {{:<=, meta, args}, %Site{kind: :comparison, from: "<", to: "<="}}
   end
 
   defp mutate_node({:<=, meta, args}) do
-    {{:<, meta, args}, %{kind: :comparison, from: "<=", to: "<"}}
+    {{:<, meta, args}, %Site{kind: :comparison, from: "<=", to: "<"}}
   end
 
   defp mutate_node({:>, meta, args}) do
-    {{:>=, meta, args}, %{kind: :comparison, from: ">", to: ">="}}
+    {{:>=, meta, args}, %Site{kind: :comparison, from: ">", to: ">="}}
   end
 
   defp mutate_node({:>=, meta, args}) do
-    {{:>, meta, args}, %{kind: :comparison, from: ">=", to: ">"}}
+    {{:>, meta, args}, %Site{kind: :comparison, from: ">=", to: ">"}}
   end
 
   defp mutate_node({:==, meta, args}) do
-    {{:!=, meta, args}, %{kind: :comparison, from: "==", to: "!="}}
+    {{:!=, meta, args}, %Site{kind: :comparison, from: "==", to: "!="}}
   end
 
   defp mutate_node({{:., dot_meta, [{:__aliases__, alias_meta, [:Kernel]}, :min]}, meta, args}) do
     {{{:., dot_meta, [{:__aliases__, alias_meta, [:Kernel]}, :max]}, meta, args},
-     %{kind: :clamp, from: "Kernel.min", to: "Kernel.max"}}
+     %Site{kind: :clamp, from: "Kernel.min", to: "Kernel.max"}}
   end
 
   defp mutate_node(other) do
-    {other, %{kind: :unknown, from: "?", to: "?"}}
+    {other, %Site{kind: :unknown, from: "?", to: "?"}}
   end
 end

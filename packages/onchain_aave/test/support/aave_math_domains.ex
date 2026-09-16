@@ -106,7 +106,7 @@ defmodule Onchain.Aave.MathDomains do
     last = 1_700_000_000
     hf_max = div(@hf_liq, 2)
 
-    flatten([
+    List.flatten([
       display_vectors(),
       pair(:v3, :ray_mul, [
         {[0, 0], :zero},
@@ -426,7 +426,4 @@ defmodule Onchain.Aave.MathDomains do
   defp vec(protocol, op, args, class) do
     %{protocol: protocol, op: op, args: args, class: class}
   end
-
-  @spec flatten([term()]) :: [vector()]
-  defp flatten(list), do: List.flatten(list)
 end

@@ -101,9 +101,12 @@ defmodule Onchain.Aerodrome.TypesCase do
     assert tuple_size(row) == length(fields)
     assert length(components) == length(fields)
 
-    for {field, index} <- Enum.with_index(fields) do
-      assert_field(field, Enum.at(components, index), elem(row, index), Map.fetch!(struct, field), nested)
-    end
+    fields
+    |> Enum.zip(components)
+    |> Enum.with_index()
+    |> Enum.each(fn {{field, component}, index} ->
+      assert_field(field, component, elem(row, index), Map.fetch!(struct, field), nested)
+    end)
 
     :ok
   end

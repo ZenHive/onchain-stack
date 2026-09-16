@@ -36,11 +36,12 @@ defmodule Onchain.RPCStub do
         stub_loop(listen, handler)
       end)
 
-    receive do
-      {:stub_ready, ^pid} -> :ok
-    after
-      @stub_ready_timeout_ms -> flunk("JSON-RPC stub failed to start")
-    end
+    :ok =
+      receive do
+        {:stub_ready, ^pid} -> :ok
+      after
+        @stub_ready_timeout_ms -> flunk("JSON-RPC stub failed to start")
+      end
 
     on_exit(fn ->
       Process.exit(pid, :kill)
