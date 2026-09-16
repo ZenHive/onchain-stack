@@ -470,6 +470,62 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
     refute decode_bool!(taker_authorized_after_revoke)
   end
 
+  test "Config updates require their own permission even for the position owner" do
+    writes = signed_position_manager_calls()
+
+    permissions =
+      encoded_call(@config, "getConfigPermissions(address,address,address)", [
+        address_bin(@main_spoke),
+        address_bin(@fork_user),
+        address_bin(@fork_user)
+      ])
+
+    calls = [
+      writes.authorize_config,
+      writes.grant_collateral_permission,
+      writes.update_risk_premium,
+      writes.update_dynamic_config,
+      writes.grant_risk_permission,
+      permissions,
+      writes.update_risk_premium,
+      writes.update_dynamic_config,
+      writes.revoke_risk_permission,
+      permissions,
+      writes.update_risk_premium,
+      writes.grant_dynamic_permission,
+      permissions,
+      writes.update_dynamic_config,
+      writes.update_risk_premium,
+      writes.revoke_dynamic_permission,
+      permissions,
+      writes.update_dynamic_config
+    ]
+
+    assert {:ok, results} = EVM.simulate_batch(calls, fork_opts(RPCCase.rpc_url!()))
+    assert length(results) == length(calls)
+    # Both updates reject collateral-only permission; each grant authorizes only
+    # its own operation, and each revocation restores DelegateeNotAllowed().
+    rejected_indices = [2, 3, 7, 10, 14, 17]
+
+    for {result, index} <- Enum.with_index(results) do
+      if index in rejected_indices do
+        refute result.success
+        assert String.downcase(result.output) == "0xfada00e8"
+      else
+        assert result.success, "Config fork call #{index} reverted: #{result.output}"
+      end
+    end
+
+    for {index, expected} <- [
+          {5, [true, true, false]},
+          {9, [true, false, false]},
+          {12, [true, false, true]},
+          {16, [true, false, false]}
+        ] do
+      assert {:ok, ^expected} = ABI.decode_types("(bool,bool,bool)", Enum.at(results, index).output)
+    end
+  end
+
   @spec live_opts!() :: keyword()
   defp live_opts!, do: [block: @evidence_block] ++ RPCCase.rpc_opts!()
 
@@ -495,6 +551,16 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
       borrow: &PositionManager.borrow(@main_spoke, @weth_reserve_id, @borrow_amount, @fork_user, &1),
       repay: &PositionManager.repay(@main_spoke, @weth_reserve_id, @repay_amount, @fork_user, &1),
       authorize_config: &PositionManager.set_user_position_manager(@main_spoke, @config, true, &1),
+      update_risk_premium: &PositionManager.update_user_risk_premium_on_behalf_of(@main_spoke, @fork_user, &1),
+      update_dynamic_config: &PositionManager.update_user_dynamic_config_on_behalf_of(@main_spoke, @fork_user, &1),
+      grant_risk_permission:
+        &PositionManager.set_can_update_user_risk_premium_permission(@main_spoke, @fork_user, true, &1),
+      revoke_risk_permission:
+        &PositionManager.set_can_update_user_risk_premium_permission(@main_spoke, @fork_user, false, &1),
+      grant_dynamic_permission:
+        &PositionManager.set_can_update_user_dynamic_config_permission(@main_spoke, @fork_user, true, &1),
+      revoke_dynamic_permission:
+        &PositionManager.set_can_update_user_dynamic_config_permission(@main_spoke, @fork_user, false, &1),
       grant_collateral_permission:
         &PositionManager.set_can_set_using_as_collateral_permission(@main_spoke, @fork_user, true, &1),
       config_disable_collateral:

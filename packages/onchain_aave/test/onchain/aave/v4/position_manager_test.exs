@@ -333,6 +333,43 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
   end
 
   describe "Config Position Manager calldata" do
+    test "update permission setters validate inputs before signing" do
+      for fun <- [
+            &PositionManager.set_can_update_user_risk_premium_permission/4,
+            &PositionManager.set_can_update_user_dynamic_config_permission/4
+          ] do
+        assert {:error, {:invalid_address, "bad"}} = fun.("bad", @spender, true, [])
+        assert {:error, {:invalid_address, "bad"}} = fun.(@spoke, "bad", true, [])
+
+        for flag <- [nil, 1, "true"] do
+          assert {:error, {:invalid_flag, ^flag}} = fun.(@spoke, @spender, flag, [])
+        end
+
+        assert {:error, {:unknown_contract, :v4_config_position_manager}} =
+                 fun.(@spoke, @spender, true, network: :arbitrum)
+      end
+    end
+
+    test "update permission grants and revocations match independent cast selectors and ABI words" do
+      # cast sig against Aave's IConfigPositionManager signatures.
+      for {fun, expected_selector} <- [
+            {&PositionManager.set_can_update_user_risk_premium_permission/4, <<0x83, 0xAA, 0xB1, 0xA7>>},
+            {&PositionManager.set_can_update_user_dynamic_config_permission/4, <<0xB0, 0xEB, 0x2C, 0xC7>>}
+          ],
+          status <- [true, false] do
+        {to, calldata} =
+          capture_signer_args(fn ->
+            assert {:error, {:missing_option, :private_key}} = fun.(@spoke, @spender, status, [])
+          end)
+
+        assert to == Contracts.address!(@config)
+        {:ok, spoke} = Address.validate(@spoke)
+        {:ok, delegatee} = Address.validate(@spender)
+        flag = if status, do: 1, else: 0
+        assert calldata == expected_selector <> pad_left(spoke) <> pad_left(delegatee) <> <<flag::256>>
+      end
+    end
+
     test "setUsingAsCollateralOnBehalfOf encodes spoke, reserve, flag, and owner against Config" do
       {to, calldata} =
         capture_signer_args(fn ->

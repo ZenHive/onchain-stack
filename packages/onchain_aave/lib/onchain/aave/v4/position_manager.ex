@@ -13,8 +13,13 @@ defmodule Onchain.Aave.V4.PositionManager do
   Every `*OnBehalfOf` and allowance-gated entrypoint takes the position owner
   as an explicit required argument. The wrappers never default the owner to
   the signer address. `approve_borrow/5`, `approve_withdraw/5`,
-  `set_user_position_manager/4`, and `set_can_set_using_as_collateral_permission/4`
-  have no owner argument because the on-chain functions grant from `msg.sender`.
+  `set_user_position_manager/4`, and the Config permission setters have no owner argument because the on-chain
+  functions grant from `msg.sender`.
+
+  Config updates require the matching permission even when owner and signer are
+  the same address. Authorize Config on the Spoke, then grant risk-premium or
+  dynamic-config permission with its corresponding setter. Collateral permission
+  does not authorize either update. Passing `false` revokes a permission.
 
   ## Error Format
 
@@ -48,6 +53,8 @@ defmodule Onchain.Aave.V4.PositionManager do
   | `update_user_risk_premium_on_behalf_of/3` | Config `updateUserRiskPremiumOnBehalfOf` |
   | `update_user_dynamic_config_on_behalf_of/3` | Config `updateUserDynamicConfigOnBehalfOf` |
   | `set_can_set_using_as_collateral_permission/4` | Config `setCanSetUsingAsCollateralPermission` |
+  | `set_can_update_user_risk_premium_permission/4` | Config risk-premium permission grant/revoke |
+  | `set_can_update_user_dynamic_config_permission/4` | Config dynamic-config permission grant/revoke |
   | `decode_revert/1` | Decode Taker allowance custom-error revert data |
   """
 
@@ -83,6 +90,8 @@ defmodule Onchain.Aave.V4.PositionManager do
   @set_using_as_collateral_obo_sig "setUsingAsCollateralOnBehalfOf(address,uint256,bool,address)"
   @update_risk_premium_sig "updateUserRiskPremiumOnBehalfOf(address,address)"
   @update_dynamic_config_sig "updateUserDynamicConfigOnBehalfOf(address,address)"
+  @set_can_update_risk_permission_sig "setCanUpdateUserRiskPremiumPermission(address,address,bool)"
+  @set_can_update_dynamic_permission_sig "setCanUpdateUserDynamicConfigPermission(address,address,bool)"
   @set_can_set_collateral_permission_sig "setCanSetUsingAsCollateralPermission(address,address,bool)"
 
   @borrow_allowance_error "InsufficientBorrowAllowance(uint256,uint256)"
@@ -406,11 +415,41 @@ defmodule Onchain.Aave.V4.PositionManager do
 
   @spec set_can_set_using_as_collateral_permission(address(), address(), boolean(), keyword()) :: result(String.t())
   def set_can_set_using_as_collateral_permission(spoke, delegatee, status, opts) do
-    with {:ok, spoke_bin} <- Address.validate(spoke),
-         {:ok, delegatee_bin} <- Address.validate(delegatee),
-         {:ok, status} <- validate_bool(status) do
-      send_manager_tx(@config, @set_can_set_collateral_permission_sig, [spoke_bin, delegatee_bin, status], opts)
-    end
+    config_permission_tx(@set_can_set_collateral_permission_sig, spoke, delegatee, status, opts)
+  end
+
+  api(
+    :set_can_update_user_risk_premium_permission,
+    "Grant or revoke a delegatee's Config permission to update risk premium from the signer (msg.sender).",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      delegatee: [kind: :value, description: @delegatee_desc],
+      status: [kind: :value, description: @flag_desc],
+      opts: [kind: :value, description: @write_opts_desc]
+    ],
+    returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
+  )
+
+  @spec set_can_update_user_risk_premium_permission(address(), address(), boolean(), keyword()) :: result(String.t())
+  def set_can_update_user_risk_premium_permission(spoke, delegatee, status, opts) do
+    config_permission_tx(@set_can_update_risk_permission_sig, spoke, delegatee, status, opts)
+  end
+
+  api(
+    :set_can_update_user_dynamic_config_permission,
+    "Grant or revoke a delegatee's Config permission to update dynamic config from the signer (msg.sender).",
+    params: [
+      spoke: [kind: :value, description: @spoke_desc],
+      delegatee: [kind: :value, description: @delegatee_desc],
+      status: [kind: :value, description: @flag_desc],
+      opts: [kind: :value, description: @write_opts_desc]
+    ],
+    returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
+  )
+
+  @spec set_can_update_user_dynamic_config_permission(address(), address(), boolean(), keyword()) :: result(String.t())
+  def set_can_update_user_dynamic_config_permission(spoke, delegatee, status, opts) do
+    config_permission_tx(@set_can_update_dynamic_permission_sig, spoke, delegatee, status, opts)
   end
 
   # --- decode_revert ---
@@ -487,6 +526,15 @@ defmodule Onchain.Aave.V4.PositionManager do
       taker
       |> Contract.call(signature, [spoke_bin, reserve_id, owner_bin, spender_bin], "(uint256)", rpc_opts)
       |> unwrap_uint()
+    end
+  end
+
+  @spec config_permission_tx(String.t(), address(), address(), boolean(), keyword()) :: result(String.t())
+  defp config_permission_tx(signature, spoke, delegatee, status, opts) do
+    with {:ok, spoke_bin} <- Address.validate(spoke),
+         {:ok, delegatee_bin} <- Address.validate(delegatee),
+         {:ok, status} <- validate_bool(status) do
+      send_manager_tx(@config, signature, [spoke_bin, delegatee_bin, status], opts)
     end
   end
 

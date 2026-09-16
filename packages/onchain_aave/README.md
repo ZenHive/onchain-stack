@@ -50,7 +50,7 @@ See [V4_SCOPING.md](V4_SCOPING.md) for the pinned address book and naming aliase
 | `Onchain.Aave.Faucet` | Testnet faucet interactions (mint test tokens) |
 | `Onchain.Aave.V4.Hub` | V4 Hub reads across registered Hubs (Ethereum and Avalanche) (member Spokes, credit-line inventory and caps, rate environment, share/asset previews, bound constants) |
 | `Onchain.Aave.V4.Oracle` | V4 Spoke-scoped IAaveOracle reads (reserve prices, sources, decimals) plus Chainlink feeds |
-| `Onchain.Aave.V4.PositionManager` | V4 Giver/Taker/Config writes (supply/repay/borrow/withdraw on-behalf-of, Spoke position-manager authorization, collateral toggle) plus Taker allowances |
+| `Onchain.Aave.V4.PositionManager` | V4 Giver/Taker/Config writes (supply/repay/borrow/withdraw on-behalf-of, Spoke position-manager authorization, collateral toggle, risk-premium/dynamic-config permissions) plus Taker allowances |
 | `Onchain.Aave.V4.Spoke` | V4 Spoke reads (reserve/user data, position-manager checks) |
 | `Onchain.Aave.V4.TokenizationSpoke` | V4 ERC-4626 Tokenization Spoke reads (`lookup(hub, asset)`, share accounting, Hub/asset metadata) |
 
@@ -134,6 +134,14 @@ V4: it supplies, borrows, withdraws and repays through the PositionManager
 against mainnet state at a pinned block, authorizes and revokes position
 managers on the Spoke, and toggles collateral through both Spoke and Config
 wrappers.
+
+Config Position Manager updates require the corresponding permission even when
+acting on your own position. First authorize Config using
+`PositionManager.set_user_position_manager/4`, then grant
+`set_can_update_user_risk_premium_permission/4` or
+`set_can_update_user_dynamic_config_permission/4` before the matching
+`update_user_*_on_behalf_of/3` call. Each setter takes `(spoke, delegatee, status, opts)`;
+`false` revokes the permission. Collateral permission does not grant either update.
 
 ## Configuration
 

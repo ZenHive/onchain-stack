@@ -18,6 +18,12 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ### Added
 
+- Config Position Manager risk-premium and dynamic-config permission setters,
+  enabling the matching on-behalf-of updates through the public API. Each
+  permission is independent of collateral permission and applies even when
+  owner and signer match. Pinned fork tests prove separate grants, successful
+  updates, revocation, and `DelegateeNotAllowed()` rejections.
+
 - `Pool.get_reserve_variable_debt_token/2` decodes the dedicated
   `getReserveVariableDebtToken(address)` getter. `DebtToken.debt_token_address/3`
   resolves `:variable` through that getter instead of a positional
