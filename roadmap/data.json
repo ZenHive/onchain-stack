@@ -13566,7 +13566,7 @@
       "phase": 2000,
       "bundle": "cartouche_correctness_010",
       "target_repo": "cartouche",
-      "status": "pending",
+      "status": "done",
       "title": "Normalize high-s signatures at Cartouche's recovery boundary — recover_public_key_from_digest/2 still hits the curvy#8 recid bug",
       "scores": {
         "d": 3,
@@ -13608,9 +13608,16 @@
         "packages/cartouche/lib/cartouche/transaction.ex",
         "packages/onchain/lib/onchain/aa.ex"
       ],
+      "shipped_in": "33b674e2cb698ad9bff580e9776e0d4551840bf4",
       "body": "Sibling check (DD-8): 8014 is the same DEFECT CLASS but a different surface and is already done\n— it fixed onchain_tempo only. 2091/2092 are Solana signature-count guards, unrelated. This task\nstates the class invariant once for the packages 8014 left untouched: no recovery path in the\nfamily may call `Curvy.recover_key/3` on a signature it has not normalized.\n\nTask 8014 fixed the curvy high-s recovery defect in `Onchain.Tempo.Transaction` and reported it\nupstream as libitx/curvy#8 (issue confirmed open, titled \"recover_key/3 uses pre-normalization\nrecovery ID for high-s signatures\"). That task's delivery also audited every Curvy recovery call\nsite in `packages/` and found one still unnormalized — then the write-up carrying that finding was\ndeleted as a stray file in 36a9d91 without a task replacing it. This is that task.\n\n`Cartouche.Recover.recover_public_key_from_digest/2` (recover.ex:126-130) pipes the caller's\nsignature straight into `Curvy.recover_key/3`. curvy 0.3.1 binds `recid` from the input struct,\nthen calls `Signature.normalize/1` — which for `s > n/2` replaces `s` with `n - s` AND flips\n`recid` — and passes the PRE-normalization recid to `Point.from_signature/3`. A high-s input\ntherefore recovers a well-formed but WRONG public key.\n\nThis is the shared recovery API, not a leaf: `recover_public_key/2` and `recover_eth/2` both\nfunnel through it, and `Cartouche.Transaction.V1/V3/V4/V_2930.recover_signer` call `recover_eth/2`\non signatures that arrive from outside the library. Every one of those inherits the defect.\n\nConsequence is fail-closed, as in 8014 — a verifier comparing the recovered address against an\nexpected signer rejects a valid complement-s encoding rather than accepting a forgery. An attacker\ncan already submit any (r, s, recid) triple directly, so the mis-recovered point is reachable\nwithout this bug. It is a correctness defect at a boundary cartouche owns: one signature has two\nvalid encodings and both must recover the same key.\n\nThe fix in 8014 was three lines: `CurvySig.normalize(%CurvySig{...})` before the recovery call\n(onchain_tempo/lib/onchain/tempo/transaction.ex:412-419). Watch the trap that makes this more than\na copy-paste: cartouche's own `Recover.normalize_low_s/1` (recover.ex:143-147) deliberately sets\n`recid: nil`, because the signing path re-derives the recid afterward via `find_recid_from_digest/3`.\nAt the recovery boundary the recid must be FLIPPED, not dropped — reusing `normalize_low_s/1`\nunchanged would break recovery for every high-s input instead of fixing it.\n\nOrdered after task 2134, which is in flight on the same file (recover.ex) — do not dispatch both\nagainst the same write set concurrently.\n\nDiscovered 2026-09-15 by the post-merge audit of 428556c.\n",
       "created_at": "2026-09-15",
+      "started_at": "2026-09-16",
+      "done_at": "2026-09-16",
       "scored_at": "2026-09-15",
+      "implemented": "Normalize decoded signatures with Curvy.Signature.normalize before recovery, retaining correct recid parity; signing-path normalize_low_s unchanged. Regression matrix covers low/complement-s across binary and struct forms, digest/message/personal-sign and legacy transaction recovery; 44 focused tests and package mix ci pass. AA recovery consumes only locally normalized signer output. Independently reviewed by aave_review.",
+      "delivered_by": "codex-subagent-crypto_review",
+      "verified": true,
+      "verified_by": "codex-subagent-aave_review",
       "cross_repo": []
     },
     {
@@ -13779,7 +13786,7 @@
       "phase": 0,
       "bundle": "monorepo_root_gates",
       "target_repo": "onchain_stack",
-      "status": "pending",
+      "status": "done",
       "title": "check.dispatch runs NO tests in onchain_aave, onchain_aerodrome and onchain_evm — the reviewer gate grades three packages without executing their suites",
       "scores": {
         "d": 4,
@@ -13811,9 +13818,16 @@
         "packages/onchain_evm/mix.exs",
         "CLAUDE.md"
       ],
+      "shipped_in": "9d6913015d51bd9f3d78cf1e21ebded477f2825c",
       "body": "Found during the post-merge audit of ead58bc, by running the project's own dispatch gate on a cold worktree and noticing the output contained no test summary.\n\nMeasured 2026-09-15 across all eight packages' `check.dispatch` aliases:\n\n- WITH a test step: cartouche, hieroglyph, onchain, onchain_js, onchain_tempo\n- WITHOUT any test step: **onchain_aave, onchain_aerodrome, onchain_evm**\n\nThe three failing aliases are byte-identical to each other — `format --check-formatted`, `compile --warnings-as-errors`, `credo --strict ...`, `doctor --raise`, `ex_dna --max-clones 0`, `reach.check --arch --smells`, `sobelow --skip --exit low` — one copied template with the test step dropped.\n\nWhy this matters more than its size suggests: `check.dispatch` is the project's registered `check_command`. It is what the cross-family reviewer runs, and per the harness contract the reviewer IS the gate. So for three of eight packages the gate proves the code compiles, formats and passes static analysis, and proves nothing about whether it *works*. Concretely, task 5007 landed 47 new `Onchain.Aerodrome.Types.*` tests in this very range and the reviewer worktree never executed one of them. Every green verdict on these three packages has been quieter than it looked.\n\nThis is exactly the whole-surface class the root CLAUDE.md describes: no per-task reviewer can see it, because no single task's diff contains it. Fix it in the alias, and write the invariant down so the next copy of the template cannot drop the step again.\n\nOne real obstacle, which is why this is a task rather than a one-line edit. `packages/onchain_aerodrome`'s suite does not currently pass on a bare node: `test/onchain/aerodrome/calldata_fixture_test.exs` fails 3 tests with \"Foundry cast is required on PATH; never a skip\" (verified on this audit node, `cast` absent; landed earlier under task 5026 in fe6faa0 / 6af0864). That refusal-to-skip is deliberate and correct for `mix ci` — an evidence harness that silently skips proves nothing. But naively adding `test.json` to `check.dispatch` would turn every future onchain_aerodrome dispatch red on any node without Foundry. Decide that explicitly: either dispatch nodes carry Foundry and the root CLAUDE.md says so, or the calldata fixture tests get a tag `check.dispatch` excludes while `mix ci` still runs. Do not resolve it by weakening the test.\n\nVerify the other two packages' suites actually pass cold before wiring them in; `onchain_evm` has a Rust NIF build and `onchain_aave` may have integration-tagged tests needing exclusion.\n",
       "created_at": "2026-09-15",
+      "started_at": "2026-09-16",
+      "done_at": "2026-09-16",
       "scored_at": "2026-09-15",
+      "implemented": "Added complete offline suites to Aave, Aerodrome and EVM check.dispatch, preserving exclusions of heavier gates. Foundry is an explicit prerequisite: verified cast 1.8.3 installed on blockwatch-harness; Aerodrome prepends the standard ~/.foundry/bin because the service PATH omits it. All three dispatch gates pass (406/172/298 tests). An isolated intentionally failing test was executed/retried and made Aerodrome check.dispatch exit 2; after removing it the gate passed. Source-built root mix ci passed all eight packages: 3788 offline tests, 28 EVM plus 7 Solidity Rust tests, Clippy and existing quality gates. Independent crypto_review inspected gates. No muex run.",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "codex-subagent-crypto_review",
       "cross_repo": []
     },
     {
@@ -14130,6 +14144,118 @@
       "body": "Honest score: no consumer in the family needs this today; the demand signal is the viem-parity review of 2026-09-16 and the fact that mpp is a Phoenix app that will eventually authenticate wallets. B and U are set accordingly — this is the lowest-priority task in the parity set and should be picked up last.\n\nBuild EIP-4361 as a pure library: construct, render, parse, verify. The rendering format is byte-sensitive (clients sign the exact string), so the spec's ABNF and the spruceid reference vectors are the contract, not a hand-written template. EIP-191 recovery already exists in `Cartouche.Recover` (`prefix_eth/1`) — reuse it. EIP-1271 needs an `eth_call` with the `isValidSignature(bytes32,bytes)` selector against the address when it has code; `Onchain.Contract.call/5` and hieroglyph cover the encoding.\n\nAuthority: EIP-4361 text and the spruceid/siwe repository's JSON test vectors at a named commit; a live EIP-1271 verification against a real deployed contract wallet for the smart-account path.\n\nDispatch trigger: authentication-adjacent signature verification — security-marked, and the reference-vector suite gives a reviewer something concrete to check the implementation against.\n",
       "created_at": "2026-09-16",
       "scored_at": "2026-09-16",
+      "cross_repo": []
+    },
+    {
+      "id": "9019",
+      "phase": 6003,
+      "bundle": "onchain_evm_standalone",
+      "target_repo": "onchain_evm",
+      "status": "done",
+      "title": "Preserve fork chain identity through every simulation path",
+      "scores": {
+        "d": 3,
+        "b": 9,
+        "u": 8
+      },
+      "eff": 2.83,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [
+        "bug"
+      ],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "CHAINID matches the RPC chain for Ethereum, Optimism and Base in all three simulation paths",
+        "Explicit spec_id preserves the fork chain ID, including an otherwise unknown chain",
+        "Rust regressions, live opcode probes and the affected package gate pass"
+      ],
+      "shipped_in": "62c16cf4eae8d29c809758836d4fc9582349050a",
+      "body": "Post-landing review of task 6064 reproduced CHAINID=1 on Base forks: selecting the right EVM revision did not set execution chain identity. Preserve the RPC chain ID in calls, transactions and batches, including explicit revision overrides. Reuse existing fix a16167b. Source-built native tests and live opcode probes must verify the fix; no real transactions or muex runs.",
+      "created_at": "2026-09-16",
+      "started_at": "2026-09-16",
+      "done_at": "2026-09-16",
+      "scored_at": "2026-09-16",
+      "implemented": "Integrated a16167b as 62c16cf; fork RPC chain ID now reaches CfgEnv and TxEnv in calls, transactions and batches. Source-built NIF: 28 EVM Rust tests, 7 Solidity tests, Clippy and package mix ci pass (298 offline tests, 94.56% coverage). Three live CHAINID regressions pass across Ethereum, Optimism and Base, including revision overrides. Independent crypto_review reviewed all paths. No muex run.",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "codex-subagent-crypto_review",
+      "cross_repo": []
+    },
+    {
+      "id": "9020",
+      "phase": 4005,
+      "bundle": "onchain_aave_v4_support",
+      "target_repo": "onchain_aave",
+      "status": "done",
+      "title": "Complete Config permission grants for risk-premium and dynamic-config updates",
+      "scores": {
+        "d": 4,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.88,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "Both update permissions can be independently granted and revoked through public wrappers",
+        "Independent calldata checks verify deployed signatures and explicit delegatees",
+        "Pinned fork tests reject collateral-only permission, succeed after the matching grant and reject after revocation",
+        "Focused tests and the package gate pass"
+      ],
+      "shipped_in": "7218aba8b500b33b37c950d9904b5456d2350dff",
+      "body": "Review of task 4067 found both update wrappers inaccessible through the public grant API: mainnet block 25800000 returns DelegateeNotAllowed even for owner=self without distinct permissions. Expose matching grants/revocations and document their prerequisites, using the deployed ConfigPositionManager as authority. Use fork simulation only, never broadcast transactions.",
+      "created_at": "2026-09-16",
+      "started_at": "2026-09-16",
+      "done_at": "2026-09-16",
+      "scored_at": "2026-09-16",
+      "implemented": "Added separate risk-premium and dynamic-config permission setters with shared input validation and documented prerequisites. Independent cast selectors checked; 41 focused tests pass including deployed fork block 25800000, collateral-only rejection, independent grants, successful updates, permission tuple checks and revocation rejection. Package mix ci passes. Independently reviewed by crypto_review.",
+      "delivered_by": "codex-subagent-aave_review",
+      "verified": true,
+      "verified_by": "codex-subagent-crypto_review",
+      "cross_repo": []
+    },
+    {
+      "id": "9021",
+      "phase": 5001,
+      "bundle": "onchain_aerodrome_foundations",
+      "target_repo": "onchain_aerodrome",
+      "status": "done",
+      "title": "Add nonempty live Position and Reward fixtures with nonvacuous decode assertions",
+      "scores": {
+        "d": 4,
+        "b": 7,
+        "u": 7
+      },
+      "eff": 1.75,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "Real nonempty Position and Reward responses are committed with a pinned manifest",
+        "Capture input selectors reproduce the fixtures and empty responses fail loudly",
+        "Offline type tests assert nonempty and all fields, including nested values",
+        "Capture and offline suite tests pass"
+      ],
+      "shipped_in": "d1cf6cce1bb7dce3a818e20a4b46541a41f9ce54",
+      "body": "The task 5004 position/reward fixtures contain zero rows, so their type tests never inspect a real row. Capture reproducible nonempty deployed Sugar responses at an explicit Base block with explicit account and NFT inputs. Preserve existing empty pagination evidence. Record public provenance without credentials; validate every decoded field offline.",
+      "created_at": "2026-09-16",
+      "started_at": "2026-09-16",
+      "done_at": "2026-09-16",
+      "scored_at": "2026-09-16",
+      "implemented": "Captured one real Position and two positive Reward rows at Base block 51348944 from mainnet.base.org; independent aave_review cast probes matched both response byte strings. Separate nonempty manifest preserves existing empty pagination cases. Explicit selector capture rejects either empty response before writes; offline field/amount assertions and binding replay cover actual rows. 46 focused tests, 172 complete offline tests and full root mix ci pass.",
+      "delivered_by": "codex-subagent-aerodrome_data_review",
+      "verified": true,
+      "verified_by": "codex-subagent-aave_review",
       "cross_repo": []
     }
   ]

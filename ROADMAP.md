@@ -68,7 +68,7 @@
 | Task 9003 | ✅ | 🎁 **monorepo_root_gates** · advisory_freshness/1 resolves the freshness prover through ~/_DATA/code/onchain-stack, so every other checkout skips the gate [D:3/B:7/U:6 → Eff:2.17] 🎯 |
 | Task 9004 | ✅ | 🎁 **monorepo_root_gates** · Drop --summary-only from the six packages that still carry it — it disqualifies ex_unit_json's flaky-retry and hides which test failed [D:2/B:6/U:5 → Eff:2.75] 🎯 |
 | Task 9005 | ⬜ | 🎁 **monorepo_root_gates** · The consolidated root .mcp.json reaches only cartouche's tidewave (port 4013); the other seven packages' dev servers are unaddressable [D:2/B:5/U:4 → Eff:2.25] 🎯 |
-| Task 9011 | ⬜ | 🎁 **monorepo_root_gates** · check.dispatch runs NO tests in onchain_aave, onchain_aerodrome and onchain_evm — the reviewer gate grades three packages without executing their suites [D:4/B:9/U:8 → Eff:2.12] 🎯 |
+| Task 9011 | ✅ | 🎁 **monorepo_root_gates** · check.dispatch runs NO tests in onchain_aave, onchain_aerodrome and onchain_evm — the reviewer gate grades three packages without executing their suites [D:4/B:9/U:8 → Eff:2.12] 🎯 |
 | Task 9012 | ⬜ | 🎁 **monorepo_root_gates** · Resolve Mint advisories reported by the Aave cold dependency install [D:3/B:7/U:7 → Eff:2.33] 🎯 |
 <!-- TASKS:END -->
 
@@ -210,7 +210,7 @@
 | Task 2136 | ✅ | 🎁 **cartouche_rpc_read_surface** · Multi-endpoint live-test seam so node-portability rule 4 can actually be executed [D:3/B:8/U:8 → Eff:2.67] 🎯 |
 | Task 2137 | ⬜ | 🎁 **cartouche_rpc_read_surface** · Move the transport hardening into cartouche — retry, telemetry, node-refusal classification, batch [D:5/B:9/U:9 → Eff:1.8] 🚀 |
 | Task 9002 | ⬜ | 🎁 **cartouche_signer_backends** · Put secp256k1 sign and recover behind a native backend — curvy costs ~2.8 ms per signature on the DEX order path [D:5/B:7/U:7 → Eff:1.4] 📋 |
-| Task 9006 | ⬜ | 🎁 **cartouche_correctness_010** · 🔒 Normalize high-s signatures at Cartouche's recovery boundary — recover_public_key_from_digest/2 still hits the curvy#8 recid bug [D:3/B:6/U:5 → Eff:1.83] 🚀 |
+| Task 9006 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 Normalize high-s signatures at Cartouche's recovery boundary — recover_public_key_from_digest/2 still hits the curvy#8 recid bug [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 | Task 9007 | ⬜ | 🎁 **cartouche_release_010** · Reconcile Cartouche release notes against everything landed since 0.9.1 [D:2/B:7/U:7 → Eff:3.5] 🎯 |
 | Task 9008 | ✅ | 🎁 **cartouche_phase7_deps** · Assess Mint advisories reported by Cartouche cold dependency resolution [D:2/B:5/U:4 → Eff:2.25] 🎯 |
 | Task 9013 `[P]` | ⬜ | 🎁 **cartouche_chain_registry** · Cartouche.Chain as a generated chain registry — ids, currency, RPC URLs, explorers, well-known contracts — and route Multicall/ENS addresses through it [D:5/B:8/U:8 → Eff:1.6] 🚀 |
@@ -424,6 +424,7 @@
 | Task 4069 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.Contracts* · Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs [D:4/B:9/U:9 → Eff:2.25] 🎯 |
 | Task 4070 | ⬜ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.Contracts* · Register the ether.fi Cash V4 whitelabel instance on Optimism [D:4/B:8/U:8 → Eff:2.0] 🎯 |
 | Task 9009 | ⬜ | 🎁 **onchain_aave_v4_support** · Detect V4 address-book drift against upstream instead of only against the committed snapshot [D:4/B:7/U:6 → Eff:1.62] 🚀 |
+| Task 9020 | ✅ | 🎁 **onchain_aave_v4_support** · Complete Config permission grants for risk-premium and dynamic-config updates [D:4/B:8/U:7 → Eff:1.88] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 4006: V3 Write Surface Gaps
@@ -481,6 +482,7 @@
 | Task 5003 | ✅ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.Abi* · Decode strategy and Bindings.Abi signature plumbing from priv/abis [D:5/B:8/U:8 → Eff:1.6] 🚀 |
 | Task 5004 | ✅ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Mix.Tasks.Aerodrome.CaptureFixtures* · Golden-fixture capture harness: pinned-block eth_call fixtures and an offline loader [D:4/B:7/U:8 → Eff:1.88] 🚀 |
 | Task 5005 `[P]` | ✅ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.RPCCase* · Onchain.Aerodrome.RPCCase — the first multi-endpoint portability test seam in the family [D:4/B:7/U:8 → Eff:1.88] 🚀 |
+| Task 9021 | ✅ | 🎁 **onchain_aerodrome_foundations** · Add nonempty live Position and Reward fixtures with nonvacuous decode assertions [D:4/B:7/U:7 → Eff:1.75] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 5002: Types
@@ -606,6 +608,7 @@
 | Task 6063 | ✅ | 🎁 **onchain_evm_standalone** · Close the assertion gap in the semantics harness: every vector asserted against every key the oracle checks [D:5/B:8/U:6 → Eff:1.4] 📋 |
 | Task 6064 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_evm, Onchain.EVM* · Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 | Task 6065 | ⬜ | 🎁 **onchain_evm_standalone** · *Onchain.EVM* · simulate_batch: per-call value and sender, so ETH-bearing and multi-actor sequences are simulable [D:5/B:7/U:6 → Eff:1.3] 📋 |
+| Task 9019 | ✅ | 🎁 **onchain_evm_standalone** · 🐛 Preserve fork chain identity through every simulation path [D:3/B:9/U:8 → Eff:2.83] 🎯 |
 <!-- TASKS:END -->
 
 ---
