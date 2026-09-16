@@ -17,19 +17,14 @@
 defmodule OnchainMonorepo.MixHelpers do
   @moduledoc false
 
-  # Both gates shell out through absolute host paths: the AGENTS.md renderer
-  # genuinely lives OUTSIDE this repo (it needs the claude-marketplace checkout
-  # plus ~/.claude/includes), while the advisory-freshness prover is resolved
-  # through the canonical `~/_DATA/code/onchain-stack` checkout even though the
-  # script itself has lived in-repo at `bin/advisory-freshness.sh` since the
-  # monorepo migration — so any other clone takes the skip branch below. That
-  # asymmetry is accidental, not designed; task 9003 decides which way it goes.
-  # Neither path exists on a CI runner or in a harness worktree, and
-  # `mix cmd` with an absent path exits non-zero — which aborted the whole
-  # `mix ci` alias, and since these steps precede test.json/dialyzer it took the
-  # test, coverage and dialyzer signal down with it. Skip loudly when the script
-  # is absent so the run keeps making the checks it CAN make; the developer host
-  # and the harness reviewer still get the full gate.
+  # `agents_check/1` is the only gate here that shells out to a path OUTSIDE
+  # this repo: the AGENTS.md renderer needs the claude-marketplace checkout plus
+  # ~/.claude/includes, neither of which any clone of this repo carries. So it
+  # stays an absolute host path and is absent everywhere else. `mix cmd` with an
+  # absent path exits non-zero, which aborts the whole `mix ci` alias — and since
+  # these steps precede test.json/dialyzer it takes the test, coverage and
+  # dialyzer signal down with it. Hence the loud skip in `host_script/3`: the run
+  # keeps making the checks it CAN make.
   @spec agents_check([String.t()]) :: :ok
   def agents_check(_args) do
     host_script(
@@ -39,10 +34,28 @@ defmodule OnchainMonorepo.MixHelpers do
     )
   end
 
+  # The freshness prover is the opposite case: `bin/advisory-freshness.sh` is a
+  # tracked file of THIS repo and this helper sits at `<root>/shared/`, so it is
+  # resolved off `__DIR__` and every checkout finds it — the harness server
+  # mirror, a fresh clone, a dispatch worktree, not just one developer host.
+  # That reach is the point: mix_audit discards its own sync exit status
+  # (mirego/mix_audit#61), so a dead advisory database still prints "No
+  # vulnerabilities found" and exits 0. A prover that runs on one machine proves
+  # nothing about any other.
+  #
+  # A harness dispatch worktree is a real git worktree of this repo, so it does
+  # find the script and does run the gate. That is chosen, not incidental: the
+  # script `git pull --rebase`s one shared clone
+  # (~/.local/share/elixir-security-advisories-mirego), and two concurrent pulls
+  # fail with "fatal: Cannot rebase onto multiple branches" — what keeps that
+  # safe is the repo's standing rule that `mix ci` never runs in more than one
+  # package concurrently. Dispatch worktrees do not reach this path in practice
+  # anyway: `check.dispatch`, the gate harness reviewers actually run,
+  # deliberately omits `deps.audit.gated` for exactly that reason.
   @spec advisory_freshness([String.t()]) :: :ok
   def advisory_freshness(_args) do
     host_script(
-      "~/_DATA/code/onchain-stack/bin/advisory-freshness.sh",
+      Path.expand("../bin/advisory-freshness.sh", __DIR__),
       [],
       "advisory-mirror freshness check"
     )
