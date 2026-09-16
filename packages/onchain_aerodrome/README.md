@@ -25,7 +25,7 @@ weekly by veAERO voters; an epoch is one week and flips **Thursday 00:00 UTC**.
 ```elixir
 def deps do
   [
-    {:onchain_aerodrome, "~> 0.1"}
+    {:onchain_aerodrome, "~> 0.2"}
   ]
 end
 ```
