@@ -14,6 +14,15 @@ All notable changes to this project will be documented in this file.
 <a id="phase-11-hieroglyph-1-0-0-1-4-0-adoption-advisory"></a>
 <a id="phase-12-agent-economy-descripex-adoption"></a>
 
+## [Unreleased]
+
+### Fixed
+
+- Normalize high-s signatures with their recovery bit before public-key recovery,
+  avoiding Curvy's stale-recovery-bit bug. Digest, Ethereum message, personal-sign,
+  and transaction recovery now preserve the signer across equivalent low-s and
+  complement-s encodings. Signing-path normalization is unchanged (task 9006).
+
 ## [0.9.1] — 2026-09-15
 
 ### Changed

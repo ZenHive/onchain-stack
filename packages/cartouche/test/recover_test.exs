@@ -88,6 +88,62 @@ defmodule Cartouche.RecoverTest do
     end
   end
 
+  describe "complement-s recovery" do
+    test "digest and message recovery preserve the signer for both signature forms" do
+      message = "high-s recovery regression"
+      digest = Cartouche.Hash.keccak(message)
+      public_key = @priv_key |> Curvy.Key.from_privkey() |> Curvy.Key.to_pubkey(compressed: false)
+
+      for signature <- equivalent_signatures(message) do
+        assert Recover.recover_public_key_from_digest(digest, signature) == public_key
+        assert Recover.recover_eth_from_digest(digest, signature) == @address
+        assert Recover.recover_eth(message, signature) == @address
+      end
+    end
+
+    test "personal_sign preserves the signer for both signature forms" do
+      message = "café"
+
+      for signature <- equivalent_signatures(Recover.prefix_eth(message)) do
+        assert Recover.recover_personal_sign(message, signature) == @address
+      end
+    end
+
+    test "legacy transaction recovery accepts the complement-s envelope" do
+      alias Cartouche.Transaction.V1
+
+      transaction = V1.new(1, {1, :gwei}, 21_000, @address, {1, :wei}, <<>>, 1)
+      encoded = V1.encode(transaction)
+      backend = {Cartouche.Signer.Curvy, :sign, [@priv_key]}
+      assert {:ok, <<r::256, s::256, v>>} = Cartouche.Signer.sign_direct(encoded, @address, backend, 1)
+      assert s <= div(@secp256k1_n, 2)
+      # Mainnet EIP-155 v is 37/38; flip parity without changing the chain.
+      complement_v = 37 + Bitwise.bxor(v - 37, 1)
+      high_s = @secp256k1_n - s
+
+      for signature <- [<<r::256, s::256, v>>, <<r::256, high_s::256, complement_v>>] do
+        assert {:ok, @address} = transaction |> V1.add_signature(signature) |> V1.recover_signer(1)
+      end
+    end
+  end
+
+  defp equivalent_signatures(message) do
+    assert {:ok, signature} = Cartouche.Signer.Curvy.sign(message, @priv_key)
+    assert {:ok, recid} = Recover.find_recid(message, signature, @address)
+    assert signature.s <= div(@secp256k1_n, 2)
+    low = %{signature | recid: recid}
+    high = %{low | s: @secp256k1_n - low.s, recid: Bitwise.bxor(recid, 1)}
+    assert high.s > div(@secp256k1_n, 2)
+
+    for signature <- [low, high], form <- [:struct, :base, :ethereum] do
+      case form do
+        :struct -> signature
+        :base -> <<signature.r::256, signature.s::256, signature.recid>>
+        :ethereum -> <<signature.r::256, signature.s::256, signature.recid + 27>>
+      end
+    end
+  end
+
   describe "signature decoding" do
     test "recovers from a 0x-prefixed hex-string signature" do
       {:ok, sig} = Cartouche.Signer.Curvy.sign("test", @priv_key)

@@ -126,11 +126,16 @@ defmodule Cartouche.Recover do
   the bytes that were signed are a pre-computed hash (an Ethereum tx keccak, an
   EIP-712 / Hyperliquid typed-data hash, …) rather than a raw message to be
   keccak'd. The recid may be embedded in the signature or set on the struct.
+
+  High-s signatures are normalized before recovery, flipping `s` and the
+  recovery bit together. Equivalent low-s and complement-s signatures recover
+  the same public key, for both packed bytes and `Curvy.Signature` structs.
   """
   @spec recover_public_key_from_digest(<<_::256>>, Curvy.Signature.t() | binary()) :: binary()
   def recover_public_key_from_digest(digest, signature) do
     signature
     |> decode_signature()
+    |> Curvy.Signature.normalize()
     |> Curvy.recover_key(digest, hash: :keccak)
     |> Curvy.Key.to_pubkey(compressed: false)
   end
