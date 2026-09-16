@@ -672,21 +672,25 @@ upstream-first, one published version at a time.
 
 
 See the root `CLAUDE.md` for the family layout, the sibling/3 mechanism, and
-the shared gate adjudications (reach #36 — **this package is the one running
-`reach.check --arch` only**, see below — cowlib/gun, sobelow). This file
-carries only what's specific to this package.
+the shared gate adjudications (reach #36 — resolved upstream in reach 2.8.3;
+this package's `--arch`-only workaround is gone, see below — cowlib/gun,
+sobelow). This file carries only what's specific to this package.
 
 ## Toolchain & check commands (read before judging a build)
 
 Canonical gate: **`mix ci`** (= `mix precommit.full`), same shape as every
 other package (root `CLAUDE.md` § Gates), with two package-specific notes:
 
-- **This is the family's one package running `reach.check --arch` only**,
-  `smells: [strict: true]` left in `.reach.exs` so the gate re-engages the
-  moment a fixed `reach` ships (root `CLAUDE.md` § Adjudicated findings has
-  the why — the QuickBEAM plugin contributes JavaScript nodes with
-  `source: nil` that crash reach's smell pass, and there's no `.reach.exs`
-  path to exclude them since `plugins:` isn't a config key there).
+- **This is the family's one package running `reach.check --dead-code --arch
+  --smells`**; the other seven run `--arch --smells`. It spent 2026-08 to
+  2026-09 on `--arch` only, because reach ≤ 2.8.2 crashed its whole smell pass
+  on the JavaScript nodes the QuickBEAM plugin contributes (`source: nil`, and
+  `plugins:` is not a `.reach.exs` key, so there was nothing to exclude).
+  elixir-vibe/reach#36 was fixed in 2.8.3 and the workaround was removed on
+  2026-09-16 under 2.8.4 — verified by running it, not by reading the
+  CHANGELOG: Architecture Policy OK, Dead Code (none), no smell issues, exit 0.
+  `.reach.exs` still sets `smells: [strict: true]`, which is what makes the
+  pass actually gate rather than print-and-exit-0.
 - Coverage floor is **25%** against a 27.78% measured baseline (2026-08-01) —
   this package's `lib/` surface is a thin 4-module QuickBEAM bridge; most
   behavior is only exercised by the (excluded-by-default) `:integration`

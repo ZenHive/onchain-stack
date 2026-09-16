@@ -431,24 +431,27 @@ If a real `bandit` fix is ever available (check `hex.audit` output against
 the bandit CHANGELOG), bump it — never suppress a bandit finding via
 `.mix_audit_ignore`.
 
-**`reach 2.8.2`'s `--smells` pass crashes on any non-Elixir AST node**
-(`Reach.Evidence.NilParameter`/`ParameterShape` read `function.meta.module`
-with dot access; a node with no `:module` — generated Erlang, or a
-plugin-contributed JS node — raises and takes the **entire smell pass** down
-before reporting a single finding). Filed as
-[elixir-vibe/reach#36](https://github.com/elixir-vibe/reach/issues/36) with a
-three-line fix; upstream is third-party, so the family works around it rather
-than waiting:
+**`reach`'s `--smells` crash on non-Elixir AST nodes (elixir-vibe/reach#36) is
+fixed upstream in 2.8.3 — the onchain_js workaround is gone.** Up to `reach
+2.8.2`, `Reach.Evidence.NilParameter`/`ParameterShape` read
+`function.meta.module` with dot access, so a node with no `:module` — generated
+Erlang, or a plugin-contributed JS node — raised and took the **entire smell
+pass** down before reporting a single finding. 2.8.3's CHANGELOG records
+"Smell evidence now handles functions without module metadata instead of
+crashing during analysis"; both sites now use `function.meta[:module]`. What
+remains:
 
-- **hieroglyph** scopes `.reach.exs` to `source_paths: ["lib", "test/support"]`
-  — the crash came from `src/` (yecc/leex-generated Erlang), which is the
-  right scope regardless of the bug (a smell in generated code is unfixable
-  by definition).
-- **onchain_js** is the family's one package running `reach.check --arch`
-  **only**, `smells: [strict: true]` left in the config so the gate re-engages
-  the moment a fixed `reach` ships. The crash there comes from JavaScript
-  nodes the QuickBEAM plugin contributes (`source: nil`), which have no path
-  to exclude (`plugins:` is not a `.reach.exs` key).
+- **hieroglyph** still scopes `.reach.exs` to
+  `source_paths: ["lib", "test/support"]`. That is **not** a #36 workaround and
+  should stay: a smell in yecc/leex-generated Erlang under `src/` is unfixable
+  by definition, so the scope is right regardless of the bug.
+- **onchain_js** ran `reach.check --arch` **only** for the same crash (JS nodes
+  the QuickBEAM plugin contributes carry `source: nil`, and `plugins:` is not a
+  `.reach.exs` key, so there was nothing to exclude). Restored 2026-09-16 under
+  reach 2.8.4 — it now runs `reach.check --dead-code --arch --smells`, verified
+  green (Architecture Policy OK, Dead Code none, no smell issues, exit 0). It is
+  now the family's one package running `--dead-code`; the other seven still run
+  `--arch --smells`.
 
 **Never hand-patch `deps/reach` (or anything under any package's `deps/`) to
 work around this.** A hand-edited unpacked tarball makes `mix ci` pass on your
