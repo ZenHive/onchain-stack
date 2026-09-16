@@ -166,7 +166,7 @@ client struct is roadmap task 9017 in `onchain`.
 | `contract.fn.staticCall(args)` | `readContract` | `Cartouche.RPC.call_trx(%Cartouche.Transaction.Call{destination: addr, data: calldata})` then `ABI.decode/3` | two steps unless you use generated bindings |
 | `contract.fn(args)` | `writeContract` | `Cartouche.RPC.execute_trx(addr, {"fn(types)", args}, opts)` | see Transactions — simulates first by default |
 | — | `simulateContract` | `execute_trx/3` with `verify: true` (default), or `call_trx/2` with `from:` | simulation is **on by default** — the opposite of ethers, which never simulates |
-| — | `erc20Abi` | `Cartouche.ERC20.balance_of/3`, `Cartouche.ERC20.transfer/4` | — |
+| — | `erc20Abi` | `Cartouche.Erc20.Call.balance_of/3` (read), `Cartouche.Erc20.transfer/4` (send) | — |
 
 ## Events and filters
 
