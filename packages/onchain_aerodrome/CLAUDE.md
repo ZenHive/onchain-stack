@@ -1,5 +1,7 @@
 # Onchain Aerodrome
 
+@~/.claude/includes/verification-policy.md
+
 Aerodrome Finance (Base, chain id 8453) bindings, Sugar-backed reads, and pure analytics for Elixir. Depends on `onchain` core for RPC, ABI, multicall, signing, and address utilities.
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
@@ -23,10 +25,10 @@ carries only what's specific to this package.
 
 ## Toolchain & check commands (read before judging a build)
 
-Canonical gate: **`mix ci`** (= `mix precommit.full`), same shape as every
+Full post-merge QA: **`mix ci`** (= `mix precommit.full`), same shape as every
 other package (root `CLAUDE.md` § Gates). `mix check.dispatch` is the
-per-dispatch reviewer gate (static checks plus the complete offline test suite)
-and is what this package registers as its harness `check_command` reference.
+existing alias (static checks plus the complete offline test suite). Select scoped
+commands for review according to the imported verification policy.
 
 - **The coverage floor lives in `mix.exs` (`--cover-threshold`) — read the
   current value there, never from prose**; it was set from a measured

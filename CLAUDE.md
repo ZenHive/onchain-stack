@@ -1,5 +1,7 @@
 # Onchain Stack — Monorepo
 
+@~/.claude/includes/verification-policy.md
+
 Since **2026-08-27** the eight onchain library packages live in this one repo,
 `packages/<name>/`, absorbed with full git history from their former standalone
 checkouts. Each package is still its own Hex package with its own version,
@@ -315,7 +317,7 @@ is safe for `deps.update`, `hex.audit`, and anything read-only.
 
 Unchanged in shape from the standalone era — each package keeps its own
 `.reach.exs`, `.doctor.exs`, sobelow config, and coverage threshold (see that
-package's `CLAUDE.md`). `cd packages/<name> && mix ci` for focused work; that
+package's `CLAUDE.md`). `cd packages/<name> && mix ci` for full post-merge QA; that
 alias is `precommit.full` under a different name in every package, still
 gated on `MIX_ENV=test` via each package's `def cli`.
 
@@ -546,7 +548,7 @@ registrations from the standalone era are retired — write-set collisions that
 used to require cross-repo coordination now happen naturally inside one repo,
 and harness serializes overlapping waves on its own.
 
-The dispatch-scale gate is **per package**: every package's `check.dispatch`
+The existing alias inventory is **per package**: every package's `check.dispatch`
 runs its offline test suite as well as static checks. Aerodrome requires
 Foundry `cast` for independent calldata tests; its dispatch test command prepends
 `$HOME/.foundry/bin` to PATH (the standard Foundry installation directory).
@@ -557,8 +559,10 @@ instructions. Each package defines its own
 harness writes an ephemeral `AGENTS.md` preamble into the reviewer worktree
 that would always read as drift; no `deps.audit.gated`, whose shared advisory
 clone breaks under concurrent worktrees; no cold-PLT dialyzer or coverage
-pass). The project's registered `check_command` says exactly that: run
-`cd packages/<name> && mix check.dispatch` for each package the task touches.
+pass). The registered `check_command` names
+`cd packages/<name> && mix check.dispatch`. Because it includes the complete
+package suite, select explicit format/compile/focused-test commands during
+implementation and review under `verification-policy.md`.
 The root `mix.exs` also defines `check.dispatch` — as a **loud failure** that
 prints this instruction and exits nonzero, so a reviewer that runs it at the
 root gets guidance instead of a silent "task not found" or a cheap green.

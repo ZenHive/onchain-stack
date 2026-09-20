@@ -1,5 +1,7 @@
 # Onchain EVM
 
+@~/.claude/includes/verification-policy.md
+
 EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Elixir via Rust NIFs. Depends on `onchain` core for RPC, ABI, signing, and address utilities.
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
@@ -24,7 +26,7 @@ builds in the family, which is the source of most of what follows.
 
 ## Toolchain & check commands
 
-Canonical gate: **`mix ci`** (= `mix precommit.full`), same shape as every
+Full post-merge QA: **`mix ci`** (= `mix precommit.full`), same shape as every
 other package (root `CLAUDE.md` § Gates) **plus a native Rust step**:
 `cargo test` and `cargo clippy --all-targets -- -D warnings` over both
 native crates (`clippy::unwrap_used` denied in production; `expect_used` not

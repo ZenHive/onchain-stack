@@ -1,5 +1,7 @@
 # Onchain
 
+@~/.claude/includes/verification-policy.md
+
 Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) and write (transaction signing) capabilities using `cartouche` as the sole Ethereum dependency.
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules. harness-workflow is eager
@@ -108,7 +110,7 @@ users run Alchemy, Infura, or a pruned Geth. What is specific to this repo:
 
 ## Toolchain & check commands
 
-Canonical gate: **`mix ci`** (= `precommit.full`), same shape as every other
+Full post-merge QA: **`mix ci`** (= `precommit.full`), same shape as every other
 package (root `CLAUDE.md` § Gates). Coverage floor here is **70%**. `mix
 precommit` is the fast local loop (no dialyzer/coverage).
 

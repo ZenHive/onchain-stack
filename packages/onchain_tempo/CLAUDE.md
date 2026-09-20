@@ -1,4 +1,6 @@
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
+
+@~/.claude/includes/verification-policy.md
      harness-driven — the OTP dispatch→review→land loop is the active workflow). onchain-workspace
      is the harness workspace add-on (monorepo layout + sibling/3 + dependency shape), eager
      family-wide. Everything else previously imported here (across-instances, worktree, task-prioritization/writing, rmap,
@@ -22,7 +24,7 @@ carries only what's specific to this package.
 
 ## Toolchain & check commands
 
-Canonical gate: **`mix ci`** (= `mix precommit.full`), same shape as every
+Full post-merge QA: **`mix ci`** (= `mix precommit.full`), same shape as every
 other package (root `CLAUDE.md` § Gates). Coverage floor here is **90%**
 (`test.json --cover --cover-threshold 90 --exclude integration`, run under
 `MIX_ENV=test` since `preferred_envs` in `def cli` is ignored inside alias

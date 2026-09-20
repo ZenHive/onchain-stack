@@ -1,5 +1,7 @@
 # Cartouche (ZenHive fork)
 
+@~/.claude/includes/verification-policy.md
+
 @~/.claude/includes/critical-rules.md
 @~/.claude/includes/harness-workflow.md
 @~/.claude/includes/onchain-workspace.md
@@ -47,9 +49,9 @@ this repo:
 
 ## Toolchain & check commands
 
-Canonical gate: **`mix ci`** (= `mix precommit.full`), same shape as every other
+Full post-merge QA: **`mix ci`** (= `mix precommit.full`), same shape as every other
 package in the monorepo (root `CLAUDE.md` § Gates). **`mix check.dispatch`** is
-the harness reviewer's dispatch-scale gate (no dialyzer, no coverage pass, no
+an existing alias; scope follows the imported verification policy (no dialyzer, no coverage pass, no
 `agents.check` — a harness worktree carries an ephemeral `AGENTS.md` preamble
 that would always read as drift). Fast local loop: `mix precommit`. All three
 are pinned to `MIX_ENV=test` via `def cli`.

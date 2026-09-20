@@ -1,5 +1,7 @@
 # Onchain Aave
 
+@~/.claude/includes/verification-policy.md
+
 Aave V3 and V4 protocol wrappers for Elixir. Depends on `onchain` core for RPC, ABI, signing, and address utilities.
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
@@ -23,7 +25,7 @@ carries only what's specific to this package.
 
 ## Toolchain & check commands (read before judging a build)
 
-Canonical gate: **`mix ci`** (= `mix precommit.full`), same shape as every
+Full post-merge QA: **`mix ci`** (= `mix precommit.full`), same shape as every
 other package (root `CLAUDE.md` § Gates). Coverage floor here is **65%**
 against a 68.44% measured baseline (2026-08-01) — **critical modules
 (`Aave.Math` and any signing/money path) target 95%; standard logic 80%** per

@@ -1,4 +1,6 @@
 @~/.claude/includes/critical-rules.md
+
+@~/.claude/includes/verification-policy.md
 @~/.claude/includes/harness-workflow.md
 @~/.claude/includes/onchain-workspace.md
 
@@ -29,7 +31,7 @@ this package.
 
 ## Toolchain & check commands (read before judging a build)
 
-Canonical gate: **`mix ci`** (= `precommit.full`), same shape as every other
+Full post-merge QA: **`mix ci`** (= `precommit.full`), same shape as every other
 package in the monorepo (see root `CLAUDE.md` § Gates) with one difference
 worth calling out: **coverage is a 95% floor, not the family's usual
 70–85%**, folded directly into the `precommit` alias (not a separate step) —

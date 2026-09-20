@@ -1,5 +1,7 @@
 # Onchain JS
 
+@~/.claude/includes/verification-policy.md
+
 JavaScript bridge for the onchain portfolio — run npm packages on the BEAM via QuickBEAM. No Node.js required.
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
@@ -23,7 +25,7 @@ sobelow). This file carries only what's specific to this package.
 
 ## Toolchain & check commands (read before judging a build)
 
-Canonical gate: **`mix ci`** (= `mix precommit.full`), same shape as every
+Full post-merge QA: **`mix ci`** (= `mix precommit.full`), same shape as every
 other package (root `CLAUDE.md` § Gates), with two package-specific notes:
 
 - **Gate flag is `reach.check --dead-code --arch --smells`** (shared with
