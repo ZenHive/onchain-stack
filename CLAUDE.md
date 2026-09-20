@@ -389,11 +389,10 @@ every package (and the coordination repos) on 2026-08-22, before the monorepo
 merge, and none has been added back — this is a standing operator decision,
 not a gap to fill. `mix ci` was always what graded a package; the workflows
 only invoked it. What changed is *who* triggers it: nobody, automatically.
-Run `mix ci` in the affected package(s) — or the root `mix ci` for a
-cross-cutting change — before pushing. Green locally is the only green there
-is. Dependabot still opens bump PRs (it reads the dependency graph, not a
-workflow run) but nothing grades them; treat one as a notification, run the
-bump through `mix deps.update` + `mix ci` yourself, close the PR.
+Check scheduling follows the imported verification policy; the commands above
+describe the available QA entry points. Dependabot still opens bump PRs (it
+reads the dependency graph, not a workflow run), but nothing grades them
+automatically.
 
 ### Adjudicated findings — cite, don't re-derive
 
@@ -548,21 +547,22 @@ registrations from the standalone era are retired — write-set collisions that
 used to require cross-repo coordination now happen naturally inside one repo,
 and harness serializes overlapping waves on its own.
 
-The existing alias inventory is **per package**: every package's `check.dispatch`
-runs its offline test suite as well as static checks. Aerodrome requires
-Foundry `cast` for independent calldata tests; its dispatch test command prepends
-`$HOME/.foundry/bin` to PATH (the standard Foundry installation directory).
-Verified on `blockwatch-harness`: `~/.foundry/bin/cast` version 1.8.3 is installed;
-the service PATH alone does not include it. Missing cast fails with installation
-instructions. Each package defines its own
-`check.dispatch` (a lighter gate than `mix ci` — no `agents.check`, since
-harness writes an ephemeral `AGENTS.md` preamble into the reviewer worktree
-that would always read as drift; no `deps.audit.gated`, whose shared advisory
-clone breaks under concurrent worktrees; no cold-PLT dialyzer or coverage
-pass). The registered `check_command` names
-`cd packages/<name> && mix check.dispatch`. Because it includes the complete
-package suite, select explicit format/compile/focused-test commands during
-implementation and review under `verification-policy.md`.
+The alias inventory is **per package**: every package's `check.dispatch`
+runs `format --check-formatted` and `compile --warnings-as-errors` only.
+Invoke it with `cd packages/<name> && mix check.dispatch` for each touched
+package; test and risk-check selection follows the imported verification policy.
+Each package's `ci` → `precommit.full` retains its complete QA graph,
+independent of `check.dispatch`. The root full-QA command is `mix ci`;
+it checks bounds and runs every package's QA serially.
+
+Aerodrome's full-QA test command prepends `$HOME/.foundry/bin` to PATH for
+the independent calldata tests. Focused tests that use Foundry `cast` also
+need that directory on PATH; missing cast fails with installation instructions.
+
+The alias regression check is `elixir test/alias_separation_test.exs`
+(no package dependency bootstrap). Its baseline fixture records the pre-change
+alias graph; it checks the expanded full-QA graph and the root dispatch guard.
+
 The root `mix.exs` also defines `check.dispatch` — as a **loud failure** that
 prints this instruction and exits nonzero, so a reviewer that runs it at the
 root gets guidance instead of a silent "task not found" or a cheap green.

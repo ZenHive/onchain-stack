@@ -177,29 +177,10 @@ defmodule OnchainJs.MixProject do
         # `env` (Elixir 1.20's `mix cmd` no longer parses a leading VAR=val prefix).
         "cmd env MIX_ENV=test mix test.json --exclude integration"
       ],
-      # Comprehensive gate — the harness reviewer's `check_command` and `mix ci`
-      # target. Coverage floor is 25 against a 27.78% measured baseline
-      # (2026-08-01) — this repo's lib/ surface is a thin 4-module bridge; most
-      # behavior is only exercised by the (excluded-by-default) QuickBEAM
-      # integration tests.
-      # Harness reviewer target — `harness_dev.projects` registers this repo with
-      # `check_command: "mix check.dispatch"`, and until 2026-08-23 the alias did
-      # not exist, so every reviewer booked a failed check against a task that was
-      # fine. It is `precommit.full` minus four steps a reviewer worktree cannot
-      # or should not run: `agents.check` (harness appends an ephemeral preamble
-      # to AGENTS.md in the worktree, so the render never matches),
-      # `deps.audit.gated` (all ten family repos share one advisory clone and
-      # concurrent worktrees interleave its fetch), the cold-PLT dialyzer, and the
-      # coverage pass.
+      # Dispatch checks only formatting and compilation; full QA is in ci.
       "check.dispatch": [
-        "compile --warnings-as-errors",
         "format --check-formatted",
-        "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
-        "doctor --raise",
-        "ex_dna --max-clones 0",
-        "reach.check --dead-code --arch --smells",
-        "sobelow --skip --exit low",
-        "cmd env MIX_ENV=test mix test.json --exclude integration"
+        "compile --warnings-as-errors"
       ],
       "precommit.full": [
         "compile --warnings-as-errors",

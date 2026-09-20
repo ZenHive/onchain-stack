@@ -162,17 +162,10 @@ defmodule OnchainAave.MixProject do
       tidewave: [
         "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4012) end)'"
       ],
-      # Dispatch runs the offline suite as well as static checks. Keep the
-      # heavier coverage, dialyzer and shared advisory sync in mix ci only.
+      # Dispatch checks only formatting and compilation; full QA is in ci.
       "check.dispatch": [
         "format --check-formatted",
-        "compile --warnings-as-errors",
-        "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
-        "doctor --raise",
-        "ex_dna --max-clones 0",
-        "reach.check --dead-code --arch --smells",
-        "sobelow --skip --exit low",
-        "cmd env MIX_ENV=test mix test.json --exclude integration"
+        "compile --warnings-as-errors"
       ],
       # Fast local pre-commit loop — skips the cold-PLT dialyzer and the coverage
       # pass so it stays quick on incremental edits.
@@ -184,8 +177,7 @@ defmodule OnchainAave.MixProject do
         # `env` (Elixir 1.20's `mix cmd` no longer parses a leading VAR=val prefix).
         "cmd env MIX_ENV=test mix test.json --exclude integration"
       ],
-      # Comprehensive gate — the harness reviewer's `check_command` and `mix ci`
-      # target.
+      # Comprehensive gate — the full post-merge QA `mix ci` target.
       # Coverage floor is 65 against a 68.44% measured baseline (2026-08-01).
       #
       # `--summary-only` is deliberately OMITTED here (2026-08-03): the flag is

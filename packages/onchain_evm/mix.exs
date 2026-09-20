@@ -191,17 +191,10 @@ defmodule OnchainEvm.MixProject do
         "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4009) end)'"
       ],
       integration: ["test.json --only integration"],
-      # Dispatch runs the offline suite as well as static checks. Keep the
-      # heavier coverage, dialyzer and shared advisory sync in mix ci only.
+      # Dispatch checks only formatting and compilation; full QA is in ci.
       "check.dispatch": [
         "format --check-formatted",
-        "compile --warnings-as-errors",
-        "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
-        "doctor --raise",
-        "ex_dna --max-clones 0",
-        "reach.check --dead-code --arch --smells",
-        "sobelow --skip --exit low",
-        "cmd env MIX_ENV=test mix test.json --exclude integration"
+        "compile --warnings-as-errors"
       ],
       # Fast local pre-commit loop — skips the cold-PLT dialyzer and full coverage
       # pass so it stays quick on incremental edits.

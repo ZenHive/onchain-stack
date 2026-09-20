@@ -27,8 +27,8 @@ carries only what's specific to this package.
 
 Full post-merge QA: **`mix ci`** (= `mix precommit.full`), same shape as every
 other package (root `CLAUDE.md` § Gates). `mix check.dispatch` is the
-existing alias (static checks plus the complete offline test suite). Select scoped
-commands for review according to the imported verification policy.
+formatting and compilation alias. Test and risk-check selection follows the
+imported verification policy.
 
 - **The coverage floor lives in `mix.exs` (`--cover-threshold`) — read the
   current value there, never from prose**; it was set from a measured

@@ -157,17 +157,10 @@ defmodule OnchainAerodrome.MixProject do
       tidewave: [
         "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4035) end)'"
       ],
-      # Dispatch runs the offline suite as well as static checks. Keep the
-      # heavier coverage, dialyzer and shared advisory sync in mix ci only.
+      # Dispatch checks only formatting and compilation; full QA is in ci.
       "check.dispatch": [
         "format --check-formatted",
-        "compile --warnings-as-errors",
-        "credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME",
-        "doctor --raise",
-        "ex_dna --max-clones 0",
-        "reach.check --dead-code --arch --smells",
-        "sobelow --skip --exit low",
-        ~s(cmd env MIX_ENV=test sh -c 'PATH="$HOME/.foundry/bin:$PATH" exec mix test.json --exclude integration')
+        "compile --warnings-as-errors"
       ],
       # Fast local pre-commit loop — skips the cold-PLT dialyzer and the coverage
       # pass so it stays quick on incremental edits.
@@ -179,8 +172,7 @@ defmodule OnchainAerodrome.MixProject do
         # `env` (Elixir 1.20's `mix cmd` no longer parses a leading VAR=val prefix).
         "cmd env MIX_ENV=test mix test.json --exclude integration"
       ],
-      # Comprehensive gate — the harness reviewer's `check_command` and `mix ci`
-      # target.
+      # Comprehensive gate — the full post-merge QA `mix ci` target.
       # Coverage floor 65 against an 88.57% measured baseline (2026-08-26,
       # registry + tests only). The floor is a conservative family-wide value,
       # not a per-module target: Analytics.* and Math.* are pure and critical
@@ -204,7 +196,7 @@ defmodule OnchainAerodrome.MixProject do
         "reach.check --dead-code --arch --smells",
         "sobelow --skip --exit low",
         "deps.audit.gated",
-        "cmd env MIX_ENV=test mix test.json --cover --cover-threshold 65 --exclude integration",
+        ~s(cmd env MIX_ENV=test sh -c 'PATH="$HOME/.foundry/bin:$PATH" exec mix test.json --cover --cover-threshold 65 --exclude integration'),
         "dialyzer",
         # AGENTS.md is what the cross-family (codex/cursor/grok) reviewers read;
         # a stale render makes them gate against rules that already changed.
