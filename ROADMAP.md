@@ -217,6 +217,7 @@
 | Task 9014 | ⬜ | 🎁 **cartouche_transport_fallback** · Cartouche fallback transport — ranked multi-endpoint RPC with health tracking, failing over on transport errors and node refusals but never on application errors [D:5/B:7/U:7 → Eff:1.4] 📋 |
 | Task 9015 | ⬜ | 🎁 **cartouche_local_keys** · 🔒 Local key material for Cartouche.Signer — BIP-39 mnemonics, BIP-32/44 HD derivation, and Web3 Secret Storage (keystore v3) import/export [D:5/B:6/U:6 → Eff:1.2] 📋 |
 | Task 9016 `[P]` | ⬜ | 🎁 **cartouche_dev_node_actions** · Typed dev-node control wrappers — anvil_*/hardhat_*/evm_* (balance, storage, code, nonce, impersonation, mining, time, snapshots, fork reset) under the non-standard-namespace portability contract [D:3/B:5/U:6 → Eff:1.83] 🚀 |
+| Task 9022 | ⬜ | 🎁 **cartouche_tooling_quality** · Separate focused dispatch aliases from complete post-merge QA [D:3/B:7/U:7 → Eff:2.33] 🎯 |
 <!-- TASKS:END -->
 
 ### Phase 2001: Spec corrections (immediate onchain wins)
@@ -355,7 +356,7 @@
 | Task 3077 | ✅ | 🎁 **onchain_erc_standards** · *Onchain.ERC7730.Formatter* · Audit-surfaced: ERC-7730 tokenAmount renders wrong token symbol (clear-signing safety) [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
 | Task 3078 | ✅ | 🎁 **onchain_erc_standards** · *Onchain.ERC7730.Binding* · Audit-surfaced: ERC-7730 binding/descriptor hardening (domain match, EIP-712 type, malformed input) [D:5/B:5/U:5 → Eff:1.0?] 📋 |
 | Task 3083 | ✅ | 🎁 **onchain_rpc_composition** · *Onchain.RPC* · Migrate HTTP transport off cartouche's removed Finch seams (cartouche 0.5.0) [D:4/B:8/U:8 → Eff:2.0?] 🎯 |
-| Task 3084 | ⬜ | 🎁 **onchain_differential_testing** · 🔒 Mutation-grade RPC construction and DEX math invariants [D:6/B:9/U:7 → Eff:1.33] 📋 |
+| Task 3084 | ⬜ | 🎁 **onchain_differential_testing** · 🔒 Mutation-grade RPC construction and DEX math invariants [D:6/B:9/U:7 → Eff:1.33?] 📋 |
 | Task 3085 `[P]` | ✅ | 🎁 **onchain_rpc_composition** · Onchain.RPC block-level reads — receipts, transaction counts, transactions by index, and the block access list [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 | Task 3086 `[P]` | ⬜ | 🎁 **onchain_rpc_composition** · Onchain.RPC.get_storage_values — eth_getStorageValues batched multi-account slot reads [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 | Task 3087 | ⬜ | 🎁 **onchain_differential_testing** · 🔒 Mutation-adequacy campaign over the signing, key and address surface [D:5/B:8/U:3 → Eff:1.1] 📋 |
@@ -600,8 +601,8 @@
 | Task 6044 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Stop leaking Rust `Debug` renderings into Elixir error and type strings [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 | Task 6051 | ⛔ | 🎁 **onchain_evm_standalone** · *(cross-cutting research)* · Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
 | Task 6052 | ✅ | 🎁 **onchain_evm_standalone** · *Onchain.Contract.Generator* · Codegen-emit per-contract Multicall helper modules [D:5/B:7/U:6 → Eff:1.3?] 📋 |
-| Task 6053 | ✅ | 🎁 **onchain_evm_standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — artifacts cross-built locally with cargo-zigbuild [D:6/B:8/U:8 → Eff:1.33] 📋 |
-| Task 6056 | ✅ | 🎁 **onchain_evm_standalone** · 🔒 Independent EVM semantics and exact-bytecode verification harness [D:8/B:10/U:8 → Eff:1.12] 📋 |
+| Task 6053 | ✅ | 🎁 **onchain_evm_standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — artifacts cross-built locally with cargo-zigbuild [D:6/B:8/U:8 → Eff:1.33?] 📋 |
+| Task 6056 | ✅ | 🎁 **onchain_evm_standalone** · 🔒 Independent EVM semantics and exact-bytecode verification harness [D:8/B:10/U:8 → Eff:1.12?] 📋 |
 | Task 6059 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax [D:3/B:8/U:7 → Eff:2.5] 🎯 |
 | Task 6061 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Migrate Solidity source parsing from solang-parser to solar-parse [D:6/B:8/U:7 → Eff:1.25] 📋 |
 | Task 6062 | ✅ | 🎁 **onchain_evm_standalone** · *release* · Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex [D:4/B:9/U:8 → Eff:2.12] 🎯 |
@@ -620,7 +621,7 @@
 <!-- TASKS:BEGIN phase=7001 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 7001 | 🔄 | 🎁 **onchain_js_foundation** · 🚀 **onchain_js_v0_3** · QuickBEAM foundation [D:3/B:7/U:8 → Eff:2.5] 🎯 |
+| Task 7001 | 🔄 | 🎁 **onchain_js_foundation** · 🚀 **onchain_js_v0_3** · QuickBEAM foundation [D:3/B:7/U:8 → Eff:2.5?] 🎯 |
 <!-- TASKS:END -->
 
 ### Phase 7002: Ethereum JS Tools
@@ -628,10 +629,10 @@
 <!-- TASKS:BEGIN phase=7002 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 7002 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_3** · *OnchainJs.Solc* · solc-js compilation (.sol → ABI + bytecode) [D:4/B:9/U:8 → Eff:2.12] 🎯 |
-| Task 7003 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · *OnchainJs.Uniswap* · Uniswap v3 SDK routing (optimal swap paths, price impact) [D:5/B:8/U:7 → Eff:1.5] 🚀 |
-| Task 7004 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · DeFiSaver recipe builder (@defisaver/sdk) [D:5/B:8/U:7 → Eff:1.5] 🚀 |
-| Task 7005 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · 1inch Fusion SDK (DEX aggregation) [D:5/B:7/U:6 → Eff:1.3] 📋 |
+| Task 7002 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_3** · *OnchainJs.Solc* · solc-js compilation (.sol → ABI + bytecode) [D:4/B:9/U:8 → Eff:2.12?] 🎯 |
+| Task 7003 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · *OnchainJs.Uniswap* · Uniswap v3 SDK routing (optimal swap paths, price impact) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
+| Task 7004 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · DeFiSaver recipe builder (@defisaver/sdk) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
+| Task 7005 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · 1inch Fusion SDK (DEX aggregation) [D:5/B:7/U:6 → Eff:1.3?] 📋 |
 <!-- TASKS:END -->
 
 ### Phase 7003: Cross-Validation & Utilities
@@ -639,8 +640,8 @@
 <!-- TASKS:BEGIN phase=7003 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 7006 | ⬜ | 🎁 **onchain_js_cross_validation** · 🚀 **onchain_js_v0_4** · Aave math-utils cross-validation [D:3/B:5/U:4 → Eff:1.5] 🚀 |
-| Task 7007 | ⬜ | 🎁 **onchain_js_cross_validation** · 🚀 **onchain_js_v0_4** · *OnchainJs.Merkle* · Merkle proof construction (airdrops, whitelists, storage proofs) [D:3/B:6/U:5 → Eff:1.83] 🚀 |
+| Task 7006 | ⬜ | 🎁 **onchain_js_cross_validation** · 🚀 **onchain_js_v0_4** · Aave math-utils cross-validation [D:3/B:5/U:4 → Eff:1.5?] 🚀 |
+| Task 7007 | ⬜ | 🎁 **onchain_js_cross_validation** · 🚀 **onchain_js_v0_4** · *OnchainJs.Merkle* · Merkle proof construction (airdrops, whitelists, storage proofs) [D:3/B:6/U:5 → Eff:1.83?] 🚀 |
 <!-- TASKS:END -->
 
 ---
@@ -668,7 +669,7 @@
 | Task 8007 | ✅ | 🎁 **onchain_tempo_public_faucet** · Public `Onchain.Tempo.Faucet` helper for `tempo_fundAddress` [D:2/B:5/U:5 → Eff:2.5?] 🎯 |
 | Task 8010 | ✅ | 🎁 **onchain_tempo_integration_coverage** · Stop hardcoding Builder @default_gas_limit — estimate gas per-tx (mirror mppx) [D:3/B:4/U:6 → Eff:1.67?] 🚀 |
 | Task 8011 | ✅ | 🎁 **onchain_tempo_cartouche_migration** · Update transport stub off the :cartouche,:client seam after onchain's Req migration [D:2/B:5/U:5 → Eff:2.5?] 🎯 |
-| Task 8012 | ✅ | 🎁 **onchain_tempo_verification** · 🔒 Mutation-grade 0x76 transaction and signing invariants [D:5/B:9/U:8 → Eff:1.7] 🚀 |
+| Task 8012 | ✅ | 🎁 **onchain_tempo_verification** · 🔒 Mutation-grade 0x76 transaction and signing invariants [D:5/B:9/U:8 → Eff:1.7?] 🚀 |
 | Task 8013 | ⬜ | 🎁 **onchain_tempo_verification** · 🔒 Verify optional 0x76 key_authorization across encode, sign, and recover [D:5/B:7/U:4 → Eff:1.1] 📋 |
 | Task 8014 | ✅ | 🎁 **onchain_tempo_verification** · 🔒 Normalize ECDSA signatures to low-s before Curvy recovery in Onchain.Tempo.Transaction and report the curvy recover_key recid bug upstream [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 <!-- TASKS:END -->
