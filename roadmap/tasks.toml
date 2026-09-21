@@ -2746,7 +2746,7 @@ scores = { d = 3, b = 2, u = 3 }
 acceptance_criteria = ["Generated IConsole emits a minimal decode-oriented surface (e.g. `decode_call/1` + per-overload decode it dispatches to), dropping the call/prepare/estimate_gas/execute/build_trx/encode families that have no consumer.", "`Cartouche.VM` console-log decoding still works unchanged; full suite green.", "Downstream dialyzer peak-RSS delta recorded (expected ~250 MB on top of the Task 103 Assembly fix — confirm it is genuinely additive and worth the generator complexity)."]
 out_of_scope = ["The Assembly tuple_set fix — that was the real bomb and shipped under Task 103.", "Not touching the IConsole ABI / console.sol version."]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Spun out of Task 103 after the ~30 GB bomb was correctly attributed to `Cartouche.Assembly.compile/1` (not IConsole). IConsole's combinatorial generated surface (4,577 fns across call/prepare/estimate_gas/execute/build_trx/encode/decode/log families for 381 ABI entries) is still the single largest contributor to PLT *stored bytes* (~5.9 MB, ~21% of the .plt file) and contributes ~250 MB to downstream dialyzer peak RSS — real but second-order versus the 27 GB Assembly win.
 
@@ -3563,7 +3563,7 @@ out_of_scope = ["Changing the existing filter-installation surface (eth_newFilte
 touches = ["packages/cartouche/test/rpc_integration_test.exs", "packages/cartouche/test/filter_test.exs", "packages/cartouche/CHANGELOG.md"]
 files_to_modify = ["packages/cartouche/lib/cartouche/rpc.ex", "packages/cartouche/lib/cartouche/filter.ex"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 `eth_getLogs` is in the tagged execution-apis release (`v1.0.0-beta.7`, `src/eth/filter.yaml`) and in the vendored local spec, so under the stack boundary it is cartouche's, unambiguously: cartouche owns one wrapper plus one decoded struct for every method in a tagged spec release.
 
@@ -3594,7 +3594,7 @@ out_of_scope = ["Pending-pool inspection (txpool_* namespaces) — not in the sp
 touches = ["packages/cartouche/lib/cartouche/block.ex", "packages/cartouche/test/rpc_integration_test.exs", "packages/cartouche/CHANGELOG.md"]
 files_to_modify = ["packages/cartouche/lib/cartouche/rpc.ex", "packages/cartouche/lib/cartouche/transaction.ex"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 All four methods are in the tagged execution-apis release `v1.0.0-beta.7` (`src/eth/transaction.yaml` for the three transaction getters, `src/eth/block.yaml` for `eth_getBlockReceipts`) and in the vendored local spec. Under the stack boundary they are cartouche's: the node's wire format defines them, so cartouche owns the wrapper and the decoded struct.
 
@@ -3659,7 +3659,7 @@ out_of_scope = ["web3_sha3 — keccak is local in the crypto layer; a network ro
 touches = ["packages/cartouche/test/rpc_integration_test.exs", "packages/cartouche/CHANGELOG.md"]
 files_to_modify = ["packages/cartouche/lib/cartouche/rpc.ex"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Six methods, and the reason this task is NOT a rubber-stamp sweep is that they do not share a standardization status. Verified 2026-08-27 against the execution-apis repository at tag and at `main`, not from memory:
 
@@ -3692,7 +3692,7 @@ out_of_scope = ["A convenience simulation DSL or bundle-builder on top of the ra
 touches = ["packages/cartouche/test/rpc_integration_test.exs", "packages/cartouche/CHANGELOG.md"]
 files_to_modify = ["packages/cartouche/lib/cartouche/rpc.ex"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 `eth_simulateV1` entered the execution-apis spec at tag `v1.0.0-beta.5` (2026-06-03, `src/eth/execute.yaml`) — verified by walking the tags directly, beta.1 through beta.7 — and it IS present in the vendored local spec. It is squarely cartouche's under the stack boundary, and it is the portable answer to the privileged `trace_callMany` / `debug_traceCall` pair cartouche already wraps.
 
@@ -3807,7 +3807,7 @@ out_of_scope = ["Removing or reimplementing the trace wrappers — they work on 
 touches = ["packages/cartouche/README.md", "packages/cartouche/CHANGELOG.md"]
 files_to_modify = ["packages/cartouche/lib/cartouche/rpc.ex", "packages/cartouche/test/rpc_integration_test.exs"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Verified against ethereum/execution-apis `main` by two independent checks this session: the `trace_*` namespace does not appear in the specification at all, and `src/debug/trace.yaml` carries only `debug_traceBlockByNumber`, `debug_traceBlockByHash` and `debug_traceTransaction` — NOT `debug_traceCall`. So cartouche ships four non-standard read methods.
 
@@ -4565,7 +4565,7 @@ acceptance_criteria = ["The wrapper is portable or explicitly marked node-privil
 out_of_scope = ["EIP-1967 proxy-slot helpers or any storage-layout decoding built on top of this read", "Changing eth_getStorageAt", "eth_getProof"]
 files_to_modify = ["packages/onchain/lib/onchain/rpc.ex"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 onchain implements `eth_getStorageAt`, which reads one slot of one account per call. `eth_getStorageValues` reads many slots across many accounts in a single request, and is absent from the whole stack.
 
@@ -4792,7 +4792,7 @@ out_of_scope = ["eth_getBlockAccessList — the EIP-7928 block-level read, owned
 touches = ["packages/onchain/lib/onchain/rpc.ex", "packages/onchain/lib/onchain/signer.ex", "packages/onchain/test/onchain/rpc_test.exs"]
 files_to_modify = ["packages/onchain/lib/onchain/rpc.ex"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 `Onchain.Signer.build_transaction/3` already takes an `:access_list` option and passes it straight into `Cartouche.Transaction.V2.new/…`, so a transaction carrying an access list is constructible today. Nothing in this package can compute one. A caller wanting the gas saving on a storage-heavy call has to hand-assemble the `{address, storage_keys}` pairs or go find another tool, which in practice means the option is there and unused.
 
@@ -4851,7 +4851,7 @@ acceptance_criteria = ["build_transaction/3 accepts an :authorization_list and r
 out_of_scope = ["The delegate contract choice and batched-call encoding — task 3096 owns those", "Blob transactions (Cartouche.Transaction.V3)"]
 touches = ["packages/onchain/lib/onchain/signer.ex", "packages/onchain/test/onchain/signer_test.exs", "packages/onchain/CHANGELOG.md"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Cartouche.Transaction.V4 already implements the whole EIP-7702 wire format — new/10 with an authorization list, sign_authorization/2, authorization_signing_payload/1, recover_authority/1 — cross-checked byte-exact against viem 2.55.19 and ethers 6.17.0 vector fixtures and a real mainnet type-0x04 decode (task 2032, done). Onchain.Signer wraps none of it: the module is hardcoded to Cartouche.Transaction.V2 in five places (the alias, build_transaction_validated/3, sign_transaction/3, both encode_transaction/1 clauses), recognises no :authorization_list option, and every @spec names V2.t() (surveyed 2026-08-28). The onchain CHANGELOG explicitly deferred this wrapping until a consumer needs 7702 set-code auth — the consumer now exists: aave_sim task 118 evaluates 7702 as its one-transaction rail.
 
@@ -4880,7 +4880,7 @@ acceptance_criteria = ["A named, audited, already-deployed 7702 delegate impleme
 out_of_scope = ["Authoring a delegate contract — if research concludes no audited deployed delegate is adoptable, stop and file the authoring task, which then carries the full onchain-verification regime (invariant inventory, stateful fuzzing, mutation review, verification ledger)", "Sending infrastructure — task 3095 owns the type-0x04 transport", "The application-side rail decision — aave_sim task 118 owns it"]
 touches = ["packages/onchain/lib/onchain/", "packages/onchain/test/onchain/", "packages/onchain/CHANGELOG.md"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 The half that makes borrow-then-swap-then-supply ONE transaction under EIP-7702, for aave_sim task 118. No delegate or executor contract exists anywhere in the stack — no Solidity source, no bytecode fixture, no delegatecall batcher; Onchain.Multicall is read-only aggregation (surveyed 2026-08-28).
 
@@ -4935,7 +4935,7 @@ acceptance_criteria = ["pm_getPaymasterStubData and pm_getPaymasterData are call
 out_of_scope = ["Running a paymaster — this is a client of ERC-7677 services only", "Account calldata and factory — task 3097 owns those"]
 touches = ["packages/onchain/lib/onchain/aa.ex", "packages/onchain/test/onchain/aa_integration_test.exs", "packages/onchain/CHANGELOG.md"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 The UserOperation struct carries paymaster_and_data and the unpacked v0.7 paymaster fields, and packing and hashing handle them — but nothing produces them: no pm_sponsorUserOperation or pm_getPaymasterData client exists; all 55 paymaster mentions in the stack are field plumbing in aa.ex, user_operation.ex and their tests (measured by grep, 2026-08-28).
 
@@ -5652,7 +5652,7 @@ acceptance_criteria = ["Pool.set_user_use_reserve_as_collateral/3 and its ! vari
 out_of_scope = ["setUserUseReserveAsCollateralOnBehalfOf and the v3.5 position-manager delegation surface", "repayWithPermit — blocked on ERC-2612 permit signing, which onchain core does not yet provide", "liquidationCall", "Any Aave V4 module"]
 touches = ["packages/onchain_aave/lib/onchain/aave/pool.ex", "packages/onchain_aave/test/onchain/aave/pool_test.exs", "packages/onchain_aave/test/onchain/aave/pool_write_integration_test.exs"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Add two Aave V3 Pool writes that close distinct position-management gaps. Both reuse the module's signed-write boundary, while their acceptance depends on real state transitions rather than calldata alone.
 
@@ -5682,7 +5682,7 @@ acceptance_criteria = ["Pool.get_reserve_data/2 returns %Onchain.Aave.Types.Rese
 out_of_scope = ["getConfiguration / getUserConfiguration packed bitmaps — UiPoolDataProvider already returns these decoded", "getReservesCount, getReserveAddressById, flash-loan premium constants, and registry introspection getters", "Removing compatibility fields from the deployed getReserveData decode", "Any Aave V4 module"]
 touches = ["packages/onchain_aave/lib/onchain/aave/pool.ex", "packages/onchain_aave/lib/onchain/aave/types/reserve_data.ex", "packages/onchain_aave/test/onchain/aave/pool_test.exs", "packages/onchain_aave/test/onchain/aave/pool_integration_test.exs"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Expose the deployed Pool reserve data needed to reconcile scaled balances and inspect reserve state without routing through the broader UI data provider. This task follows Task 59 so the variable-debt-token getter already has one owner and is reused here.
 
@@ -5766,7 +5766,7 @@ acceptance_criteria = ["A revert blob returned by the library's call/estimate/se
 out_of_scope = ["Retry or error-classification policy on top of decoded reasons", "Event/log decoding — its own task", "onchain core changes — its decode_error surface is consumed as-is"]
 touches = ["packages/onchain_aave/lib/onchain/aave/pool.ex", "packages/onchain_aave/lib/onchain/aave/debt_token.ex", "packages/onchain_aave/lib/onchain/aave/faucet.ex", "packages/onchain_aave/lib/onchain/aave/v4/position_manager.ex", "packages/onchain_aave/test/onchain/aave/pool_test.exs", "packages/onchain_aave/test/onchain/aave/v4/position_manager_test.exs", "packages/onchain_aave/CHANGELOG.md"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Today exactly one call site decodes a revert: the V4 position manager matches its two hand-defined allowance errors (lib/onchain/aave/v4/position_manager.ex:284). Every other write and simulated call returns the revert payload as an opaque rpc_error blob, so a consumer learns "execution reverted" but not why — on a money path that is the difference between a diagnosable rejection and a dead end.
 
@@ -5881,7 +5881,7 @@ acceptance_criteria = ["The V4 protocol events actually emitted by the deployed 
 out_of_scope = ["V3 Pool events — task 63 owns them", "Streaming via eth_subscribe, and any indexer, backfill or storage machinery", "Revert decoding — task 64 owns it"]
 touches = ["packages/onchain_aave/lib/onchain/aave/events.ex", "packages/onchain_aave/lib/onchain/aave/v4/events.ex", "packages/onchain_aave/test/onchain/aave/v4/events_test.exs", "packages/onchain_aave/test/onchain/aave/v4/events_integration_test.exs", "packages/onchain_aave/CHANGELOG.md"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Nothing in this library can observe what V4 did. The wrappers can read current Hub and Spoke state and execute writes, but there is no way to see a supply, a borrow, a liquidation, a credit-line draw or a share mint after the fact — and V4 makes that gap worse than it was in V3, because state that used to be one Pool's is now spread across three Hubs and their Spokes, with credit lines moving liquidity between them. Point-in-time reads cannot reconstruct that movement; only the logs can.
 
@@ -5990,7 +5990,7 @@ acceptance_criteria = ["Every existing write in Pool, V4.PositionManager, DebtTo
 out_of_scope = ["New protocol operations — tasks 4058, 4060, 4066 and 4067 own those; this task changes the shape of existing writes only", "Batching, atomicity or any execution rail — aave_sim's one-transaction-rail task owns that"]
 touches = ["packages/onchain_aave/lib/onchain/aave/pool.ex", "packages/onchain_aave/lib/onchain/aave/v4/position_manager.ex", "packages/onchain_aave/lib/onchain/aave/debt_token.ex", "packages/onchain_aave/lib/onchain/aave/faucet.ex", "packages/onchain_aave/CHANGELOG.md"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Every write in this library fuses encoding and sending: Pool, V4.PositionManager, DebtToken and Faucet each build calldata via Onchain.ABI.encode_call and immediately hand it to Onchain.Signer.send_transaction — no public surface returns the calldata alone (surveyed 2026-08-28 across lib/). That shape is correct for a server that holds the key and wrong for every consumer that does not: a browser wallet that signs client-side, an EIP-7702/4337 batch that composes several calls into one signed object, and a fork simulation that wants to execute the call without any key. aave_sim's execution milestone (its tasks 111 and 118) is blocked on exactly this.
 
@@ -6017,7 +6017,7 @@ acceptance_criteria = ["Calldata builders exist for flashLoanSimple and flashLoa
 out_of_scope = ["The executor contract that does something with the borrowed funds — task 4073 owns it", "V4 flash-loan surfaces"]
 touches = ["packages/onchain_aave/lib/onchain/aave/pool.ex", "packages/onchain_aave/test/", "packages/onchain_aave/CHANGELOG.md"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 The Pool write surface is exactly supply, withdraw, borrow and repay — no flashLoan or flashLoanSimple builder exists, and the only flash-loan traces in the package are the read-side flash_loan_enabled reserve flag (surveyed 2026-08-28). aave_sim task 118 evaluates a flash-loan executor as its one-transaction rail, and DeFi Saver — the category reference — runs its entire recipe engine on this primitive.
 
@@ -6398,7 +6398,7 @@ acceptance_criteria = ["RewardsSugar epochsLatest/3, epochsByAddress/4, rewards/
 out_of_scope = ["WEEK(), already verified as Contracts.constants().epoch_seconds", "The VeSugar wiring getters voter, token, ve, dist and gov", "The ergonomic Sugar.* wrappers, which are task 24", "Reward or APR accounting logic"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/rewards_sugar.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/ve_sugar.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/rewards_sugar_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/ve_sugar_test.exs"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Wrap the two contracts that make up the veAERO epoch and governance read surface. They are one task: same domain, same fixture capture session, same mechanical pattern established by task 8, and one reviewer verifies both in a single pass over one diff.
 
@@ -6429,7 +6429,7 @@ acceptance_criteria = ["RelaySugar all/2 (a single call — the signature is all
 out_of_scope = ["MAX_TOKENS and MAX_TOKEN_SYMBOL_LEN, already carried by Contracts.constants()", "launcher_map", "Relay write operations", "The ergonomic Sugar.* wrappers, which is task 24"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/relay_sugar.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/token_sugar.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/relay_sugar_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/token_sugar_test.exs"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 The two smallest Sugar contracts, wrapped together. RelaySugar.all takes only an address and returns everything in one call. TokenSugar.tokens, though, carries the same family of pagination trap as LpSugar.all despite having no filter argument: its offset walks the pool index space while the returned rows are deduplicated tokens, so later pages are mostly dedup hits and far shorter than the limit. A short-page-terminating loop returns roughly the first page's unique tokens and reports success.
 
@@ -6456,7 +6456,7 @@ acceptance_criteria = ["PoolFactory allPools/2, allPoolsLength/1, isPool/2, getF
 out_of_scope = ["Governance and wiring getters: pauser, isPaused, feeManager, implementation, owner, factoryRegistry, swapFeeManager, swapFeeModule, unstakedFeeManager, unstakedFeeModule, poolImplementation", "getPopulatedTicks, poolFees, principal, fees, estimateAmount0 and estimateAmount1 — pool-state-dependent views with no v0.1 consumer outside task 20's integration check", "Any pure-Elixir math port, which is phase 4"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/factories.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/slipstream_helper.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/factories_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/bindings/slipstream_helper_test.exs"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Wrap the two mirror-image factories plus the tick-math helper. A caller resolving what kind of pool this is — which Lp.type forces on everyone — almost always needs both factories together, and SlipstreamHelper is the concentrated-liquidity complement, so they land as one coherent surface.
 
@@ -6550,7 +6550,7 @@ acceptance_criteria = ["amounts_for_liquidity/4, liquidity_for_amounts/5, the un
 out_of_scope = ["principal(address,uint256,uint160) and fees(address,uint256) as RPC calls — Analytics.Position consumes their pure core, and task 20 owns the live differential", "poolFees, estimateAmount0 and estimateAmount1, which are pool-state-dependent views", "Swap-step math (computeSwapStep), with no v0.1 consumer"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/math/liquidity.ex", "packages/onchain_aerodrome/lib/mix/tasks/aerodrome.gen.liquidity_goldens.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/math/liquidity_test.exs", "packages/onchain_aerodrome/test/fixtures/tick_math/liquidity_deltas.json"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 The liquidity half of Slipstream's math: converting between an L value plus a price range and the token amounts backing it. Analytics.Position and every valuation function downstream depend on this being exactly right, and exactly is not rhetorical — these functions carry a round-up flag precisely because a one-wei error in the wrong direction is a solvency bug upstream.
 
@@ -6581,7 +6581,7 @@ acceptance_criteria = ["k/4 implements both invariants — x*y for volatile, and
 out_of_scope = ["Multi-hop routing — Onchain.DEX.Router in onchain core already does it; do not reimplement", "Concentrated-liquidity swap math, which is tasks 13 and 14", "Any Bindings.Pool module — this task reads a deployed pool only inside its fixture generator"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/math/stable.ex", "packages/onchain_aerodrome/lib/mix/tasks/aerodrome.gen.pool_goldens.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/math/stable_test.exs", "packages/onchain_aerodrome/test/fixtures/pool_math/v2_quotes.json", "packages/onchain_aerodrome/lib/onchain/aerodrome/contracts.ex"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Aerodrome's v2 side has two curves and Lp.type picks between them: -1 is stable, 0 is volatile, and anything positive is a concentrated-liquidity tick spacing belonging to the tick-math modules. This task owns the two v2 curves.
 
@@ -6645,7 +6645,7 @@ acceptance_criteria = ["%Types.Price{} carries at minimum token, numeraire, valu
 out_of_scope = ["Any RPC call, any Chainlink read, any Sugar page fetch — all of that is task 18; this module receives structs", "TWAP or time-weighted pricing, which requires observe() and therefore the network", "Cross-protocol price sources such as Uniswap on Base or off-chain APIs — Aerodrome pools plus supplied anchors only"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/types/price.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/types/price_map.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/analytics/price.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/analytics/price_test.exs", "packages/onchain_aerodrome/test/fixtures/prices/lp_set.json"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 This is the half of the price layer that must stay network-free, and its design exists specifically to make that possible. The package ships a built-in price source; the layer contract forbids analytics from making RPC calls. The resolution is that pricing is a pure function of a pool set plus a set of anchors — task 18 fetches them, this module turns them into prices. No .reach.exs layer change is needed: Math.Price is base, Types.Price is types, Analytics.Price is analytics, and the network lives one layer up in read.
 
@@ -6677,7 +6677,7 @@ acceptance_criteria = ["Bindings.Chainlink latest_round_data/2, decimals/2 and d
 out_of_scope = ["Price arithmetic of any kind, which lives in Math.Price and Analytics.Price", "Caching, GenServers or any long-lived process — this is a request-scoped read", "Feeds for tokens with no Chainlink coverage on Base, which resolve through the pool graph by design", "Optimism or Velodrome feed addresses; Base only", "Upstreaming the AggregatorV3 binding into onchain core — a deliberate non-goal for now: it lives here until a second family consumer exists, and that move is a decision to make then, not a silent assumption"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/bindings/chainlink.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/sugar/prices.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/contracts.ex", "packages/onchain_aerodrome/priv/abis/chainlink_aggregator_v3.json", "packages/onchain_aerodrome/priv/abis/README.md", "packages/onchain_aerodrome/test/onchain/aerodrome/sugar/prices_test.exs", "packages/onchain_aerodrome/test/fixtures/prices/reconciliation.json"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 The network half of the price layer, and deliberately the only place in the price stack that touches a node.
 
@@ -6716,7 +6716,7 @@ acceptance_criteria = ["pool_type/1 returns :v2_stable for Lp.type -1, :v2_volat
 out_of_scope = ["APR of any kind, which is task 21", "Position-level valuation, which is task 20", "Liquidity depth and tick distribution, which needs getPopulatedTicks and therefore the network", "Impermanent loss, which needs an entry price no struct here carries"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/analytics/pool.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/contracts.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/analytics/pool_test.exs", "packages/onchain_aerodrome/test/fixtures/goldens/lp_pages/"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Pool-level valuation over an %Lp{} and a %PriceMap{}. Small surface, one genuinely unresolved question at its centre.
 
@@ -6751,7 +6751,7 @@ acceptance_criteria = ["principal/2 takes a %Position{} plus a current sqrt rati
 out_of_scope = ["Impermanent loss or PnL against an entry price — the Position struct carries no entry data and inventing one would be fabrication", "Fee-growth accounting from tick data, which needs pool state beyond the struct", "ALM and locker position semantics beyond exposing the alm and locker fields verbatim", "Position APR, which is task 21"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/analytics/position.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/analytics/position_test.exs", "packages/onchain_aerodrome/test/fixtures/goldens/positions/"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Position-level math over the 18-field %Position{} Sugar returns. The pleasant thing about this task is that its oracle is free: Sugar already computes amount0 and amount1 on-chain from the same liquidity and range our principal/2 uses, so a captured positions page is both the input fixture and the expected-output fixture. If the Math.Liquidity port is wrong in any way that matters, 50 real positions will say so without a single extra eth_call. Lead with that test.
 
@@ -6825,7 +6825,7 @@ acceptance_criteria = ["A manifest test enumerates every exported function of ev
 out_of_scope = ["Changing any APR formula — this task GRADES task 21, it does not reimplement it. A formula defect found here is filed as a new task, not silently patched", "Mutation-testing infrastructure beyond the assertions above", "Reconciling against aerodrome.finance across many pools, which is not in v0.1"]
 touches = ["packages/onchain_aerodrome/test/onchain/aerodrome/analytics/apr_invariants_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/manifest_test.exs", "packages/onchain_aerodrome/test/fixtures/goldens/apr/emission_apr_7_53.json", "packages/onchain_aerodrome/lib/mix/tasks/coverage.gate.ex", "packages/onchain_aerodrome/mix.exs", "packages/onchain_aerodrome/CLAUDE.md", "packages/onchain_aerodrome/AGENTS.md"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Task 21 wrote the APR module. This task grades it, and it is assigned to a different agent on purpose: the agent that implemented a formula is the worst available judge of whether that formula is right.
 
@@ -6891,7 +6891,7 @@ acceptance_criteria = ["Sugar.Positions exposes for_account/2, for_factory/3 and
 out_of_scope = ["Pool and token reads, which are task 23", "Price resolution, which is task 18", "Analytics of any kind", "Reimplementing pagination — delegate to the bindings"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/sugar/positions.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/sugar/ve_nfts.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/sugar/rewards.ex", "packages/onchain_aerodrome/lib/onchain/aerodrome/sugar/relays.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/sugar/positions_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/sugar/ve_nfts_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/sugar/rewards_test.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/sugar/relays_test.exs"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 The four account-scoped ergonomic wrappers, landed as one dispatch. Each is a thin delegation over a binding built in phase 3; pagination and termination semantics stay in the bindings, which own the offset-walks-a-different-index-space rules, and this layer must not reimplement any loop. Splitting them into four dispatches would spend four implement, review and land cycles on work a reviewer verifies in one glance.
 
@@ -6991,7 +6991,7 @@ acceptance_criteria = ["Every user-facing Voter write function in the captured v
 out_of_scope = ["Governance-only Voter setters", "updateFor and notifyRewardAmount — keeper and minter accounting entrypoints with no library consumer; they go on the completeness test's explicit exclusion list with that reason, never silently omitted", "veNFT ownership and eligibility reads, which are the read layer", "Any dependency on task 25 — voter.json is already captured, and adding one would be a spurious dependency"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/write/voter.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/write/voter_test.exs"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Build the write surface for the already-captured Voter contract. This is deliberately the first write module, because its ABI provenance is already settled — priv/abis/README.md carries its row and its live probe — so it does not wait on task 25 and it validates the task-26 harness against a real contract early.
 
@@ -7020,7 +7020,7 @@ acceptance_criteria = ["Swap functions over Aerodrome's four-field Route struct 
 out_of_scope = ["Router-side quoting such as quoteAddLiquidity — a read concern, deliberately unfiled; file it via rmap new when a consumer needs in-package quoting", "Computing a fair slippage minimum — an analytics concern, deliberately unfiled; file it via rmap new alongside router quoting when swap-safety analytics is scoped", "Concentrated-liquidity position management, which is task 30"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/write/router.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/write/router_test.exs"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 The Router write surface: swaps and v2 liquidity provision, in one module and one dispatch because they share a file and a deadline discipline, and separating them would sequence two full cycles over one file.
 
@@ -7051,7 +7051,7 @@ acceptance_criteria = ["The deposit, withdraw and reward-claim functions, named 
 out_of_scope = ["Gauge-address enumeration across all pools, which is a read concern since Lp.gauge gives it per pool", "Reward-token discovery, which RewardsSugar covers", "Voter-side claiming, which is task 27"]
 touches = ["packages/onchain_aerodrome/lib/onchain/aerodrome/write/gauge.ex", "packages/onchain_aerodrome/test/onchain/aerodrome/write/gauge_test.exs"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 The gauge write surface: staking and unstaking LP positions, and claiming rewards. This is the smallest of the four write contracts by function count. Do not pad it with speculative functions the captured ABI does not actually expose, and do not assume the function names — read them from the capture.
 
@@ -7232,7 +7232,7 @@ acceptance_criteria = ["An integration-tagged live evidence suite exercises ever
 out_of_scope = ["Running mix hex.publish, which is a human decision gated on this task passing", "VotingEscrow lock lifecycle writes (create_lock, increase_amount, increase_unlock_time, merge, split, withdraw), rebase claiming via the RewardsDistributor, zap in/out, and incentive deposits — deliberately absent from v0_2 and unfiled; file via rmap new when a consumer needs them. Until then, task 27's vote/reset/poke presuppose a veNFT created outside this package, and the moduledoc must say so", "Any simulation-based evidence — Base is hard-blocked in onchain_evm and the cast oracle plus live reverts are the evidence mechanism"]
 touches = ["packages/onchain_aerodrome/CHANGELOG.md", "packages/onchain_aerodrome/README.md", "packages/onchain_aerodrome/SECURITY.md", "packages/onchain_aerodrome/lib/onchain_aerodrome.ex", "packages/onchain_aerodrome/mix.exs", "packages/onchain_aerodrome/test/onchain/aerodrome/integration/write_surface_test.exs"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 The capstone for v0_2, mirroring what task 34 is for v0_1. The milestone's own hypothesis — a write surface shipping with honest evidence when no local EVM can execute it — is only tested at milestone level if the per-task cast-oracle tests are joined by one live end-to-end sweep and the release mechanics actually happen. Without this task the milestone ends at a grading task with no release.
 
@@ -8287,7 +8287,7 @@ acceptance_criteria = ["A batch element can optionally carry a value and a from 
 out_of_scope = ["Non-mainnet forks — task 6064 owns the chain question", "Contract deployment (TxKind::Create) and constructor execution", "Storage-slot discovery helpers for token balance or allowance overrides"]
 touches = ["packages/onchain_evm/native/onchain_evm/src/lib.rs", "packages/onchain_evm/lib/onchain/evm.ex", "packages/onchain_evm/lib/onchain/evm/params.ex", "packages/onchain_evm/test/onchain/evm_integration_test.exs", "packages/onchain_evm/CHANGELOG.md"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 simulate_batch is the stack's only dependent-sequence simulator — one fork, state committed between calls — and two hardcodings bound what it can express (surveyed 2026-08-28 in native/onchain_evm/src/lib.rs): every call's value is fixed to U256::ZERO in the batch loop, and one from covers the whole batch with nonces derived from a single base. An approve-then-supply pair works and is pinned in the integration tests; a sequence containing an ETH-bearing call (a WETH deposit, a payable entry point) or two actors (an owner grants, a manager acts — exactly the Aave V4 position-manager flows the stack now wraps) cannot be expressed at all.
 
@@ -8389,7 +8389,7 @@ out_of_scope = ["Executing the swap (signing/sending) — onchain owns transacti
 touches = ["packages/onchain_js/lib/onchain_js/runtime.ex", "packages/onchain_js/package.json"]
 files_to_modify = ["packages/onchain_js/lib/onchain_js/uniswap.ex", "packages/onchain_js/test/onchain_js/uniswap_test.exs"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Load `@uniswap/v3-sdk` + `@uniswap/smart-order-router` via QuickBEAM. Expose `OnchainJs.Uniswap.route/4` for optimal swap paths. JS SDK handles tick math and multi-hop routing out of the box.
 
@@ -8420,7 +8420,7 @@ out_of_scope = ["Simulating or executing the recipe on-chain — onchain_evm (re
 touches = ["packages/onchain_js/lib/onchain_js/runtime.ex", "packages/onchain_js/package.json"]
 files_to_modify = ["packages/onchain_js/lib/onchain_js/defi_saver.ex", "packages/onchain_js/test/onchain_js/defi_saver_test.exs"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Load `@defisaver/sdk` via QuickBEAM. Expose recipe construction: flash loan → action sequence → repay, returning encoded calldata.
 
@@ -8481,7 +8481,7 @@ out_of_scope = ["Fixing onchain_aave's math — a divergence is reported here an
 touches = ["packages/onchain_js/lib/onchain_js/runtime.ex", "packages/onchain_js/package.json", "packages/onchain_js/mix.exs"]
 files_to_modify = ["packages/onchain_js/test/onchain_js/aave_math_test.exs"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Load `@aave/math-utils` via QuickBEAM and run the same calculations through both JS and onchain_aave's math modules. Property-based tests comparing outputs across implementations.
 
@@ -8513,7 +8513,7 @@ out_of_scope = ["On-chain verification contracts — this produces proofs, it do
 touches = ["packages/onchain_js/lib/onchain_js/runtime.ex", "packages/onchain_js/package.json"]
 files_to_modify = ["packages/onchain_js/lib/onchain_js/merkle.ex", "packages/onchain_js/test/onchain_js/merkle_test.exs"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Load `merkletreejs` via QuickBEAM. Expose `OnchainJs.Merkle.build_tree/1` and `prove/2` for airdrop claims and storage proofs.
 
@@ -8796,7 +8796,7 @@ acceptance_criteria = ["A new packages/onchain_morpho package exists, wired into
 out_of_scope = ["MetaMorpho / Morpho Vaults, rewards, the public allocator", "Writes of any kind", "The aave_sim adapter that consumes these reads — aave_sim task 114 owns it"]
 touches = ["packages/onchain_morpho/"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 The package half of aave_sim task 114 — the first non-Aave protocol behind its adapter boundary. The protocol choice was verified against live data on 2026-08-28, not assumed: DeFiLlama's API puts Morpho at roughly $9.5B TVL — about double Spark, the #2 — with roughly $4.7B borrowed, deployed on Ethereum mainnet and Base, where it is the largest lending protocol on any L2 (defillama.com/protocol/morpho and api.llama.fi, queried 2026-08-28; Spark's elevated TVL is partly the April 2026 post-exploit deposit flight from Aave rather than organic share). Its market model is also the simplest to read: isolated markets, one collateral asset, one loan asset, a fixed LLTV per market.
 
@@ -8851,7 +8851,7 @@ acceptance_criteria = ["A NIF-backed secp256k1 backend implements Cartouche.Sign
 out_of_scope = ["Changing the default signer backend", "Any change to Cartouche.Hash or Hieroglyph's keccak path — already landed in 54539cb", "Batching, async signing, or a signing process pool", "CloudKMS behaviour changes beyond whatever a new recover callback forces"]
 files_to_modify = ["packages/cartouche/lib/cartouche/signer/backend.ex", "packages/cartouche/lib/cartouche/recover.ex", "packages/cartouche/mix.exs"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Cartouche's default signer runs secp256k1 in pure Elixir through `curvy`, and that is now
 the dominant cost of every signature it produces.
@@ -9026,7 +9026,7 @@ acceptance_criteria = ["Every package whose `mix.exs` declares a `tidewave` alia
 out_of_scope = ["The harness / harness_eval / chrome-devtools entries", "Adding tidewave or bandit as runtime deps of the root project, which ships no runtime code", "Any change to what mix ci or check.dispatch run", "Starting or supervising the dev servers themselves"]
 files_to_modify = [".mcp.json", "CLAUDE.md", "AGENTS.md"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Commit f9d6102 ("mcp: consolidate 8 package .mcp.json into one root config") merged eight
 per-package MCP configs into one at the repo root. Eight tidewave entries could not survive
@@ -9433,7 +9433,7 @@ acceptance_criteria = ["`Cartouche.Chain` exposes a struct per known chain with 
 out_of_scope = ["Chain-specific transaction formatters (OP Stack deposit type 0x7e, zkSync 0x71, Celo) — separate task if a consumer hits one; onchain_tempo shows the pattern", "A fallback or ranked transport over the RPC URL list — that is the transport-fallback task; this registry only supplies the URLs", "Protocol address tables (Aave, Aerodrome) — they stay in their packages; only chain-level, protocol-agnostic contracts belong here"]
 touches = ["packages/cartouche/lib/cartouche/chain.ex", "packages/cartouche/lib/cartouche/chain/", "packages/cartouche/lib/mix/", "packages/onchain/lib/onchain/multicall.ex", "packages/onchain/lib/onchain/ens.ex"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Decide first (vetoable defaults written in so an unattended implementer is not guessing):
 
@@ -9526,7 +9526,7 @@ acceptance_criteria = ["Wrappers exist for: set balance, set code, set storage s
 out_of_scope = ["Starting or supervising an anvil process from Elixir — callers own the node lifecycle", "Simulation — onchain_evm's revm NIF is the in-process path; these wrappers drive a real node", "Ganache or other dev-node dialects"]
 touches = ["packages/cartouche/lib/cartouche/rpc/", "packages/cartouche/test/support/live.ex"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 viem's test client (`setBalance`, `impersonateAccount`, `mine`, `snapshot`, `revert`, ...) is what makes integration tests against a fork cheap to write; nothing in the family wraps these methods (grep for `anvil_`, `evm_mine`, `evm_snapshot` across lib/ and test/ 2026-09-16: hits only in cartouche's live test helper, cartouche's dev-node test, and onchain_evm's integration tests — all raw strings, each spelling the calls independently).
 
@@ -9551,7 +9551,7 @@ acceptance_criteria = ["`Onchain.Client.new/1` builds a struct from a chain (reg
 out_of_scope = ["The chain registry itself — cartouche task in bundle cartouche_chain_registry (a dependency)", "Fallback transport internals — the cartouche transport-fallback task; the client passes a URL list through when that lands and a single URL until then", "Removing the `rpc_url` option — deprecation is a later, separate decision", "`watch_*` polling facades — task 3090 owns log/block/pending polling"]
 touches = ["packages/onchain/lib/onchain/client.ex", "packages/onchain/lib/onchain/rpc.ex", "packages/onchain/lib/onchain/contract.ex", "packages/onchain/lib/onchain/signer.ex", "packages/onchain/lib/onchain/multicall.ex", "packages/onchain/lib/onchain/ens.ex"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Decide first (defaults written in, vetoable):
 
@@ -9586,7 +9586,7 @@ acceptance_criteria = ["A message struct renders to the exact EIP-4361 string fo
 out_of_scope = ["Session storage, nonce replay protection, or a Plug/Phoenix integration — mpp or the consuming app owns that", "EIP-6492 (predeploy signature validation) — a follow-up if a consumer needs counterfactual accounts", "Any wallet-side (signing) UI flow"]
 touches = ["packages/onchain/lib/onchain/siwe.ex", "packages/onchain/lib/onchain/siwe/"]
 assignee = "grok"
-model = "grok-4.6"
+model = "grok-4.7"
 body = """
 Honest score: no consumer in the family needs this today; the demand signal is the viem-parity review of 2026-09-16 and the fact that mpp is a Phoenix app that will eventually authenticate wallets. B and U are set accordingly — this is the lowest-priority task in the parity set and should be picked up last.
 
@@ -9702,7 +9702,7 @@ acceptance_criteria = ["`cd packages/onchain_aave && mix ci` and `cd packages/on
 out_of_scope = ["Re-running or widening coverage thresholds", "Changing check.dispatch", "Re-adjudicating gun/cowlib advisories", "Fixing the AGENTS.md host-script skip"]
 touches = ["packages/onchain_evm/native", "packages/onchain_aave/mix.exs", "packages/onchain_aerodrome/mix.exs"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Found by the post-merge audit of 1975218 at integrated revision 1975218aa30d6b4a6acbccb03d1063a7d65f63d1.
 
@@ -9727,7 +9727,7 @@ acceptance_criteria = ["Root `mix ci` runs `elixir test/alias_separation_test.ex
 out_of_scope = ["Putting analyzers or package test suites back into check.dispatch", "Changing any package's precommit.full graph"]
 touches = ["mix.exs", "test/alias_separation_test.exs", "test/fixtures/aliases_before.exs", "CLAUDE.md", "AGENTS.md"]
 assignee = "cursor"
-model = "cursor-grok-4.6-high"
+model = "grok-4.7-high"
 body = """
 Found by the post-merge audit of 1975218 (task 9022 delivery 5b38a85).
 

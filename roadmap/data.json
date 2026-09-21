@@ -4123,7 +4123,7 @@
       "markers": [],
       "depends_on": [],
       "assignee": "grok",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "Generated IConsole emits a minimal decode-oriented surface (e.g. `decode_call/1` + per-overload decode it dispatches to), dropping the call/prepare/estimate_gas/execute/build_trx/encode families that have no consumer.",
         "`Cartouche.VM` console-log decoding still works unchanged; full suite green.",
@@ -5278,7 +5278,7 @@
         2137
       ],
       "assignee": "cursor",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "Cartouche.RPC gains an eth_getLogs wrapper accepting the standard filter object (fromBlock/toBlock/address/topics, and the mutually-exclusive blockHash form) and decoding into the existing Cartouche.Filter log struct — one wrapper, one struct, per the stack boundary",
         "Log decoding is the SAME code the existing filter surface uses (lib/cartouche/filter.ex), not a second decoder. If the filter surface's decode is not reusable as-is, refactor it so it is — do not copy it",
@@ -5326,7 +5326,7 @@
         2137
       ],
       "assignee": "grok",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "Cartouche.RPC gains eth_getTransactionByHash, eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex and eth_getBlockReceipts, each decoding into a cartouche struct — all four are in the tagged spec and are therefore cartouche's to own",
         "Transaction-object decoding covers all five 2718 types the repo already models (legacy, 2930, 1559, 4844, 7702), including yParity/v, accessList, blobVersionedHashes and authorizationList; a live test fetches a known mainnet type-2 tx AND a legacy tx and asserts decoded domain fields, not just shape",
@@ -5423,7 +5423,7 @@
         2137
       ],
       "assignee": "cursor",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "Cartouche.RPC gains all six: eth_syncing, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, net_listening, net_peerCount, web3_clientVersion",
         "eth_syncing decodes BOTH answers — the bare `false` and the sync-status object — as a single documented union; the synced case is pinned live, the syncing-object case unit-tested against its spec shape",
@@ -5471,7 +5471,7 @@
         2137
       ],
       "assignee": "grok",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "Cartouche.RPC gains eth_simulateV1 modelling blockStateCalls with state and block overrides, and decoding per-call results including logs and per-call error objects into cartouche structs",
         "The request surface covers the spec'd shape — blockStateCalls, stateOverrides, blockOverrides, returnFullTransactions, traceTransfers, validation — modelled as structs per repo conventions",
@@ -5636,7 +5636,7 @@
         2137
       ],
       "assignee": "grok",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "trace_transaction (rpc.ex:1435), trace_call (:1586), trace_call_many (:1790) and debug_trace_call (:1872) each carry a @doc naming that the method is absent from ethereum/execution-apis, which clients serve it, and the error a consumer on a common hosted endpoint receives — the error recorded verbatim from an observed response, never assumed",
         "A capability probe exists following the Onchain.Trace.available?/1 precedent cited by node-portability.md rule 3, so a consumer can branch before failing deep in a pipeline rather than parsing an error string",
@@ -6750,7 +6750,7 @@
       ],
       "depends_on": [],
       "assignee": "grok",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "The wrapper is portable or explicitly marked node-privileged: a hosted endpoint's refusal of eth_getStorageValues is pinned by a test, and the task either builds the batched read on a method consumers can actually call or documents in the moduledoc and CHANGELOG that this read requires a node serving it, naming the observed hosted-provider error. Shipping a wrapper that only works on this repo's node without saying so is a failure of this criterion",
         "Onchain.RPC.get_storage_values is exposed through the existing codegen/specs path with the api/3 declaration and bang variant the module's conventions require",
@@ -7070,7 +7070,7 @@
       "markers": [],
       "depends_on": [],
       "assignee": "grok",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "create_access_list is exposed on Onchain.RPC following the module's existing conventions, including the api/3 declaration and bang variant its neighbours have",
         "A live call against the archive node returns an access list for a call that touches known storage, and a test asserts the specific addresses and storage keys returned — not merely that a non-empty list came back",
@@ -7160,7 +7160,7 @@
       "depends_on": [],
       "assignee": "cursor",
       "module": "Onchain.Signer",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "build_transaction/3 accepts an :authorization_list and returns a Cartouche.Transaction.V4; sign, encode and send handle the V4 struct end to end",
         "Authorization-tuple signing is exposed at the Onchain level and pinned byte-exact against cartouche's viem-2.55.19 and ethers-6.17.0 vector fixtures",
@@ -7203,7 +7203,7 @@
       ],
       "assignee": "grok",
       "module": "Onchain.Delegate",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "A named, audited, already-deployed 7702 delegate implementation is pinned: its deployed runtime bytecode is verified against its published source with compiler settings recorded, and the choice is written down with the audit reference",
         "execute/executeBatch calldata builders for the pinned delegate are pinned by selector-and-encoding unit tests",
@@ -7291,7 +7291,7 @@
       ],
       "assignee": "cursor",
       "module": "Onchain.AA",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "pm_getPaymasterStubData and pm_getPaymasterData are callable against a paymaster endpoint and their answers populate paymaster_and_data (v0.6) or the unpacked v0.7 paymaster fields correctly for hashing and submission",
         "An integration test obtains a real sponsorship for a testnet UserOperation from a live paymaster service, submits it, and asserts the sender did not pay gas; a second test pins one real sponsorship rejection; missing credentials flunk with the exact variables to export",
@@ -8466,7 +8466,7 @@
       "depends_on": [],
       "assignee": "grok",
       "module": "Onchain.Aave.Pool",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "Pool.set_user_use_reserve_as_collateral/3 and its ! variant encode setUserUseReserveAsCollateral(address,bool) and send through the module's existing signed-write path",
         "Pool.repay_with_atokens/3 and its ! variant encode repayWithATokens(address,uint256,uint256) with rate mode fixed internally at 2 and no on_behalf_of argument",
@@ -8514,7 +8514,7 @@
       ],
       "assignee": "cursor",
       "module": "Onchain.Aave.Pool",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "Pool.get_reserve_data/2 returns %Onchain.Aave.Types.ReserveData{} whose 15 fields and numeric widths match the deployed getReserveData(address) ABI at a pinned Ethereum block",
         "ReserveData preserves configuration, liquidity and debt indices/rates, timestamp, reserve id, token addresses, accruedToTreasury, unbacked, and isolationModeTotalDebt; docs explicitly identify currentStableBorrowRate, stableDebtTokenAddress, interestRateStrategyAddress, unbacked, and isolationModeTotalDebt as deployed compatibility fields with deprecated semantics",
@@ -8651,7 +8651,7 @@
       "markers": [],
       "depends_on": [],
       "assignee": "cursor",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "A revert blob returned by the library's call/estimate/send paths decodes through hieroglyph's built-in Error(string)/Panic(uint256) recognition and, where the deployed protocol emits custom errors, through Aave-owned error definitions; the decoded reason appears in the returned error tuple",
         "Which revert style the deployed V3 Pool and the V4 deployment actually emit is established live and recorded — a pinned-fork failing write (e.g. borrow exceeding collateral capacity) pins the raw blob and its decoded form for each protocol generation",
@@ -8840,7 +8840,7 @@
       ],
       "assignee": "grok",
       "module": "Onchain.Aave.Events",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "The V4 protocol events actually emitted by the deployed Hubs, Spokes and Tokenization Spokes are enumerated from Aave-owned aave-v4 source and each is decoded from a raw log map into a named-field map",
         "A pinned-block integration test fetches real mainnet V4 logs via Onchain.RPC.eth_get_logs and decodes them, asserting known field values of at least one Hub credit-line event, one Spoke position event and one ERC-4626 Deposit or Withdraw; missing RPC env vars flunk with exact export instructions",
@@ -9001,7 +9001,7 @@
       "depends_on": [],
       "assignee": "cursor",
       "module": "Onchain.Aave",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "Every existing write in Pool, V4.PositionManager, DebtToken and Faucet has a public calldata-building counterpart returning the target address and calldata (and value where applicable) with no RPC, nonce, key or signing dependency",
         "The existing send functions route through the same builders, so the encoding exists exactly once and the send path's contract is unchanged",
@@ -9046,7 +9046,7 @@
       ],
       "assignee": "grok",
       "module": "Onchain.Aave.Pool",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "Calldata builders exist for flashLoanSimple and flashLoan following the calldata-only shape task 4071 establishes, pinned by selector-and-encoding unit tests",
         "FLASHLOAN_PREMIUM_TOTAL and FLASHLOAN_PREMIUM_TO_PROTOCOL are readable from the Pool and the premium a given amount owes is computable",
@@ -9624,7 +9624,7 @@
       ],
       "assignee": "grok",
       "module": "Onchain.Aerodrome.Bindings.RewardsSugar",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "RewardsSugar epochsLatest/3, epochsByAddress/4, rewards/4, rewardsByAddress/3 and forRoot/2 are implemented, decoding into [%Types.LpEpoch{}], [%Types.Reward{}] and a three-address tuple",
         "The @doc on rewardsByAddress states explicitly that it is veNFT-scoped — its arguments are (venft_id, pool) — and NOT account-scoped; the function name must not be shortened in a way that implies account scoping",
@@ -9678,7 +9678,7 @@
       ],
       "assignee": "cursor",
       "module": "Onchain.Aerodrome.Bindings.RelaySugar",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "RelaySugar all/2 (a single call — the signature is all(address) with no limit or offset), registries/2, voter/1, swapper/1, ve/1 and token/1 are implemented, with all/2 decoding into [%Types.Relay{}]",
         "TokenSugar tokens/5 (reusing Types.Token), safe_balance_of/3, safe_decimals/2 and safe_symbol/2 are implemented; the tokens driver never terminates on a short page — its offset walks the POOL index while already-seen and non-ERC20 tokens are dropped from the page, so short pages are the normal mid-enumeration case — and a test proves enumeration continues past a page shorter than the limit",
@@ -9728,7 +9728,7 @@
       ],
       "assignee": "grok",
       "module": "Onchain.Aerodrome.Bindings.Factories",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "PoolFactory allPools/2, allPoolsLength/1, isPool/2, getFee/3, stableFee/1, volatileFee/1 and customFee/2 are implemented",
         "The two overloaded getPool entries are exposed under DISTINCT Elixir function names — one for getPool(address,address,uint24), one for getPool(address,address,bool) — because they share arity and Elixir cannot dispatch on argument type; a test calls both independently with correct argument types",
@@ -9884,7 +9884,7 @@
       ],
       "assignee": "cursor",
       "module": "Onchain.Aerodrome.Math.Liquidity",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "amounts_for_liquidity/4, liquidity_for_amounts/5, the unsigned amount0_delta/4 and amount1_delta/4 with an explicit round-up flag, and the signed amount0_delta/3 and amount1_delta/3 taking int128 liquidity and returning a signed result, are all exported with @spec and integer-only arithmetic",
         "Rounding direction is a REQUIRED argument, never defaulted; a test asserts the difference between round-up and round-down is 0 or 1 across at least 1000 stream_data inputs, and the moduledoc states that amounts owed to the pool round up while amounts owed to the LP round down",
@@ -9937,7 +9937,7 @@
       ],
       "assignee": "grok",
       "module": "Onchain.Aerodrome.Math.Stable",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "k/4 implements both invariants — x*y for volatile, and x^3*y + x*y^3 on decimals-normalised reserves for stable — dispatching on an explicit :stable or :volatile argument, never on a guessed heuristic",
         "amount_out/6 matches the deployed pool's getAmountOut within 0 wei for at least 200 committed (pool, token_in, amount_in) fixtures spanning one real stable pool and one real volatile pool",
@@ -10037,7 +10037,7 @@
       ],
       "assignee": "grok",
       "module": "Onchain.Aerodrome.Analytics.Price",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "%Types.Price{} carries at minimum token, numeraire, value (Decimal), source (:chainlink | :cl_spot | :v2_spot | :stable_spot | :caller), route (a list of pool addresses, empty for an anchor), hops, block, updated_at, and the minimum pool TVL along the route",
         "%Types.PriceMap{} wraps a map of address to Price plus the numeraire, the block, and a list of tokens that could NOT be priced, each with a reason",
@@ -10090,7 +10090,7 @@
       ],
       "assignee": "cursor",
       "module": "Onchain.Aerodrome.Sugar.Prices",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "Bindings.Chainlink latest_round_data/2, decimals/2 and description/2 wrap AggregatorV3Interface against a feed address, with the ABI captured into priv/abis/chainlink_aggregator_v3.json and its provenance recorded in priv/abis/README.md in the same table shape as the existing entries",
         "Every feed address added to Contracts is verified by calling description() and asserting the returned string equals the expected pair; the verified description, decimals and documented heartbeat are recorded as a comment beside each address. No feed address is added from memory or from a single explorer label",
@@ -10148,7 +10148,7 @@
       ],
       "assignee": "grok",
       "module": "Onchain.Aerodrome.Analytics.Pool",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "pool_type/1 returns :v2_stable for Lp.type -1, :v2_volatile for 0 and {:cl, spacing} for any positive value, and a test asserts every value in Contracts.constants().tick_spacings maps to a {:cl, _} result",
         "tvl/2 and staked_tvl/2 take an %Lp{} plus a %PriceMap{} and return {:ok, Decimal.t()} from reserve0/reserve1 and staked0/staked1 respectively, or {:error, {:unpriced_token, addr}} when either side is unpriced — NEVER a partial TVL counting only the priced side",
@@ -10202,7 +10202,7 @@
       ],
       "assignee": "cursor",
       "module": "Onchain.Aerodrome.Analytics.Position",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "principal/2 takes a %Position{} plus a current sqrt ratio and returns integer token0 and token1 amounts via Math.Liquidity.amounts_for_liquidity/4 using the position's own sqrt_ratio_lower and sqrt_ratio_upper",
         "A test asserts that for at least 50 real captured positions, principal(position, lp.sqrt_ratio) reproduces the position's OWN amount0 and amount1 fields EXACTLY — Sugar computes those on-chain from the same inputs, so the golden page is simultaneously the input fixture and the expected output, and this differential costs no extra network call",
@@ -10312,7 +10312,7 @@
       ],
       "assignee": "cursor",
       "module": "Onchain.Aerodrome.Analytics.APR",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "A manifest test enumerates every exported function of every module under the Onchain.Aerodrome namespace via :application.get_key/2 and FAILS if any function name matches total_apr, combined_apr, overall_apr, net_apr, apr_sum or blended_apr. The same test asserts it scanned at least 10 modules and that the blacklist is non-empty, so it cannot pass vacuously when the scan finds nothing",
         "A test asserts arithmetic on two %Analytics.APR.Rate{} structs raises, and that Rate.combine/2 raises IncomparableBasisError for differing bases and succeeds only for identical ones. These are the mechanical teeth on the invariant, not documentation",
@@ -10421,7 +10421,7 @@
       ],
       "assignee": "cursor",
       "module": "Onchain.Aerodrome.Sugar.Positions",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "Sugar.Positions exposes for_account/2, for_factory/3 and unstaked_concentrated/2 over the LpSugar position reads",
         "Sugar.VeNfts exposes all/1, for_account/1 and get/1 over VeSugar",
@@ -10584,7 +10584,7 @@
       ],
       "assignee": "grok",
       "module": "Onchain.Aerodrome.Write.Voter",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "Every user-facing Voter write function in the captured voter.json gets a calldata builder: vote, reset, poke, claimBribes, claimFees, claimRewards, depositManaged, withdrawManaged and BOTH distribute overloads — distinct selectors, so per the task-11 convention each gets a distinct, self-describing Elixir name. A completeness test derives the covered-function set from the ABI JSON minus an explicit named-exclusion list, so a re-captured ABI that adds a write function fails the test instead of being silently absent",
         "Every function returns {:ok, %{to: address, calldata: binary}} BY DEFAULT with no signing and no key material touched",
@@ -10635,7 +10635,7 @@
       ],
       "assignee": "cursor",
       "module": "Onchain.Aerodrome.Write.Router",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "Swap functions over Aerodrome's four-field Route struct — Solidly's (from, to, stable) plus the factory field Aerodrome added, which the encoder must include — and addLiquidity and removeLiquidity (stable is a bool parameter on each; the actual signature variants are the ETH forms), all returning {:ok, %{to: address, calldata: binary}} by default",
         "An opt-in signer option threads to Onchain.Signer; a grep test asserts no System.get_env call in this module reads anything key-shaped",
@@ -10686,7 +10686,7 @@
       ],
       "assignee": "grok",
       "module": "Onchain.Aerodrome.Write.Gauge",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "The deposit, withdraw and reward-claim functions, named per the ACTUAL captured ABI rather than assumed names, return calldata by default with the same Signer opt-in contract as the other write modules",
         "A grep test asserts no System.get_env call in this module reads anything key-shaped",
@@ -10988,7 +10988,7 @@
       ],
       "assignee": "grok",
       "module": "OnchainAerodrome",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "An integration-tagged live evidence suite exercises every Write.* module end to end against live Base in one sweep — for each module at least one builder's calldata is re-graded against the task-26 cast oracle at run time and at least one negative-control eth_call reproduces a real on-chain revert — paralleling what task 33 proves for the read surface; missing credentials flunk with exact setup instructions, never skip",
         "CHANGELOG.md's Unreleased section becomes a dated 0.2.0 entry describing the shipped write surface in prose, not a copy of task titles",
@@ -12484,7 +12484,7 @@
       "depends_on": [],
       "assignee": "grok",
       "module": "Onchain.EVM",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "A batch element can optionally carry a value and a from alongside address and calldata, and the existing 2-tuple form keeps working unchanged",
         "Nonces are tracked per sender across the batch, not from a single base nonce",
@@ -12643,7 +12643,7 @@
       ],
       "assignee": "grok",
       "module": "OnchainJs.Uniswap",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "`OnchainJs.Uniswap.route/4` returns a route for a real, liquid mainnet pair: the path's token sequence starts at the input token and ends at the output token, the quoted output amount is non-zero, and price impact is returned as a bounded percentage.",
         "The route is produced by the Uniswap SDK running in a QuickBEAM runtime — not reimplemented in Elixir.",
@@ -12698,7 +12698,7 @@
         7001
       ],
       "assignee": "cursor",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "A public function builds a flash-loan → action-sequence → repay recipe with `@defisaver/sdk` and returns encoded calldata.",
         "The encoded calldata is decoded back in a test and asserted to match the intended action sequence — selector and arguments round-trip — rather than merely asserting a hex string was produced.",
@@ -12804,7 +12804,7 @@
         7001
       ],
       "assignee": "grok",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "Property-based tests feed identical inputs to `@aave/math-utils` (in a QuickBEAM runtime) and to onchain_aave's corresponding math functions, and assert agreement.",
         "The comparison tolerance is a named constant with a written rationale tied to fixed-point scaling (ray/wad) and rounding mode — not a value widened until tests passed.",
@@ -12857,7 +12857,7 @@
       ],
       "assignee": "cursor",
       "module": "OnchainJs.Merkle",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "`OnchainJs.Merkle.build_tree/1` returns a root and `prove/2` returns a proof that merkletreejs itself verifies.",
         "A proof produced here verifies under the sorted-pair keccak256 rule used by OpenZeppelin's `MerkleProof`, asserted against a known-root test vector produced independently of this code.",
@@ -13312,7 +13312,7 @@
       "depends_on": [],
       "assignee": "cursor",
       "module": "Onchain.Morpho",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "A new packages/onchain_morpho package exists, wired into the monorepo's single mix ci exactly like the existing packages, and the roadmap vision line counts it",
         "An address registry resolves the Morpho Blue singleton per chain (Ethereum mainnet and Base), every address citing Morpho's own deployments record",
@@ -13401,7 +13401,7 @@
       "markers": [],
       "depends_on": [],
       "assignee": "grok",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "A NIF-backed secp256k1 backend implements Cartouche.Signer.Backend and is selectable by configuration; Cartouche.Signer.Curvy remains the default and every existing test passes unchanged",
         "Byte-equality proof against curvy: for a fixed corpus of private keys and digests (including a digest whose low-s normalization changes s, and at least one 0x00-prefixed key), the new backend's r/s/recovery-id and the recovered address are identical to curvy's — asserted in a test, not reported in prose",
@@ -13533,7 +13533,7 @@
       "markers": [],
       "depends_on": [],
       "assignee": "grok",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "Every package whose `mix.exs` declares a `tidewave` alias is reachable through the repo's MCP config, or the config documents in CLAUDE.md which single package it serves and why the other seven were dropped — the current state names neither",
         "Whatever shape is chosen, the port each entry targets matches that package's `mix tidewave` alias: hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010, onchain_aave 4012, cartouche 4013, onchain_js 4028, onchain_aerodrome 4035",
@@ -13887,7 +13887,7 @@
       ],
       "depends_on": [],
       "assignee": "grok",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "`Cartouche.Chain` exposes a struct per known chain with at least: id, name, native currency (name/symbol/decimals), public RPC URLs, block explorer URLs, a testnet flag, and a well-known-contracts map carrying Multicall3, the ENS registry and universal resolver, and EntryPoint v0.6/v0.7 where deployed; `parse_id/1` and every existing caller keep working unchanged",
         "The chain data is generated, not hand-typed: a Mix task regenerates the definitions file from the named upstream source and the committed file is byte-identical to a fresh run of that task (a test asserts this, so drift between source and generated file fails the gate)",
@@ -14031,7 +14031,7 @@
         2135
       ],
       "assignee": "cursor",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "Wrappers exist for: set balance, set code, set storage slot, set nonce, impersonate / stop impersonating an account, mine N blocks, set next block timestamp, increase time, snapshot / revert, drop a pending transaction, and reset to a fork; each accepts and returns cartouche's usual typed values (integers, `Cartouche.Hex` addresses, binaries), not raw hex strings",
         "hardhat-prefixed aliases are exposed for the methods hardhat names differently, dispatching to the same implementation",
@@ -14076,7 +14076,7 @@
         2129
       ],
       "assignee": "cursor",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "`Onchain.Client.new/1` builds a struct from a chain (registry atom, id, or `Cartouche.Chain` struct) plus transport options (one URL, a list of URLs, or nothing to use the registry's public URLs) and an optional signer carrier; the struct is inspectable without leaking signer secrets",
         "Every public onchain function that reads `opts[:rpc_url]` today also accepts `client: %Onchain.Client{}` in `opts` and resolves URL and chain from it through one shared helper; `rpc_url` keeps working unchanged and a test asserts the two paths produce identical requests",
@@ -14125,7 +14125,7 @@
       ],
       "depends_on": [],
       "assignee": "grok",
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "acceptance_criteria": [
         "A message struct renders to the exact EIP-4361 string format (field order, blank lines, optional fields, resources list) and parses back from that string per the spec ABNF; every case in spruceid/siwe's `parsing_positive.json` parses to the documented fields and every case in `parsing_negative.json` is rejected",
         "Verification checks: signature recovers to the stated address (EIP-191 personal_sign), domain matches the expected domain, nonce meets the spec minimum, and issued-at / expiration-time / not-before are enforced against a caller-supplied clock; every case in spruceid/siwe's `verification_positive.json` and `verification_negative.json` behaves as documented",
@@ -14326,7 +14326,7 @@
       "markers": [],
       "depends_on": [],
       "assignee": "cursor",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "`cd packages/onchain_aave && mix ci` and `cd packages/onchain_aerodrome && mix ci` return exit 0 on a cold worktree after the existing compile/format/credo/doctor/ex_dna/reach/sobelow/deps.audit/coverage/dialyzer steps, with no SIGSEGV (139) on VM halt",
         "`cd packages/onchain_evm && mix ci` still returns 0 — do not 'fix' the consumers by making the NIF owner's own gate red",
@@ -14367,7 +14367,7 @@
       "markers": [],
       "depends_on": [],
       "assignee": "cursor",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "Root `mix ci` runs `elixir test/alias_separation_test.exs` (or an equivalent Mix-hosted invocation of the same tests) before or after `onchain.bounds`, with a non-zero exit aborting the serial package walk",
         "The alias-graph fixture and AliasSeparationTest's root assertion are updated together if the `ci` alias list changes, so the regression test still proves dispatch vs full-QA separation",
