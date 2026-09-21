@@ -81,9 +81,9 @@ are pinned to `MIX_ENV=test` via `def cli`.
   plumbing never called from `lib/`. Without this, every Tidewave/Bandit minor
   bump invalidates the PLT and drags incremental rebuilds back into the
   20+ minute range.
-- **This package carries its own `.credo.exs`** on top of the root-consolidated
-  ExSlop policy — see root `CLAUDE.md`'s open item on whether that's still
-  deliberate or leftover drift; don't assume either without checking.
+- **This package's `.credo.exs` is a symlink to the root `.credo.exs`**, same
+  as the other seven packages. Editing the root policy is the only way to
+  change credo rules here; there is no per-package override.
 - **`deps.audit.gated`** — this package's dep tree carries no `gun`, so it
   audits clean with no `.mix_audit_ignore` needed.
 - `docs: [skip_undefined_reference_warnings_on: ["CHANGELOG.md"]]` — CHANGELOG

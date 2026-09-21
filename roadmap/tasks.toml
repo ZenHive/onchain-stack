@@ -9689,3 +9689,51 @@ started_at = "2026-09-20"
 scored_at = "2026-09-20"
 done_at = "2026-09-20"
 shipped_in = "5b38a852ad4301278f91141784e94d8a055857f2"
+
+[[task]]
+id = "9023"
+phase = 0
+bundle = "monorepo_root_gates"
+target_repo = "onchain_evm"
+status = "pending"
+title = "mix ci in onchain_aave and onchain_aerodrome exits 139 after every gate is already green"
+scores = { d = 4, b = 7, u = 6 }
+acceptance_criteria = ["`cd packages/onchain_aave && mix ci` and `cd packages/onchain_aerodrome && mix ci` return exit 0 on a cold worktree after the existing compile/format/credo/doctor/ex_dna/reach/sobelow/deps.audit/coverage/dialyzer steps, with no SIGSEGV (139) on VM halt", "`cd packages/onchain_evm && mix ci` still returns 0 — do not 'fix' the consumers by making the NIF owner's own gate red", "The diagnosis names the crashing site (NIF unload vs Mix env split vs rustler_precompiled copy into the consumer _build) with a reproducing command; a workaround that swallows 139 is not acceptable", "Root `mix ci` walks all eight packages without Mix.raise on a consumer 139"]
+out_of_scope = ["Re-running or widening coverage thresholds", "Changing check.dispatch", "Re-adjudicating gun/cowlib advisories", "Fixing the AGENTS.md host-script skip"]
+touches = ["packages/onchain_evm/native", "packages/onchain_aave/mix.exs", "packages/onchain_aerodrome/mix.exs"]
+assignee = "cursor"
+model = "cursor-grok-4.6-high"
+body = """
+Found by the post-merge audit of 1975218 at integrated revision 1975218aa30d6b4a6acbccb03d1063a7d65f63d1.
+
+Root `mix ci` failed in packages/onchain_aave with Mix.raise(... exited 139). The independent rerun of `mix ci` in packages/onchain_aerodrome also exited 139. In both packages every configured check had already printed green: doctor, advisory-freshness at 5246bcc, deps.audit with no vulnerabilities, coverage JSON result=passed (aave 406 passed / 81 excluded / 100% vs threshold 65; aerodrome 172 passed / 2 excluded / 82.25% vs 65), dialyzer "done (passed successfully)" with 0 errors. The last Mix step is agents.check, which skipped because ~/_DATA/code/claude-marketplace/scripts/sync-agents-md.sh is absent on this host; then the Mix VM died SIGSEGV.
+
+The other six packages' `mix ci` returned 0, including packages/onchain_evm itself (298 tests passed, 28+7 Rust tests ok, dialyzer 7 skipped). aave and aerodrome are the two packages that pull `sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])` and load the precompiled NIF into a consumer VM. Their `def cli` does not pin `ci` / `precommit.full` to :test (unlike onchain_evm and cartouche), so the parent Mix process stays in :dev, tests run in a child `cmd env MIX_ENV=test ...`, and dialyzer analyzes `_build/dev` beams. Treat that env split as a lead, not as a proven cause.
+
+Do not swallow the 139. The gates were green; the process still failed, and root `packages_ci/1` raises on any non-zero, so the family `mix ci` cannot pass while this stands.
+"""
+created_at = "2026-09-21"
+scored_at = "2026-09-21"
+
+[[task]]
+id = "9024"
+phase = 0
+bundle = "monorepo_root_gates"
+target_repo = "onchain_stack"
+status = "pending"
+title = "Wire elixir test/alias_separation_test.exs into the root mix ci alias"
+scores = { d = 2, b = 5, u = 5 }
+acceptance_criteria = ["Root `mix ci` runs `elixir test/alias_separation_test.exs` (or an equivalent Mix-hosted invocation of the same tests) before or after `onchain.bounds`, with a non-zero exit aborting the serial package walk", "The alias-graph fixture and AliasSeparationTest's root assertion are updated together if the `ci` alias list changes, so the regression test still proves dispatch vs full-QA separation", "`elixir test/alias_separation_test.exs` still runs without Mix deps bootstrap", "CLAUDE.md's Harness paragraph that names this check states that root mix ci runs it"]
+out_of_scope = ["Putting analyzers or package test suites back into check.dispatch", "Changing any package's precommit.full graph"]
+touches = ["mix.exs", "test/alias_separation_test.exs", "test/fixtures/aliases_before.exs", "CLAUDE.md", "AGENTS.md"]
+assignee = "cursor"
+model = "cursor-grok-4.6-high"
+body = """
+Found by the post-merge audit of 1975218 (task 9022 delivery 5b38a85).
+
+Task 9022 added test/alias_separation_test.exs and documented it as the alias regression check (`elixir test/alias_separation_test.exs`, no package dependency bootstrap). Root mix ci is still only `onchain.bounds` + packages_ci/1. The 17 tests passed when this audit ran them by hand; nothing in the family gate would notice if the alias graph drifted. Wiring is a small Mix.exs + fixture update, not a dispatch-scope change.
+
+The test currently asserts the root aliases map equals the committed baseline fixture, so adding a ci step must update that fixture in the same change.
+"""
+created_at = "2026-09-21"
+scored_at = "2026-09-21"
