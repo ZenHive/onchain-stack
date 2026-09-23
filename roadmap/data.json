@@ -506,6 +506,11 @@
       "order": 1,
       "description": "Decode what the deployed protocol says back: Pool event logs with topic filters, structured revert reasons on write failures, and strict ABI decoding of responses."
     },
+    "onchain_aave_faucet_ex": {
+      "phase": 4006,
+      "order": 9,
+      "description": "Retire the in-package Aave faucet mint helper and the copied WETH storage-slot overrides in favour of faucet_ex (Faucet.Source.ERC20Mint, Faucet.ForkOverride)."
+    },
     "onchain_aave_flash_executor": {
       "phase": 4009,
       "order": 1,
@@ -730,6 +735,11 @@
       "phase": 8001,
       "order": 1,
       "description": "Initial extraction of Tempo primitives from MPP into standalone library."
+    },
+    "onchain_tempo_faucet_ex": {
+      "phase": 8003,
+      "order": 4,
+      "description": "Retire the in-package Moderato faucet in favour of the shared faucet_ex library (Faucet.Source.Tempo)."
     },
     "onchain_tempo_faucet_polish": {
       "phase": 8003,
@@ -14462,6 +14472,87 @@
         "packages/onchain/README.md"
       ],
       "body": "aave_sim's operator decision of 2026-09-15 made a user-owned Safe the execution account for attended and automated actions (aave_sim docs/one-transaction-rail.md, tasks 146 and 147 done). The application carries the whole encoding half app-locally in lib/aave_sim/execution/safe.ex: MultiSend packing of a call batch into `multiSend(bytes)`, owner execution through `execTransaction` with the pre-approved-hash signature form (v = 1, the signer's own address as the approver), `getTransactionHash` for the nonce-bound hash, and `execTransactionWithRole` for the Zodiac Roles keeper path. None of that exists in onchain — the package has no Safe module at all (grep for multiSend/execTransaction across packages/ on 2026-09-23 returns nothing).\n\nLift those builders into Onchain.Safe as calldata-only functions returning {target, value, data} in the shape the DeleGator adapter (task 3096) and the Aave calldata builders (task 4071) already use, so an application composes a Safe batch from package pieces alone. aave_sim then consumes the package and deletes its copy; that swap is a cross-repo follow-up filed in aave_sim's roadmap, not part of this task.\n\nAUTHORITY: the Safe v1.4.1 contracts (safe-global/safe-smart-account at tag v1.4.1 — Safe.sol execTransaction/checkNSignatures/getTransactionHash, libraries/MultiSend.sol packing) and the Zodiac Roles modifier source and docs (gnosisguild/zodiac-modifier-roles) for execTransactionWithRole. aave_sim's implementation is the extraction source and a compatibility fixture, not the specification; where the two disagree, the contracts are right. Safe reports inner-execution failure through the ExecutionFailure event while the outer transaction succeeds — the builder's docs must say so, and the fork proof must check the execution result, not the receipt status.\n\nDispatch trigger: money-path calldata construction with an independent oracle available (aave_sim's committed fixtures plus a fork execution through onchain_evm).\n",
+      "created_at": "2026-09-23",
+      "scored_at": "2026-09-23",
+      "cross_repo": []
+    },
+    {
+      "id": "8015",
+      "phase": 8003,
+      "bundle": "onchain_tempo_faucet_ex",
+      "target_repo": "onchain_tempo",
+      "status": "pending",
+      "title": "Delegate Onchain.Tempo.Faucet to faucet_ex and retire the in-package Moderato faucet client",
+      "scores": {
+        "d": 3,
+        "b": 6,
+        "u": 7
+      },
+      "eff": 2.17,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "grok",
+      "model": "grok-4.7",
+      "acceptance_criteria": [
+        "`packages/onchain_tempo/mix.exs` declares `{:faucet_ex, \"~> 0.1\", only: [:dev, :test]}`; `ONCHAIN_PUBLISH=1 bin/publish-prep.sh check onchain_tempo` passes with no path dep excluded.",
+        "`Onchain.Tempo.Faucet.fund_address/2` and `fresh_funded_wallet/1` keep their public signatures and return shapes and are marked `@deprecated` pointing at `Faucet.Source.Tempo` / `Faucet.EVM.fresh_funded_wallet/3`; their bodies delegate and contain no Req call of their own.",
+        "`test/onchain/tempo/faucet_test.exs` keeps passing unchanged (it stubs via `Req.Test`; the delegation must forward `:req_options` so the stubs still intercept).",
+        "`mix test.json --include integration test/onchain/tempo/integration/moderato_test.exs` funds a fresh wallet on Moderato through the delegated path (`TEMPO_RPC_URL` set); output cited in the PR.",
+        "`packages/onchain_tempo/CHANGELOG.md` records the deprecation under Unreleased; `README.md` points new users at faucet_ex."
+      ],
+      "out_of_scope": [
+        "Deleting `Onchain.Tempo.Faucet` — that is a major-version removal for a later release once mpp has migrated (mpp roadmap task filed alongside this one).",
+        "Changing the faucet_ex library itself; gaps found there are filed in faucet_ex's own roadmap."
+      ],
+      "files_to_modify": [
+        "packages/onchain_tempo/lib/onchain/tempo/faucet.ex",
+        "packages/onchain_tempo/mix.exs",
+        "packages/onchain_tempo/CHANGELOG.md"
+      ],
+      "body": "`Onchain.Tempo.Faucet` (rpc_url/0, fund_address/2, fresh_funded_wallet/1, a private Req JSON-RPC client) was extracted verbatim into the standalone `faucet_ex` library on 2026-09-23 as `Faucet.Source.Tempo` plus the chain-agnostic top-up loop `Faucet.ensure_min_balance/4` and `Faucet.EVM.fresh_funded_wallet/3`. The same Moderato client also lives three times in mpp's integration tests; faucet_ex is the one copy every consumer is meant to use (`~/_DATA/code/faucet_ex`, README + `Faucet.describe/0`).\n\nTurn the package module into a thin deprecated facade: `fund_address(address, opts)` → `Faucet.fund(Faucet.Source.Tempo, address, opts)`, `fresh_funded_wallet(opts)` → `Faucet.EVM.fresh_funded_wallet(Faucet.Source.Tempo, minimum, opts)` with the same `%{private_key, address_hex, address_bin}` result. faucet_ex is a test/dev dependency only — nothing under `lib/` outside this facade may call it, and the facade must degrade to a clear `{:error, :faucet_ex_not_available}` if a consumer has the package without faucet_ex (guard with `Code.ensure_loaded?/1`, same pattern faucet_ex uses for its optional `onchain` dependency).\n\nPremise verified by reading both modules side by side on 2026-09-23: option names (`:rpc_url`, `:req_options`, `:receive_timeout`, `:fee_token`, `:timeout`, `:interval`) already match, so the delegation is a rename, not a translation. Confirm against the current tree before relying on it.\n",
+      "created_at": "2026-09-23",
+      "scored_at": "2026-09-23",
+      "cross_repo": []
+    },
+    {
+      "id": "4074",
+      "phase": 4006,
+      "bundle": "onchain_aave_faucet_ex",
+      "target_repo": "onchain_aave",
+      "status": "pending",
+      "title": "Route Onchain.Aave.Faucet and the test-support funding helpers through faucet_ex",
+      "scores": {
+        "d": 4,
+        "b": 6,
+        "u": 7
+      },
+      "eff": 1.63,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "`packages/onchain_aave/mix.exs` declares `{:faucet_ex, \"~> 0.1\", only: [:dev, :test]}`; `ONCHAIN_PUBLISH=1 bin/publish-prep.sh check onchain_aave` passes with nothing excluded from the package.",
+        "`Onchain.Aave.Faucet.mint/4` and `mint!/4` keep their signatures and are `@deprecated` in favour of `Faucet.Source.ERC20Mint`; the module no longer builds calldata or sends transactions itself.",
+        "The two copies of `faucet_mint_if_needed/6` in `pool_write_integration_test.exs` and `debt_token_write_integration_test.exs` are gone; both tests fund through `Faucet.ensure_min_balance!/4` with `Faucet.Source.ERC20Mint` and still pass with `--include integration` against Sepolia (cite the run).",
+        "The WETH slot-3 `state_overrides` literal copied into `pool_interest_rate_mode_test.exs`, `simulation_test.exs` and the V4 deployed test is replaced by `Faucet.ForkOverride.native/3` + `erc20/5`; a unit assertion pins that the generated map equals the previous literal for one known holder (regression against the slot formula).",
+        "`mix ex_dna --max-clones 0` and `mix reach.check --dead-code --arch --smells` stay green in the package; `CHANGELOG.md` records the deprecation under Unreleased."
+      ],
+      "out_of_scope": [
+        "Adding Base Sepolia addresses to `Onchain.Aave.Contracts` — a separate gap (aave_sim currently hardcodes faucet `0xd9145b5f45ad4519c7accd6e0a4a82e83bb8a6dc` and testUSDC `0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f`); file it separately if still missing when this lands.",
+        "Removing `Onchain.Aave.Faucet` outright (major-version removal, later)."
+      ],
+      "files_to_modify": [
+        "packages/onchain_aave/lib/onchain/aave/faucet.ex",
+        "packages/onchain_aave/test/onchain/aave/pool_write_integration_test.exs",
+        "packages/onchain_aave/test/onchain/aave/debt_token_write_integration_test.exs",
+        "packages/onchain_aave/mix.exs"
+      ],
+      "body": "Three faucet-shaped duplicates live in this package today (read 2026-09-23): `Onchain.Aave.Faucet.mint/4` (Sepolia-only `mint(address,address,uint256)` sender), a `faucet_mint_if_needed/6` balance-then-mint helper duplicated across two write integration tests, and a WETH9 balance storage-slot override map (`keccak256(pad32(holder) ++ pad32(3))`) hand-copied into three fork-simulation tests. All three now exist once in the standalone `faucet_ex` library (`~/_DATA/code/faucet_ex`): `Faucet.Source.ERC20Mint` (takes `:faucet`, `:token`, `:private_key`, `:chain_id`, `:rpc_url`, amount from `:amount` or the loop-supplied `:deficit`), the `Faucet.ensure_min_balance!/4` loop, and `Faucet.ForkOverride` (`native/3`, `erc20/5`, `mapping_slot/2`).\n\nMake this package a consumer: the public module becomes a deprecated facade over `Faucet.Source.ERC20Mint` with the Sepolia faucet address as its default `:faucet`, the test helpers call the loop, and the override literals are generated. faucet_ex is dev/test only; the facade must guard with `Code.ensure_loaded?/1` and return `{:error, :faucet_ex_not_available}` rather than crash when a consumer has the package without faucet_ex. Remember the publish trap in the root CLAUDE.md: a `only: [:dev, :test]` dependency is still packaged as written, so it must be a Hex requirement, never a path.\n",
       "created_at": "2026-09-23",
       "scored_at": "2026-09-23",
       "cross_repo": []

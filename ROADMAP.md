@@ -446,6 +446,7 @@
 | Task 4062 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · Make the integration gate settle: bound math_revm runtime so --include integration terminates [D:4/B:7/U:8 → Eff:1.88?] 🚀 |
 | Task 4071 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave* · Calldata-only mode for every Aave write: build without sending [D:4/B:8/U:7 → Eff:1.88] 🚀 |
 | Task 4072 | ⛔ | 🎁 **onchain_aave_v3_write_gaps** · *Onchain.Aave.Pool* · Pool flash-loan surface: flashLoanSimple and flashLoan builders plus premium reads [D:4/B:7/U:6 → Eff:1.62] 🚀 |
+| Task 4074 | ⬜ | 🎁 **onchain_aave_faucet_ex** · Route Onchain.Aave.Faucet and the test-support funding helpers through faucet_ex [D:4/B:6/U:7 → Eff:1.62] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 4007: Read-Path Multicall Adoption
@@ -666,6 +667,7 @@
 | Task 8012 | ✅ | 🎁 **onchain_tempo_verification** · 🔒 Mutation-grade 0x76 transaction and signing invariants [D:5/B:9/U:8 → Eff:1.7?] 🚀 |
 | Task 8013 | ⬜ | 🎁 **onchain_tempo_verification** · 🔒 Verify optional 0x76 key_authorization across encode, sign, and recover [D:5/B:7/U:4 → Eff:1.1] 📋 |
 | Task 8014 | ✅ | 🎁 **onchain_tempo_verification** · 🔒 Normalize ECDSA signatures to low-s before Curvy recovery in Onchain.Tempo.Transaction and report the curvy recover_key recid bug upstream [D:3/B:6/U:5 → Eff:1.83] 🚀 |
+| Task 8015 | ⬜ | 🎁 **onchain_tempo_faucet_ex** · Delegate Onchain.Tempo.Faucet to faucet_ex and retire the in-package Moderato faucet client [D:3/B:6/U:7 → Eff:2.17] 🎯 |
 <!-- TASKS:END -->
 
 ---
