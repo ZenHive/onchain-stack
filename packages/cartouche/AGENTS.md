@@ -416,13 +416,8 @@ Failed runs retain the worktree at `result.worktree_path` for inspection. Approv
 
 **Live-run intervention (not recovery of a dead run):** `dispatch-hold` (optionally `interrupt: true`) parks a live run mid-turn, `dispatch-steer` stashes guidance applied on resume, `dispatch-resume` un-pauses in place, `dispatch-cancel` kills it (idempotent). Use hold → steer → resume to force-hand a grinding implementer to the reviewer gate instead of burning the lifetime budget.
 
-<<<<<<< Updated upstream
 **Implementer question channel.** A headless implementer that hits genuinely ambiguous acceptance criteria writes `.harness/question.json` (`question` string, optional `context`, plus `run_id` / `invocation` echoing `$HARNESS_RUN_ID` / `$HARNESS_IMPLEMENTER_ATTEMPT`) and ends its invocation. Harness reads the file mechanically at the agent-invocation boundary: a fenced, unconsumed artifact parks in `:held` (`hold_reason: :question`) and emits a `:question` witness with the question verbatim; empty/malformed/stale/consumed files are ignored-and-logged. The orchestrator answers with `dispatch-steer` (the answer text) then `dispatch-resume` — no new primitives, no dashboard UI, no auto-answer inside harness. Resume injects question + answer into the prompt and consumes that identity via `.harness/question-state.json` (plus an archive under `.harness/questions/`); deleting `question.json` is not the consumption mechanism. A leftover file cannot re-park; a later question with a new identity can. Question-held time stays inside the existing `lifetime_timeout` (the timer is not suspended; expiry is recoverable `:timed_out`). A gen_statem crash while `:held` still settles `:failed`; the retained worktree sidecar is the recovery boundary and cannot leak to a new run. This is an escape hatch, not a substitute for well-written tasks; reviewer/audit questions are out of scope. Explicit `dispatch-resume_failed` recovery restores the selected retained run's pending/answered question state into a held replacement without notifying again; resume uses the saved answer or requires steer. Recovery needs the retained worktree and failed-run record on the same storage. Fresh dispatches do not import it. Notification delivery remains best effort (a crash after persisting the notified flag can lose delivery).
 
-||||||| Stash base
-**The gate before any reset-to-pending + re-dispatch:** `git branch -a | grep harness/<run-id>` and `git log --oneline origin/<target>..harness/<run-id>`. Commits present ⇒ recover, never redo.
-=======
->>>>>>> Stashed changes
 **The gate before any reset-to-pending + re-dispatch:** `git branch -a | grep harness/<run-id>` and `git log --oneline origin/<target>..harness/<run-id>`. Commits present ⇒ explicitly judge whether to resume, re-review or replace; justify discarding them.
 
 **🚨 First, confirm the run actually *didn't* land — check `origin`, not your local checkout.** Under `landing_policy: :auto` the lander pushes to `origin/<target>` from a detached worktree, then `Harness.Git.TargetSync` may fast-forward the operator's local target when that is safe (off-target → ff the branch ref; on-target + clean tree → `merge --ff-only`). It skips — witnessed, never `--force` — when the tree is dirty, the update is not a fast-forward, or the target is this running node's own source tree (self-host: path identity, not the project name). Under dogfooding that self-host skip is the common case, so after an autonomous land your local `tasks.toml` is **stale**: it still reads `in_progress` for a task the lander already marked `done --shipped-in` on origin. **Reading that stale local status as "the run didn't land" is the trap** — it triggers a wasteful reset-to-`pending` + re-dispatch that *duplicate-lands already-shipped work*. Before concluding anything from task status, `git fetch origin <target> && git rebase origin/<target>` (the existing "Sync main before committing" rule) or read ground truth directly:
@@ -601,16 +596,8 @@ The two blind classes, both real-correctness, both passing every per-task check:
   - **🚨 Default-DECLINE — the proposal pipeline outproduces the backlog's right to grow.** Reviewer + audit agents emit ~1 proposal per run; an orchestrator that files "everything evidenced and cross-session" lands N tasks and files N new ones per wave — net backlog delta ±0, the roadmap never converges. Evidence + cross-session is the FLOOR, not the bar. File a proposal only when ALL THREE hold: (a) real defect or invariant gap with evidence, (b) not foldable into an existing pending task — and when the proposal patches an instance of a class, scope the filing as the CLASS invariant so the next instance can't spawn a sibling task, (c) not inline-doable in minutes by the orchestrator — if it is, DO it now instead of filing. Declined proposals need no ceremony: the verdict record in the ResultStore is their evidence trail.
   - **Report the net backlog delta** (landed − filed) as an explicit number in every wave/session wrap-up. A session trending ±0 or negative-growth is the churn alarm firing — tighten the decline bar, don't normalize it.
 - **Witness notification is sakshi (read-only).** Landing outcomes notify via configured command sink; the sink grants no merge capability. Human operator reviews blocked/conflict outcomes — harness does not silently force-push past conflicts.
-<<<<<<< Updated upstream
 - **`check_command` is a dispatch-scale hint to the reviewer.** Free text (e.g. explicit format + compile commands for Elixir with focused tests chosen by the reviewer) — the reviewer runs and judges it; harness does not execute it mechanically. Use `verification-policy.md` to select scope; a hint that expands to full QA must not impose it on each run. Full-suite commands like `mix precommit.full` belong on `qa_command` for post-merge audit QA. Operator rollout: `mix harness.projects.rollout_dispatch_qa` (dry-run default). For verbose checks, capture to a per-run `mktemp` log on the first execution; never re-run only to recover truncated output.
 - **The cross-family reviewer reads `AGENTS.md`, not your Claude skills/includes.** `AGENTS.md` is generated from `CLAUDE.md` by recursively inlining every `@`-import. **Regenerate it after any `CLAUDE.md` change** (harness: `bash scripts/sync-agents-md.sh`; other repos: `claude-marketplace/scripts/sync-agents-md.sh`, or `--dry-run` to preview) so the reviewer gates against current rules — a stale `AGENTS.md` makes codex/cursor/grok judge against rules you've already changed. **`--check` is the freshness gate** — it re-renders in memory and exits non-zero if `AGENTS.md` has drifted (diffs rendered output, not mtimes, so it catches drift in transitive `@`-imports too); wire it into CI / a pre-commit hook / the `check_command` so staleness fails loudly instead of silently. Consequence under Opus-4.8 skill-on-demand: once `CLAUDE.md` slims to the eager floor, reviewer-critical facts that *were* carried by eager includes (the `check_command` gate; that `mix test.json` / `mix dialyzer.json` emit JSON **by design** — parse for real failures, never flag the envelope; plain `mix dialyzer` is authoritative when the JSON encoder can't serialize a warning) no longer reach `AGENTS.md` via those imports. Put them in a **self-contained `## Toolchain & check commands` section in `CLAUDE.md`** so they survive the slim-down and flow into `AGENTS.md` on regen (ref: `tapakly/CLAUDE.md`, `ccxt_extract/CLAUDE.md`).
-||||||| Stash base
-- **`check_command` is a dispatch-scale hint to the reviewer.** Free text (e.g. `"mix check.dispatch"` for Elixir, with focused tests chosen by the reviewer) — the reviewer runs and judges it; harness does not execute it mechanically. Keep full-suite commands like `mix precommit.full` for the landed-base Architect/QA pass. For verbose checks, capture to a per-run `mktemp` log on the first execution; never re-run only to recover truncated output.
-- **The cross-family reviewer reads `AGENTS.md`, not your Claude skills/includes.** `AGENTS.md` is generated from `CLAUDE.md` by `claude-marketplace/scripts/sync-agents-md.sh`, which recursively inlines every `@`-import. **Regenerate it after any `CLAUDE.md` change** (`bash ~/_DATA/code/claude-marketplace/scripts/sync-agents-md.sh`, or `--dry-run` to preview) so the reviewer gates against current rules — a stale `AGENTS.md` makes codex/cursor/grok judge against rules you've already changed. **`--check` is the freshness gate** — it re-renders in memory and exits non-zero if `AGENTS.md` has drifted (diffs rendered output, not mtimes, so it catches drift in transitive `@`-imports too); wire it into CI / a pre-commit hook / the `check_command` so staleness fails loudly instead of silently. Consequence under Opus-4.8 skill-on-demand: once `CLAUDE.md` slims to the eager floor, reviewer-critical facts that *were* carried by eager includes (the `check_command` gate; that `mix test.json` / `mix dialyzer.json` emit JSON **by design** — parse for real failures, never flag the envelope; plain `mix dialyzer` is authoritative when the JSON encoder can't serialize a warning) no longer reach `AGENTS.md` via those imports. Put them in a **self-contained `## Toolchain & check commands` section in `CLAUDE.md`** so they survive the slim-down and flow into `AGENTS.md` on regen (ref: `tapakly/CLAUDE.md`, `ccxt_extract/CLAUDE.md`).
-=======
-- **`check_command` is a dispatch-scale hint to the reviewer.** Free text (e.g. `"mix check.dispatch"` for Elixir, with focused tests chosen by the reviewer) — the reviewer runs and judges it; harness does not execute it mechanically. Use `verification-policy.md` to select scope; a hint that expands to full QA must not impose it on each run. Full-suite commands like `mix precommit.full` belong to post-merge audit + QA. For verbose checks, capture to a per-run `mktemp` log on the first execution; never re-run only to recover truncated output.
-- **The cross-family reviewer reads `AGENTS.md`, not your Claude skills/includes.** `AGENTS.md` is generated from `CLAUDE.md` by `claude-marketplace/scripts/sync-agents-md.sh`, which recursively inlines every `@`-import. **Regenerate it after any `CLAUDE.md` change** (`bash ~/_DATA/code/claude-marketplace/scripts/sync-agents-md.sh`, or `--dry-run` to preview) so the reviewer gates against current rules — a stale `AGENTS.md` makes codex/cursor/grok judge against rules you've already changed. **`--check` is the freshness gate** — it re-renders in memory and exits non-zero if `AGENTS.md` has drifted (diffs rendered output, not mtimes, so it catches drift in transitive `@`-imports too); wire it into CI / a pre-commit hook / the `check_command` so staleness fails loudly instead of silently. Consequence under Opus-4.8 skill-on-demand: once `CLAUDE.md` slims to the eager floor, reviewer-critical facts that *were* carried by eager includes (the `check_command` gate; that `mix test.json` / `mix dialyzer.json` emit JSON **by design** — parse for real failures, never flag the envelope; plain `mix dialyzer` is authoritative when the JSON encoder can't serialize a warning) no longer reach `AGENTS.md` via those imports. Put them in a **self-contained `## Toolchain & check commands` section in `CLAUDE.md`** so they survive the slim-down and flow into `AGENTS.md` on regen (ref: `tapakly/CLAUDE.md`, `ccxt_extract/CLAUDE.md`).
->>>>>>> Stashed changes
 - **Roster doctrine.** Prefer `codex`, `cursor`, `grok`. `claude` is dispatched only when the operator has enabled it in the Agents settings; the default is off because the orchestrator session already runs on the same Max subscription. `cursor` and `grok` are one family — pair either with a `codex` reviewer. Spread assignees across the enabled agents; a ledger skewed to one adapter is the tell. A repo may override the roster in its own CLAUDE.md.
 - **Model pins.** `model` is required at creation for any non-`human` assignee (`rmap new` rejects a model-less dispatchable task; see `rmap.md` § "Pinning an LLM model"). Read the live standing model per agent from `routing-brief` and the live ids from `model_availability-list_available_models <agent>`; a retired pin fails at dispatch, so re-pin when you touch a task. A newly-probed model lands in the catalog as `selected?: false` — select it before it is dispatchable. New ids carry no ledger data — route to them to *gather* it (`dispatch-compare`), not on a performance claim.
 
@@ -668,7 +655,6 @@ Run records and status/verdict responses expose `dispatch_decision`; durable
 `20260918230000_add_dispatch_decision_to_run_records` before activating this code.
 The driving orchestrator owns runtime activation and installed-skill propagation.
 
-<<<<<<< Updated upstream
 ### Graceful shutdown recovery
 
 Application shutdown settles runs in `Harness.Application.prep_stop/1`, before
@@ -701,66 +687,100 @@ a commit or justify a hand-built `start_run`. If persistence spilled, repair the
 store and replay the spill before using record-based recovery. SIGKILL and power
 loss cannot run these callbacks and carry no graceful-cleanup guarantee.
 
-||||||| Stash base
-=======
->>>>>>> Stashed changes
+### Explicit audit selection
+
+The QA page `/harness/qa` owns the global audit agent/model picker and shows current eligibility and unavailable reasons. `Harness.Audit.Selection.configure(agent_name, model)` atomically persists this pair in SettingsStore; an empty agent selects automatic routing. Explicit selection starts a separate audit session and may reuse the implementation or review adapter. It still requires reviewer eligibility, an installed available adapter and an available explicit model; no fallback changes the saved choice. Automatic routing continues to exclude the run's implementer and reviewer and may produce `no_audit_agent`. QA summaries show the last incomplete reason directly. Changing selection affects new audit sessions and neither changes reviewer trust nor restarts existing jobs.
+
 <!-- @-import: ~/.claude/includes/onchain-workspace.md -->
-# Onchain Stack Workspace — Harness
+# Onchain Stack Workspace — Monorepo
 
-Workspace-specific layout for the seven onchain repos under ZenHive, driven by the **harness** OTP loop (implement → review → land). Pairs with `harness-workflow.md` (the portfolio-wide contract): that file carries the loop shape; this file carries only the onchain-stack specifics — repo roster, on-disk paths, and cross-repo dependency coordination.
+Workspace layout for the onchain package family. **Since 2026-08-27 the eight
+library repos are one monorepo:** `~/_DATA/code/onchain-stack`, packages under
+`packages/<name>/`, absorbed with full git history. Each package remains its own
+Hex package with its own version, CHANGELOG, and publish cycle. Pairs with
+`harness-workflow.md` (loop shape); this file carries only the stack specifics.
 
-Imported family-wide by the seven repos below. The retired Linear-as-queue + Codex/Cursor cloud-delegation workspace lives in `onchain-workspace-delegation.md` (DORMANT).
+The old standalone checkouts (`~/_DATA/code/hieroglyph`, `.../cartouche`, …) are
+retired — GitHub repos archived (never deleted; `ZenHive/onchain_evm` hosts NIF
+release assets). Do not work in them.
 
-### Repo Roster
+### Layout
 
-| On-disk path | Repo | Role | Native deps |
+| Package (`packages/…`) | Hex package | Role | Native |
 |---|---|---|---|
-| `~/_DATA/code/hieroglyph` | hieroglyph | ABI encode/decode library (`ABI.*`) | none (yecc/leex) |
-| `~/_DATA/code/cartouche` | cartouche | Ethereum substrate: signing, tx encoding, raw RPC, crypto | none |
-| `~/_DATA/code/onchain` | onchain | Core primitives on top of cartouche: RPC wrappers, ABI, ERC standards, signing | none |
-| `~/_DATA/code/onchain_aave` | onchain_aave | Aave V3 protocol wrappers | none |
-| `~/_DATA/code/onchain_evm` | onchain_evm | EVM simulation, Solidity parsing, trace, codegen | Rust NIFs (Rustler) |
-| `~/_DATA/code/onchain_js` | onchain_js | npm packages on the BEAM via QuickBEAM | Zig NIFs |
-| `~/_DATA/code/onchain_tempo` | onchain_tempo | Tempo chain primitives (0x76 tx, TIP-20) | none |
+| hieroglyph | `hieroglyph` | ABI encode/decode (`ABI.*`) | yecc/leex |
+| cartouche | `cartouche` | Substrate: signing, tx encoding, raw RPC, crypto | — |
+| onchain | `onchain` | Core primitives: RPC, ABI, ERC, signing | — |
+| onchain_aave | `onchain_aave` | Aave V3 + V4 wrappers | — |
+| onchain_aerodrome | `onchain_aerodrome` | Aerodrome Finance (Base) bindings | — |
+| onchain_evm | `onchain_evm` | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
+| onchain_js | `onchain_js` | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
+| onchain_tempo | `onchain_tempo` | Tempo chain primitives (0x76 tx, TIP-20) | — |
 
-### Dependency Shape (drives cross-repo coordination)
+**Still standalone repos** (not absorbed): `descripex`, `zen_websocket` (shared
+upstreams, consumed beyond this family) and `mpp` (leaf app). They live at
+`~/_DATA/code/<name>` as before.
 
-```
-hieroglyph (ABI)
-    ↑
-cartouche (substrate: signing, RPC, crypto)
-    ↑
-onchain (core primitives)
-    ↑
-  ┌─────────────┬──────────────┬──────────────┐
-onchain_aave  onchain_evm   onchain_js   onchain_tempo
-```
+Dependency cascade (unchanged): hieroglyph → cartouche → onchain →
+{aave, aerodrome, evm, js, tempo}; descripex feeds everything, zen_websocket
+feeds onchain. Publish order stays upstream-first.
 
-- **hieroglyph release → cartouche bump → onchain bump → downstream bumps.** A new hieroglyph minor cascades up the chain. Sequence the harness tasks: land the upstream bump first, then dispatch the dependent bump against the updated `development`.
-- **onchain core API change → onchain_aave / onchain_evm / onchain_js / onchain_tempo cascading bumps.** Loose coupling — downstream bumps can land in any order once `onchain` ships. File one rmap task per downstream repo.
-- **cartouche-as-dep change** affects the whole EVM stack identically — same upstream-first ordering as a hieroglyph release.
-- **Same-function collisions across repos don't exist** (separate codebases), but a single conceptual change spanning repos is still N tasks, one per repo — not one bundled task. See `harness-workflow.md` § "Parallel Dispatch".
+### The sibling/3 mechanism (dual-mode deps)
 
-### Branch & Workflow Conventions
+In-family deps are declared in each package's `mix.exs` as
+`sibling(:cartouche, "~> 0.7")`:
 
-- **No PRs for routine work** — completed harness runs ff-merge directly to each repo's `development` branch (the default). Manual hand-build work commits/merges to `development` directly too. (hieroglyph additionally files PRs *upstream* to `exthereum/abi` — orthogonal to harness, see its `upstream-pr-workflow.md`.)
-- **Run branches** are `harness/<run-id>` per repo, created off the dispatch branch's `HEAD`. Approved work keeps the branch after worktree teardown.
-- **Per-repo task source** is each repo's `roadmap/tasks.toml` (rmap renders `ROADMAP.md`). Harness ingests it as the run queue.
+- **Path branch** — when the marker file `.onchain-monorepo-root` is found by
+  walking up from the package (i.e. inside the monorepo): resolves to
+  `{name, path: "../<name>", override: true, …}`. Day-to-day dev needs no Hex
+  round-trips.
+- **Hex branch** — no marker (a consumer's `deps/` layout), or
+  `ONCHAIN_PUBLISH=1` set: resolves to `{name, "~> x.y", …}`.
 
-### Harness Specifics — TODO (stubs)
+**Publish trap:** Hex ≥2.5 does NOT abort on path deps — it silently drops them
+from the tarball ("Dependencies excluded from the package"). Every publish runs
+with `ONCHAIN_PUBLISH=1` and greps `hex.build` output for that phrase
+(`bin/publish-prep.sh` does this). After publish-mode `deps.get`, restore the
+lock with `git checkout -- mix.lock`.
 
-These firm up as the harness conventions for the stack settle. Fill in from the running harness node rather than guessing:
+### Gates
 
-- **TODO: Project registry.** Which of the seven repos are registered in `Harness.ProjectRegistry`, their registered names, dispatch branches, and `check_command` hints. Pull live via `mcp__harness__project_registry-list`.
-- **TODO: Landing policy per repo.** Which repos run `landing_policy: :auto` (ff-merge + post-merge audit) vs manual landing. Onchain repo's "no PRs / merge to development" stance suggests `:auto` once trusted.
-- **TODO: Reviewer pairing.** Cross-family reviewer adapter assignment per repo, if stack-specific (the portfolio default — "opus last," prefer cursor/codex/grok — lives in `harness-workflow.md` § "Portfolio Conventions").
-- **TODO: rmap roadmap paths.** Confirm each repo's `roadmap/tasks.toml` location and any per-repo D/B/U scoring conventions.
+- **Root gate:** `cd ~/_DATA/code/onchain-stack && mix ci` = `mix onchain.bounds`
+  (checks every literal `sibling/2,3` requirement against the sibling's live
+  `@version`) then each package's own `mix ci`, **strictly serial** (shared
+  advisory-mirror clone; parallel runs corrupt its `git pull --rebase`).
+- **Per-package:** unchanged — each package keeps its own `.reach.exs`,
+  `.doctor.exs`, sobelow config, coverage threshold. `cd packages/<name> && mix ci`
+  for focused work. Shared gate helpers: `shared/mix_helpers.exs`
+  (`OnchainMonorepo.MixHelpers`), loaded defensively so tarballs build without it.
+- **Roadmap:** one root rmap project (`roadmap/tasks.toml`, 342 tasks). Old
+  per-package task IDs are offset: hieroglyph +1000, cartouche +2000, onchain
+  +3000, aave +4000, aerodrome +5000, evm +6000, js +7000, tempo +8000. Tasks
+  carry `target_repo`; `touches` paths are `packages/<name>/…`-prefixed.
+
+### Harness
+
+One registered project, `onchain_stack`, source `~/_DATA/code/onchain-stack`
+(server mirror `/data/postgresql/code/onchain-stack`), `check_command:
+"mix check.dispatch"`, `target_branch: main`, warm paths for onchain_evm's Rust
+targets (`packages/onchain_evm/{native/*/target,priv/native}`). The eight
+per-repo harness registrations are retired with the repos. Write-set collision
+now happens naturally inside one repo — harness serializes overlapping waves.
+
+### Releases
+
+Per-package semver against the **published** Hex baseline; version bumps,
+CHANGELOG, and `mix hex.publish` (human, 2FA) all happen inside
+`packages/<name>/`. Tags in the monorepo are `<pkg>-v<ver>`. Cross-package
+cascades are now single-repo commits, but the Hex publish order is still
+upstream-first, one published version at a time.
 
 ### Cross-References
 
-- `harness-workflow.md` — the portfolio-wide implement→review→land contract (loop shape, verdict table, parallel dispatch, landing)
-- `onchain-workspace-delegation.md` — DORMANT Linear/cloud-delegation workspace (pre-harness)
-- Each repo's `CLAUDE.md` — module layout, architecture, testing specifics
+- `~/_DATA/code/onchain-stack/CLAUDE.md` — the coordination doc (cascade state,
+  operating rules, tooling)
+- `harness-workflow.md` — the portfolio implement→review→land contract
+- `onchain-workspace-delegation.md` — DORMANT pre-harness delegation workspace
 
 <!-- @-import: ~/.claude/includes/node-portability.md -->
 ## Node Portability — Our Node Is Privileged, Not the Reference
@@ -891,17 +911,7 @@ this repo:
 
 Full post-merge QA: **`mix ci`** (= `mix precommit.full`), same shape as every other
 package in the monorepo (root `CLAUDE.md` § Gates). **`mix check.dispatch`** is
-<<<<<<< Updated upstream
 formatting and compilation only. Fast local loop: `mix precommit`. All three
-||||||| Stash base
-the harness reviewer's dispatch-scale gate (no dialyzer, no coverage pass, no
-`agents.check` — a harness worktree carries an ephemeral `AGENTS.md` preamble
-that would always read as drift). Fast local loop: `mix precommit`. All three
-=======
-an existing alias; scope follows the imported verification policy (no dialyzer, no coverage pass, no
-`agents.check` — a harness worktree carries an ephemeral `AGENTS.md` preamble
-that would always read as drift). Fast local loop: `mix precommit`. All three
->>>>>>> Stashed changes
 are pinned to `MIX_ENV=test` via `def cli`.
 
 - **`mix precommit.full` runs, in order:** `compile --warnings-as-errors`,
