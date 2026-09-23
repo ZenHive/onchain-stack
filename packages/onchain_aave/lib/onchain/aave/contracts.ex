@@ -90,6 +90,17 @@ defmodule Onchain.Aave.Contracts do
       oracle: "0x2da88497588bf89281816106C7259e31AF45a663",
       ui_pool_data_provider: "0x69529987FA4A075D0C00B0128fa848dc9ebbE9CE",
       faucet: "0xC959483DBa39aa9E78757139af0e9a2EDEb3f42D"
+    },
+    # Base Sepolia (chain 84532) — verified 2026-09-23 against BGD Labs
+    # aave-address-book src/AaveV3BaseSepolia.sol (POOL_ADDRESSES_PROVIDER, POOL,
+    # ORACLE, UI_POOL_DATA_PROVIDER). The faucet is the one aave/interface's
+    # market config points at for this market. Re-verify on each Aave upgrade.
+    base_sepolia: %{
+      pool_addresses_provider: "0xE4C23309117Aa30342BFaae6c95c6478e0A4Ad00",
+      pool: "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27",
+      oracle: "0x943b0dE18d4abf4eF02A85912F8fc07684C141dF",
+      ui_pool_data_provider: "0x3cB7B00B6C09B71998124196691e8bF2694De863",
+      faucet: "0xD9145b5F45Ad4519c7ACcD6E0A4A82e83bB8A6Dc"
     }
   }
 

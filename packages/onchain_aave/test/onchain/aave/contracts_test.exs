@@ -4,7 +4,7 @@ defmodule Onchain.Aave.ContractsTest do
   alias Onchain.Aave.Contracts
 
   @known_contracts [:pool_addresses_provider, :pool, :oracle, :ui_pool_data_provider]
-  @all_networks [:ethereum, :arbitrum, :optimism, :base, :polygon, :avalanche, :sepolia]
+  @all_networks [:ethereum, :arbitrum, :optimism, :base, :polygon, :avalanche, :sepolia, :base_sepolia]
   @mainnet_networks [:ethereum, :arbitrum, :optimism, :base, :polygon, :avalanche]
 
   describe "address/1" do
@@ -114,9 +114,9 @@ defmodule Onchain.Aave.ContractsTest do
   end
 
   describe "networks/0" do
-    test "returns all 7 supported networks" do
+    test "returns all 8 supported networks" do
       networks = Contracts.networks()
-      assert [_, _, _, _, _, _, _] = networks
+      assert [_, _, _, _, _, _, _, _] = networks
 
       for network <- @all_networks do
         assert network in networks
@@ -165,6 +165,17 @@ defmodule Onchain.Aave.ContractsTest do
       end
 
       assert :faucet in keys
+    end
+
+    test "base_sepolia has exactly 5 contract keys and the address-book pool" do
+      assert {:ok, keys} = Contracts.contracts(network: :base_sepolia)
+      assert match?([_, _, _, _, _], keys), "Base Sepolia has #{length(keys)} keys: #{inspect(keys)}"
+      assert :faucet in keys
+
+      assert {:ok, "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27"} = Contracts.address(:pool, network: :base_sepolia)
+
+      assert {:ok, "0xE4C23309117Aa30342BFaae6c95c6478e0A4Ad00"} =
+               Contracts.address(:pool_addresses_provider, network: :base_sepolia)
     end
 
     test "sepolia has faucet contract" do
