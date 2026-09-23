@@ -51,7 +51,17 @@ this repo:
 
 Full post-merge QA: **`mix ci`** (= `mix precommit.full`), same shape as every other
 package in the monorepo (root `CLAUDE.md` § Gates). **`mix check.dispatch`** is
+<<<<<<< Updated upstream
 formatting and compilation only. Fast local loop: `mix precommit`. All three
+||||||| Stash base
+the harness reviewer's dispatch-scale gate (no dialyzer, no coverage pass, no
+`agents.check` — a harness worktree carries an ephemeral `AGENTS.md` preamble
+that would always read as drift). Fast local loop: `mix precommit`. All three
+=======
+an existing alias; scope follows the imported verification policy (no dialyzer, no coverage pass, no
+`agents.check` — a harness worktree carries an ephemeral `AGENTS.md` preamble
+that would always read as drift). Fast local loop: `mix precommit`. All three
+>>>>>>> Stashed changes
 are pinned to `MIX_ENV=test` via `def cli`.
 
 - **`mix precommit.full` runs, in order:** `compile --warnings-as-errors`,

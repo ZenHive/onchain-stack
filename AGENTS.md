@@ -570,6 +570,7 @@ registrations from the standalone era are retired — write-set collisions that
 used to require cross-repo coordination now happen naturally inside one repo,
 and harness serializes overlapping waves on its own.
 
+<<<<<<< Updated upstream
 The alias inventory is **per package**: every package's `check.dispatch`
 runs `format --check-formatted` and `compile --warnings-as-errors` only.
 Invoke it with `cd packages/<name> && mix check.dispatch` for each touched
@@ -586,6 +587,37 @@ The alias regression check is `elixir test/alias_separation_test.exs`
 (no package dependency bootstrap). Its baseline fixture records the pre-change
 alias graph; it checks the expanded full-QA graph and the root dispatch guard.
 
+||||||| Stash base
+The dispatch-scale gate is **per package**: every package's `check.dispatch`
+runs its offline test suite as well as static checks. Aerodrome requires
+Foundry `cast` for independent calldata tests; its dispatch test command prepends
+`$HOME/.foundry/bin` to PATH (the standard Foundry installation directory).
+Verified on `blockwatch-harness`: `~/.foundry/bin/cast` version 1.8.3 is installed;
+the service PATH alone does not include it. Missing cast fails with installation
+instructions. Each package defines its own
+`check.dispatch` (a lighter gate than `mix ci` — no `agents.check`, since
+harness writes an ephemeral `AGENTS.md` preamble into the reviewer worktree
+that would always read as drift; no `deps.audit.gated`, whose shared advisory
+clone breaks under concurrent worktrees; no cold-PLT dialyzer or coverage
+pass). The project's registered `check_command` says exactly that: run
+`cd packages/<name> && mix check.dispatch` for each package the task touches.
+=======
+The existing alias inventory is **per package**: every package's `check.dispatch`
+runs its offline test suite as well as static checks. Aerodrome requires
+Foundry `cast` for independent calldata tests; its dispatch test command prepends
+`$HOME/.foundry/bin` to PATH (the standard Foundry installation directory).
+Verified on `blockwatch-harness`: `~/.foundry/bin/cast` version 1.8.3 is installed;
+the service PATH alone does not include it. Missing cast fails with installation
+instructions. Each package defines its own
+`check.dispatch` (a lighter gate than `mix ci` — no `agents.check`, since
+harness writes an ephemeral `AGENTS.md` preamble into the reviewer worktree
+that would always read as drift; no `deps.audit.gated`, whose shared advisory
+clone breaks under concurrent worktrees; no cold-PLT dialyzer or coverage
+pass). The registered `check_command` names
+`cd packages/<name> && mix check.dispatch`. Because it includes the complete
+package suite, select explicit format/compile/focused-test commands during
+implementation and review under `verification-policy.md`.
+>>>>>>> Stashed changes
 The root `mix.exs` also defines `check.dispatch` — as a **loud failure** that
 prints this instruction and exits nonzero, so a reviewer that runs it at the
 root gets guidance instead of a silent "task not found" or a cheap green.

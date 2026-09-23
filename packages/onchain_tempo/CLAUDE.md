@@ -1,6 +1,8 @@
 @~/.claude/includes/verification-policy.md
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules + harness-workflow (this repo is
+
+@~/.claude/includes/verification-policy.md
      harness-driven — the OTP dispatch→review→land loop is the active workflow). onchain-workspace
      is the harness workspace add-on (monorepo layout + sibling/3 + dependency shape), eager
      family-wide. Everything else previously imported here (across-instances, worktree, task-prioritization/writing, rmap,
