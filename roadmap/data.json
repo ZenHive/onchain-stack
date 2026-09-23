@@ -2,7 +2,7 @@
   "schema_version": 2,
   "project": "onchain_stack",
   "default_branch": "main",
-  "vision": "Monorepo of the eight-package EVM cascade — hieroglyph, cartouche, onchain and the five consumers (aave, aerodrome, evm, js, tempo). One repository, verified at HEAD in a single mix ci through path deps; eight unchanged Hex packages published outward. Task ids carry their package's thousand-range (hieroglyph 1xxx … onchain_tempo 8xxx; 9xxx is reserved for onchain_morpho, the ninth package task 9001 founds) and target_repo names the package a task lands in.",
+  "vision": "Monorepo of the eight-package EVM cascade — hieroglyph, cartouche, onchain and the five consumers (aave, aerodrome, evm, js, tempo). One repository, verified at HEAD in a single mix ci through path deps; eight unchanged Hex packages published outward. Task ids carry their package's thousand-range (hieroglyph 1xxx … onchain_tempo 8xxx; 9001 founds onchain_morpho; 9002+ are string-id cross-package tasks filed after the merge, and a ninth package gets the 10xxx range) and target_repo names the package a task lands in, or onchain_stack for root and multi-package work. Scoring rule since 2026-09-23: B >= 8 only with a named consumer in the body (bourse, aave_sim, mpp, or an onchain-stack task) — viem parity without a consumer is B <= 7.",
   "phases": {
     "0": {
       "name": "[monorepo] Root tooling & gates",
@@ -32,10 +32,10 @@
     "1005": {
       "name": "[hieroglyph] Peer-Library Parity",
       "order": 1005,
-      "status": "in_progress"
+      "status": "pending"
     },
     "2000": {
-      "name": "[cartouche] Ship 0.1.0 + pre/post-release hardening",
+      "name": "[cartouche] Core library hardening",
       "order": 2000,
       "status": "pending"
     },
@@ -57,7 +57,7 @@
     "2004": {
       "name": "[cartouche] Cartouche.Typed internal-function specs",
       "order": 2004,
-      "status": "pending"
+      "status": "done"
     },
     "2005": {
       "name": "[cartouche] VM / Erc20.Call none() cascade investigation",
@@ -87,7 +87,7 @@
     "2010": {
       "name": "[cartouche] Upstream PR candidates (to hayesgm/signet)",
       "order": 2010,
-      "status": "pending"
+      "status": "done"
     },
     "2011": {
       "name": "[cartouche] hieroglyph 1.0.0 → 1.4.0 adoption advisory",
@@ -120,7 +120,7 @@
       "status": "pending"
     },
     "3013": {
-      "name": "[onchain] EIP-7702 Execution Rail",
+      "name": "[onchain] Execution-account adapters (EIP-7702, Safe)",
       "order": 3013,
       "status": "pending"
     },
@@ -172,12 +172,12 @@
     "5001": {
       "name": "[onchain_aerodrome] Foundations & Layer Gate",
       "order": 5001,
-      "status": "pending"
+      "status": "done"
     },
     "5002": {
       "name": "[onchain_aerodrome] Types",
       "order": 5002,
-      "status": "pending"
+      "status": "done"
     },
     "5003": {
       "name": "[onchain_aerodrome] Bindings",
@@ -232,7 +232,7 @@
     "7001": {
       "name": "[onchain_js] Foundation",
       "order": 7001,
-      "status": "in_progress"
+      "status": "pending"
     },
     "7002": {
       "name": "[onchain_js] Ethereum JS Tools",
@@ -696,6 +696,11 @@
       "order": 1,
       "description": "Unify RPC return-shape inconsistencies (decoded structs vs raw hex maps)."
     },
+    "onchain_safe_execution": {
+      "phase": 3013,
+      "order": 2,
+      "description": "Safe execution account: multiSend packing, execTransaction owner-execution and Zodiac Roles calldata, extracted from aave_sim into the package."
+    },
     "onchain_signer_backend_contract": {
       "phase": 3012,
       "order": 8,
@@ -757,7 +762,7 @@
       "name": "[hieroglyph] Encode-Side Symmetry",
       "description": "Proves consumers building transactions need the encode-side counterparts (encode_call / encode_error / encode_event_topics) to match the decode APIs already shipped, rather than hand-assembling selector-prefixed calldata.",
       "order": 101,
-      "status": "active",
+      "status": "done",
       "target_version": "1.5.0"
     },
     "onchain_aave_v0_5": {
@@ -794,6 +799,12 @@
       "order": 702,
       "status": "pending",
       "target_version": "0.4.0"
+    },
+    "stack_read_surface_boundary": {
+      "name": "[cartouche+onchain] One decoder, one struct — the read-surface boundary",
+      "description": "Tests whether cartouche can own every spec'd read method with exactly one decoder and one struct per method while onchain only re-presents — and whether the onchain copies can be deleted in the same diffs now that the monorepo removes the cross-repo excuse.",
+      "order": 250,
+      "status": "active"
     }
   },
   "task": [
@@ -2129,7 +2140,7 @@
       "phase": 1005,
       "bundle": "hieroglyph_peer_parity",
       "target_repo": "hieroglyph",
-      "status": "in_progress",
+      "status": "blocked",
       "title": "muex sweep over the ABI surface, graded against the task 44 planted-mutant corpus",
       "scores": {
         "d": 4,
@@ -2162,6 +2173,7 @@
       "created_at": "2026-08-23",
       "started_at": "2026-08-27",
       "scored_at": "2026-08-23",
+      "blocked_reason": "muex #20/#23/#24 offen; kein brauchbarer Survivor-Report möglich. Unblock: ein muex-Release, das einen geplanteten Mutanten aus dem task-1044-Korpus als Survivor meldet (Gate-Probe vor dem Kampagnenstart).",
       "cross_repo": []
     },
     {
@@ -4821,7 +4833,7 @@
       "phase": 2000,
       "bundle": "cartouche_coverage_pushes",
       "target_repo": "cartouche",
-      "status": "pending",
+      "status": "blocked",
       "title": "Re-run the mutation-adequacy campaign once muex can report survivors",
       "scores": {
         "d": 5,
@@ -4852,6 +4864,7 @@
       "body": "Task 114 ran the campaign and could not produce its central deliverable: muex 0.8.2 cannot report a surviving mutant on Elixir 1.20, so the survivor triage that task 114 exists for has no input. This task re-runs the measurement once a muex release carries the fix.\n\nThe defect, verified against a four-file reproduction outside this repo and filed as Oeditus/muex#20: `Muex.TestRunner.Port.count_failures/2` matches the pre-1.20 ExUnit summary wording (`N tests, M failures`). Elixir 1.20 prints `Result: N passed (...)` for a green run and `Result: 0/M passed` + `Failed: N test` for a red one. Neither matches, and neither contains the substring `0 failures`, so the regex misses, the fallback returns 1 failure, and `classify_test_result({:ok, %{failures: 0}})` — the only path to `:survived` — is unreachable. Every survivor is reported `killed` and the score is a constant 100%. The same stale patterns make `has_exunit_summary?/1` always false, which reduces `compile_error?/1` to \"does the output contain `** (SomethingError)`\" — true whenever a test fails by raising rather than asserting — so mutants also flip between `killed` and `invalid` depending on which tests coverage guidance happened to select. In task 114's two runs over byte-identical `lib/`, 337 of 1,379 re-measured mutants changed class.\n\nWhat task 114 established and this task does NOT need to redo: the surface enumeration, the campaign script (`.mutation/run.sh`, single whole-surface invocation — per-module invocations pay a full serial coverage pass each and exhausted a harness run's budget), the flag set and its rationale, and the `no_coverage` / `equivalent` results. Those two classes are decided before or without a test run — `no_coverage` from the coverage index in `select_tests/2`, `equivalent` by Trivial Compiler Equivalence bytecode comparison — so the muex defect does not touch them. Their numbers stand and are recorded in docs/verification-ledger.md.\n\nStart by confirming the fix is real rather than assuming a version bump fixed it: run the reproduction from Oeditus/muex#20 and require it to report two survivors and a 0% score before spending hours on the full surface.\n\n2026-08-24 attempt, aborted — that gate is necessary but not sufficient. muex 0.8.3 closes #20 (the reproduction reports survived=2 / score 0%), so a full campaign was run: 4,905 mutants, 88 minutes, 1,308 killed / 111 survived / 2,227 invalid / 1,256 equivalent / 3 no_coverage. The survivor class is not usable. Spot-checking one before triage — `transaction.ex:222`, `:binary` to `:mutated_atom`, on a line `V1.decode/1` covers with 13 assertions — showed it is killed at `test/transaction_test.exs:1213`, and killed again when driven through muex's own `Sandbox.apply_mutation/4` + `TestRunner.Port.run_tests/2`. It was scored `survived` because the mutation never reached the beam.\n\nTwo open upstream defects cause that, both unfixed in 0.8.3. Oeditus/muex#23: `Sandbox.detect_app_from_build/2` resolves the app name only on a single `_build/<env>/lib/*/.mix/compile.elixir` match and cartouche has 45, so `ensure_build_copy_for_file/2` no-ops and every sandbox's `_build/test/lib/cartouche` stays a symlink into the real project build — measured directly, before and after `apply_mutation`. Parallel workers then share one ebin and one compile manifest, and a mutant whose file a sibling recompiled in between is read as up to date and tested unmutated. This also explains task 114's 337-of-1,379 class churn over a byte-identical `lib/`. Oeditus/muex#24: mutations are keyed by their reported line, so `StatementDeletion` is a 100% no-op and bare-boolean flips are ~70% — 383 of the 4,905 mutants here, 8 of the 111 survivors, graded on unmodified source. #22 and #25 do not reach this campaign (`--no-filter` bypasses the file filter, `--test-paths test` links the whole test root).\n\n`--concurrency 1` removes #23's race and `.mutation/run.sh` is pinned to it with the reasoning in its header, but #24 stays regardless of scheduling, so the campaign was stopped rather than run to a partly-invalid result. Blocked until a muex release carries #23 and #24; the first acceptance criterion is now a per-defect gate rather than #20 alone. Task 114's `no_coverage` result remains unaffected — that class is decided before any mutation is applied. Its `equivalent` result is NOT: Trivial Compiler Equivalence runs after the line-keyed application #24 breaks (`WorkerPool.run_mutation_worker/4` -> `Compiler.compile_to_source/3` -> `Tce.equivalent_source?/2`), so a #24 no-op compiles to identical bytecode and is scored `equivalent` without reaching a sandbox, and `--no-optimize` does not disable TCE. Both recorded `equivalent` counts are upper bounds; the re-run has to re-derive that class too.\n",
       "created_at": "2026-08-23",
       "scored_at": "2026-08-23",
+      "blocked_reason": "muex #20/#23/#24 offen; kein brauchbarer Survivor-Report möglich. Unblock: ein muex-Release, das einen geplanteten Mutanten aus dem task-1044-Korpus als Survivor meldet (Gate-Probe vor dem Kampagnenstart).",
       "cross_repo": []
     },
     {
@@ -5214,6 +5227,7 @@
       "phase": 2000,
       "bundle": "cartouche_rpc_correctness",
       "target_repo": "cartouche",
+      "milestone": "stack_read_surface_boundary",
       "status": "pending",
       "title": "base_fee/1 portability — probe the real hosted-provider refusal, then decide standard vs extension",
       "scores": {
@@ -5261,7 +5275,8 @@
       "id": 2128,
       "phase": 2000,
       "bundle": "cartouche_rpc_read_surface",
-      "target_repo": "cartouche",
+      "target_repo": "onchain_stack",
+      "milestone": "stack_read_surface_boundary",
       "status": "pending",
       "title": "Own eth_getLogs in cartouche — stateless log queries, and delete onchain's copy",
       "scores": {
@@ -5284,12 +5299,12 @@
         "Log decoding is the SAME code the existing filter surface uses (lib/cartouche/filter.ex), not a second decoder. If the filter surface's decode is not reusable as-is, refactor it so it is — do not copy it",
         "A live integration test pins one real success (logs from a known mainnet event range) and one relevant real error the node actually refuses, recorded verbatim — a real result or its real refusal, never a skip; flunks with exact export instructions when the node env var is absent",
         "The same call is exercised on >=1 hosted endpoint via the task-136 seam, since hosted providers commonly cap getLogs by block range or result count — that cap is a real, recordable answer, not a test failure",
-        "mix ci passes"
+        "mix ci passes",
+        "onchain's eth_getLogs decoder no longer exists: packages/onchain/lib/onchain/rpc.ex either drops eth_get_logs/2 or delegates to Cartouche.RPC and returns the cartouche struct, callers repointed, onchain CHANGELOG entry"
       ],
       "out_of_scope": [
         "Changing the existing filter-installation surface (eth_newFilter / eth_getFilterChanges) — it stays; this adds the stateless sibling",
-        "ABI event decoding — that is hieroglyph's layer, above the log struct",
-        "Editing the onchain repo — cartouche cannot touch it from its own worktree; the deletion there is the companion task named in the body"
+        "ABI event decoding — that is hieroglyph's layer, above the log struct"
       ],
       "files_to_modify": [
         "packages/cartouche/lib/cartouche/rpc.ex",
@@ -5298,9 +5313,11 @@
       "touches": [
         "packages/cartouche/test/rpc_integration_test.exs",
         "packages/cartouche/test/filter_test.exs",
-        "packages/cartouche/CHANGELOG.md"
+        "packages/cartouche/CHANGELOG.md",
+        "packages/onchain/lib/onchain/rpc.ex",
+        "packages/onchain/CHANGELOG.md"
       ],
-      "body": "`eth_getLogs` is in the tagged execution-apis release (`v1.0.0-beta.7`, `src/eth/filter.yaml`) and in the vendored local spec, so under the stack boundary it is cartouche's, unambiguously: cartouche owns one wrapper plus one decoded struct for every method in a tagged spec release.\n\nToday cartouche's only log access is filter-based — `eth_newFilter` + `eth_getFilterLogs` / `eth_getFilterChanges` in lib/cartouche/filter.ex. The stateless query that takes the same filter object with no server-side filter installation is missing. That is the one most consumers actually use, because hosted providers limit or discourage installed filters: the filter-only surface is a portability gap on exactly the endpoints consumers run against.\n\nMeanwhile `onchain` has its own `eth_getLogs` at lib/onchain/rpc.ex:974, decoding into its own shape. That is the duplication the boundary reversal exists to end.\n\n**The invariant this task must satisfy: one decoder, one struct.** cartouche gains the method and the log struct. onchain's duplicate log DECODER stops existing — whether its public `eth_get_logs/2` disappears entirely or survives returning cartouche's struct is onchain's call, made in onchain's own task, and this task must not prejudge it. What is not negotiable is that no second derivation of the same wire shape remains anywhere in the stack.\n\nThis task delivers the cartouche half only, because a cartouche worktree cannot edit the onchain repo. The companion task in onchain's roadmap deletes lib/onchain/rpc.ex:974 and repoints its callers. Sequence: this lands first (onchain depends on cartouche, not the reverse), then the deletion.\n\nAuthority: the tagged execution-apis spec and the live node. A third-party client's reading is reference material only, never semantics.\n",
+      "body": "`eth_getLogs` is in the tagged execution-apis release (`v1.0.0-beta.7`, `src/eth/filter.yaml`) and in the vendored local spec, so under the stack boundary it is cartouche's, unambiguously: cartouche owns one wrapper plus one decoded struct for every method in a tagged spec release.\n\nToday cartouche's only log access is filter-based — `eth_newFilter` + `eth_getFilterLogs` / `eth_getFilterChanges` in lib/cartouche/filter.ex. The stateless query that takes the same filter object with no server-side filter installation is missing. That is the one most consumers actually use, because hosted providers limit or discourage installed filters: the filter-only surface is a portability gap on exactly the endpoints consumers run against.\n\nMeanwhile `onchain` has its own `eth_getLogs` at lib/onchain/rpc.ex:974, decoding into its own shape. That is the duplication the boundary reversal exists to end.\n\n**The invariant this task must satisfy: one decoder, one struct.** cartouche gains the method and the log struct. onchain's duplicate log DECODER stops existing — whether its public `eth_get_logs/2` disappears entirely or survives returning cartouche's struct is onchain's call, made in onchain's own task, and this task must not prejudge it. What is not negotiable is that no second derivation of the same wire shape remains anywhere in the stack.\n\nBoth halves land in one diff — the monorepo removed the cross-repo excuse (sibling/3 path deps since 2026-08-27). This task also deletes onchain's copy — `eth_get_logs/2` in packages/onchain/lib/onchain/rpc.ex (around :969 as of 2026-09-23) — or reduces it to a re-presentation of the cartouche call returning cartouche's struct, repoints its callers, and adds an onchain CHANGELOG entry. Whether onchain keeps a public wrapper depends on whether its retry/telemetry/refusal classification has already moved to cartouche (task 2137, a dependency of this one).\n\nAuthority: the tagged execution-apis spec and the live node. A third-party client's reading is reference material only, never semantics.\n",
       "created_at": "2026-08-26",
       "scored_at": "2026-08-27",
       "cross_repo": []
@@ -5309,7 +5326,8 @@
       "id": 2129,
       "phase": 2000,
       "bundle": "cartouche_rpc_read_surface",
-      "target_repo": "cartouche",
+      "target_repo": "onchain_stack",
+      "milestone": "stack_read_surface_boundary",
       "status": "pending",
       "title": "Own the transaction and receipt read-back in cartouche — 4 methods, and delete onchain's copies",
       "scores": {
@@ -5334,12 +5352,12 @@
         "eth_getBlockReceipts reuses the EXISTING receipt decoding rather than adding a second one; a live test asserts the receipt list of a known block",
         "The decode target follows the repo's existing JsonField / typed_decode precedent — decide between the existing transaction structs and a dedicated RPC-view struct by reading how Cartouche.Block already handles the same JSON-vs-RLP split, and follow it rather than inventing a third convention",
         "Live tests flunk with exact export instructions when the node env var is absent, never skip",
-        "mix ci passes"
+        "mix ci passes",
+        "onchain's four hand-written decoders (eth_getTransactionByHash, ...ByBlockHashAndIndex, ...ByBlockNumberAndIndex, eth_getBlockReceipts) no longer exist in packages/onchain/lib/onchain/rpc.ex — deleted or delegating to Cartouche.RPC and returning cartouche structs; onchain CHANGELOG entry"
       ],
       "out_of_scope": [
         "Pending-pool inspection (txpool_* namespaces) — not in the spec, different task if ever wanted",
-        "Re-encoding the RPC transaction object back to raw RLP",
-        "Editing the onchain repo — the deletions there are the companion task named in the body"
+        "Re-encoding the RPC transaction object back to raw RLP"
       ],
       "files_to_modify": [
         "packages/cartouche/lib/cartouche/rpc.ex",
@@ -5348,9 +5366,11 @@
       "touches": [
         "packages/cartouche/lib/cartouche/block.ex",
         "packages/cartouche/test/rpc_integration_test.exs",
-        "packages/cartouche/CHANGELOG.md"
+        "packages/cartouche/CHANGELOG.md",
+        "packages/onchain/lib/onchain/rpc.ex",
+        "packages/onchain/CHANGELOG.md"
       ],
-      "body": "All four methods are in the tagged execution-apis release `v1.0.0-beta.7` (`src/eth/transaction.yaml` for the three transaction getters, `src/eth/block.yaml` for `eth_getBlockReceipts`) and in the vendored local spec. Under the stack boundary they are cartouche's: the node's wire format defines them, so cartouche owns the wrapper and the decoded struct.\n\ncartouche today can fetch a receipt (`eth_getTransactionReceipt`) but not the transaction itself. All four are absent.\n\nAll four already exist in `onchain`, hand-decoded there: lib/onchain/rpc.ex:924 (`eth_getTransactionByHash`), :672 (`...ByBlockHashAndIndex`), :715 (`...ByBlockNumberAndIndex`), :569 (`eth_getBlockReceipts`). This is the duplicated-decoder problem the boundary reversal was adopted to end — onchain could not own the decode without owning the struct, so it wrote its own.\n\n**The invariant: one decoder, one struct.** cartouche gains the four methods and their structs; onchain's four hand-written decoders stop existing. Whether onchain keeps its public functions (returning cartouche structs) or drops them is onchain's decision in onchain's task — note that its wrappers carry retry, telemetry and node-refusal classification that cartouche does not yet have, so a bare deletion is not obviously the cheaper option. This task is the cartouche half only; a cartouche worktree cannot edit the onchain repo, and the dependency edge runs cartouche <- onchain, so this lands and ships first.\n\nThe transaction methods return the RPC transaction *object* (the JSON view), not raw RLP — that is a genuinely different shape from the signed-envelope structs, and the decision of where it decodes to is the substantive design work in this task. Cartouche.Block already faced the identical JSON-vs-RLP question; read block.ex before choosing, and follow its precedent.\n\nAuthority: the tagged execution-apis spec plus the live node.\n",
+      "body": "All four methods are in the tagged execution-apis release `v1.0.0-beta.7` (`src/eth/transaction.yaml` for the three transaction getters, `src/eth/block.yaml` for `eth_getBlockReceipts`) and in the vendored local spec. Under the stack boundary they are cartouche's: the node's wire format defines them, so cartouche owns the wrapper and the decoded struct.\n\ncartouche today can fetch a receipt (`eth_getTransactionReceipt`) but not the transaction itself. All four are absent.\n\nAll four already exist in `onchain`, hand-decoded there: lib/onchain/rpc.ex:924 (`eth_getTransactionByHash`), :672 (`...ByBlockHashAndIndex`), :715 (`...ByBlockNumberAndIndex`), :569 (`eth_getBlockReceipts`). This is the duplicated-decoder problem the boundary reversal was adopted to end — onchain could not own the decode without owning the struct, so it wrote its own.\n\n**The invariant: one decoder, one struct.** cartouche gains the four methods and their structs; onchain's four hand-written decoders stop existing. Whether onchain keeps its public functions (returning cartouche structs) or drops them is a decision made inside this task — note that its wrappers carry retry, telemetry and node-refusal classification that cartouche does not yet have, so a bare deletion is not obviously the cheaper option. Both halves land in one diff — the monorepo removed the cross-repo excuse (sibling/3 path deps since 2026-08-27). The four onchain decoders in packages/onchain/lib/onchain/rpc.ex are deleted or reduced to re-presentations returning cartouche structs in this same task, with an onchain CHANGELOG entry; the retry/telemetry/classification they carry is what task 2137 (a dependency) moves first.\n\nThe transaction methods return the RPC transaction *object* (the JSON view), not raw RLP — that is a genuinely different shape from the signed-envelope structs, and the decision of where it decodes to is the substantive design work in this task. Cartouche.Block already faced the identical JSON-vs-RLP question; read block.ex before choosing, and follow its precedent.\n\nAuthority: the tagged execution-apis spec plus the live node.\n",
       "created_at": "2026-08-26",
       "scored_at": "2026-08-27",
       "cross_repo": []
@@ -5359,7 +5379,8 @@
       "id": 2130,
       "phase": 2000,
       "bundle": "cartouche_rpc_read_surface",
-      "target_repo": "cartouche",
+      "target_repo": "onchain_stack",
+      "milestone": "stack_read_surface_boundary",
       "status": "pending",
       "title": "Own the state reads in cartouche — eth_getStorageAt and eth_getProof (EIP-1186)",
       "scores": {
@@ -5384,20 +5405,24 @@
         "Historical-state depth is verified against >=1 hosted endpoint via the task-136 seam, not asserted: both methods are fully standard, but archive depth is the privileged part. Whatever the hosted endpoint answers for a deep-history block IS the finding — record it verbatim, and let the @doc say what was observed rather than promising depth",
         "@doc for both names the spec release that carries them and the observed depth caveat",
         "Live tests flunk with exact export instructions when the node env var is absent, never skip",
-        "mix ci passes"
+        "mix ci passes",
+        "onchain's eth_getProof decoding and onchain_evm's inlined eth_getStorageAt call both route through Cartouche.RPC after this task; onchain and onchain_evm CHANGELOG entries"
       ],
       "out_of_scope": [
-        "Client-side Merkle-Patricia verification of a proof against the state root — a real feature, genuinely separate, and not needed to own the read",
-        "Editing onchain_evm — the deletion there is the companion task named in the body"
+        "Client-side Merkle-Patricia verification of a proof against the state root — a real feature, genuinely separate, and not needed to own the read"
       ],
       "files_to_modify": [
         "packages/cartouche/lib/cartouche/rpc.ex"
       ],
       "touches": [
         "packages/cartouche/test/rpc_integration_test.exs",
-        "packages/cartouche/CHANGELOG.md"
+        "packages/cartouche/CHANGELOG.md",
+        "packages/onchain/lib/onchain/rpc.ex",
+        "packages/onchain/CHANGELOG.md",
+        "packages/onchain_evm/lib/onchain/trace.ex",
+        "packages/onchain_evm/CHANGELOG.md"
       ],
-      "body": "Both methods are in the tagged execution-apis release `v1.0.0-beta.7` (`src/eth/state.yaml`) and in the vendored local spec. Both are cartouche's under the stack boundary. Both are absent from cartouche today.\n\nThe existing duplication is smaller here than elsewhere but real, and it sits in a sibling rather than in `onchain`:\n\n- `eth_getStorageAt` has exactly one caller in the stack — onchain_evm, lib/onchain/trace.ex:185 — where it is inlined into the trace module. Note that the hit at onchain/lib/onchain/rpc.ex:1033 is a doc-string EXAMPLE listing legal method names, not a wrapper; do not mistake it for one.\n- `eth_getProof` is fully implemented in onchain at lib/onchain/rpc.ex:1193, including key normalization.\n\n**The invariant: one decoder, one struct.** cartouche gains both methods and the proof struct. The onchain_evm inline call and onchain's `eth_getProof` decoding are resolved by companion tasks in those repos; the mechanism there is theirs to choose, but no second derivation of the proof shape may survive.\n\n`eth_getProof` is EIP-1186 and returns a structured account proof; it decodes into a proper cartouche struct following the repo's decoding conventions, not a bare map. `eth_getStorageAt` is a thin wrapper returning a 32-byte word.\n\nThe portability point worth getting right: these are not extension methods, so rule 1 is satisfied by the tag. But spec residency says nothing about *availability at depth* — a hosted provider serves recent state and refuses or truncates deep history, and that refusal is the consumer's reality. Probe it rather than documenting an assumption.\n\nAuthority: the tagged execution-apis spec, EIP-1186, and the live node.\n",
+      "body": "Both methods are in the tagged execution-apis release `v1.0.0-beta.7` (`src/eth/state.yaml`) and in the vendored local spec. Both are cartouche's under the stack boundary. Both are absent from cartouche today.\n\nThe existing duplication is smaller here than elsewhere but real, and it sits in a sibling rather than in `onchain`:\n\n- `eth_getStorageAt` has exactly one caller in the stack — onchain_evm, lib/onchain/trace.ex:185 — where it is inlined into the trace module. Note that the hit at onchain/lib/onchain/rpc.ex:1033 is a doc-string EXAMPLE listing legal method names, not a wrapper; do not mistake it for one.\n- `eth_getProof` is fully implemented in onchain at lib/onchain/rpc.ex:1193, including key normalization.\n\n**The invariant: one decoder, one struct.** cartouche gains both methods and the proof struct. The onchain_evm inline call (packages/onchain_evm/lib/onchain/trace.ex) and onchain's `eth_getProof` decoding (packages/onchain/lib/onchain/rpc.ex) are resolved in this same diff — Both halves land in one diff — the monorepo removed the cross-repo excuse (sibling/3 path deps since 2026-08-27) No second derivation of the proof shape may survive.\n\n`eth_getProof` is EIP-1186 and returns a structured account proof; it decodes into a proper cartouche struct following the repo's decoding conventions, not a bare map. `eth_getStorageAt` is a thin wrapper returning a 32-byte word.\n\nThe portability point worth getting right: these are not extension methods, so rule 1 is satisfied by the tag. But spec residency says nothing about *availability at depth* — a hosted provider serves recent state and refuses or truncates deep history, and that refusal is the consumer's reality. Probe it rather than documenting an assumption.\n\nAuthority: the tagged execution-apis spec, EIP-1186, and the live node.\n",
       "created_at": "2026-08-26",
       "scored_at": "2026-08-27",
       "cross_repo": []
@@ -5406,7 +5431,8 @@
       "id": 2131,
       "phase": 2000,
       "bundle": "cartouche_rpc_read_surface",
-      "target_repo": "cartouche",
+      "target_repo": "onchain_stack",
+      "milestone": "stack_read_surface_boundary",
       "status": "pending",
       "title": "Own the node-introspection surface in cartouche — and mark the three methods no tagged spec carries",
       "scores": {
@@ -5431,21 +5457,23 @@
         "Per the stack boundary's rule for methods outside a tagged release, those three ship with a @doc naming what defines them and what a consumer sees when an endpoint refuses, plus a capability probe rather than a failure deep in a pipeline — the observed refusal recorded verbatim from the task-136 hosted lane, never assumed",
         "The three that ARE in the tagged spec (eth_syncing, and both eth_getBlockTransactionCountBy*) carry no such caveat — the distinction between the two groups must be visible in the docs, not flattened",
         "Live tests flunk with exact export instructions when the node env var is absent, never skip",
-        "mix ci passes"
+        "mix ci passes",
+        "onchain's eth_syncing and both eth_getBlockTransactionCountBy* copies in packages/onchain/lib/onchain/rpc.ex are deleted or delegate to Cartouche.RPC; onchain CHANGELOG entry"
       ],
       "out_of_scope": [
         "web3_sha3 — keccak is local in the crypto layer; a network round-trip to hash bytes is an anti-pattern and is deliberately not added",
-        "net_version — already present in the tagged spec since v1.0.0-beta.1 and outside this task's set; if cartouche lacks it, that is its own task",
-        "Editing the onchain repo — the deletions there are the companion task named in the body"
+        "net_version — already present in the tagged spec since v1.0.0-beta.1 and outside this task's set; if cartouche lacks it, that is its own task"
       ],
       "files_to_modify": [
         "packages/cartouche/lib/cartouche/rpc.ex"
       ],
       "touches": [
         "packages/cartouche/test/rpc_integration_test.exs",
-        "packages/cartouche/CHANGELOG.md"
+        "packages/cartouche/CHANGELOG.md",
+        "packages/onchain/lib/onchain/rpc.ex",
+        "packages/onchain/CHANGELOG.md"
       ],
-      "body": "Six methods, and the reason this task is NOT a rubber-stamp sweep is that they do not share a standardization status. Verified 2026-08-27 against the execution-apis repository at tag and at `main`, not from memory:\n\n- **In the tagged release v1.0.0-beta.7, and in the vendored local spec** — `eth_syncing` (`src/eth/client.yaml`), `eth_getBlockTransactionCountByHash` and `eth_getBlockTransactionCountByNumber` (`src/eth/block.yaml`). Straightforwardly cartouche's.\n- **On `main` only, in no tag** — `net_listening` and `net_peerCount`, added by commit 7c58b32 (\"Add net_listening and net_peerCount (#843)\"), which is `main`'s current tip and lands strictly after beta.7. Absent from the vendored spec.\n- **Never in execution-apis at all** — `web3_clientVersion`. Grepped exhaustively across every `src/**/*.yaml` on `main` HEAD and on every tag: zero hits in the repository's entire history. It is defined only by EIP-1474.\n\nThat distribution is the whole point of the task. `net_listening` / `net_peerCount` are the exact shape of the `eth_baseFee` trap that node-portability rule 1 now names explicitly: merged to `main`, not in any tag, and re-vendoring the spec from `main` would silently reclassify them as standard. They are being wrapped here deliberately and with their status written down, so that nobody later reads `main`, sees them, and deletes the caveat.\n\nAll six go into cartouche — the boundary puts every `eth_*` / `net_*` / node-wire method there, with the tagged ones plain and the untagged ones carrying a `@doc` naming who defines them plus a capability probe. Ownership is not conditional on spec status; documentation is.\n\nExisting duplication in onchain: `eth_syncing` at lib/onchain/rpc.ex:446, `eth_getBlockTransactionCountByHash` at :601, `...ByNumber` at :636. The other three exist nowhere in the stack. Those three onchain copies are resolved by the companion task in onchain's roadmap — these are scalar-returning methods, so the duplication is thin and the resolution there is cheap whichever way onchain goes.\n\n`eth_syncing`'s boolean-or-object union is the only decode of substance. The rest are thin, and thin is fine — a general-purpose library owning the node's wire surface completely is the deliverable, and completeness of that surface is the reason, stated plainly and needing no other.\n",
+      "body": "Six methods, and the reason this task is NOT a rubber-stamp sweep is that they do not share a standardization status. Verified 2026-08-27 against the execution-apis repository at tag and at `main`, not from memory:\n\n- **In the tagged release v1.0.0-beta.7, and in the vendored local spec** — `eth_syncing` (`src/eth/client.yaml`), `eth_getBlockTransactionCountByHash` and `eth_getBlockTransactionCountByNumber` (`src/eth/block.yaml`). Straightforwardly cartouche's.\n- **On `main` only, in no tag** — `net_listening` and `net_peerCount`, added by commit 7c58b32 (\"Add net_listening and net_peerCount (#843)\"), which is `main`'s current tip and lands strictly after beta.7. Absent from the vendored spec.\n- **Never in execution-apis at all** — `web3_clientVersion`. Grepped exhaustively across every `src/**/*.yaml` on `main` HEAD and on every tag: zero hits in the repository's entire history. It is defined only by EIP-1474.\n\nThat distribution is the whole point of the task. `net_listening` / `net_peerCount` are the exact shape of the `eth_baseFee` trap that node-portability rule 1 now names explicitly: merged to `main`, not in any tag, and re-vendoring the spec from `main` would silently reclassify them as standard. They are being wrapped here deliberately and with their status written down, so that nobody later reads `main`, sees them, and deletes the caveat.\n\nAll six go into cartouche — the boundary puts every `eth_*` / `net_*` / node-wire method there, with the tagged ones plain and the untagged ones carrying a `@doc` naming who defines them plus a capability probe. Ownership is not conditional on spec status; documentation is.\n\nExisting duplication in onchain: `eth_syncing` at lib/onchain/rpc.ex:446, `eth_getBlockTransactionCountByHash` at :601, `...ByNumber` at :636. The other three exist nowhere in the stack. Those three onchain copies are resolved in this same diff — Both halves land in one diff — the monorepo removed the cross-repo excuse (sibling/3 path deps since 2026-08-27) They are scalar-returning methods, so the duplication is thin and the deletion or delegation is cheap.\n\n`eth_syncing`'s boolean-or-object union is the only decode of substance. The rest are thin, and thin is fine — a general-purpose library owning the node's wire surface completely is the deliverable, and completeness of that surface is the reason, stated plainly and needing no other.\n",
       "created_at": "2026-08-26",
       "scored_at": "2026-08-27",
       "cross_repo": []
@@ -5455,14 +5483,15 @@
       "phase": 2000,
       "bundle": "cartouche_rpc_read_surface",
       "target_repo": "cartouche",
+      "milestone": "stack_read_surface_boundary",
       "status": "pending",
       "title": "Own eth_simulateV1 in cartouche — the portable simulation entry point",
       "scores": {
         "d": 5,
-        "b": 8,
+        "b": 7,
         "u": 6
       },
-      "eff": 1.4,
+      "eff": 1.3,
       "dep_layer": 1,
       "unlocks": 0,
       "markers": [],
@@ -5495,7 +5524,7 @@
       ],
       "body": "`eth_simulateV1` entered the execution-apis spec at tag `v1.0.0-beta.5` (2026-06-03, `src/eth/execute.yaml`) — verified by walking the tags directly, beta.1 through beta.7 — and it IS present in the vendored local spec. It is squarely cartouche's under the stack boundary, and it is the portable answer to the privileged `trace_callMany` / `debug_traceCall` pair cartouche already wraps.\n\nClient support is real and was verified against each client's own source, not from memory: geth (`internal/ethapi/api.go`, `BlockChainAPI.SimulateV1`), reth (`crates/rpc/rpc-eth-api/src/core.rs`, with the tracking issue closed as implemented), erigon (`rpc/jsonrpc/eth_simulation.go`, and its rpcdaemon README lists it supported) and nethermind (`EthRpcModule.cs`). So the premise the earlier version of this task flagged as unverified is now confirmed for the archive node's client — but confirm the node's live answer anyway before building on it, because a client implementing a method and an endpoint serving it are different facts.\n\n**One existing caller, and it is NOT a duplicate to delete.** onchain_tempo calls `eth_simulateV1` at lib/onchain/tempo/rpc.ex:128, but it is a domain consumer, not a competing wrapper: it builds a single AA-folded 0x76 call, interprets the result as success / revert / unsupported for a fee-payer gas-drain guard, and carries an empirically-verified note that `tempo_simulateV1` is not deployed on Tempo mainnet or Moderato. That is exactly the layering the boundary prescribes — the chain-specific package re-presents the node method for its domain. It stays.\n\nWhat it does reveal is a second transport escape: it builds its own `do_rpc_request/4` directly on Req + Jason rather than going through the shared transport, mirroring why `Onchain.HTTP` exists. Worth noting, out of scope here.\n\nTwo things to take from that module rather than reinvent: its `-32601` -> `:unsupported` classification is the capability-probe shape this method needs, and its `-38013` handling shows that execution errors arrive as JSON-RPC errors distinct from transport failure. cartouche's decode must keep those three outcomes — succeeded, reverted/rejected, method unsupported — distinguishable, because collapsing them is what makes a fail-open caller unsafe.\n\nAuthority: the tagged execution-apis spec plus the live node.\n",
       "created_at": "2026-08-26",
-      "scored_at": "2026-08-27",
+      "scored_at": "2026-09-23",
       "cross_repo": []
     },
     {
@@ -5620,6 +5649,7 @@
       "phase": 2000,
       "bundle": "cartouche_rpc_correctness",
       "target_repo": "cartouche",
+      "milestone": "stack_read_surface_boundary",
       "status": "pending",
       "title": "Portability contract for the non-standard read surface: trace_* and debug_traceCall",
       "scores": {
@@ -5721,6 +5751,7 @@
       "phase": 2000,
       "bundle": "cartouche_rpc_read_surface",
       "target_repo": "cartouche",
+      "milestone": "stack_read_surface_boundary",
       "status": "pending",
       "title": "Move the transport hardening into cartouche — retry, telemetry, node-refusal classification, batch",
       "scores": {
@@ -5745,7 +5776,7 @@
         "mix ci passes"
       ],
       "out_of_scope": [
-        "Deleting anything in the onchain repo — a cartouche worktree cannot; the deletions are onchain-side companion tasks",
+        "Deleting onchain's read-surface copies — tasks 2128–2131 own those deletions in their own diffs; this task only moves the transport hardening those wrappers depend on",
         "Unifying onchain's URL-vs-transport-options config split — that is onchain's own defect and its own task",
         "Bang variants (foo!/N) — a separate ergonomic decision, not transport"
       ],
@@ -5757,7 +5788,7 @@
         "packages/cartouche/test/rpc_test.exs",
         "packages/cartouche/CHANGELOG.md"
       ],
-      "body": "This task is what makes the stack boundary's clean cut actually safe to execute, and it was found by reading both call pipelines rather than by reasoning from the layer diagram.\n\nThe boundary says cartouche owns the transport and every in-spec method; onchain re-presents, never re-derives. Tasks 128-132 move the methods down. But a straight deletion of onchain's duplicate wrappers would be a real regression, because onchain's wrappers are not thin: each one runs inside `:telemetry.span([:onchain, :rpc, :request], ...)` (lib/onchain/rpc.ex:1310-1313), optionally inside `retry_rpc/4` (:1317-1367, transport failures retried, application errors final at :1366-1368), and its result passes through `classify_node_refusal/1` (:1374-1391), which turns `-32601` / `-32600` / `-32001` into tagged, branchable outcomes and was pinned against live Alchemy responses (moduledoc, rpc.ex:41-99). cartouche's `send_rpc/3` (lib/cartouche/rpc.ex:515-556) has none of these.\n\nEvery one of those is a transport concern. Under the boundary they belong in cartouche by definition — the layer that owns the JSON-RPC wire owns retrying it, measuring it, and telling the caller why a node refused. That they grew in onchain is an artifact of the old rule that put wrappers there.\n\nThere is a structural reason this cannot be fixed by delegation, which is worth stating so nobody proposes it later: onchain composes the hardening OUTSIDE the raw call, whereas cartouche's typed wrappers put the decode INSIDE `send_rpc/3` via its `:decode` option. So `Onchain.RPC.foo/2` delegating to `Cartouche.RPC.foo/2` inverts the nesting and silently drops retry, because `retry_rpc/4` is hardcoded to call `Helpers.do_rpc/3` (:1350) and cannot wrap a typed call. Generalizing it is part of this task, not a rider on a per-method port.\n\nThe node-refusal classification is the highest-value piece and should be treated as such. It is exactly what node-portability rule 3 asks for — \"expose a capability probe rather than failing deep in a pipeline\" — and cartouche currently forces consumers to string-match error text to discover that an endpoint does not serve a method. Tasks 131, 132 and 135 all need this: 131 wraps three methods no tagged spec carries, 132 needs `-32601` distinguishable from a failed simulation, and 135 needs a probe for the trace namespace. onchain_tempo independently reinvented the same `-32601 -> :unsupported` classification (onchain_tempo/lib/onchain/tempo/rpc.ex) — a third implementation of one idea, which is the signal that it belongs one layer down.\n\nThe onchain-side question — whether onchain's duplicated wrappers disappear entirely or survive returning cartouche structs — is DELIBERATELY DEFERRED until this task ships, and no task should presume either answer before then. The reason is that this task changes the answer: today a bare deletion would cost consumers retry, telemetry and refusal classification, which makes keeping the wrapper look cheaper; once cartouche has all three, deletion becomes close to free and the trade-off mostly evaporates. Deciding before that is deciding against a constraint that is about to stop existing.\n\nSequencing note the implementer does not need to act on but should know: onchain pins cartouche as a Hex dependency (`{:cartouche, \"~> 0.6\"}`, onchain/mix.exs:43; lockfile at 0.8.0), not a path dep. So this lands and ships in cartouche first; onchain adopts on a lockfile bump. Nothing is broken in between, because onchain keeps its own implementation until the commit that removes it.\n",
+      "body": "This task is what makes the stack boundary's clean cut actually safe to execute, and it was found by reading both call pipelines rather than by reasoning from the layer diagram.\n\nThe boundary says cartouche owns the transport and every in-spec method; onchain re-presents, never re-derives. Tasks 128-132 move the methods down. But a straight deletion of onchain's duplicate wrappers would be a real regression, because onchain's wrappers are not thin: each one runs inside `:telemetry.span([:onchain, :rpc, :request], ...)` (lib/onchain/rpc.ex:1310-1313), optionally inside `retry_rpc/4` (:1317-1367, transport failures retried, application errors final at :1366-1368), and its result passes through `classify_node_refusal/1` (:1374-1391), which turns `-32601` / `-32600` / `-32001` into tagged, branchable outcomes and was pinned against live Alchemy responses (moduledoc, rpc.ex:41-99). cartouche's `send_rpc/3` (lib/cartouche/rpc.ex:515-556) has none of these.\n\nEvery one of those is a transport concern. Under the boundary they belong in cartouche by definition — the layer that owns the JSON-RPC wire owns retrying it, measuring it, and telling the caller why a node refused. That they grew in onchain is an artifact of the old rule that put wrappers there.\n\nThere is a structural reason this cannot be fixed by delegation, which is worth stating so nobody proposes it later: onchain composes the hardening OUTSIDE the raw call, whereas cartouche's typed wrappers put the decode INSIDE `send_rpc/3` via its `:decode` option. So `Onchain.RPC.foo/2` delegating to `Cartouche.RPC.foo/2` inverts the nesting and silently drops retry, because `retry_rpc/4` is hardcoded to call `Helpers.do_rpc/3` (:1350) and cannot wrap a typed call. Generalizing it is part of this task, not a rider on a per-method port.\n\nThe node-refusal classification is the highest-value piece and should be treated as such. It is exactly what node-portability rule 3 asks for — \"expose a capability probe rather than failing deep in a pipeline\" — and cartouche currently forces consumers to string-match error text to discover that an endpoint does not serve a method. Tasks 131, 132 and 135 all need this: 131 wraps three methods no tagged spec carries, 132 needs `-32601` distinguishable from a failed simulation, and 135 needs a probe for the trace namespace. onchain_tempo independently reinvented the same `-32601 -> :unsupported` classification (onchain_tempo/lib/onchain/tempo/rpc.ex) — a third implementation of one idea, which is the signal that it belongs one layer down.\n\nThe onchain-side question — whether onchain's duplicated wrappers disappear entirely or survive returning cartouche structs — is DELIBERATELY DEFERRED until this task ships, and no task should presume either answer before then. The reason is that this task changes the answer: today a bare deletion would cost consumers retry, telemetry and refusal classification, which makes keeping the wrapper look cheaper; once cartouche has all three, deletion becomes close to free and the trade-off mostly evaporates. Deciding before that is deciding against a constraint that is about to stop existing.\n\nSequencing note (rewritten 2026-09-23): inside the monorepo onchain resolves cartouche through the sibling/3 path dep, so this lands in one diff and onchain's own retry/telemetry/classification can be removed here or in the read-surface tasks 2128–2131 that depend on this one. `mix onchain.bounds` keeps the published Hex requirement honest; no lock bump is involved.\n",
       "created_at": "2026-08-27",
       "scored_at": "2026-08-27",
       "cross_repo": []
@@ -6778,7 +6809,7 @@
       "phase": 3012,
       "bundle": "onchain_differential_testing",
       "target_repo": "onchain",
-      "status": "pending",
+      "status": "blocked",
       "title": "Mutation-adequacy campaign over the signing, key and address surface",
       "scores": {
         "d": 5,
@@ -6810,6 +6841,7 @@
       "body": "Task 84 puts RPC construction and DEX arithmetic under mutation. It does not touch the other money-critical surface in this library, and nothing else does either: lib/onchain/signer.ex (416 lines), private_key.ex, address.ex, hex.ex and abi.ex are local implementations, not thin wrappers - grep reports zero defdelegate in signer.ex, private_key.ex and address.ex - so cartouche campaign over its own signing modules does not reach them. This task covers that gap.\n\nWhy this surface specifically: a signing fault is silent. A wrong recovery bit, a mis-derived address, a hex encoder that drops a leading zero - each produces well-formed output that a round-trip test accepts and only a counterparty rejects. Cartouche campaign on the equivalent surface found exactly that shape: V3.sign/1, the default-signer route, had no test reaching it at all. The coverage class exposed it; a mutation score never would have.\n\nBlocked on the tool, not on the work. muex 0.8.2 cannot report a surviving mutant on Elixir 1.20: Muex.TestRunner.Port.count_failures/2 matches the pre-1.20 ExUnit summary wording (N tests, M failures), while 1.20 prints Result: N passed / Failed: N test. The regex misses, the fallback returns 1 failure, and the only path to :survived is unreachable - every survivor comes back killed and a suite that asserts nothing scores 100%. Filed as Oeditus/muex#20 (2026-08-23) with a four-file reproduction and a patch; upstream acknowledged it the same morning. Verified against cartouche task 114, which hit this and could not produce its central deliverable. Do not start the survivor half until an installed release passes the reproduction.\n\nNote what is NOT blocked, because it is the half that already paid off elsewhere. The no_coverage and equivalent classes are decided before or without running a test - no_coverage from the coverage index in select_tests/2, equivalent by Trivial Compiler Equivalence bytecode comparison - so the defect does not touch them, and in cartouche they produced the campaign single most useful finding. If the upstream fix stalls, a coverage-class-only pass over this surface is still worth running, and the ledger must then say plainly that the survivor axis was not measured.\n\nAdd the dep in the same change (only: [:dev, :test], runtime: false, matching cartouche) at whatever release carries the #20 fix. Do not pin 0.8.2.\n\nCopy the campaign mechanics rather than re-deriving them: ~/_DATA/code/cartouche/.mutation/run.sh runs ONE invocation over the whole surface with all 18 mutators and --no-filter --no-optimize --coverage-guided. Per-module invocations are not equivalent in cost - muex rebuilds its coverage line index by running the suite once per test file, serially, with no cache, so N invocations pay that N times over. In cartouche that is what exhausted a harness run lifetime budget.\n\nRouting is left open on purpose. The surface is a dispatch trigger and the tool now works, so this is genuinely dispatchable - but rmap freezes assignee at creation, and nobody has yet measured what a campaign over this surface costs in wall-clock or in survivor-triage judgement. Decide the routing when the campaign is actually scheduled, not here.\n\nConfirmed 2026-08-24 on muex 0.8.3 (released the same day; Oeditus/muex#20 closed 09:42Z): the four-file reproduction reports survived=2 and a 0.0% score on Elixir 1.20.2 / OTP 29, and the converse check - the same two mutants against a value-asserting test - reports killed=2 and 100%, so the tool is not simply calling everything survived now. Re-run the reproduction against whatever version is installed when the campaign actually starts; this note records that a working release exists, not that the installed one is it.\n\nRelated (was a cross_repo link before the monorepo roadmap merge, 2026-08-27): Task 2119 (cartouche, related).",
       "created_at": "2026-08-23",
       "scored_at": "2026-08-23",
+      "blocked_reason": "muex #20/#23/#24 offen; kein brauchbarer Survivor-Report möglich. Unblock: ein muex-Release, das einen geplanteten Mutanten aus dem task-1044-Korpus als Survivor meldet (Gate-Probe vor dem Kampagnenstart).",
       "cross_repo": []
     },
     {
@@ -6873,6 +6905,7 @@
       "phase": 3012,
       "bundle": "onchain_signer_backend_contract",
       "target_repo": "onchain",
+      "milestone": "stack_read_surface_boundary",
       "status": "pending",
       "title": "Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA",
       "scores": {
@@ -6882,7 +6915,7 @@
       },
       "eff": 2.17,
       "dep_layer": 0,
-      "unlocks": 2,
+      "unlocks": 1,
       "markers": [
         "security"
       ],
@@ -6890,7 +6923,6 @@
       "assignee": "codex",
       "model": "gpt-6-astra",
       "acceptance_criteria": [
-        "mix.lock resolves cartouche 0.8.0",
         "sign_transaction/3 dispatches through a {Cartouche.Signer.Curvy, key_bin} carrier rather than {Curvy, :sign, [key_bin]} plus sign_direct/4",
         "The existing signer tests still recover the expected signer address from the signed V2, demonstrating the signed digest did not change",
         "A unit test substituting a backend whose algorithm/1 reports :ed25519 fails with a tagged error and produces no signature",
@@ -6903,7 +6935,7 @@
         "Cartouche.Transaction.V4 and EIP-7702",
         "hieroglyph strict decode — task 88 owns that"
       ],
-      "body": "cartouche 0.8.0 turned two signer-backend contracts from documentation into enforced code: `sign_payload/2` matches an exact 32-byte digest in its function head (Curvy and CloudKMS both), and `Backend.expect_algorithm/3` runs before dispatch so a backend whose `algorithm/1` reports a different curve fails instead of mis-signing.\n\nNeither contract reaches this library's transaction signing, and that is the point of this task. `Onchain.Signer.sign_transaction/3` builds `mfa = {Curvy, :sign, [key_bin]}` and calls `Cartouche.Signer.sign_direct/4` (lib/onchain/signer.ex:205-215). Read against cartouche 0.8.0 on 2026-08-25: `sign_direct/4` does `apply(mod, fun, [message] ++ args)` and emits from there (cartouche lib/cartouche/signer.ex:241-246) — it never calls `expect_algorithm/3` and never calls `sign_payload/2`. Only the `{backend, config}` branch of `backend_sign/4` does both (same file, around 277-283). So bumping the lock to cartouche 0.8.0 buys this path nothing: the new guarantees are structurally unreachable from it.\n\n`Onchain.AA` is already on the new-style path — it calls `CurvySigner.sign_digest/2` on a keccak digest (lib/onchain/aa.ex:596) — but its digests are themselves keccak output, so the 32-byte match is not observable there either. Note the failure mode if a short payload ever did arrive: because the check is a function head and not a guard returning an error tuple, it raises `FunctionClauseError` out of the `with`, it does not surface as `{:error, {:sign_error, _}}`.\n\nMove `sign_transaction/3` onto the `{Cartouche.Signer.Curvy, key_bin}` carrier so cartouche does the keccak, `expect_algorithm/3` runs, and `sign_payload/2` is what signs. The public API does not change: private key in, signed `%V2{}` out. The existing recovery assertions in the signer suite are the oracle that the digest is unchanged — if the recovered address still matches, the message being signed is the same one as before.\n\nThis task also carries the `mix deps.update cartouche` that lands 0.8.0 in the lock, because the carrier does not exist below it. Note that `mix deps.update cartouche` alone leaves hieroglyph at 1.6.2; update both if 1.7.0 is wanted in the same pass.\n",
+      "body": "cartouche 0.8.0 turned two signer-backend contracts from documentation into enforced code: `sign_payload/2` matches an exact 32-byte digest in its function head (Curvy and CloudKMS both), and `Backend.expect_algorithm/3` runs before dispatch so a backend whose `algorithm/1` reports a different curve fails instead of mis-signing.\n\nNeither contract reaches this library's transaction signing, and that is the point of this task. `Onchain.Signer.sign_transaction/3` builds `mfa = {Curvy, :sign, [key_bin]}` and calls `Cartouche.Signer.sign_direct/4` (lib/onchain/signer.ex:205-215). Read against cartouche 0.8.0 on 2026-08-25: `sign_direct/4` does `apply(mod, fun, [message] ++ args)` and emits from there (cartouche lib/cartouche/signer.ex:241-246) — it never calls `expect_algorithm/3` and never calls `sign_payload/2`. Only the `{backend, config}` branch of `backend_sign/4` does both (same file, around 277-283). So bumping the lock to cartouche 0.8.0 buys this path nothing: the new guarantees are structurally unreachable from it.\n\n`Onchain.AA` is already on the new-style path — it calls `CurvySigner.sign_digest/2` on a keccak digest (lib/onchain/aa.ex:596) — but its digests are themselves keccak output, so the 32-byte match is not observable there either. Note the failure mode if a short payload ever did arrive: because the check is a function head and not a guard returning an error tuple, it raises `FunctionClauseError` out of the `with`, it does not surface as `{:error, {:sign_error, _}}`.\n\nMove `sign_transaction/3` onto the `{Cartouche.Signer.Curvy, key_bin}` carrier so cartouche does the keccak, `expect_algorithm/3` runs, and `sign_payload/2` is what signs. The public API does not change: private key in, signed `%V2{}` out. The existing recovery assertions in the signer suite are the oracle that the digest is unchanged — if the recovered address still matches, the message being signed is the same one as before.\n\nNo lock bump is part of this task (rewritten 2026-09-23): cartouche resolves as a sibling/3 path dep inside the monorepo and is at 0.9.1+ in-tree, so the carrier is already available.\n",
       "created_at": "2026-08-25",
       "scored_at": "2026-08-25",
       "cross_repo": []
@@ -6913,6 +6945,7 @@
       "phase": 3012,
       "bundle": "onchain_subscription_hardening",
       "target_repo": "onchain",
+      "milestone": "stack_read_surface_boundary",
       "status": "pending",
       "title": "HTTP log/block/pending polling over Cartouche.Filter, so subscribers work on the RPC URL this library defaults to",
       "scores": {
@@ -6921,12 +6954,10 @@
         "u": 5
       },
       "eff": 1.1,
-      "dep_layer": 1,
+      "dep_layer": 0,
       "unlocks": 0,
       "markers": [],
-      "depends_on": [
-        3089
-      ],
+      "depends_on": [],
       "assignee": "codex",
       "model": "gpt-6-astra",
       "acceptance_criteria": [
@@ -6944,7 +6975,7 @@
         "eth_createAccessList, eth_baseFee, eth_blobBaseFee, eth_config and eth_capabilities — other 0.8.0 additions, unrelated to filters",
         "hieroglyph strict decode — task 88 owns that"
       ],
-      "body": "`Onchain.Subscription` is WebSocket-only — it documents `:new_heads`, `:pending_transactions` and `{:logs, filter_map}` and drives them through `eth_subscribe` (lib/onchain/subscription.ex:3 and 205). The default RPC URL this library ships is HTTP Infura (lib/onchain/rpc.ex:121). So a caller who takes the default and follows the subscription docs has no working path, and the only log retrieval left is `Transfer.fetch/2`, a one-shot `eth_get_logs` (lib/onchain/transfer.ex:247-254) rather than anything that keeps delivering.\n\ncartouche 0.8.0 completed the HTTP sibling for exactly this: `Cartouche.Filter` takes `kind: :log | :block | :pending`, delivers `{:event, :log}` for log filters and `{:hashes, hashes}` for the other two, recovers from an expired filter on all three kinds, and uninstalls the node-side filter in `terminate/2` so a supervised restart no longer registers an abandoned filter per cycle. Nothing in this repo starts it.\n\nAdd an HTTP polling facade over `Cartouche.Filter` covering the same three kinds, delivering messages the way `Subscription` delivers its `eth_subscribe` notifications so a consumer can move between transports without rewriting its receive loop. Lean on cartouche's `terminate/2` for the uninstall rather than tracking filter ids here — the leak it closes is the reason to delegate. `Onchain.Subscription` itself is not modified; the WebSocket path stays exactly as it is.\n\nDepends on task 89 only for the lock: `Cartouche.Filter`'s block and pending kinds do not exist below cartouche 0.8.0, and 89 is what lands that bump.\n\n2026-09-16 (viem-parity review): widened by one acceptance criterion — decoded contract-event delivery over the log poller. This task is the family's `watch_blocks` / `watch_contract_event` equivalent; no separate task is filed for those names. The client facade (task 9017) stays out of here.\n",
+      "body": "`Onchain.Subscription` is WebSocket-only — it documents `:new_heads`, `:pending_transactions` and `{:logs, filter_map}` and drives them through `eth_subscribe` (lib/onchain/subscription.ex:3 and 205). The default RPC URL this library ships is HTTP Infura (lib/onchain/rpc.ex:121). So a caller who takes the default and follows the subscription docs has no working path, and the only log retrieval left is `Transfer.fetch/2`, a one-shot `eth_get_logs` (lib/onchain/transfer.ex:247-254) rather than anything that keeps delivering.\n\ncartouche 0.8.0 completed the HTTP sibling for exactly this: `Cartouche.Filter` takes `kind: :log | :block | :pending`, delivers `{:event, :log}` for log filters and `{:hashes, hashes}` for the other two, recovers from an expired filter on all three kinds, and uninstalls the node-side filter in `terminate/2` so a supervised restart no longer registers an abandoned filter per cycle. Nothing in this repo starts it.\n\nAdd an HTTP polling facade over `Cartouche.Filter` covering the same three kinds, delivering messages the way `Subscription` delivers its `eth_subscribe` notifications so a consumer can move between transports without rewriting its receive loop. Lean on cartouche's `terminate/2` for the uninstall rather than tracking filter ids here — the leak it closes is the reason to delegate. `Onchain.Subscription` itself is not modified; the WebSocket path stays exactly as it is.\n\nNo dependency on 3089 (removed 2026-09-23): `Cartouche.Filter`'s block and pending kinds are in-tree through the sibling/3 path dep (cartouche 0.9.1+); the former lock-bump dependency was a pre-monorepo premise.\n\n2026-09-16 (viem-parity review): widened by one acceptance criterion — decoded contract-event delivery over the log poller. This task is the family's `watch_blocks` / `watch_contract_event` equivalent; no separate task is filed for those names. The client facade (task 9017) stays out of here.\n",
       "created_at": "2026-08-25",
       "scored_at": "2026-08-25",
       "cross_repo": []
@@ -7150,12 +7181,12 @@
       "title": "Onchain.Signer type-0x04: build, sign, and broadcast EIP-7702 transactions",
       "scores": {
         "d": 5,
-        "b": 8,
-        "u": 7
+        "b": 5,
+        "u": 4
       },
-      "eff": 1.5,
+      "eff": 0.9,
       "dep_layer": 0,
-      "unlocks": 1,
+      "unlocks": 0,
       "markers": [],
       "depends_on": [],
       "assignee": "cursor",
@@ -7177,9 +7208,9 @@
         "packages/onchain/test/onchain/signer_test.exs",
         "packages/onchain/CHANGELOG.md"
       ],
-      "body": "Cartouche.Transaction.V4 already implements the whole EIP-7702 wire format — new/10 with an authorization list, sign_authorization/2, authorization_signing_payload/1, recover_authority/1 — cross-checked byte-exact against viem 2.55.19 and ethers 6.17.0 vector fixtures and a real mainnet type-0x04 decode (task 2032, done). Onchain.Signer wraps none of it: the module is hardcoded to Cartouche.Transaction.V2 in five places (the alias, build_transaction_validated/3, sign_transaction/3, both encode_transaction/1 clauses), recognises no :authorization_list option, and every @spec names V2.t() (surveyed 2026-08-28). The onchain CHANGELOG explicitly deferred this wrapping until a consumer needs 7702 set-code auth — the consumer now exists: aave_sim task 118 evaluates 7702 as its one-transaction rail.\n\nWire it through: an :authorization_list option on build, V4 branches on sign, encode and send, authorization-tuple signing surfaced at the Onchain level, and gas estimation that carries the authorization overhead.\n\nConstraint measured, not assumed: onchain_evm's revm NIF does not expose authorization lists (zero grep hits in native/src), so fork simulation cannot carry a type-0x04 — live evidence comes from a testnet send, not a fork.\n\nAUTHORITY: EIP-7702 and live network behaviour; cartouche's vector fixtures are the encoding oracle.\n\nDispatch trigger: money-path transaction surface requiring live testnet evidence.\n",
+      "body": "Cartouche.Transaction.V4 already implements the whole EIP-7702 wire format — new/10 with an authorization list, sign_authorization/2, authorization_signing_payload/1, recover_authority/1 — cross-checked byte-exact against viem 2.55.19 and ethers 6.17.0 vector fixtures and a real mainnet type-0x04 decode (task 2032, done). Onchain.Signer wraps none of it: the module is hardcoded to Cartouche.Transaction.V2 in five places (the alias, build_transaction_validated/3, sign_transaction/3, both encode_transaction/1 clauses), recognises no :authorization_list option, and every @spec names V2.t() (surveyed 2026-08-28). The onchain CHANGELOG explicitly deferred this wrapping until a consumer needs 7702 set-code auth. Status 2026-09-23: that consumer has not materialised. aave_sim decided its rail (task 132 plus the operator decision of 2026-09-15, recorded in aave_sim docs/one-transaction-rail.md): a user-owned Safe is the execution account; the EIP-7702/DeleGator path is an optional adapter, and its attended path sends an ordinary EIP-1559 transaction to the already-delegated EOA — no type-0x04 broadcast anywhere in the application. ERC-4337 and the flash-loan executor were rejected. This task stays open as the adapter's transport half, scored accordingly; do not dispatch it before a consumer names a type-0x04 send.\n\nWire it through: an :authorization_list option on build, V4 branches on sign, encode and send, authorization-tuple signing surfaced at the Onchain level, and gas estimation that carries the authorization overhead.\n\nConstraint measured, not assumed: onchain_evm's revm NIF does not expose authorization lists (zero grep hits in native/src), so fork simulation cannot carry a type-0x04 — live evidence comes from a testnet send, not a fork.\n\nAUTHORITY: EIP-7702 and live network behaviour; cartouche's vector fixtures are the encoding oracle.\n\nDispatch trigger: money-path transaction surface requiring live testnet evidence.\n",
       "created_at": "2026-08-28",
-      "scored_at": "2026-08-28",
+      "scored_at": "2026-09-23",
       "cross_repo": []
     },
     {
@@ -7188,19 +7219,17 @@
       "bundle": "onchain_eip7702",
       "target_repo": "onchain",
       "status": "pending",
-      "title": "EIP-7702 batched execution: pin an audited delegate and encode its batch calldata",
+      "title": "EIP-7702 batched execution: extract aave_sim's pinned-delegate batch encoding into Onchain.Delegate",
       "scores": {
-        "d": 6,
-        "b": 9,
-        "u": 7
+        "d": 4,
+        "b": 6,
+        "u": 5
       },
-      "eff": 1.33,
-      "dep_layer": 1,
+      "eff": 1.38,
+      "dep_layer": 0,
       "unlocks": 0,
       "markers": [],
-      "depends_on": [
-        3095
-      ],
+      "depends_on": [],
       "assignee": "grok",
       "module": "Onchain.Delegate",
       "model": "grok-4.7",
@@ -7210,7 +7239,8 @@
         "An end-to-end testnet integration test sends one type-0x04 transaction that authorizes the delegate and executes at least two calls — an ERC-20 approve followed by a call that consumes the approval — atomically",
         "A negative control on the same path: a batch whose second call deliberately reverts leaves no observable effect from the first call, so the atomicity claim is verified rather than asserted",
         "Missing credentials flunk with the exact variables to export",
-        "mix ci passes"
+        "mix ci passes",
+        "aave_sim's lib/aave_sim/execution/delegate.ex is replaceable one-for-one by Onchain.Delegate (same pin, same execute(mode, batch) bytes, asserted by a byte-equality test against aave_sim's committed fixtures); the swap is filed as a cross-repo follow-up in aave_sim's roadmap"
       ],
       "out_of_scope": [
         "Authoring a delegate contract — if research concludes no audited deployed delegate is adoptable, stop and file the authoring task, which then carries the full onchain-verification regime (invariant inventory, stateful fuzzing, mutation review, verification ledger)",
@@ -7222,9 +7252,9 @@
         "packages/onchain/test/onchain/",
         "packages/onchain/CHANGELOG.md"
       ],
-      "body": "The half that makes borrow-then-swap-then-supply ONE transaction under EIP-7702, for aave_sim task 118. No delegate or executor contract exists anywhere in the stack — no Solidity source, no bytecode fixture, no delegatecall batcher; Onchain.Multicall is read-only aggregation (surveyed 2026-08-28).\n\nDo not author Solidity. Research and adopt an existing audited, deployed delegate — candidates to evaluate against their own repositories and audits include eth-infinitism's Simple7702Account (account-abstraction v0.8) and MetaMask's EIP-7702 delegator contracts; use WebFetch on the canonical repos and do not trust training data for addresses or ABIs. Adoption means pinning: deployed address per network, runtime bytecode verified against published source, audit reference recorded. Then encode its execute/executeBatch calldata so a single signed type-0x04 runs a caller-supplied call list. A delegate controls the authorizing EOA outright, which is why the bytecode-identity and negative-control criteria are the substance of this task, not ceremony.\n\nConstraint measured, not assumed: revm in onchain_evm does not expose authorization lists, so the atomicity evidence runs on a testnet, not a fork.\n\nAUTHORITY: the pinned delegate's own repository, audits and deployed bytecode; EIP-7702 for authorization semantics.\n\nDispatch trigger: authority-granting surface requiring live testnet evidence and bytecode verification.\n",
+      "body": "Reframed 2026-09-23 as an EXTRACTION, not a build. aave_sim shipped its rail (tasks 118, 132, 146, 147 done) and carries the whole DeleGator half app-locally in lib/aave_sim/execution/delegate.ex: the pinned MetaMask EIP7702StatelessDeleGator (v1.3.0, 0x63c0c19a282a1b52b07dd5a65b58948a07dae32b) with runtime identity, execute(mode, batch) encoding in EXECTYPE_DEFAULT, and fork proofs in delegate_proof.ex. The operator decision of 2026-09-15 made a user-owned Safe the execution account and kept 7702 as an optional adapter, so this is adapter code with exactly one consumer. Lift it into Onchain.Delegate so the pin and the encoding live once in the package, then aave_sim consumes it. Before 2026-09-23 this body claimed no delegate existed anywhere in the stack (surveyed 2026-08-28); that survey is stale.\n\nDo not author Solidity. Research and adopt an existing audited, deployed delegate — candidates to evaluate against their own repositories and audits include eth-infinitism's Simple7702Account (account-abstraction v0.8) and MetaMask's EIP-7702 delegator contracts; use WebFetch on the canonical repos and do not trust training data for addresses or ABIs. Adoption means pinning: deployed address per network, runtime bytecode verified against published source, audit reference recorded. Then encode its execute/executeBatch calldata so a single signed type-0x04 runs a caller-supplied call list. A delegate controls the authorizing EOA outright, which is why the bytecode-identity and negative-control criteria are the substance of this task, not ceremony.\n\nConstraint measured, not assumed: revm in onchain_evm does not expose authorization lists, so the atomicity evidence runs on a testnet, not a fork.\n\nAUTHORITY: the pinned delegate's own repository, audits and deployed bytecode; EIP-7702 for authorization semantics.\n\nDispatch trigger: authority-granting surface requiring live testnet evidence and bytecode verification.\n",
       "created_at": "2026-08-28",
-      "scored_at": "2026-08-28",
+      "scored_at": "2026-09-23",
       "cross_repo": []
     },
     {
@@ -7232,7 +7262,7 @@
       "phase": 3009,
       "bundle": "onchain_account_abstraction",
       "target_repo": "onchain",
-      "status": "pending",
+      "status": "superseded",
       "title": "Onchain.AA account clients: execute/executeBatch calldata, initCode, and the counterfactual sender",
       "scores": {
         "d": 6,
@@ -7265,7 +7295,7 @@
         "packages/onchain/test/onchain/aa_integration_test.exs",
         "packages/onchain/CHANGELOG.md"
       ],
-      "body": "Onchain.AA builds, hashes, signs and submits UserOperations for both EntryPoint v0.6 and v0.7, byte-exact against viem vectors (task 3069, done). What it cannot do is produce the two payloads every real UserOperation needs: call_data and init_code are carried and packed but never built — there is no execute(address,uint256,bytes) or executeBatch encoder anywhere in the stack, no createAccount/initCode construction, no getSenderAddress counterfactual computation, no EntryPoint nonce read (all measured absent by grep, 2026-08-28). A caller must hand-encode everything through the generic ABI encoder.\n\nClose the gap against eth-infinitism's reference account: SimpleAccount execute/executeBatch per EntryPoint version — the v0.6 and v0.7 signatures differ, so take them from the account-abstraction repository at the matching release tag, not from memory — SimpleAccountFactory createAccount initCode, the counterfactual sender, and EntryPoint getNonce. Consumer: aave_sim task 118 evaluates 4337 as its one-transaction rail, and this is the missing half of that candidate.\n\nAUTHORITY: eth-infinitism/account-abstraction at the released v0.6/v0.7 tags and the deployed canonical factories; a live bundler decides submission semantics.\n\nDispatch trigger: money-path calldata construction requiring live bundler evidence.\n",
+      "body": "Onchain.AA builds, hashes, signs and submits UserOperations for both EntryPoint v0.6 and v0.7, byte-exact against viem vectors (task 3069, done). What it cannot do is produce the two payloads every real UserOperation needs: call_data and init_code are carried and packed but never built — there is no execute(address,uint256,bytes) or executeBatch encoder anywhere in the stack, no createAccount/initCode construction, no getSenderAddress counterfactual computation, no EntryPoint nonce read (all measured absent by grep, 2026-08-28). A caller must hand-encode everything through the generic ABI encoder.\n\nClose the gap against eth-infinitism's reference account: SimpleAccount execute/executeBatch per EntryPoint version — the v0.6 and v0.7 signatures differ, so take them from the account-abstraction repository at the matching release tag, not from memory — SimpleAccountFactory createAccount initCode, the counterfactual sender, and EntryPoint getNonce. Consumer: aave_sim task 118 evaluates 4337 as its one-transaction rail, and this is the missing half of that candidate.\n\nAUTHORITY: eth-infinitism/account-abstraction at the released v0.6/v0.7 tags and the deployed canonical factories; a live bundler decides submission semantics.\n\nDispatch trigger: money-path calldata construction requiring live bundler evidence.\nSuperseded 2026-09-23: aave_sim task 132 (done) rejected the factory-created ERC-4337 account as a new-address migration path, and the operator decision of 2026-09-15 selected a user-owned Safe as the execution account (aave_sim docs/one-transaction-rail.md). No consumer names execute/executeBatch or counterfactual-sender construction. Re-file only with a named consumer.\n",
       "created_at": "2026-08-28",
       "scored_at": "2026-08-28",
       "cross_repo": []
@@ -7275,7 +7305,7 @@
       "phase": 3009,
       "bundle": "onchain_account_abstraction",
       "target_repo": "onchain",
-      "status": "pending",
+      "status": "superseded",
       "title": "Onchain.AA paymaster client: ERC-7677 sponsorship round-trip",
       "scores": {
         "d": 5,
@@ -7306,7 +7336,7 @@
         "packages/onchain/test/onchain/aa_integration_test.exs",
         "packages/onchain/CHANGELOG.md"
       ],
-      "body": "The UserOperation struct carries paymaster_and_data and the unpacked v0.7 paymaster fields, and packing and hashing handle them — but nothing produces them: no pm_sponsorUserOperation or pm_getPaymasterData client exists; all 55 paymaster mentions in the stack are field plumbing in aa.ex, user_operation.ex and their tests (measured by grep, 2026-08-28).\n\nAdd the ERC-7677 client: pm_getPaymasterStubData for estimation, pm_getPaymasterData for the real payload, wired into the existing bundler transport. Consumers: aave_sim task 112's keeper (gas sponsorship for automated firings) and the 4337 rail candidate in aave_sim task 118.\n\nAUTHORITY: ERC-7677 and the live behaviour of a real paymaster service (Pimlico, Alchemy or Coinbase Developer Platform); provider docs are reference material, the live endpoint decides.\n\nDispatch trigger: external-provider integration requiring live sponsorship evidence.\n",
+      "body": "The UserOperation struct carries paymaster_and_data and the unpacked v0.7 paymaster fields, and packing and hashing handle them — but nothing produces them: no pm_sponsorUserOperation or pm_getPaymasterData client exists; all 55 paymaster mentions in the stack are field plumbing in aa.ex, user_operation.ex and their tests (measured by grep, 2026-08-28).\n\nAdd the ERC-7677 client: pm_getPaymasterStubData for estimation, pm_getPaymasterData for the real payload, wired into the existing bundler transport. Consumers: aave_sim task 112's keeper (gas sponsorship for automated firings) and the 4337 rail candidate in aave_sim task 118.\n\nAUTHORITY: ERC-7677 and the live behaviour of a real paymaster service (Pimlico, Alchemy or Coinbase Developer Platform); provider docs are reference material, the live endpoint decides.\n\nDispatch trigger: external-provider integration requiring live sponsorship evidence.\nSuperseded 2026-09-23 together with 3097: the ERC-4337 rail was rejected by aave_sim (task 132, operator decision 2026-09-15), and the keeper in aave_sim task 112 runs through Safe/Zodiac Roles, not a paymaster. Re-file only with a named consumer that needs gas sponsorship.\n",
       "created_at": "2026-08-28",
       "scored_at": "2026-08-28",
       "cross_repo": []
@@ -8684,7 +8714,7 @@
       "phase": 4008,
       "bundle": "onchain_aave_event_error_decoding",
       "target_repo": "onchain_aave",
-      "status": "blocked",
+      "status": "pending",
       "title": "Adopt strict ABI decoding across Aave response decode paths",
       "scores": {
         "d": 3,
@@ -8714,10 +8744,9 @@
         "packages/onchain_aave/lib/onchain/aave/debt_token.ex",
         "packages/onchain_aave/CHANGELOG.md"
       ],
-      "body": "Blocked on onchain core exposing decode options: Onchain.ABI.decode_response/2 and Onchain.Contract.call currently accept none (verified by reading onchain core, 2026-08-25), so hieroglyph's strict mode cannot be reached from this repo. Once onchain task 88 lands, turn it on for this library's own decodes.\n\nEvery byte this package decodes comes from an RPC endpoint the consumer configured but does not control, and responses from deployed Aave contracts are canonical ABI — a payload that fails strict decoding is corrupt or hostile, and today it decodes permissively and silently. Verify the canonicality premise against live pinned-block reads across the V3 and V4 surfaces before committing to uniform strict; record the outcome either way.\n\nRouting is left open on purpose: the change is small but its cost depends on how core task 88 shapes the options surface. Decide assignee/model when this unblocks.\n\nRelated (was a cross_repo link before the monorepo roadmap merge, 2026-08-27): Task 3088 (onchain, related).",
+      "body": "Blocked on onchain core exposing decode options: Onchain.ABI.decode_response/2 and Onchain.Contract.call currently accept none (verified by reading onchain core, 2026-08-25), so hieroglyph's strict mode cannot be reached from this repo. Onchain task 3088 has landed (done) — the options exist now; turn them on for this library's own decodes.\n\nEvery byte this package decodes comes from an RPC endpoint the consumer configured but does not control, and responses from deployed Aave contracts are canonical ABI — a payload that fails strict decoding is corrupt or hostile, and today it decodes permissively and silently. Verify the canonicality premise against live pinned-block reads across the V3 and V4 surfaces before committing to uniform strict; record the outcome either way.\n\nRouting is left open on purpose: the change is small but its cost depends on how core task 3088 shaped the options surface. Decide assignee/model when this unblocks.\n\nRelated (was a cross_repo link before the monorepo roadmap merge, 2026-08-27): Task 3088 (onchain, related).",
       "created_at": "2026-08-25",
       "scored_at": "2026-08-25",
-      "blocked_reason": "onchain task 88 must land first: Onchain.ABI.decode_response/2 and Onchain.Contract.call accept no decode options today, so strict mode is unreachable from this repo",
       "cross_repo": []
     },
     {
@@ -8725,6 +8754,7 @@
       "phase": 4005,
       "bundle": "onchain_aave_v4_support",
       "target_repo": "onchain_aave",
+      "milestone": "onchain_aave_v0_5",
       "status": "pending",
       "title": "Execute the V4 Tokenization Spoke: ERC-4626 writes and the share token's ERC-20 surface",
       "scores": {
@@ -8930,6 +8960,7 @@
       "phase": 4005,
       "bundle": "onchain_aave_v4_support",
       "target_repo": "onchain_aave",
+      "milestone": "onchain_aave_v0_5",
       "status": "pending",
       "title": "Register the ether.fi Cash V4 whitelabel instance on Optimism",
       "scores": {
@@ -8987,6 +9018,7 @@
       "phase": 4006,
       "bundle": "onchain_aave_v3_write_gaps",
       "target_repo": "onchain_aave",
+      "milestone": "onchain_aave_v0_5",
       "status": "pending",
       "title": "Calldata-only mode for every Aave write: build without sending",
       "scores": {
@@ -9007,7 +9039,8 @@
         "The existing send functions route through the same builders, so the encoding exists exactly once and the send path's contract is unchanged",
         "Each builder is pinned by a unit test asserting the 4-byte selector and argument encoding",
         "A fork integration test via onchain_evm executes at least one built calldata (a supply) by impersonating a real holder and asserts the domain effect on balances, not the shape",
-        "mix ci passes"
+        "mix ci passes",
+        "aave_sim's hand-rolled builders in lib/aave_sim/execution.ex are replaceable one-for-one by the package builders (same asset/amount/on-behalf-of/referral semantics, asserted by byte-equality against aave_sim's committed calldata fixtures), recorded as a cross-repo follow-up in aave_sim's roadmap"
       ],
       "out_of_scope": [
         "New protocol operations — tasks 4058, 4060, 4066 and 4067 own those; this task changes the shape of existing writes only",
@@ -9020,7 +9053,7 @@
         "packages/onchain_aave/lib/onchain/aave/faucet.ex",
         "packages/onchain_aave/CHANGELOG.md"
       ],
-      "body": "Every write in this library fuses encoding and sending: Pool, V4.PositionManager, DebtToken and Faucet each build calldata via Onchain.ABI.encode_call and immediately hand it to Onchain.Signer.send_transaction — no public surface returns the calldata alone (surveyed 2026-08-28 across lib/). That shape is correct for a server that holds the key and wrong for every consumer that does not: a browser wallet that signs client-side, an EIP-7702/4337 batch that composes several calls into one signed object, and a fork simulation that wants to execute the call without any key. aave_sim's execution milestone (its tasks 111 and 118) is blocked on exactly this.\n\nExpose a public calldata-building counterpart for each existing write and re-route the send functions through it, so the encoding lives once. The builders' argument contracts mirror the existing writes — owner stays an explicit required argument everywhere the current wrappers demand it.\n\nAUTHORITY: the deployed contracts already registered in Onchain.Aave.Contracts; the existing send-path tests define the encoding the builders must reproduce.\n\nDispatch trigger: money-path write-surface reshape requiring fork evidence.\n",
+      "body": "Every write in this library fuses encoding and sending: Pool, V4.PositionManager, DebtToken and Faucet each build calldata via Onchain.ABI.encode_call and immediately hand it to Onchain.Signer.send_transaction — no public surface returns the calldata alone (surveyed 2026-08-28 across lib/). That shape is correct for a server that holds the key and wrong for every consumer that does not: a browser wallet that signs client-side, an EIP-7702/4337 batch that composes several calls into one signed object, and a fork simulation that wants to execute the call without any key. aave_sim's execution milestone (tasks 111 and 118) shipped in the meantime with its own copies — see the 2026-09-23 note below.\n\nExpose a public calldata-building counterpart for each existing write and re-route the send functions through it, so the encoding lives once. The builders' argument contracts mirror the existing writes — owner stays an explicit required argument everywhere the current wrappers demand it.\n\nAUTHORITY: the deployed contracts already registered in Onchain.Aave.Contracts; the existing send-path tests define the encoding the builders must reproduce.\n\nDispatch trigger: money-path write-surface reshape requiring fork evidence.\nUpdate 2026-09-23: aave_sim did not wait — lib/aave_sim/execution.ex carries hand-rolled calldata-only approve/borrow/supply builders, and its Safe and DeleGator batches compose exactly those (aave_sim tasks 118, 146, 147 done). The consumer therefore exists as concrete code to replace, not as a milestone to unblock: the builders here must expose supply/borrow/repay/withdraw with asset, amount, on-behalf-of and referral semantics aave_sim can adopt one-for-one. This is also the only rail prerequisite that survived the rail decision — 3097/3098 and 4072/4073 are superseded, 3095/3096 are adapter work.\n",
       "created_at": "2026-08-28",
       "scored_at": "2026-08-28",
       "cross_repo": []
@@ -9030,7 +9063,7 @@
       "phase": 4006,
       "bundle": "onchain_aave_v3_write_gaps",
       "target_repo": "onchain_aave",
-      "status": "pending",
+      "status": "superseded",
       "title": "Pool flash-loan surface: flashLoanSimple and flashLoan builders plus premium reads",
       "scores": {
         "d": 4,
@@ -9062,7 +9095,7 @@
         "packages/onchain_aave/test/",
         "packages/onchain_aave/CHANGELOG.md"
       ],
-      "body": "The Pool write surface is exactly supply, withdraw, borrow and repay — no flashLoan or flashLoanSimple builder exists, and the only flash-loan traces in the package are the read-side flash_loan_enabled reserve flag (surveyed 2026-08-28). aave_sim task 118 evaluates a flash-loan executor as its one-transaction rail, and DeFi Saver — the category reference — runs its entire recipe engine on this primitive.\n\nAdd the builders and the premium reads. The receiver argument is an address this library does not judge; the contract that implements executeOperation is task 4073's.\n\nAUTHORITY: the deployed Aave V3 Pool and Aave's own documentation; the vendored DefiSaver and Aave interface sources under onchain_evm/priv/contracts/real are reference material only.\n\nDispatch trigger: money-path calldata construction requiring fork evidence.\n",
+      "body": "The Pool write surface is exactly supply, withdraw, borrow and repay — no flashLoan or flashLoanSimple builder exists, and the only flash-loan traces in the package are the read-side flash_loan_enabled reserve flag (surveyed 2026-08-28). aave_sim task 118 evaluates a flash-loan executor as its one-transaction rail, and DeFi Saver — the category reference — runs its entire recipe engine on this primitive.\n\nAdd the builders and the premium reads. The receiver argument is an address this library does not judge; the contract that implements executeOperation is task 4073's.\n\nAUTHORITY: the deployed Aave V3 Pool and Aave's own documentation; the vendored DefiSaver and Aave interface sources under onchain_evm/priv/contracts/real are reference material only.\n\nDispatch trigger: money-path calldata construction requiring fork evidence.\nSuperseded 2026-09-23: aave_sim rejected the flash-loan rail (task 132, operator decision 2026-09-15) because the borrow → swap → supply action fits existing borrowing headroom, and the v0.3 scope explicitly excludes liquidity-fronted collateral switches. Re-file trigger is written in aave_sim docs/one-transaction-rail.md § Collateral-switch boundary.\n",
       "created_at": "2026-08-28",
       "scored_at": "2026-08-28",
       "cross_repo": []
@@ -9072,7 +9105,7 @@
       "phase": 4009,
       "bundle": "onchain_aave_flash_executor",
       "target_repo": "onchain_aave",
-      "status": "pending",
+      "status": "superseded",
       "title": "Flash-loan executor contract: an atomic action bundle funded and repaid inside one Aave flash loan",
       "scores": {
         "d": 8,
@@ -9107,7 +9140,7 @@
         "packages/onchain_aave/lib/onchain/aave/",
         "packages/onchain_aave/CHANGELOG.md"
       ],
-      "body": "Rail option three for aave_sim task 118, and the mechanism DeFi Saver itself runs on: a contract that takes an Aave flash loan, executes a caller-encoded action list (approve, supply, borrow, repay, withdraw, one swap call) with the borrowed funds, and repays principal plus premium — so a boost or a collateral switch that exceeds the position's free borrow headroom still lands as one transaction. Nothing like it exists in the stack: no IFlashLoanReceiver implementation, no executeOperation, no deployable Solidity beyond test fixtures (surveyed 2026-08-28). The vendored defisaver-v3-contracts sources under onchain_evm/priv/contracts/real show the category's shape and are reference material only.\n\nThis is deployable Solidity that transiently holds funds and acts under granted authority, so the onchain-verification regime is the work, not an appendix: invariants first, independent stateful fuzzers, mutation adequacy with survivor review, a negative control, and a ledger bound to the commit. Keep the contract minimal — a fixed small action vocabulary, no recipe DSL, no registry, no upgradeability.\n\nThe evidence lane is measured and available: onchain_evm executes undeployed runtime bytecode on forked mainnet state via code override, and the whole flash-loan round trip is one top-level call, so atomicity is provable on a fork without deploying anything.\n\nAUTHORITY: the deployed Aave V3 Pool and its published interfaces for flash-loan semantics (premium, callback, repayment pull); confirm the executeOperation contract against the deployed Pool, not against memory.\n\nDispatch trigger: deployable Solidity holding funds — full verification regime required.\n",
+      "body": "Rail option three for aave_sim task 118, and the mechanism DeFi Saver itself runs on: a contract that takes an Aave flash loan, executes a caller-encoded action list (approve, supply, borrow, repay, withdraw, one swap call) with the borrowed funds, and repays principal plus premium — so a boost or a collateral switch that exceeds the position's free borrow headroom still lands as one transaction. Nothing like it exists in the stack: no IFlashLoanReceiver implementation, no executeOperation, no deployable Solidity beyond test fixtures (surveyed 2026-08-28). The vendored defisaver-v3-contracts sources under onchain_evm/priv/contracts/real show the category's shape and are reference material only.\n\nThis is deployable Solidity that transiently holds funds and acts under granted authority, so the onchain-verification regime is the work, not an appendix: invariants first, independent stateful fuzzers, mutation adequacy with survivor review, a negative control, and a ledger bound to the commit. Keep the contract minimal — a fixed small action vocabulary, no recipe DSL, no registry, no upgradeability.\n\nThe evidence lane is measured and available: onchain_evm executes undeployed runtime bytecode on forked mainnet state via code override, and the whole flash-loan round trip is one top-level call, so atomicity is provable on a fork without deploying anything.\n\nAUTHORITY: the deployed Aave V3 Pool and its published interfaces for flash-loan semantics (premium, callback, repayment pull); confirm the executeOperation contract against the deployed Pool, not against memory.\n\nDispatch trigger: deployable Solidity holding funds — full verification regime required.\nSuperseded 2026-09-23 together with 4072: the flash-loan executor rail was rejected by aave_sim (task 132, operator decision 2026-09-15); the strategy executor aave_sim actually needed was built and verified there as task 147 against the Safe account model. Re-file only when a liquidity-fronted collateral switch becomes a requirement.\n",
       "created_at": "2026-08-28",
       "scored_at": "2026-08-28",
       "cross_repo": []
@@ -9244,7 +9277,7 @@
       },
       "eff": 1.6,
       "dep_layer": 1,
-      "unlocks": 23,
+      "unlocks": 20,
       "markers": [],
       "depends_on": [
         5001
@@ -9310,7 +9343,7 @@
       },
       "eff": 1.88,
       "dep_layer": 2,
-      "unlocks": 22,
+      "unlocks": 19,
       "markers": [],
       "depends_on": [
         5003
@@ -9718,7 +9751,7 @@
       },
       "eff": 1.5,
       "dep_layer": 3,
-      "unlocks": 12,
+      "unlocks": 0,
       "markers": [
         "parallel"
       ],
@@ -9819,12 +9852,11 @@
         "u": 8
       },
       "eff": 1.5,
-      "dep_layer": 4,
+      "dep_layer": 1,
       "unlocks": 11,
       "markers": [],
       "depends_on": [
-        5001,
-        5011
+        5001
       ],
       "assignee": "codex",
       "module": "Onchain.Aerodrome.Math.Tick",
@@ -9855,7 +9887,7 @@
         "packages/onchain_aerodrome/test/fixtures/tick_math/",
         "packages/onchain_aerodrome/priv/abis/README.md"
       ],
-      "body": "Port Slipstream's TickMath to pure Elixir and prove it equals the deployed Solidity — not by spot checks, but by sweeping the domain.\n\nBase EVM simulation is blocked: onchain_evm's revm rejects chain id 8453. That is not a reason to weaken the evidence. A deployed pure-function oracle exists and is better than a local EVM. SlipstreamHelper.getSqrtRatioAtTick(int24) and getTickAtSqrtRatio(uint160) are pure, so a plain eth_call grades our port against real deployed bytecode. Multicall3 batching makes the full sweep cheap: roughly 1,775 aggregated calls, ten minutes of wall clock, once.\n\nThree tiers of evidence, each doing a job the others cannot. The full-domain SHA-256 digest is 64 committed characters, impossible to satisfy by accident, and it is what makes the word swept true. The packed lattice makes a mismatch localisable to a tick instead of a shrug. The live boundary probes catch what in-range values cannot show you: revert behaviour, and int24 sign handling.\n\nImplementation notes that will save a day. The Solidity port relies on truncating integer division and 128-bit right shifts, all fitting inside 256 bits with no intentional overflow, so Elixir bignums are safe — but never a float, and match the division semantics to the EVM operation in play: the unsigned getSqrtRatioAtTick pipeline uses truncating division (div/2), while getTickAtSqrtRatio's signed tail shifts with sar, which is FLOOR division — floor and truncate differ by one on negative intermediates, so a blanket div/2 port is off by one on the negative side there; use arithmetic right shifts (Bitwise) or explicit floor division for those steps. getTickAtSqrtRatio computes a most-significant-bit and a log base sqrt(1.0001) with signed intermediates, which is exactly where ports break; that is why the inverse fixture perturbs each ratio by plus and minus one.\n\nThe generator lives under lib/mix/tasks/ on purpose: Mix.Tasks.* resolves to no declared layer, so it may reach the network without violating the task-1 gate. Math.Tick itself must never call RPC, and after task 1 lands mix reach.check --arch will refuse it.\n\nOPEN DECISIONS to settle and report with measured numbers, not guesses: (a) if the binary fixture size draws an objection, gzip and gunzip at test time with :zlib — decide before generating; (b) measure the full-domain digest test's actual runtime and say whether it belongs inside mix ci or in its own alias; (c) confirm MIN_TICK and MAX_TICK from the deployed helper's own revert boundary rather than assuming Uniswap v3's values.\n\nAUTHORITY: the deployed SlipstreamHelper at 0x9c62ab10577fB3C20A22E231b7703Ed6D456CC7a on Base, Sourcify exact_match, ABI at priv/abis/slipstream_helper.json. Its return values ARE the specification. getSqrtRatioAtTick(0) equals 79228162514264337593543950336, which is 2 to the 96th, already verified live as check 11 in priv/abis/README.md. Where our port and the helper disagree, the helper is right.\n",
+      "body": "Port Slipstream's TickMath to pure Elixir and prove it equals the deployed Solidity — not by spot checks, but by sweeping the domain.\n\nBase EVM simulation is blocked: onchain_evm's revm rejects chain id 8453. That is not a reason to weaken the evidence. A deployed pure-function oracle exists and is better than a local EVM. SlipstreamHelper.getSqrtRatioAtTick(int24) and getTickAtSqrtRatio(uint160) are pure, so a plain eth_call grades our port against real deployed bytecode. Multicall3 batching makes the full sweep cheap: roughly 1,775 aggregated calls, ten minutes of wall clock, once.\n\nThree tiers of evidence, each doing a job the others cannot. The full-domain SHA-256 digest is 64 committed characters, impossible to satisfy by accident, and it is what makes the word swept true. The packed lattice makes a mismatch localisable to a tick instead of a shrug. The live boundary probes catch what in-range values cannot show you: revert behaviour, and int24 sign handling.\n\nImplementation notes that will save a day. The Solidity port relies on truncating integer division and 128-bit right shifts, all fitting inside 256 bits with no intentional overflow, so Elixir bignums are safe — but never a float, and match the division semantics to the EVM operation in play: the unsigned getSqrtRatioAtTick pipeline uses truncating division (div/2), while getTickAtSqrtRatio's signed tail shifts with sar, which is FLOOR division — floor and truncate differ by one on negative intermediates, so a blanket div/2 port is off by one on the negative side there; use arithmetic right shifts (Bitwise) or explicit floor division for those steps. getTickAtSqrtRatio computes a most-significant-bit and a log base sqrt(1.0001) with signed intermediates, which is exactly where ports break; that is why the inverse fixture perturbs each ratio by plus and minus one.\n\nThe generator lives under lib/mix/tasks/ on purpose: Mix.Tasks.* resolves to no declared layer, so it may reach the network without violating the task-1 gate. Math.Tick itself must never call RPC, and after task 1 lands mix reach.check --arch will refuse it.\n\nOPEN DECISIONS to settle and report with measured numbers, not guesses: (a) if the binary fixture size draws an objection, gzip and gunzip at test time with :zlib — decide before generating; (b) measure the full-domain digest test's actual runtime and say whether it belongs inside mix ci or in its own alias; (c) confirm MIN_TICK and MAX_TICK from the deployed helper's own revert boundary rather than assuming Uniswap v3's values.\n\nAUTHORITY: the deployed SlipstreamHelper at 0x9c62ab10577fB3C20A22E231b7703Ed6D456CC7a on Base, Sourcify exact_match, ABI at priv/abis/slipstream_helper.json. Its return values ARE the specification. getSqrtRatioAtTick(0) equals 79228162514264337593543950336, which is 2 to the 96th, already verified live as check 11 in priv/abis/README.md. Where our port and the helper disagree, the helper is right.\nDependency note 2026-09-23: the former dependency on 5011 (Bindings.Factories) was removed. The golden generator calls getSqrtRatioAtTick and getTickAtSqrtRatio directly through Onchain.Contract.call with priv/abis/slipstream_helper.json; the typed SlipstreamHelper bindings from 5011 are a convenience, not a prerequisite, and the math lane (5013 → 5014 → 5016) must not queue behind the bindings lane.\n",
       "created_at": "2026-08-26",
       "scored_at": "2026-08-26",
       "cross_repo": []
@@ -9874,7 +9906,7 @@
         "u": 7
       },
       "eff": 1.5,
-      "dep_layer": 5,
+      "dep_layer": 2,
       "unlocks": 1,
       "markers": [
         "parallel"
@@ -9980,7 +10012,7 @@
         "u": 8
       },
       "eff": 2.0,
-      "dep_layer": 5,
+      "dep_layer": 2,
       "unlocks": 9,
       "markers": [],
       "depends_on": [
@@ -10028,7 +10060,7 @@
         "u": 8
       },
       "eff": 1.6,
-      "dep_layer": 6,
+      "dep_layer": 4,
       "unlocks": 8,
       "markers": [],
       "depends_on": [
@@ -10082,7 +10114,7 @@
         "u": 8
       },
       "eff": 1.6,
-      "dep_layer": 7,
+      "dep_layer": 5,
       "unlocks": 3,
       "markers": [],
       "depends_on": [
@@ -10137,7 +10169,7 @@
         "u": 8
       },
       "eff": 1.88,
-      "dep_layer": 7,
+      "dep_layer": 5,
       "unlocks": 5,
       "markers": [
         "parallel"
@@ -10191,7 +10223,7 @@
         "u": 8
       },
       "eff": 1.6,
-      "dep_layer": 7,
+      "dep_layer": 5,
       "unlocks": 0,
       "markers": [
         "parallel"
@@ -10245,7 +10277,7 @@
         "u": 9
       },
       "eff": 1.7,
-      "dep_layer": 8,
+      "dep_layer": 6,
       "unlocks": 4,
       "markers": [],
       "depends_on": [
@@ -10304,7 +10336,7 @@
         "u": 8
       },
       "eff": 1.5,
-      "dep_layer": 9,
+      "dep_layer": 7,
       "unlocks": 2,
       "markers": [],
       "depends_on": [
@@ -10869,7 +10901,7 @@
         "u": 9
       },
       "eff": 2.13,
-      "dep_layer": 9,
+      "dep_layer": 7,
       "unlocks": 2,
       "markers": [],
       "depends_on": [
@@ -10918,7 +10950,7 @@
         "u": 7
       },
       "eff": 2.17,
-      "dep_layer": 10,
+      "dep_layer": 8,
       "unlocks": 1,
       "markers": [
         "docs"
@@ -10973,7 +11005,7 @@
         "u": 7
       },
       "eff": 1.75,
-      "dep_layer": 11,
+      "dep_layer": 9,
       "unlocks": 0,
       "markers": [
         "docs"
@@ -12515,7 +12547,7 @@
       "bundle": "onchain_js_foundation",
       "target_repo": "onchain_js",
       "milestone": "onchain_js_v0_3",
-      "status": "in_progress",
+      "status": "pending",
       "title": "QuickBEAM foundation",
       "scores": {
         "d": 3,
@@ -12529,7 +12561,7 @@
       "depends_on": [],
       "linear_id": "INE-51",
       "assignee": "cursor",
-      "model": "cursor-grok-4.6-high",
+      "model": "grok-4.7-high",
       "acceptance_criteria": [
         "A public onchain_js function installs an npm package (via the `npm` dep, no Node.js on the host) and loads its browser bundle into a running runtime.",
         "An integration test installs a real package from the npm registry, loads its bundle, and calls one of its exported functions — asserting the returned value's domain meaning, not merely that a call succeeded.",
@@ -12631,10 +12663,10 @@
       "title": "Uniswap v3 SDK routing (optimal swap paths, price impact)",
       "scores": {
         "d": 5,
-        "b": 8,
+        "b": 5,
         "u": 7
       },
-      "eff": 1.5,
+      "eff": 1.2,
       "dep_layer": 1,
       "unlocks": 0,
       "markers": [],
@@ -12674,7 +12706,7 @@
         "rpc"
       ],
       "body": "Load `@uniswap/v3-sdk` + `@uniswap/smart-order-router` via QuickBEAM. Expose `OnchainJs.Uniswap.route/4` for optimal swap paths. JS SDK handles tick math and multi-hop routing out of the box.\n\n**Authority:** Uniswap's own SDK and its published docs define routing semantics;\nthe router needs live chain state, so this task cannot be completed against\nfixtures alone. Observe at least one real successful route and one real failure\nbefore writing the implementation, then pin both.\n\nDispatch trigger: correctness depends on live external-system evidence (RPC +\npool state), and the router's chain/provider wiring spans the QuickBEAM bridge\nand onchain's RPC layer.\n",
-      "scored_at": "2026-08-18",
+      "scored_at": "2026-09-23",
       "cross_repo": []
     },
     {
@@ -12687,10 +12719,10 @@
       "title": "DeFiSaver recipe builder (@defisaver/sdk)",
       "scores": {
         "d": 5,
-        "b": 8,
+        "b": 5,
         "u": 7
       },
-      "eff": 1.5,
+      "eff": 1.2,
       "dep_layer": 1,
       "unlocks": 0,
       "markers": [],
@@ -12727,7 +12759,7 @@
         "javascript"
       ],
       "body": "Load `@defisaver/sdk` via QuickBEAM. Expose recipe construction: flash loan → action sequence → repay, returning encoded calldata.\n\nFlash loan recipes → encoded calldata.\n\n**Authority:** `@defisaver/sdk` and DeFiSaver's own documentation define action\nids, argument encoding and recipe validity. Do not infer encoding from block\nexplorers or third-party wrappers.\n\nDispatch trigger: the deliverable is calldata that moves borrowed money — a\nmis-encoded action sequence is a fund-loss class of bug, so it needs independent\nverification.\n",
-      "scored_at": "2026-08-18",
+      "scored_at": "2026-09-23",
       "cross_repo": []
     },
     {
@@ -12740,10 +12772,10 @@
       "title": "1inch Fusion SDK (DEX aggregation)",
       "scores": {
         "d": 5,
-        "b": 7,
+        "b": 5,
         "u": 6
       },
-      "eff": 1.3,
+      "eff": 1.1,
       "dep_layer": 1,
       "unlocks": 0,
       "markers": [],
@@ -12780,7 +12812,7 @@
         "javascript"
       ],
       "body": "Load `@1inch/fusion-sdk` via QuickBEAM. DEX aggregation across multiple protocols. Complement to Task 3.\n\n**Authority:** 1inch's official Fusion SDK and API documentation define the\nrequest/response and error contract. Observe at least one real success and one\nreal error against the live API before implementing, then pin both.\n\nDispatch trigger: this is a live external API whose semantics cannot be\nestablished from documentation alone, and it carries credential handling.\n",
-      "scored_at": "2026-08-18",
+      "scored_at": "2026-09-23",
       "cross_repo": []
     },
     {
@@ -13302,10 +13334,10 @@
       "title": "Found onchain_morpho: Morpho Blue market, position and oracle reads on mainnet and Base",
       "scores": {
         "d": 6,
-        "b": 8,
+        "b": 6,
         "u": 7
       },
-      "eff": 1.25,
+      "eff": 1.08,
       "dep_layer": 0,
       "unlocks": 0,
       "markers": [],
@@ -13331,7 +13363,7 @@
       ],
       "body": "The package half of aave_sim task 114 — the first non-Aave protocol behind its adapter boundary. The protocol choice was verified against live data on 2026-08-28, not assumed: DeFiLlama's API puts Morpho at roughly $9.5B TVL — about double Spark, the #2 — with roughly $4.7B borrowed, deployed on Ethereum mainnet and Base, where it is the largest lending protocol on any L2 (defillama.com/protocol/morpho and api.llama.fi, queried 2026-08-28; Spark's elevated TVL is partly the April 2026 post-exploit deposit flight from Aave rather than organic share). Its market model is also the simplest to read: isolated markets, one collateral asset, one loan asset, a fixed LLTV per market.\n\nNothing exists in the stack for any non-Aave lending protocol, so this founds the ninth package. Scope is the read layer only — what a position row and a risk simulation need: market parameters, a user's position, the market oracle's price, and the inputs of Morpho's own solvency rule. Interest accrual matters: Morpho Blue stores shares and accrues on interaction, so a truthful read computes current borrow assets rather than reporting the stale stored value — take the accrual formula from Morpho's own contracts and documentation, not from the Aave shape and not from memory.\n\nAUTHORITY: the deployed Morpho Blue singleton and Morpho's own documentation and deployments record (docs.morpho.org, the morpho-blue repository). Verify every address and every unit against the chain — a read that disagrees with the contract is wrong whatever any aggregator says.\n\nDispatch trigger: new package founding with live mainnet evidence.\n",
       "created_at": "2026-08-28",
-      "scored_at": "2026-08-28",
+      "scored_at": "2026-09-23",
       "cross_repo": []
     },
     {
@@ -13388,6 +13420,7 @@
       "id": "9002",
       "phase": 2000,
       "bundle": "cartouche_signer_backends",
+      "target_repo": "cartouche",
       "status": "pending",
       "title": "Put secp256k1 sign and recover behind a native backend — curvy costs ~2.8 ms per signature on the DEX order path",
       "scores": {
@@ -13520,6 +13553,7 @@
       "id": "9005",
       "phase": 0,
       "bundle": "monorepo_root_gates",
+      "target_repo": "onchain_stack",
       "status": "pending",
       "title": "The consolidated root .mcp.json reaches only cartouche's tidewave (port 4013); the other seven packages' dev servers are unaddressable",
       "scores": {
@@ -13532,8 +13566,6 @@
       "unlocks": 0,
       "markers": [],
       "depends_on": [],
-      "assignee": "grok",
-      "model": "grok-4.7",
       "acceptance_criteria": [
         "Every package whose `mix.exs` declares a `tidewave` alias is reachable through the repo's MCP config, or the config documents in CLAUDE.md which single package it serves and why the other seven were dropped — the current state names neither",
         "Whatever shape is chosen, the port each entry targets matches that package's `mix tidewave` alias: hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010, onchain_aave 4012, cartouche 4013, onchain_js 4028, onchain_aerodrome 4035",
@@ -13557,7 +13589,6 @@
       ],
       "body": "Commit f9d6102 (\"mcp: consolidate 8 package .mcp.json into one root config\") merged eight\nper-package MCP configs into one at the repo root. Eight tidewave entries could not survive\nthat merge — they point at eight different ports, one per package — and the consolidation\nkept exactly one:\n\n    \"tidewave\": { \"type\": \"http\", \"url\": \"http://localhost:4013/tidewave/mcp\" }\n\n4013 is cartouche. The other seven packages each still declare a `tidewave` alias on their\nown port (hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010, onchain_aave\n4012, onchain_js 4028, onchain_aerodrome 4035), and none of them is addressable from an\nagent session in this repo anymore. Nothing records that the entry is cartouche-specific,\nso the natural reading — \"this repo has a tidewave server\" — is wrong seven times out of\neight.\n\nTwo defensible shapes. Either declare all eight as separately named servers\n(`tidewave_cartouche`, `tidewave_onchain`, …), which restores the capability at the cost of\nseven connection-refused entries in any session where those dev servers are not up; or keep\none entry and say in CLAUDE.md which package it serves and that reaching another package's\nTidewave means editing the config first. What is not defensible is the current state, where\nthe config silently means \"cartouche\" and says nothing.\n\nLow stakes — a dev-tooling reachability gap, not a correctness or release issue — but it is\na consolidation artifact that will read as a bug to the next agent that tries to use\nTidewave against onchain or onchain_evm.\n\nFound by the post-merge audit of e750a22.\n\n--- widened 2026-09-16, after a session resolved this the wrong way and was reverted ---\n\nThree sources disagree about how many tidewave ports this monorepo has, and each looks\nauthoritative alone. Nothing is broken today; the risk is that the next session resolves\nthe contradiction in whichever direction it reads first, as a side effect of unrelated\nwork. That already happened: a session converged all eight aliases on 4013 and deleted the\n21 per-package agent configs, which this task's own out_of_scope had forbidden. Reverted.\n\nVerified 2026-09-16:\n\n1. The eight mix.exs aliases declare eight distinct ports - hieroglyph 4006, onchain 4007,\n   onchain_evm 4009, onchain_tempo 4010, onchain_aave 4012, cartouche 4013, onchain_js\n   4028, onchain_aerodrome 4035. No collisions; every package has the alias.\n2. ~/.claude/tidewave-ports.md retired seven of those on 2026-08-27 and registers 4013 as\n   \"onchain-stack - all 8 packages share this one port.\" The aliases never followed.\n3. Seven packages still carry .cursor/mcp.json + .codex/config.toml + .grok/config.toml\n   (21 tracked files) on their pre-merge port, some naming the pre-rename\n   harness_tidewave server. f9d6102 consolidated only the Claude Code config; the repo\n   root has no .cursor/, .codex/ or .grok/ at all. cartouche never had mirrors.\n4. `iex -S mix tidewave` at the repo root fails with \"The task tidewave could not be\n   found\" - the root project has no alias and no tidewave/bandit deps, by design. The\n   working invocation is `cd packages/<name> && iex -S mix tidewave`.\n\nOPEN DECISIONS - answer these before writing code, do not infer them:\n\n- One shared port, or eight? Eight restores per-package addressability at the cost of\n  seven dead MCP entries per session; one matches the registry and the root config at the\n  cost of never running two dev servers at once. The registry already claims the one-port\n  answer, so \"follow the registry\" is the cheaper story - but it IS a port reassignment,\n  which this task originally ruled out, so it must be said out loud, not slid in.\n- Rewrite the 21 per-package agent configs, or replace them with three files at the repo\n  root? Root files complete the consolidation f9d6102 started; rewriting keeps a working\n  config for an agent launched with cwd inside a package. Deleting them without a root\n  replacement is the one option that loses capability.\n- Does a root-level `mix tidewave` entry point earn its keep? A root alias delegating into\n  a named package fixes the ergonomic without adding runtime deps to the root project.\n\nVERIFY BY RUNNING, NOT BY READING. The alias is a Bandit.start_link inside `mix run\n--no-halt`; whether it binds is a runtime fact. Start tidewave in at least two packages\nafterwards and confirm the MCP endpoint answers.\n\n--- DECISIONS ANSWERED 2026-09-16 (commit 0fb58a6) ---\n\nTwo of the three open decisions above are now settled by the user, and the work\nis already built. What remains of this task is the leftover, listed at the end.\n\n1. One shared port, or eight? ANSWERED: EIGHT. No port convergence. The eight\n   distinct per-package ports are a deliberate pre-monorepo feature - they let\n   eight package dev servers run in parallel - so converging them on 4013 was\n   the wrong fix, and the session that tried it was reverted. The registry line\n   claiming \"all 8 packages share 4013\" is the thing that is wrong, not the\n   aliases.\n2. Does a root-level tidewave entry point earn its keep? ANSWERED: YES, and it\n   is ADDITIVE, on a NEW port 4037 - never 4013. The root mix.exs now derives\n   the eight packages from File.ls!(\"packages\") as `only: :dev, override: true`\n   path deps, adds {:bandit, \"~> 1.0\"} and {:tidewave, \"~> 0.9\"} dev-only, and\n   defines a `tidewave` alias serving Tidewave on 4037. Root .mcp.json gained a\n   second entry, `tidewave_all` -> localhost:4037, alongside the existing\n   `tidewave` -> 4013 (still cartouche). Root .cursor/mcp.json, .codex/config.toml\n   and .grok/config.toml were created pointing at 4037.\n   Verified by running it, not by reading: all eight applications load in one\n   node (210 modules) and a single expression crosses package boundaries -\n   Cartouche.Address.from_public_key/1 into ABI.encode_call(\"transfer(address,uint256)\",\n   ...) returned selector a9059cbb, 68 bytes.\n   Note this overrides the original out_of_scope line \"Adding tidewave or bandit\n   as runtime deps of the root project\": they are `only: :dev`, never runtime,\n   and the user directed the change.\n3. Rewrite the 21 per-package mirrors, or replace them with root files?\n   PARTIALLY ANSWERED: the root replacements now exist. Whether the 21\n   per-package mirrors are rewritten, left as-is, or removed is still open.\n\nCORRECTION to verified fact 3 above: \"the repo root has no .cursor/, .codex/ or\n.grok/ at all\" was true when written and is now false - 0fb58a6 created all\nthree at the root, pointing at 4037. The 21 per-package mirrors are untouched\nand still point at their pre-merge ports.\n\nWHAT IS LEFT IN THIS TASK:\n\n- The 21 per-package .cursor/.codex/.grok files still name pre-merge ports and\n  some still name the pre-rename `harness_tidewave` server. Since ports are NOT\n  being retired, \"pointing at a retired port\" no longer applies to the seven\n  package ports themselves - but the server name and the harness entry may\n  still be stale. Decide per file; do not bulk-delete.\n- ~/.claude/tidewave-ports.md now contradicts itself: the 4013 row still reads\n  \"all 8 packages share this one port\" while the new 4037 row states \"4013 is\n  cartouche's alone, never the family's.\" Fix the 4013 row, and un-retire the\n  seven package rows to match the aliases, since convergence was rejected.\n- CLAUDE.md and root AGENTS.md were updated for the 4037 aggregate in the same\n  session that recorded these answers; re-check them if the remaining items\n  change anything.\n",
       "created_at": "2026-09-15",
-      "started_at": "2026-09-15",
       "scored_at": "2026-09-15",
       "cross_repo": []
     },
@@ -13625,6 +13656,7 @@
       "phase": 2000,
       "bundle": "cartouche_release_010",
       "target_repo": "cartouche",
+      "milestone": "stack_read_surface_boundary",
       "status": "pending",
       "title": "Reconcile Cartouche release notes against everything landed since 0.9.1",
       "scores": {
@@ -13876,10 +13908,10 @@
       "title": "Cartouche.Chain as a generated chain registry — ids, currency, RPC URLs, explorers, well-known contracts — and route Multicall/ENS addresses through it",
       "scores": {
         "d": 5,
-        "b": 8,
+        "b": 6,
         "u": 8
       },
-      "eff": 1.6,
+      "eff": 1.4,
       "dep_layer": 0,
       "unlocks": 1,
       "markers": [
@@ -13912,7 +13944,7 @@
       ],
       "body": "Decide first (vetoable defaults written in so an unattended implementer is not guessing):\n\n1. Generation source. Default: ethereum-lists/chains (`_data/chains/eip155-<id>.json`, CC0) for id, name, currency, RPC URLs, explorers and testnet status, plus a small hand-curated overlay file in the repo for well-known contract addresses (Multicall3 from mds1/multicall `deployments.json`, ENS from the ENS docs, EntryPoint from eth-infinitism). viem's `src/chains/definitions` is the cross-check, not the source: it is MIT with attribution required, hand-maintained TypeScript, and carries per-chain formatters this task does not want. If viem turns out to be the only source with a field the registry needs, switch and record the attribution.\n\n2. Scope of chains. Default: every non-deprecated chain in the source, filtered to the ones that have at least one public RPC URL. That is a few hundred structs — fine for a compiled module map. Do not hand-pick; hand-picking is how the current 24-entry map fell behind.\n\nWhy: `Cartouche.Chain` today is a 96-line atom->chain-id map (packages/cartouche/lib/cartouche/chain.ex, read 2026-09-16). Nothing in the family can answer what a chain's native currency is, which explorer to link, or which RPC to try, and the Multicall3 address is a module attribute in `Onchain.Multicall` (multicall.ex:32) — correct only because Multicall3 happens to be deterministically deployed at one address nearly everywhere. This is the largest structural gap between the stack and viem by ratio, and the `Onchain.Client` task builds directly on it.\n\nKeep the struct shape small and additive; the registry is data, and consumers should be able to override or extend entries at runtime (a private chain, a custom RPC) without a regeneration.\n\nAuthority: the upstream JSON at a named commit for the generated data; the live chain for the well-known-contract addresses (the live aggregate3 read in the acceptance criteria is what proves an address, not the overlay file).\n\nDispatch trigger: cross-package change (cartouche + onchain adoption) with a generated-artifact invariant that needs an independent reviewer to check the regeneration test actually gates.\n\n2026-09-16 (parity-task review): ethereum-lists/chains carries templated URLs (`${INFURA_API_KEY}`-style) and `wss://` entries inside the same `rpc` array; both would pass a naive non-empty check and neither is usable by the HTTP-only fallback transport. Also a sizing correction: the source lists well over 2000 chains, not a few hundred — the public-HTTP-URL filter is what bounds the compiled module; measure compile time once and record it in the CHANGELOG entry.\n",
       "created_at": "2026-09-16",
-      "scored_at": "2026-09-16",
+      "scored_at": "2026-09-23",
       "cross_repo": []
     },
     {
@@ -14063,10 +14095,10 @@
       "title": "Onchain.Client — one struct binding chain, transport and optional signer, accepted everywhere `rpc_url` is today, with wait_for_transaction_receipt (confirmations, timeout, replacement detection)",
       "scores": {
         "d": 6,
-        "b": 9,
+        "b": 7,
         "u": 8
       },
-      "eff": 1.42,
+      "eff": 1.25,
       "dep_layer": 2,
       "unlocks": 0,
       "markers": [],
@@ -14102,7 +14134,7 @@
       ],
       "body": "Decide first (defaults written in, vetoable):\n\n1. Does the client carry a signer? Default yes, optional — the `{backend, config}` carrier task 3089 routes `Onchain.Signer` through — so one struct covers viem's public+wallet client split. Read-only clients simply leave it nil.\n\n2. How is the client threaded through the existing surface? Default: an `opts[:client]` key resolved by one helper next to wherever `rpc_url` is read today, so no public arity changes and every existing call site keeps working. A positional client argument is more viem-like but is a breaking change across ~30 functions; not this task.\n\nWhy: the substrate is strong and the client layer is missing. Every onchain function takes `rpc_url` in opts, there is no notion of which chain a call is for beyond the URL, and there is no `waitForTransactionReceipt` equivalent anywhere in the family (grep for receipt polling 2026-09-16: none) — the single most-used viem DX affordance after `readContract`. Replacement detection matters in practice: a fee-bumped resend under a new hash makes a naive poll on the old hash hang until timeout.\n\nReplacement detection design hint, not a mandate: viem does it by remembering the sender and nonce from `eth_getTransactionByHash` at the start and, when the original hash stops being found, scanning newly mined blocks for a transaction with that sender and nonce. Any approach that passes the anvil replacement test is fine.\n\nAuthority: the live node (mainnet for the mined-receipt case, anvil for the pending and replacement cases); `ethereum/execution-apis` for receipt and transaction object shapes.\n\nDispatch trigger: cross-cutting change through the whole read/write surface plus a money-path pipeline (send then wait) with live evidence — earns an independent reviewer.\n\n2026-09-16 (ethers/viem table review): replacement detection needs `eth_getTransactionByHash` (sender, nonce, block number in one read) and cartouche has no wrapper for it today — task 2129 owns that method (with the three by-block variants) under the read-surface bundle, so it is now a dependency. Do not add a private `eth_getTransactionByHash` here; build on 2129's.\n",
       "created_at": "2026-09-16",
-      "scored_at": "2026-09-16",
+      "scored_at": "2026-09-23",
       "cross_repo": []
     },
     {
@@ -14312,7 +14344,7 @@
       "id": "9023",
       "phase": 0,
       "bundle": "monorepo_root_gates",
-      "target_repo": "onchain_evm",
+      "target_repo": "onchain_stack",
       "status": "pending",
       "title": "mix ci in onchain_aave and onchain_aerodrome exits 139 after every gate is already green",
       "scores": {
@@ -14388,6 +14420,50 @@
       "body": "Found by the post-merge audit of 1975218 (task 9022 delivery 5b38a85).\n\nTask 9022 added test/alias_separation_test.exs and documented it as the alias regression check (`elixir test/alias_separation_test.exs`, no package dependency bootstrap). Root mix ci is still only `onchain.bounds` + packages_ci/1. The 17 tests passed when this audit ran them by hand; nothing in the family gate would notice if the alias graph drifted. Wiring is a small Mix.exs + fixture update, not a dispatch-scope change.\n\nThe test currently asserts the root aliases map equals the committed baseline fixture, so adding a ci step must update that fixture in the same change.\n",
       "created_at": "2026-09-21",
       "scored_at": "2026-09-21",
+      "cross_repo": []
+    },
+    {
+      "id": "9025",
+      "phase": 3013,
+      "bundle": "onchain_safe_execution",
+      "target_repo": "onchain",
+      "status": "pending",
+      "title": "Onchain.Safe — multiSend, execTransaction and Zodiac Roles calldata builders, extracted from aave_sim",
+      "scores": {
+        "d": 3,
+        "b": 6,
+        "u": 5
+      },
+      "eff": 1.83,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "grok",
+      "model": "grok-4.7",
+      "acceptance_criteria": [
+        "Onchain.Safe exposes calldata-only builders for multiSend(bytes) packing, execTransaction (owner pre-approved-hash signature form), getTransactionHash and execTransactionWithRole; each returns target and data without sending, and none of them touches Onchain.Signer",
+        "Byte-equality against aave_sim's committed fixtures for the same inputs (multiSend packing, execTransaction, execTransactionWithRole), so the extraction is provably lossless",
+        "Selector-and-encoding unit tests derive expected bytes from the Safe v1.4.1 and Zodiac Roles ABIs, not from the package's own encoder",
+        "A fork integration test via onchain_evm executes a two-call multiSend batch through a real Safe 1.4.1 proxy from forked mainnet state and asserts the domain effect; a negative control with a reverting second call asserts no first-call state survives and that the failure is read from the execution result, not the receipt status",
+        "@moduledoc states the ExecutionFailure-vs-receipt-status caveat and names the contract versions the builders are pinned to",
+        "onchain CHANGELOG and README entries; mix ci passes"
+      ],
+      "out_of_scope": [
+        "Safe deployment, owner management or module enabling — the account exists before this code runs",
+        "Zodiac Roles policy authoring (targets, selectors, conditions) — aave_sim task 112 owns the authority model",
+        "Replacing aave_sim's copy — a cross-repo follow-up in aave_sim's roadmap once this ships",
+        "The EIP-7702/DeleGator adapter — task 3096"
+      ],
+      "touches": [
+        "packages/onchain/lib/onchain/safe.ex",
+        "packages/onchain/test/onchain/safe_test.exs",
+        "packages/onchain/CHANGELOG.md",
+        "packages/onchain/README.md"
+      ],
+      "body": "aave_sim's operator decision of 2026-09-15 made a user-owned Safe the execution account for attended and automated actions (aave_sim docs/one-transaction-rail.md, tasks 146 and 147 done). The application carries the whole encoding half app-locally in lib/aave_sim/execution/safe.ex: MultiSend packing of a call batch into `multiSend(bytes)`, owner execution through `execTransaction` with the pre-approved-hash signature form (v = 1, the signer's own address as the approver), `getTransactionHash` for the nonce-bound hash, and `execTransactionWithRole` for the Zodiac Roles keeper path. None of that exists in onchain — the package has no Safe module at all (grep for multiSend/execTransaction across packages/ on 2026-09-23 returns nothing).\n\nLift those builders into Onchain.Safe as calldata-only functions returning {target, value, data} in the shape the DeleGator adapter (task 3096) and the Aave calldata builders (task 4071) already use, so an application composes a Safe batch from package pieces alone. aave_sim then consumes the package and deletes its copy; that swap is a cross-repo follow-up filed in aave_sim's roadmap, not part of this task.\n\nAUTHORITY: the Safe v1.4.1 contracts (safe-global/safe-smart-account at tag v1.4.1 — Safe.sol execTransaction/checkNSignatures/getTransactionHash, libraries/MultiSend.sol packing) and the Zodiac Roles modifier source and docs (gnosisguild/zodiac-modifier-roles) for execTransactionWithRole. aave_sim's implementation is the extraction source and a compatibility fixture, not the specification; where the two disagree, the contracts are right. Safe reports inner-execution failure through the ExecutionFailure event while the outer transaction succeeds — the builder's docs must say so, and the fork proof must check the execution result, not the receipt status.\n\nDispatch trigger: money-path calldata construction with an independent oracle available (aave_sim's committed fixtures plus a fork execution through onchain_evm).\n",
+      "created_at": "2026-09-23",
+      "scored_at": "2026-09-23",
       "cross_repo": []
     }
   ]

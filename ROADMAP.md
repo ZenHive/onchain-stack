@@ -13,19 +13,19 @@
 ## Milestones
 
 <!-- MILESTONES:BEGIN -->
-### hieroglyph_encode_symmetry — [hieroglyph] Encode-Side Symmetry
+### stack_read_surface_boundary — [cartouche+onchain] One decoder, one struct — the read-surface boundary
 
-- **target_version:** 1.5.0
+- **target_version:** none
 - **status:** 🔄 active
-- **hypothesis:** Proves consumers building transactions need the encode-side counterparts (encode_call / encode_error / encode_event_topics) to match the decode APIs already shipped, rather than hand-assembling selector-prefixed calldata.
-- **pinned tasks:** 3/3 done
+- **hypothesis:** Tests whether cartouche can own every spec'd read method with exactly one decoder and one struct per method while onchain only re-presents — and whether the onchain copies can be deleted in the same diffs now that the monorepo removes the cross-repo excuse.
+- **pinned tasks:** 0/11 done
 
 ### onchain_aave_v0_5 — [onchain_aave] Live-evidenced V3/V4 surface
 
 - **target_version:** 0.5.0
 - **status:** 🔄 active
 - **hypothesis:** Tests whether onchain_aave can express core V3 position-management and V4 Hub-and-Spoke flows with reproducible evidence against deployed Aave contracts.
-- **pinned tasks:** 2/5 done
+- **pinned tasks:** 2/8 done
 
 ### onchain_aerodrome_v0_1 — [onchain_aerodrome] Full read surface, analytics and prices
 
@@ -54,6 +54,13 @@
 - **status:** ⬜ pending
 - **hypothesis:** Proves the bridge generalizes past one library — that unmodified DeFi SDKs (Uniswap, DeFiSaver, 1inch) and utility libraries (aave math-utils, merkletreejs) run on the BEAM through the same loading contract solc-js proved out.
 - **pinned tasks:** 0/5 done
+
+### hieroglyph_encode_symmetry — [hieroglyph] Encode-Side Symmetry
+
+- **target_version:** 1.5.0
+- **status:** ✅ done
+- **hypothesis:** Proves consumers building transactions need the encode-side counterparts (encode_call / encode_error / encode_event_topics) to match the decode APIs already shipped, rather than hand-assembling selector-prefixed calldata.
+- **pinned tasks:** 3/3 done
 <!-- MILESTONES:END -->
 
 ---
@@ -119,9 +126,9 @@
 | Task 1041 | ✅ | 🎁 **hieroglyph_peer_parity** · ABI.encode_constructor/2 (deploy-time argument encoding) [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
 | Task 1042 | ✅ | 🎁 **hieroglyph_peer_parity** · ABI.format_abi_item/1 (FunctionSelector -> canonical signature string) [D:3/B:3/U:4 → Eff:1.17?] 📋 |
 | Task 1043 | ✅ | 🎁 **hieroglyph_agent_economy** · SKILL.md for AI-agent consumers of the ABI library [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
-| Task 1044 | ✅ | 🎁 **hieroglyph_peer_parity** · 🔒 Independent-oracle + planted-mutant verification for the ABI wire format [D:5/B:8/U:6 → Eff:1.4] 📋 |
-| Task 1045 `[CX]` | ✅ | 🎁 **hieroglyph_agent_economy** · Gate api_manifest.json freshness in mix ci [D:2/B:6/U:5 → Eff:2.75] 🎯 |
-| Task 1046 | 🔄 | 🎁 **hieroglyph_peer_parity** · 🔒 muex sweep over the ABI surface, graded against the task 44 planted-mutant corpus [D:4/B:6/U:3 → Eff:1.12] 📋 |
+| Task 1044 | ✅ | 🎁 **hieroglyph_peer_parity** · 🔒 Independent-oracle + planted-mutant verification for the ABI wire format [D:5/B:8/U:6 → Eff:1.4?] 📋 |
+| Task 1045 `[CX]` | ✅ | 🎁 **hieroglyph_agent_economy** · Gate api_manifest.json freshness in mix ci [D:2/B:6/U:5 → Eff:2.75?] 🎯 |
+| Task 1046 | 🔶 | 🎁 **hieroglyph_peer_parity** · 🔒 muex sweep over the ABI surface, graded against the task 44 planted-mutant corpus [D:4/B:6/U:3 → Eff:1.12?] 📋 ⛔ muex #20/#23/#24 offen; kein brauchbarer Survivor-Report möglich. Unblock: ein muex-Release, das einen geplanteten Mutanten aus dem task-1044-Korpus als Survivor meldet (Gate-Probe vor dem Kampagnenstart). |
 <!-- TASKS:END -->
 
 ---
@@ -186,36 +193,36 @@
 | Task 2109 | ✅ | 🎁 **cartouche_tooling_quality** · Finish + normalize typed-transaction helper extraction (dedup maybe_to_wei/chain_id_value; migrate V3 onto TypedDecode/Signature) [D:2/B:4/U:4 → Eff:2.0?] 🎯 |
 | Task 2110 | ✅ | 🎁 **cartouche_tooling_quality** · defrpc macro — generate uniform JSON-RPC wrappers + @spec + @doc + Descripex api() from one declaration [D:5/B:6/U:5 → Eff:1.1?] 📋 |
 | Task 2111 | ⛔ | 🎁 **cartouche_tooling_quality** · Spike: evaluate a Cartouche.Transaction.Typed envelope macro across V_2930/V3/V4 [D:2/B:3/U:3 → Eff:1.5?] 🚀 |
-| Task 2113 | ✅ | 🎁 **cartouche_coverage_pushes** · 🔒 Property + cross-implementation vector suite for Ethereum tx envelopes and signing [D:4/B:8/U:8 → Eff:2.0] 🎯 |
-| Task 2114 | ✅ | 🎁 **cartouche_coverage_pushes** · 🔒 Mutation-adequacy campaign over the signing and transaction paths [D:5/B:7/U:6 → Eff:1.3] 📋 |
-| Task 2115 | ✅ | 🎁 **cartouche_phase8_dedup** · Cartouche.Transaction.V_2930 write surface — new/encode/sign/hash/signature/recover [D:3/B:4/U:4 → Eff:1.33] 📋 |
-| Task 2116 | ✅ | 🎁 **cartouche_signer_backends** · 🔒 Enforce the Signer.Backend contract at the boundary — payload length, curve, DER parse [D:3/B:6/U:6 → Eff:2.0] 🎯 |
-| Task 2117 | ✅ | 🎁 **cartouche_phase9_tx** · 🔒 Encode must not emit wire-non-conformant RLP — close the encode/decode conformance gap across V2/V3/V4 [D:3/B:8/U:7 → Eff:2.5] 🎯 |
-| Task 2118 | ✅ | 🎁 **cartouche_signer_backends** · 🔒 Low-s is a library-wide invariant, not a per-backend convention — close the sign_direct/4 bypass [D:3/B:7/U:7 → Eff:2.33] 🎯 |
-| Task 2119 | ⬜ | 🎁 **cartouche_coverage_pushes** · 🔒 Re-run the mutation-adequacy campaign once muex can report survivors [D:5/B:7/U:3 → Eff:1.0] 📋 |
-| Task 2120 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC.create_access_list/2 — eth_createAccessList [D:3/B:7/U:6 → Eff:2.17] 🎯 |
-| Task 2121 | ✅ | 🎁 **cartouche_rpc_correctness** · Complete the Cartouche.Filter lifecycle — uninstall, getFilterLogs, and the block/pending filter kinds [D:4/B:7/U:7 → Eff:1.75] 🚀 |
-| Task 2122 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC fee reads — eth_baseFee and eth_blobBaseFee [D:2/B:6/U:5 → Eff:2.75] 🎯 |
-| Task 2123 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC node introspection — eth_config (EIP-7910) and eth_capabilities [D:4/B:5/U:4 → Eff:1.12] 📋 |
-| Task 2124 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC node-custody methods — eth_accounts, eth_coinbase, eth_fillTransaction, eth_sign, eth_signTransaction, eth_sendTransaction [D:4/B:6/U:4 → Eff:1.25] 📋 |
-| Task 2125 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC.fill_transaction/2 cannot deserialize a spec-conforming eth_fillTransaction result [D:5/B:5/U:4 → Eff:0.9] ⚠️ |
-| Task 2126 | ✅ | 🎁 **cartouche_rpc_correctness** · Spec-path fill_transaction V1 results drop chainId, so encode is pre-EIP-155 [D:4/B:5/U:4 → Eff:1.12] 📋 |
-| Task 2127 | ⬜ | 🎁 **cartouche_rpc_correctness** · base_fee/1 portability — probe the real hosted-provider refusal, then decide standard vs extension [D:3/B:7/U:4 → Eff:1.83] 🚀 |
-| Task 2128 | ⬜ | 🎁 **cartouche_rpc_read_surface** · Own eth_getLogs in cartouche — stateless log queries, and delete onchain's copy [D:3/B:8/U:7 → Eff:2.5] 🎯 |
-| Task 2129 | ⬜ | 🎁 **cartouche_rpc_read_surface** · Own the transaction and receipt read-back in cartouche — 4 methods, and delete onchain's copies [D:4/B:7/U:6 → Eff:1.62] 🚀 |
-| Task 2130 | ⬜ | 🎁 **cartouche_rpc_read_surface** · Own the state reads in cartouche — eth_getStorageAt and eth_getProof (EIP-1186) [D:3/B:6/U:5 → Eff:1.83] 🚀 |
-| Task 2131 | ⬜ | 🎁 **cartouche_rpc_read_surface** · Own the node-introspection surface in cartouche — and mark the three methods no tagged spec carries [D:3/B:6/U:6 → Eff:2.0] 🎯 |
-| Task 2132 | ⬜ | 🎁 **cartouche_rpc_read_surface** · Own eth_simulateV1 in cartouche — the portable simulation entry point [D:5/B:8/U:6 → Eff:1.4] 📋 |
+| Task 2113 | ✅ | 🎁 **cartouche_coverage_pushes** · 🔒 Property + cross-implementation vector suite for Ethereum tx envelopes and signing [D:4/B:8/U:8 → Eff:2.0?] 🎯 |
+| Task 2114 | ✅ | 🎁 **cartouche_coverage_pushes** · 🔒 Mutation-adequacy campaign over the signing and transaction paths [D:5/B:7/U:6 → Eff:1.3?] 📋 |
+| Task 2115 | ✅ | 🎁 **cartouche_phase8_dedup** · Cartouche.Transaction.V_2930 write surface — new/encode/sign/hash/signature/recover [D:3/B:4/U:4 → Eff:1.33?] 📋 |
+| Task 2116 | ✅ | 🎁 **cartouche_signer_backends** · 🔒 Enforce the Signer.Backend contract at the boundary — payload length, curve, DER parse [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
+| Task 2117 | ✅ | 🎁 **cartouche_phase9_tx** · 🔒 Encode must not emit wire-non-conformant RLP — close the encode/decode conformance gap across V2/V3/V4 [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
+| Task 2118 | ✅ | 🎁 **cartouche_signer_backends** · 🔒 Low-s is a library-wide invariant, not a per-backend convention — close the sign_direct/4 bypass [D:3/B:7/U:7 → Eff:2.33?] 🎯 |
+| Task 2119 | 🔶 | 🎁 **cartouche_coverage_pushes** · 🔒 Re-run the mutation-adequacy campaign once muex can report survivors [D:5/B:7/U:3 → Eff:1.0?] 📋 ⛔ muex #20/#23/#24 offen; kein brauchbarer Survivor-Report möglich. Unblock: ein muex-Release, das einen geplanteten Mutanten aus dem task-1044-Korpus als Survivor meldet (Gate-Probe vor dem Kampagnenstart). |
+| Task 2120 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC.create_access_list/2 — eth_createAccessList [D:3/B:7/U:6 → Eff:2.17?] 🎯 |
+| Task 2121 | ✅ | 🎁 **cartouche_rpc_correctness** · Complete the Cartouche.Filter lifecycle — uninstall, getFilterLogs, and the block/pending filter kinds [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
+| Task 2122 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC fee reads — eth_baseFee and eth_blobBaseFee [D:2/B:6/U:5 → Eff:2.75?] 🎯 |
+| Task 2123 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC node introspection — eth_config (EIP-7910) and eth_capabilities [D:4/B:5/U:4 → Eff:1.12?] 📋 |
+| Task 2124 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC node-custody methods — eth_accounts, eth_coinbase, eth_fillTransaction, eth_sign, eth_signTransaction, eth_sendTransaction [D:4/B:6/U:4 → Eff:1.25?] 📋 |
+| Task 2125 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC.fill_transaction/2 cannot deserialize a spec-conforming eth_fillTransaction result [D:5/B:5/U:4 → Eff:0.9?] ⚠️ |
+| Task 2126 | ✅ | 🎁 **cartouche_rpc_correctness** · Spec-path fill_transaction V1 results drop chainId, so encode is pre-EIP-155 [D:4/B:5/U:4 → Eff:1.12?] 📋 |
+| Task 2127 | ⬜ | 🎁 **cartouche_rpc_correctness** · 🚀 **stack_read_surface_boundary** · base_fee/1 portability — probe the real hosted-provider refusal, then decide standard vs extension [D:3/B:7/U:4 → Eff:1.83] 🚀 |
+| Task 2128 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own eth_getLogs in cartouche — stateless log queries, and delete onchain's copy [D:3/B:8/U:7 → Eff:2.5] 🎯 |
+| Task 2129 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own the transaction and receipt read-back in cartouche — 4 methods, and delete onchain's copies [D:4/B:7/U:6 → Eff:1.62] 🚀 |
+| Task 2130 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own the state reads in cartouche — eth_getStorageAt and eth_getProof (EIP-1186) [D:3/B:6/U:5 → Eff:1.83] 🚀 |
+| Task 2131 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own the node-introspection surface in cartouche — and mark the three methods no tagged spec carries [D:3/B:6/U:6 → Eff:2.0] 🎯 |
+| Task 2132 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own eth_simulateV1 in cartouche — the portable simulation entry point [D:5/B:7/U:6 → Eff:1.3] 📋 |
 | Task 2133 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 EIP-712 conformance: encode_type non-termination, bytesN padding direction, array-of-struct support, int types [D:4/B:9/U:8 → Eff:2.12] 🎯 |
 | Task 2134 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 EIP-191 personal_sign byte length, a recovery helper that applies the prefix, and the 65-byte signature invariant [D:3/B:7/U:6 → Eff:2.17] 🎯 |
-| Task 2135 | ⬜ | 🎁 **cartouche_rpc_correctness** · Portability contract for the non-standard read surface: trace_* and debug_traceCall [D:3/B:7/U:7 → Eff:2.33] 🎯 |
+| Task 2135 | ⬜ | 🎁 **cartouche_rpc_correctness** · 🚀 **stack_read_surface_boundary** · Portability contract for the non-standard read surface: trace_* and debug_traceCall [D:3/B:7/U:7 → Eff:2.33] 🎯 |
 | Task 2136 | ✅ | 🎁 **cartouche_rpc_read_surface** · Multi-endpoint live-test seam so node-portability rule 4 can actually be executed [D:3/B:8/U:8 → Eff:2.67] 🎯 |
-| Task 2137 | ⬜ | 🎁 **cartouche_rpc_read_surface** · Move the transport hardening into cartouche — retry, telemetry, node-refusal classification, batch [D:5/B:9/U:9 → Eff:1.8] 🚀 |
+| Task 2137 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Move the transport hardening into cartouche — retry, telemetry, node-refusal classification, batch [D:5/B:9/U:9 → Eff:1.8] 🚀 |
 | Task 9002 | ⬜ | 🎁 **cartouche_signer_backends** · Put secp256k1 sign and recover behind a native backend — curvy costs ~2.8 ms per signature on the DEX order path [D:5/B:7/U:7 → Eff:1.4] 📋 |
 | Task 9006 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 Normalize high-s signatures at Cartouche's recovery boundary — recover_public_key_from_digest/2 still hits the curvy#8 recid bug [D:3/B:6/U:5 → Eff:1.83] 🚀 |
-| Task 9007 | ⬜ | 🎁 **cartouche_release_010** · Reconcile Cartouche release notes against everything landed since 0.9.1 [D:2/B:7/U:7 → Eff:3.5] 🎯 |
+| Task 9007 | ⬜ | 🎁 **cartouche_release_010** · 🚀 **stack_read_surface_boundary** · Reconcile Cartouche release notes against everything landed since 0.9.1 [D:2/B:7/U:7 → Eff:3.5] 🎯 |
 | Task 9008 | ✅ | 🎁 **cartouche_phase7_deps** · Assess Mint advisories reported by Cartouche cold dependency resolution [D:2/B:5/U:4 → Eff:2.25] 🎯 |
-| Task 9013 `[P]` | ⬜ | 🎁 **cartouche_chain_registry** · Cartouche.Chain as a generated chain registry — ids, currency, RPC URLs, explorers, well-known contracts — and route Multicall/ENS addresses through it [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 9013 `[P]` | ⬜ | 🎁 **cartouche_chain_registry** · Cartouche.Chain as a generated chain registry — ids, currency, RPC URLs, explorers, well-known contracts — and route Multicall/ENS addresses through it [D:5/B:6/U:8 → Eff:1.4] 📋 |
 | Task 9014 | ⬜ | 🎁 **cartouche_transport_fallback** · Cartouche fallback transport — ranked multi-endpoint RPC with health tracking, failing over on transport errors and node refusals but never on application errors [D:5/B:7/U:7 → Eff:1.4] 📋 |
 | Task 9015 | ⬜ | 🎁 **cartouche_local_keys** · 🔒 Local key material for Cartouche.Signer — BIP-39 mnemonics, BIP-32/44 HD derivation, and Web3 Secret Storage (keystore v3) import/export [D:5/B:6/U:6 → Eff:1.2] 📋 |
 | Task 9016 `[P]` | ⬜ | 🎁 **cartouche_dev_node_actions** · Typed dev-node control wrappers — anvil_*/hardhat_*/evm_* (balance, storage, code, nonce, impersonation, mining, time, snapshots, fork reset) under the non-standard-namespace portability contract [D:3/B:5/U:6 → Eff:1.83] 🚀 |
@@ -243,11 +250,7 @@
 ### Phase 2004: Cartouche.Typed internal-function specs
 
 <!-- TASKS:BEGIN phase=2004 -->
-| Task | Status | Notes |
-|------|--------|-------|
-| Task 2019+2020 `[CSR]` | ✅ | 🎁 **cartouche_phase4_typed** · Phase 4 Typed internal-function specs — rewrite + visibility judgment [D:3/B:2/U:3 → Eff:0.83?] ⚠️ |
-| Task 2098 `[CSR]` | ✅ | 🎁 **cartouche_phase4_typed** · Phase 4 follow-up — tighten Cartouche.Typed.encode_value_map/3 impl so dialyzer infers binary(), restore stricter @spec [D:2/B:2/U:2 → Eff:1.0?] 📋 |
-| Task 2045 `[CSR]` | ✅ | 🎁 **cartouche_coverage_pushes** · Cartouche.Typed coverage push — exercise encode_value_map/3 and find_type/2 with representative inputs [D:2/B:2/U:3 → Eff:1.25?] 📋 |
+> 3 tasks. See [CHANGELOG.md](CHANGELOG.md#phase-2004-cartouche-cartouche-typed-internal-function-specs).
 <!-- TASKS:END -->
 
 ### Phase 2005: VM / Erc20.Call none() cascade investigation
@@ -283,9 +286,7 @@
 ### Phase 2010: Upstream PR candidates (to hayesgm/signet)
 
 <!-- TASKS:BEGIN phase=2010 -->
-| Task | Status | Notes |
-|------|--------|-------|
-| Task 2034 | ⛔ | 🎁 **cartouche_phase10_upstream** · ABI.decode/2 specced no_return() in poanetwork/ex_abi [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
+> 1 task. See [CHANGELOG.md](CHANGELOG.md#phase-2010-cartouche-upstream-pr-candidates-to-hayesgm-signet).
 <!-- TASKS:END -->
 
 ### Phase 2011: hieroglyph 1.0.0 → 1.4.0 adoption advisory
@@ -322,8 +323,8 @@
 |------|--------|-------|
 | Task 3069 `[P]` | ✅ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · ERC-4337 UserOperation construction, signing, and bundler RPC [D:7/B:8/U:7 → Eff:1.07?] 📋 |
 | Task 3079 | ✅ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Audit-surfaced: ERC-4337 to_rpc_params validation can diverge from user_op_hash [D:4/B:5/U:5 → Eff:1.25?] 📋 |
-| Task 3097 | ⬜ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Onchain.AA account clients: execute/executeBatch calldata, initCode, and the counterfactual sender [D:6/B:8/U:6 → Eff:1.17] 📋 |
-| Task 3098 | ⬜ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Onchain.AA paymaster client: ERC-7677 sponsorship round-trip [D:5/B:6/U:5 → Eff:1.1] 📋 |
+| Task 3097 | ⛔ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Onchain.AA account clients: execute/executeBatch calldata, initCode, and the counterfactual sender [D:6/B:8/U:6 → Eff:1.17] 📋 |
+| Task 3098 | ⛔ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Onchain.AA paymaster client: ERC-7677 sponsorship round-trip [D:5/B:6/U:5 → Eff:1.1] 📋 |
 <!-- TASKS:END -->
 
 ### Phase 3010: RPC Composition Layer
@@ -336,7 +337,7 @@
 | Task 3054 | ✅ | 🎁 **onchain_rpc_composition** · *Onchain.RPC* · Opt-in retry/backoff wrapper over Signet.RPC.send_rpc/3 [D:4/B:5/U:4 → Eff:1.12?] 📋 |
 | Task 3081 | ✅ | 🎁 **onchain_rpc_composition** · *Onchain.RPC* · Audit-surfaced: RPC batch + block decode crash on malformed node responses [D:2/B:3/U:4 → Eff:1.75?] 🚀 |
 | Task 3082 | ✅ | 🎁 **onchain_rpc_composition** · Add eth_estimateGas RPC helper + auto-estimate gas in send_transaction [D:3/B:5/U:6 → Eff:1.83?] 🚀 |
-| Task 9017 | ⬜ | 🎁 **onchain_client** · Onchain.Client — one struct binding chain, transport and optional signer, accepted everywhere `rpc_url` is today, with wait_for_transaction_receipt (confirmations, timeout, replacement detection) [D:6/B:9/U:8 → Eff:1.42] 📋 |
+| Task 9017 | ⬜ | 🎁 **onchain_client** · Onchain.Client — one struct binding chain, transport and optional signer, accepted everywhere `rpc_url` is today, with wait_for_transaction_receipt (confirmations, timeout, replacement detection) [D:6/B:7/U:8 → Eff:1.25] 📋 |
 | Task 9018 | ⬜ | 🎁 **onchain_siwe** · 🔒 Onchain.SIWE — EIP-4361 Sign-In with Ethereum: build, parse and verify messages, EIP-191 for EOAs and EIP-1271 for contract wallets [D:4/B:5/U:4 → Eff:1.12] 📋 |
 <!-- TASKS:END -->
 
@@ -359,12 +360,12 @@
 | Task 3078 | ✅ | 🎁 **onchain_erc_standards** · *Onchain.ERC7730.Binding* · Audit-surfaced: ERC-7730 binding/descriptor hardening (domain match, EIP-712 type, malformed input) [D:5/B:5/U:5 → Eff:1.0?] 📋 |
 | Task 3083 | ✅ | 🎁 **onchain_rpc_composition** · *Onchain.RPC* · Migrate HTTP transport off cartouche's removed Finch seams (cartouche 0.5.0) [D:4/B:8/U:8 → Eff:2.0?] 🎯 |
 | Task 3084 | ⬜ | 🎁 **onchain_differential_testing** · 🔒 Mutation-grade RPC construction and DEX math invariants [D:6/B:9/U:7 → Eff:1.33?] 📋 |
-| Task 3085 `[P]` | ✅ | 🎁 **onchain_rpc_composition** · Onchain.RPC block-level reads — receipts, transaction counts, transactions by index, and the block access list [D:4/B:7/U:6 → Eff:1.62] 🚀 |
-| Task 3086 `[P]` | ⬜ | 🎁 **onchain_rpc_composition** · Onchain.RPC.get_storage_values — eth_getStorageValues batched multi-account slot reads [D:3/B:6/U:5 → Eff:1.83] 🚀 |
-| Task 3087 | ⬜ | 🎁 **onchain_differential_testing** · 🔒 Mutation-adequacy campaign over the signing, key and address surface [D:5/B:8/U:3 → Eff:1.1] 📋 |
+| Task 3085 `[P]` | ✅ | 🎁 **onchain_rpc_composition** · Onchain.RPC block-level reads — receipts, transaction counts, transactions by index, and the block access list [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
+| Task 3086 `[P]` | ⬜ | 🎁 **onchain_rpc_composition** · Onchain.RPC.get_storage_values — eth_getStorageValues batched multi-account slot reads [D:3/B:6/U:5 → Eff:1.83?] 🚀 |
+| Task 3087 | 🔶 | 🎁 **onchain_differential_testing** · 🔒 Mutation-adequacy campaign over the signing, key and address surface [D:5/B:8/U:3 → Eff:1.1?] 📋 ⛔ muex #20/#23/#24 offen; kein brauchbarer Survivor-Report möglich. Unblock: ein muex-Release, das einen geplanteten Mutanten aus dem task-1044-Korpus als Survivor meldet (Gate-Probe vor dem Kampagnenstart). |
 | Task 3088 | ✅ | 🎁 **onchain_abi_decode_hardening** · 🔒 Expose hieroglyph's strict decode mode through the Onchain.ABI, Contract and Log decode surface [D:4/B:7/U:6 → Eff:1.62] 🚀 |
-| Task 3089 | ⬜ | 🎁 **onchain_signer_backend_contract** · 🔒 Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA [D:3/B:7/U:6 → Eff:2.17] 🎯 |
-| Task 3090 | ⬜ | 🎁 **onchain_subscription_hardening** · HTTP log/block/pending polling over Cartouche.Filter, so subscribers work on the RPC URL this library defaults to [D:5/B:6/U:5 → Eff:1.1] 📋 |
+| Task 3089 | ⬜ | 🎁 **onchain_signer_backend_contract** · 🚀 **stack_read_surface_boundary** · 🔒 Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA [D:3/B:7/U:6 → Eff:2.17] 🎯 |
+| Task 3090 | ⬜ | 🎁 **onchain_subscription_hardening** · 🚀 **stack_read_surface_boundary** · HTTP log/block/pending polling over Cartouche.Filter, so subscribers work on the RPC URL this library defaults to [D:5/B:6/U:5 → Eff:1.1] 📋 |
 | Task 3091 | ✅ | 🎁 **onchain_node_portability** · Normalize node-capability refusals into typed errors instead of passing the raw JSON-RPC code through [D:3/B:7/U:7 → Eff:2.33] 🎯 |
 | Task 3092 | ⬜ | 🎁 **onchain_node_portability** · Onchain.RPC node introspection — eth_config and eth_capabilities so a consumer can discover what their node actually serves [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 | Task 3093 | ⬜ | 🎁 **onchain_rpc_composition** · Onchain.RPC.create_access_list — compute the EIP-2930 access list that Signer.build_transaction already accepts but cannot produce [D:4/B:6/U:5 → Eff:1.38] 📋 |
@@ -375,8 +376,9 @@
 <!-- TASKS:BEGIN phase=3013 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 3095 | ⬜ | 🎁 **onchain_eip7702** · *Onchain.Signer* · Onchain.Signer type-0x04: build, sign, and broadcast EIP-7702 transactions [D:5/B:8/U:7 → Eff:1.5] 🚀 |
-| Task 3096 | ⬜ | 🎁 **onchain_eip7702** · *Onchain.Delegate* · EIP-7702 batched execution: pin an audited delegate and encode its batch calldata [D:6/B:9/U:7 → Eff:1.33] 📋 |
+| Task 3095 | ⬜ | 🎁 **onchain_eip7702** · *Onchain.Signer* · Onchain.Signer type-0x04: build, sign, and broadcast EIP-7702 transactions [D:5/B:5/U:4 → Eff:0.9] ⚠️ |
+| Task 3096 | ⬜ | 🎁 **onchain_eip7702** · *Onchain.Delegate* · EIP-7702 batched execution: extract aave_sim's pinned-delegate batch encoding into Onchain.Delegate [D:4/B:6/U:5 → Eff:1.38] 📋 |
+| Task 9025 | ⬜ | 🎁 **onchain_safe_execution** · Onchain.Safe — multiSend, execTransaction and Zodiac Roles calldata builders, extracted from aave_sim [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 <!-- TASKS:END -->
 
 ---
@@ -420,12 +422,12 @@
 | Task 4049 `[P]` | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.V4.Oracle* · Implement Onchain.Aave.V4.Oracle wrapper (Spoke-scoped) [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
 | Task 4050 `[P]` | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.V4.TokenizationSpoke* · Implement Onchain.Aave.V4.TokenizationSpoke reads (ERC-4626 share accounting) [D:3/B:5/U:5 → Eff:1.67?] 🚀 |
 | Task 4051 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.V4.PositionManager* · Implement Onchain.Aave.V4.PositionManager ergonomic write wrappers (supply/borrow/repay analogs) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
-| Task 4052 | ✅ | 🎁 **onchain_aave_v4_support** · 🚀 **onchain_aave_v0_5** · *test/onchain/aave/v4/* · 🔒 Prove V4 reads and PositionManager writes against deployed mainnet state [D:6/B:9/U:9 → Eff:1.5] 🚀 |
+| Task 4052 | ✅ | 🎁 **onchain_aave_v4_support** · 🚀 **onchain_aave_v0_5** · *test/onchain/aave/v4/* · 🔒 Prove V4 reads and PositionManager writes against deployed mainnet state [D:6/B:9/U:9 → Eff:1.5?] 🚀 |
 | Task 4057 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.V4.Hub* · Wrap remaining IHub preview converters and Hub bound constants [D:3/B:4/U:5 → Eff:1.5?] 🚀 |
-| Task 4066 | ⬜ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.V4.TokenizationSpoke* · Execute the V4 Tokenization Spoke: ERC-4626 writes and the share token's ERC-20 surface [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 4066 | ⬜ | 🎁 **onchain_aave_v4_support** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.V4.TokenizationSpoke* · Execute the V4 Tokenization Spoke: ERC-4626 writes and the share token's ERC-20 surface [D:5/B:8/U:8 → Eff:1.6] 🚀 |
 | Task 4067 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.V4.PositionManager* · Wrap V4 position configuration and position-manager authorization, and close the Taker fork-evidence gap [D:4/B:8/U:8 → Eff:2.0] 🎯 |
 | Task 4069 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.Contracts* · Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs [D:4/B:9/U:9 → Eff:2.25] 🎯 |
-| Task 4070 | ⬜ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.Contracts* · Register the ether.fi Cash V4 whitelabel instance on Optimism [D:4/B:8/U:8 → Eff:2.0] 🎯 |
+| Task 4070 | ⬜ | 🎁 **onchain_aave_v4_support** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Contracts* · Register the ether.fi Cash V4 whitelabel instance on Optimism [D:4/B:8/U:8 → Eff:2.0] 🎯 |
 | Task 9009 | ⬜ | 🎁 **onchain_aave_v4_support** · Detect V4 address-book drift against upstream instead of only against the committed snapshot [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 | Task 9020 | ✅ | 🎁 **onchain_aave_v4_support** · Complete Config permission grants for risk-premium and dynamic-config updates [D:4/B:8/U:7 → Eff:1.88] 🚀 |
 <!-- TASKS:END -->
@@ -437,13 +439,13 @@
 |------|--------|-------|
 | Task 4053 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · *Onchain.Aave.DebtToken* · Onchain.Aave.DebtToken — wrap approveDelegation + borrowAllowance on variable/stable debt tokens [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
 | Task 4054 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · *(cross-cutting research)* · Mine defi-skills:intent-to-transaction action surface for onchain_aave coverage gaps [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
-| Task 4058 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Onchain.Aave.Pool — eMode: setUserEMode, getUserEMode, category config, and enumeration via getEModes [D:5/B:8/U:7 → Eff:1.5] 🚀 |
-| Task 4059 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Retire stable-rate APIs and resolve variable debt tokens through the dedicated Pool getter [D:4/B:8/U:7 → Eff:1.88] 🚀 |
-| Task 4060 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Onchain.Aave.Pool — setUserUseReserveAsCollateral and repayWithATokens [D:4/B:7/U:7 → Eff:1.75] 🚀 |
-| Task 4061 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Expose typed direct reserve data and normalized index reads [D:4/B:5/U:5 → Eff:1.25] 📋 |
-| Task 4062 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · Make the integration gate settle: bound math_revm runtime so --include integration terminates [D:4/B:7/U:8 → Eff:1.88] 🚀 |
-| Task 4071 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · *Onchain.Aave* · Calldata-only mode for every Aave write: build without sending [D:4/B:8/U:7 → Eff:1.88] 🚀 |
-| Task 4072 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · *Onchain.Aave.Pool* · Pool flash-loan surface: flashLoanSimple and flashLoan builders plus premium reads [D:4/B:7/U:6 → Eff:1.62] 🚀 |
+| Task 4058 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Onchain.Aave.Pool — eMode: setUserEMode, getUserEMode, category config, and enumeration via getEModes [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
+| Task 4059 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Retire stable-rate APIs and resolve variable debt tokens through the dedicated Pool getter [D:4/B:8/U:7 → Eff:1.88?] 🚀 |
+| Task 4060 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Onchain.Aave.Pool — setUserUseReserveAsCollateral and repayWithATokens [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
+| Task 4061 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Expose typed direct reserve data and normalized index reads [D:4/B:5/U:5 → Eff:1.25?] 📋 |
+| Task 4062 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · Make the integration gate settle: bound math_revm runtime so --include integration terminates [D:4/B:7/U:8 → Eff:1.88?] 🚀 |
+| Task 4071 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave* · Calldata-only mode for every Aave write: build without sending [D:4/B:8/U:7 → Eff:1.88] 🚀 |
+| Task 4072 | ⛔ | 🎁 **onchain_aave_v3_write_gaps** · *Onchain.Aave.Pool* · Pool flash-loan surface: flashLoanSimple and flashLoan builders plus premium reads [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 4007: Read-Path Multicall Adoption
@@ -459,7 +461,7 @@
 |------|--------|-------|
 | Task 4063 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · *Onchain.Aave.Events* · Decode deployed Aave V3 Pool events from logs with topic-filter fetch [D:5/B:8/U:7 → Eff:1.5] 🚀 |
 | Task 4064 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · Surface decoded revert reasons on Aave write and call failures [D:4/B:7/U:7 → Eff:1.75] 🚀 |
-| Task 4065 | 🔶 | 🎁 **onchain_aave_event_error_decoding** · Adopt strict ABI decoding across Aave response decode paths [D:3/B:6/U:5 → Eff:1.83] 🚀 ⛔ onchain task 88 must land first: Onchain.ABI.decode_response/2 and Onchain.Contract.call accept no decode options today, so strict mode is unreachable from this repo |
+| Task 4065 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · Adopt strict ABI decoding across Aave response decode paths [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 | Task 4068 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · *Onchain.Aave.Events* · Decode V4 Hub, Spoke and Tokenization Spoke events from logs [D:5/B:8/U:7 → Eff:1.5] 🚀 |
 <!-- TASKS:END -->
 
@@ -468,7 +470,7 @@
 <!-- TASKS:BEGIN phase=4009 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 4073 | ⬜ | 🎁 **onchain_aave_flash_executor** · *Onchain.Aave.Executor* · Flash-loan executor contract: an atomic action bundle funded and repaid inside one Aave flash loan [D:8/B:9/U:6 → Eff:0.94] ⚠️ |
+| Task 4073 | ⛔ | 🎁 **onchain_aave_flash_executor** · *Onchain.Aave.Executor* · Flash-loan executor contract: an atomic action bundle funded and repaid inside one Aave flash loan [D:8/B:9/U:6 → Eff:0.94] ⚠️ |
 <!-- TASKS:END -->
 
 ---
@@ -478,23 +480,13 @@
 ### Phase 5001: Foundations & Layer Gate
 
 <!-- TASKS:BEGIN phase=5001 -->
-| Task | Status | Notes |
-|------|--------|-------|
-| Task 5001 | ✅ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome* · Close the reach layer-gate holes so analytics-never-touches-the-network is enforced, not documented [D:5/B:9/U:8 → Eff:1.7] 🚀 |
-| Task 5002 `[P]` | ✅ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Epoch* · Onchain.Aerodrome.Epoch — weekly ve(3,3) epoch arithmetic [D:3/B:7/U:9 → Eff:2.67] 🎯 |
-| Task 5003 | ✅ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.Abi* · Decode strategy and Bindings.Abi signature plumbing from priv/abis [D:5/B:8/U:8 → Eff:1.6] 🚀 |
-| Task 5004 | ✅ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Mix.Tasks.Aerodrome.CaptureFixtures* · Golden-fixture capture harness: pinned-block eth_call fixtures and an offline loader [D:4/B:7/U:8 → Eff:1.88] 🚀 |
-| Task 5005 `[P]` | ✅ | 🎁 **onchain_aerodrome_foundations** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.RPCCase* · Onchain.Aerodrome.RPCCase — the first multi-endpoint portability test seam in the family [D:4/B:7/U:8 → Eff:1.88] 🚀 |
-| Task 9021 | ✅ | 🎁 **onchain_aerodrome_foundations** · Add nonempty live Position and Reward fixtures with nonvacuous decode assertions [D:4/B:7/U:7 → Eff:1.75] 🚀 |
+> 6 tasks. See [CHANGELOG.md](CHANGELOG.md#phase-5001-onchain-aerodrome-foundations-layer-gate).
 <!-- TASKS:END -->
 
 ### Phase 5002: Types
 
 <!-- TASKS:BEGIN phase=5002 -->
-| Task | Status | Notes |
-|------|--------|-------|
-| Task 5006 `[P]` | ✅ | 🎁 **onchain_aerodrome_types** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Types.Lp* · Types.Lp, .Position, .Swap and .Token — the pool and token structs, with ABI drift tests [D:5/B:8/U:8 → Eff:1.6] 🚀 |
-| Task 5007 `[P]` | ✅ | 🎁 **onchain_aerodrome_types** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Types.VeNFT* · Types.VeNFT, .Vote, .Relay, .LpEpoch and .Reward — the veAERO structs, with ABI drift tests [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+> 2 tasks. See [CHANGELOG.md](CHANGELOG.md#phase-5002-onchain-aerodrome-types).
 <!-- TASKS:END -->
 
 ### Phase 5003: Bindings
@@ -596,19 +588,19 @@
 <!-- TASKS:BEGIN phase=6003 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 6028 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_evm* · Rust unit tests for `onchain_evm` — transport-error classification, tx building, block parsing, error encoding [D:5/B:8/U:8 → Eff:1.6] 🚀 |
-| Task 6029 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec [D:5/B:9/U:8 → Eff:1.7] 🚀 |
-| Task 6033 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_evm* · Spike: measure whether per-call tokio runtime creation costs anything before reusing one [D:3/B:4/U:4 → Eff:1.33] 📋 |
-| Task 6043 | ✅ | 🎁 **onchain_evm_standalone** · *Both native crates* · Gate the Rust half: run `cargo test` and `cargo clippy` from `mix ci` [D:4/B:8/U:6 → Eff:1.75] 🚀 |
-| Task 6044 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Stop leaking Rust `Debug` renderings into Elixir error and type strings [D:4/B:7/U:6 → Eff:1.62] 🚀 |
+| Task 6028 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_evm* · Rust unit tests for `onchain_evm` — transport-error classification, tx building, block parsing, error encoding [D:5/B:8/U:8 → Eff:1.6?] 🚀 |
+| Task 6029 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Rust unit tests for `onchain_solidity` — ABI parsing, selectors, type canonicalization, NatSpec [D:5/B:9/U:8 → Eff:1.7?] 🚀 |
+| Task 6033 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_evm* · Spike: measure whether per-call tokio runtime creation costs anything before reusing one [D:3/B:4/U:4 → Eff:1.33?] 📋 |
+| Task 6043 | ✅ | 🎁 **onchain_evm_standalone** · *Both native crates* · Gate the Rust half: run `cargo test` and `cargo clippy` from `mix ci` [D:4/B:8/U:6 → Eff:1.75?] 🚀 |
+| Task 6044 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Stop leaking Rust `Debug` renderings into Elixir error and type strings [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
 | Task 6051 | ⛔ | 🎁 **onchain_evm_standalone** · *(cross-cutting research)* · Mine `defi-skills:intent-to-transaction` action surface for `onchain_evm` simulation coverage [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
 | Task 6052 | ✅ | 🎁 **onchain_evm_standalone** · *Onchain.Contract.Generator* · Codegen-emit per-contract Multicall helper modules [D:5/B:7/U:6 → Eff:1.3?] 📋 |
 | Task 6053 | ✅ | 🎁 **onchain_evm_standalone** · *Both native crates* · Adopt `rustler_precompiled` for both native crates — artifacts cross-built locally with cargo-zigbuild [D:6/B:8/U:8 → Eff:1.33?] 📋 |
 | Task 6056 | ✅ | 🎁 **onchain_evm_standalone** · 🔒 Independent EVM semantics and exact-bytecode verification harness [D:8/B:10/U:8 → Eff:1.12?] 📋 |
-| Task 6059 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax [D:3/B:8/U:7 → Eff:2.5] 🎯 |
-| Task 6061 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Migrate Solidity source parsing from solang-parser to solar-parse [D:6/B:8/U:7 → Eff:1.25] 📋 |
-| Task 6062 | ✅ | 🎁 **onchain_evm_standalone** · *release* · Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex [D:4/B:9/U:8 → Eff:2.12] 🎯 |
-| Task 6063 | ✅ | 🎁 **onchain_evm_standalone** · Close the assertion gap in the semantics harness: every vector asserted against every key the oracle checks [D:5/B:8/U:6 → Eff:1.4] 📋 |
+| Task 6059 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Spike: pick a Solidity parser frontend that understands post-0.8.24 syntax [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
+| Task 6061 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Migrate Solidity source parsing from solang-parser to solar-parse [D:6/B:8/U:7 → Eff:1.25?] 📋 |
+| Task 6062 | ✅ | 🎁 **onchain_evm_standalone** · *release* · Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex [D:4/B:9/U:8 → Eff:2.12?] 🎯 |
+| Task 6063 | ✅ | 🎁 **onchain_evm_standalone** · Close the assertion gap in the semantics harness: every vector asserted against every key the oracle checks [D:5/B:8/U:6 → Eff:1.4?] 📋 |
 | Task 6064 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_evm, Onchain.EVM* · Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch [D:5/B:9/U:8 → Eff:1.7] 🚀 |
 | Task 6065 | ⬜ | 🎁 **onchain_evm_standalone** · *Onchain.EVM* · simulate_batch: per-call value and sender, so ETH-bearing and multi-actor sequences are simulable [D:5/B:7/U:6 → Eff:1.3] 📋 |
 | Task 9019 | ✅ | 🎁 **onchain_evm_standalone** · 🐛 Preserve fork chain identity through every simulation path [D:3/B:9/U:8 → Eff:2.83] 🎯 |
@@ -623,7 +615,7 @@
 <!-- TASKS:BEGIN phase=7001 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 7001 | 🔄 | 🎁 **onchain_js_foundation** · 🚀 **onchain_js_v0_3** · QuickBEAM foundation [D:3/B:7/U:8 → Eff:2.5?] 🎯 |
+| Task 7001 | ⬜ | 🎁 **onchain_js_foundation** · 🚀 **onchain_js_v0_3** · QuickBEAM foundation [D:3/B:7/U:8 → Eff:2.5?] 🎯 |
 <!-- TASKS:END -->
 
 ### Phase 7002: Ethereum JS Tools
@@ -632,9 +624,9 @@
 | Task | Status | Notes |
 |------|--------|-------|
 | Task 7002 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_3** · *OnchainJs.Solc* · solc-js compilation (.sol → ABI + bytecode) [D:4/B:9/U:8 → Eff:2.12?] 🎯 |
-| Task 7003 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · *OnchainJs.Uniswap* · Uniswap v3 SDK routing (optimal swap paths, price impact) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
-| Task 7004 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · DeFiSaver recipe builder (@defisaver/sdk) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
-| Task 7005 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · 1inch Fusion SDK (DEX aggregation) [D:5/B:7/U:6 → Eff:1.3?] 📋 |
+| Task 7003 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · *OnchainJs.Uniswap* · Uniswap v3 SDK routing (optimal swap paths, price impact) [D:5/B:5/U:7 → Eff:1.2] 📋 |
+| Task 7004 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · DeFiSaver recipe builder (@defisaver/sdk) [D:5/B:5/U:7 → Eff:1.2] 📋 |
+| Task 7005 | ⬜ | 🎁 **onchain_js_eth_tools** · 🚀 **onchain_js_v0_4** · 1inch Fusion SDK (DEX aggregation) [D:5/B:5/U:6 → Eff:1.1] 📋 |
 <!-- TASKS:END -->
 
 ### Phase 7003: Cross-Validation & Utilities
@@ -685,7 +677,7 @@
 <!-- TASKS:BEGIN phase=9001 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 9001 | ⬜ | 🎁 **onchain_morpho_reads** · *Onchain.Morpho* · Found onchain_morpho: Morpho Blue market, position and oracle reads on mainnet and Base [D:6/B:8/U:7 → Eff:1.25] 📋 |
+| Task 9001 | ⬜ | 🎁 **onchain_morpho_reads** · *Onchain.Morpho* · Found onchain_morpho: Morpho Blue market, position and oracle reads on mainnet and Base [D:6/B:6/U:7 → Eff:1.08] 📋 |
 <!-- TASKS:END -->
 
 ---
