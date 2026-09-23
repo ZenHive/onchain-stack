@@ -1041,6 +1041,8 @@ mix test.json --quiet --only sepolia_send      # Sepolia write tests
 
 Integration tests require `ETHEREUM_API_URL` or `ETH_RPC_URL` env var.
 Sepolia write tests additionally require `ETH_SEPOLIA_PRIVATE_KEY` and `ETH_SEPOLIA_RPC_URL`.
+Base Sepolia address verification requires `BASE_SEPOLIA_RPC_URL` (read-only; the public
+`https://sepolia.base.org` endpoint is enough).
 
 ## Contract Address Verification
 

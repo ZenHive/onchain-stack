@@ -39,6 +39,68 @@ defmodule Onchain.Aave.Contracts.IntegrationTest do
     end
   end
 
+  defp base_sepolia_rpc_opts do
+    [rpc_url: Onchain.SignerCase.base_sepolia_rpc_url!()]
+  end
+
+  describe "Base Sepolia on-chain address verification" do
+    test "PoolAddressesProvider.getPool() matches stored :pool for Base Sepolia" do
+      {:ok, provider_addr} = Contracts.address(:pool_addresses_provider, network: :base_sepolia)
+      {:ok, calldata} = ABI.encode_call("getPool()", [])
+      {:ok, hex_result} = RPC.eth_call(provider_addr, calldata, base_sepolia_rpc_opts())
+      {:ok, [pool_addr_raw]} = ABI.decode_response("(address)", hex_result)
+
+      {:ok, pool_on_chain} = Onchain.Address.checksum(pool_addr_raw)
+      {:ok, pool_stored} = Contracts.address(:pool, network: :base_sepolia)
+
+      assert Onchain.Address.equal?(pool_on_chain, pool_stored),
+             "On-chain pool #{pool_on_chain} != stored #{pool_stored}"
+    end
+
+    test "PoolAddressesProvider.getPriceOracle() matches stored :oracle for Base Sepolia" do
+      {:ok, provider_addr} = Contracts.address(:pool_addresses_provider, network: :base_sepolia)
+      {:ok, calldata} = ABI.encode_call("getPriceOracle()", [])
+      {:ok, hex_result} = RPC.eth_call(provider_addr, calldata, base_sepolia_rpc_opts())
+      {:ok, [oracle_addr_raw]} = ABI.decode_response("(address)", hex_result)
+
+      {:ok, oracle_on_chain} = Onchain.Address.checksum(oracle_addr_raw)
+      {:ok, oracle_stored} = Contracts.address(:oracle, network: :base_sepolia)
+
+      assert Onchain.Address.equal?(oracle_on_chain, oracle_stored),
+             "On-chain oracle #{oracle_on_chain} != stored #{oracle_stored}"
+    end
+
+    test "UiPoolDataProvider.getReservesList(provider) returns reserves on Base Sepolia" do
+      {:ok, ui_pool_data_provider} = Contracts.address(:ui_pool_data_provider, network: :base_sepolia)
+      {:ok, provider_addr} = Contracts.address(:pool_addresses_provider, network: :base_sepolia)
+      {:ok, provider_addr_bin} = Onchain.Address.validate(provider_addr)
+      {:ok, calldata} = ABI.encode_call("getReservesList(address)", [provider_addr_bin])
+      {:ok, hex_result} = RPC.eth_call(ui_pool_data_provider, calldata, base_sepolia_rpc_opts())
+      {:ok, [reserves]} = ABI.decode_response("(address[])", hex_result)
+
+      assert reserves != [], "Base Sepolia market has no reserves"
+      assert Enum.all?(reserves, &Onchain.Address.valid?/1)
+    end
+
+    test "Faucet is unpermissioned and mint(token,to,amount) simulates on Base Sepolia" do
+      {:ok, faucet_addr} = Contracts.address(:faucet, network: :base_sepolia)
+      {:ok, calldata} = ABI.encode_call("isPermissioned()", [])
+      {:ok, hex_result} = RPC.eth_call(faucet_addr, calldata, base_sepolia_rpc_opts())
+      {:ok, [permissioned]} = ABI.decode_response("(bool)", hex_result)
+      refute permissioned, "Base Sepolia faucet is permissioned; Faucet.mint/4 would revert"
+
+      # Read-only simulation of the exact call Onchain.Aave.Faucet.mint/4 signs —
+      # proves the ABI and the USDC reserve (address-book USDC_UNDERLYING) line up.
+      {:ok, usdc_bin} = Onchain.Address.validate("0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f")
+      {:ok, to_bin} = Onchain.Address.validate("0x1111111111111111111111111111111111111111")
+      amount = 1_000_000
+      {:ok, calldata} = ABI.encode_call("mint(address,address,uint256)", [usdc_bin, to_bin, amount])
+      {:ok, hex_result} = RPC.eth_call(faucet_addr, calldata, base_sepolia_rpc_opts())
+      {:ok, [minted]} = ABI.decode_response("(uint256)", hex_result)
+      assert minted == amount
+    end
+  end
+
   describe "on-chain address verification" do
     test "PoolAddressesProvider.getPool() matches stored :pool address" do
       {:ok, provider_addr} = Contracts.address(:pool_addresses_provider)

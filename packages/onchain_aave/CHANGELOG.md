@@ -4,6 +4,20 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## v0.6.0 — Aave v3 Base Sepolia addresses (2026-09-23)
+
+### Added
+
+- `Onchain.Aave.Contracts` knows Aave v3 **Base Sepolia** (chain 84532):
+  `pool_addresses_provider`, `pool`, `oracle`, `ui_pool_data_provider` from
+  BGD Labs aave-address-book `AaveV3BaseSepolia.sol`, plus the faucet the
+  Aave interface market config uses. Every read that takes `network:` accepts
+  `:base_sepolia`.
+- `contracts_integration_test.exs` verifies all five Base Sepolia entries
+  against the chain (`getPool`, `getPriceOracle`, `getReservesList`, faucet
+  `isPermissioned` + a read-only `mint` simulation); needs
+  `BASE_SEPOLIA_RPC_URL` (`Onchain.SignerCase.base_sepolia_rpc_url!/0`).
+
 ## v0.5.0 — V4 position wrappers, debt-token reads, stable-rate retirement (2026-09-16)
 
 ### Fixed
