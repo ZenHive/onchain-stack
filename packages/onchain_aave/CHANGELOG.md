@@ -4,7 +4,7 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## Unreleased
+## v0.6.0 — Aave v3 Base Sepolia addresses (2026-09-23)
 
 ### Added
 
