@@ -13,6 +13,10 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
   BGD Labs aave-address-book `AaveV3BaseSepolia.sol`, plus the faucet the
   Aave interface market config uses. Every read that takes `network:` accepts
   `:base_sepolia`.
+- `contracts_integration_test.exs` verifies all five Base Sepolia entries
+  against the chain (`getPool`, `getPriceOracle`, `getReservesList`, faucet
+  `isPermissioned` + a read-only `mint` simulation); needs
+  `BASE_SEPOLIA_RPC_URL` (`Onchain.SignerCase.base_sepolia_rpc_url!/0`).
 
 ## v0.5.0 — V4 position wrappers, debt-token reads, stable-rate retirement (2026-09-16)
 

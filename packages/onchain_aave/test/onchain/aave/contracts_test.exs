@@ -167,15 +167,28 @@ defmodule Onchain.Aave.ContractsTest do
       assert :faucet in keys
     end
 
-    test "base_sepolia has exactly 5 contract keys and the address-book pool" do
+    test "base_sepolia has exactly 5 contract keys" do
       assert {:ok, keys} = Contracts.contracts(network: :base_sepolia)
       assert match?([_, _, _, _, _], keys), "Base Sepolia has #{length(keys)} keys: #{inspect(keys)}"
       assert :faucet in keys
+    end
 
-      assert {:ok, "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27"} = Contracts.address(:pool, network: :base_sepolia)
+    # Pinned to BGD Labs aave-address-book `AaveV3BaseSepolia.sol` (first four)
+    # and aave/interface `marketsConfig.tsx` `proto_base_sepolia_v3.FAUCET`.
+    # `contracts_integration_test.exs` proves the same five against the chain.
+    test "base_sepolia addresses match the address book exactly" do
+      expected = %{
+        pool_addresses_provider: "0xE4C23309117Aa30342BFaae6c95c6478e0A4Ad00",
+        pool: "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27",
+        oracle: "0x943b0dE18d4abf4eF02A85912F8fc07684C141dF",
+        ui_pool_data_provider: "0x3cB7B00B6C09B71998124196691e8bF2694De863",
+        faucet: "0xD9145b5F45Ad4519c7ACcD6E0A4A82e83bB8A6Dc"
+      }
 
-      assert {:ok, "0xE4C23309117Aa30342BFaae6c95c6478e0A4Ad00"} =
-               Contracts.address(:pool_addresses_provider, network: :base_sepolia)
+      for {key, address} <- expected do
+        assert {:ok, ^address} = Contracts.address(key, network: :base_sepolia),
+               "Base Sepolia #{key} drifted from the address book"
+      end
     end
 
     test "sepolia has faucet contract" do

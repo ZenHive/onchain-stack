@@ -8,7 +8,8 @@ defmodule Onchain.Aave.Contracts do
   ## Supported Networks
 
   Ethereum, Arbitrum, Optimism, Base, Polygon, Avalanche (all Aave V3 mainnet),
-  and Sepolia (V3 testnet). Aave V4 supports Ethereum and Avalanche.
+  Sepolia (V3 testnet, chain 11155111) and Base Sepolia (V3 testnet, chain
+  84532). Aave V4 supports Ethereum and Avalanche.
 
   ## V4 Address Shape
 

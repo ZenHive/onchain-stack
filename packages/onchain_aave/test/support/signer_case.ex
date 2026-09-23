@@ -42,6 +42,20 @@ defmodule Onchain.SignerCase do
   end
 
   @doc false
+  @spec base_sepolia_rpc_url!() :: String.t()
+  def base_sepolia_rpc_url! do
+    System.get_env("BASE_SEPOLIA_RPC_URL") ||
+      ExUnit.Assertions.flunk("""
+      Missing Base Sepolia RPC URL!
+
+      Set this environment variable:
+        export BASE_SEPOLIA_RPC_URL="https://base-sepolia.g.alchemy.com/v2/YOUR_KEY"
+
+      The public endpoint https://sepolia.base.org also works for read-only tests.
+      """)
+  end
+
+  @doc false
   # Polls get_transaction_receipt until it returns a non-nil result or times out.
   @spec wait_for_receipt(String.t(), keyword()) :: {:ok, term()} | {:error, term()}
   def wait_for_receipt(tx_hash, opts \\ []) do
