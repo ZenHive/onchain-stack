@@ -45,7 +45,7 @@ config :cartouche,
 
 Each entry under `:signer` becomes a supervised `Cartouche.Signer` GenServer; the `:default` name is special — it's registered as `Cartouche.Signer.Default` and used when a caller doesn't pass `:signer` explicitly. Solana mirrors this with `:solana_node` and `:solana_signer`.
 
-> **Production tip — direct cartouche use:** if you're embedding cartouche directly to operate a server-side hot wallet (relayer, fee payer, treasury, oracle), prefer the `:cloud_kms` signer spec over `:priv_key` in production — `Cartouche.Signer.Curvy` keeps the key in BEAM memory, while Cloud KMS keeps it in GCP HSM and gives you per-call audit logs. Consumers reaching cartouche through the `onchain` wrapper inherit whatever signer that layer configures.
+> **Production tip — direct cartouche use:** if you're embedding cartouche directly to operate a server-side hot wallet (relayer, fee payer, treasury, oracle), prefer the `:cloud_kms` signer spec over `:priv_key` in production — `Cartouche.Signer.Secp256k1` keeps the key in BEAM memory, while Cloud KMS keeps it in GCP HSM and gives you per-call audit logs. Consumers reaching cartouche through the `onchain` wrapper inherit whatever signer that layer configures.
 
 | Key | Default | Purpose |
 | --- | --- | --- |
@@ -202,7 +202,7 @@ To start a signer manually (e.g. in a test):
 ```elixir
 {:ok, pid} =
   Cartouche.Signer.start_link(
-    mfa: {Cartouche.Signer.Curvy, :sign, [private_key_bytes]},
+    mfa: {Cartouche.Signer.Secp256k1, :sign, [private_key_bytes]},
     name: MySigner
   )
 
@@ -395,3 +395,19 @@ Cartouche is a fork of `hayesgm/signet`. We upstream fixes where it makes sense.
 ## License
 
 MIT. See `LICENSE`.
+
+## Migrating to 0.10
+
+The local secp256k1 backend is now `Cartouche.Signer.Secp256k1`, using
+`ex_secp256k1`'s precompiled RustCrypto k256 NIF for deterministic signing,
+public-key derivation, and recovery. The former backend module has been renamed.
+
+Replace `Cartouche.Signer.Curvy` with `Cartouche.Signer.Secp256k1` and
+`%Curvy.Signature{crv: :secp256k1, r: r, s: s, recid: recid}` with
+`%Cartouche.Signature{r: r, s: s, recid: recid}`. Backend callbacks and recovery
+functions now accept the Cartouche-owned type. Local signatures include a
+recovery ID; DER-parsed KMS signatures leave it nil. Invalid private keys return
+error tuples. Packed Ethereum signatures and transaction encoding are unchanged.
+
+Consumers that pattern-match on the old struct, including the standalone mpp
+application, must migrate before adopting this minor release.

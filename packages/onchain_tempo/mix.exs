@@ -14,7 +14,7 @@ end
 defmodule OnchainTempo.MixProject do
   use Mix.Project
 
-  @version "0.10.1"
+  @version "0.11.0"
   @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
@@ -88,7 +88,7 @@ defmodule OnchainTempo.MixProject do
       # Direct dep: lib/onchain/tempo/transaction{,/builder}.ex call Cartouche
       # (Signer, Transaction, RPC) themselves rather than only through onchain.
       # 0.6 is the floor that lifts cartouche's transitive `req < 0.7` cap.
-      sibling(:cartouche, "~> 0.6"),
+      sibling(:cartouche, "~> 0.10"),
       # Widened from `~> 0.5`: two-segment, so it always admitted 0.7.x, but the
       # stale floor understated what actually resolves here.
       {:req, "~> 0.6 or ~> 0.7"},

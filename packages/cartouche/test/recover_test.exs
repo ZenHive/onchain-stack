@@ -3,6 +3,7 @@ defmodule Cartouche.RecoverTest do
   use Cartouche.Hex
 
   alias Cartouche.Recover
+  alias Cartouche.Signer.Secp256k1
 
   doctest Recover
 
@@ -15,7 +16,7 @@ defmodule Cartouche.RecoverTest do
   describe "normalize_low_s/1" do
     test "flips a high-s signature to its low-s counterpart and clears recid" do
       high_s = @secp256k1_n - 1
-      sig = %Curvy.Signature{crv: :secp256k1, r: 123, s: high_s, recid: 1}
+      sig = %Cartouche.Signature{r: 123, s: high_s, recid: 1}
 
       normalized = Recover.normalize_low_s(sig)
 
@@ -26,12 +27,12 @@ defmodule Cartouche.RecoverTest do
     end
 
     test "leaves an already-low-s signature unchanged" do
-      sig = %Curvy.Signature{crv: :secp256k1, r: 7, s: 9, recid: 0}
+      sig = %Cartouche.Signature{r: 7, s: 9, recid: 0}
       assert Recover.normalize_low_s(sig) == sig
     end
 
     test "is idempotent" do
-      sig = %Curvy.Signature{crv: :secp256k1, r: 7, s: @secp256k1_n - 5, recid: 1}
+      sig = %Cartouche.Signature{r: 7, s: @secp256k1_n - 5, recid: 1}
       once = Recover.normalize_low_s(sig)
       assert Recover.normalize_low_s(once) == once
     end
@@ -42,7 +43,7 @@ defmodule Cartouche.RecoverTest do
       # Sign over a real keccak digest so the digest-native and message-based
       # paths can be cross-checked.
       digest = Cartouche.Hash.keccak("test")
-      {:ok, sig} = Cartouche.Signer.Curvy.sign_payload(digest, @priv_key)
+      {:ok, sig} = Secp256k1.sign_payload(digest, @priv_key)
       {:ok, recid} = Recover.find_recid_from_digest(digest, sig, @address)
       %{digest: digest, sig: %{sig | recid: recid}, recid: recid}
     end
@@ -81,7 +82,7 @@ defmodule Cartouche.RecoverTest do
       # that is NOT keccak of any plain message, and recovery operates on it
       # directly with no re-hashing.
       typed_digest = :crypto.strong_rand_bytes(32)
-      {:ok, sig} = Cartouche.Signer.Curvy.sign_payload(typed_digest, @priv_key)
+      {:ok, sig} = Secp256k1.sign_payload(typed_digest, @priv_key)
       {:ok, recid} = Recover.find_recid_from_digest(typed_digest, sig, @address)
 
       assert Recover.recover_eth_from_digest(typed_digest, %{sig | recid: recid}) == @address
@@ -92,7 +93,7 @@ defmodule Cartouche.RecoverTest do
     test "digest and message recovery preserve the signer for both signature forms" do
       message = "high-s recovery regression"
       digest = Cartouche.Hash.keccak(message)
-      public_key = @priv_key |> Curvy.Key.from_privkey() |> Curvy.Key.to_pubkey(compressed: false)
+      {:ok, public_key} = Secp256k1.public_key(@priv_key)
 
       for signature <- equivalent_signatures(message) do
         assert Recover.recover_public_key_from_digest(digest, signature) == public_key
@@ -114,7 +115,7 @@ defmodule Cartouche.RecoverTest do
 
       transaction = V1.new(1, {1, :gwei}, 21_000, @address, {1, :wei}, <<>>, 1)
       encoded = V1.encode(transaction)
-      backend = {Cartouche.Signer.Curvy, :sign, [@priv_key]}
+      backend = {Secp256k1, :sign, [@priv_key]}
       assert {:ok, <<r::256, s::256, v>>} = Cartouche.Signer.sign_direct(encoded, @address, backend, 1)
       assert s <= div(@secp256k1_n, 2)
       # Mainnet EIP-155 v is 37/38; flip parity without changing the chain.
@@ -128,7 +129,7 @@ defmodule Cartouche.RecoverTest do
   end
 
   defp equivalent_signatures(message) do
-    assert {:ok, signature} = Cartouche.Signer.Curvy.sign(message, @priv_key)
+    assert {:ok, signature} = Secp256k1.sign(message, @priv_key)
     assert {:ok, recid} = Recover.find_recid(message, signature, @address)
     assert signature.s <= div(@secp256k1_n, 2)
     low = %{signature | recid: recid}
@@ -146,7 +147,7 @@ defmodule Cartouche.RecoverTest do
 
   describe "signature decoding" do
     test "recovers from a 0x-prefixed hex-string signature" do
-      {:ok, sig} = Cartouche.Signer.Curvy.sign("test", @priv_key)
+      {:ok, sig} = Secp256k1.sign("test", @priv_key)
       {:ok, recid} = Recover.find_recid("test", sig, @address)
 
       hex_signature = Hex.encode_hex(<<sig.r::256, sig.s::256, recid>>)
@@ -155,7 +156,7 @@ defmodule Cartouche.RecoverTest do
     end
 
     test "recovers from a packed signature whose EIP-155 v is wider than one byte" do
-      {:ok, sig} = Cartouche.Signer.Curvy.sign("test", @priv_key)
+      {:ok, sig} = Secp256k1.sign("test", @priv_key)
       {:ok, recid} = Recover.find_recid("test", sig, @address)
       packed = <<sig.r::256, sig.s::256>> <> :binary.encode_unsigned(8453 * 2 + 35 + recid)
 
@@ -178,7 +179,7 @@ defmodule Cartouche.RecoverTest do
 
     test "recover_personal_sign/2 applies the prefix so a wallet signature recovers" do
       prefixed = Recover.prefix_eth("café")
-      {:ok, sig} = Cartouche.Signer.Curvy.sign(prefixed, @priv_key)
+      {:ok, sig} = Secp256k1.sign(prefixed, @priv_key)
       {:ok, recid} = Recover.find_recid(prefixed, sig, @address)
       packed = <<sig.r::256, sig.s::256, 27 + recid>>
 
@@ -189,33 +190,28 @@ defmodule Cartouche.RecoverTest do
 end
 
 defmodule Cartouche.RecoverHighRecidTest do
-  use ExUnit.Case, async: false
-  use Cartouche.Hex
+  use ExUnit.Case, async: true
 
   alias Cartouche.Recover
 
-  @priv_key ~h[0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf]
-  @address ~h[0x63CC7C25E0CDB121ABB0FE477A6B9901889F99A7]
-  @other_priv ~h[0x1111111111111111111111111111111111111111111111111111111111111111]
+  test "invalid scalars cannot recover or match an address" do
+    signature = %Cartouche.Signature{r: 0, s: 1, recid: 0}
 
-  # Curvy aliases recid 2/3 onto 0/1, so Enum.find/2 never returns >1 against a
-  # real recover. The production clause still has to reject an overflow-only
-  # match; stub recover_key so only recid 2/3 land on the expected address.
-  test "find_recid_from_digest rejects a match that exists only at recid 2 or 3" do
-    digest = <<1::256>>
-    signature = %Curvy.Signature{crv: :secp256k1, r: 1, s: 1, recid: nil}
-
-    :meck.new(Curvy, [:passthrough, :unstick, :no_link])
-
-    :meck.expect(Curvy, :recover_key, fn %Curvy.Signature{recid: recid}, _message, _opts ->
-      Curvy.Key.from_privkey(if(recid > 1, do: @priv_key, else: @other_priv))
-    end)
-
-    try do
-      assert {:error, reason} = Recover.find_recid_from_digest(digest, signature, @address)
-      assert reason =~ "too high recovery bit"
-    after
-      :meck.unload(Curvy)
+    assert_raise ArgumentError, ~r/Invalid secp256k1 signature/, fn ->
+      Recover.recover_eth_from_digest(<<1::256>>, signature)
     end
+
+    assert {:error, reason} = Recover.find_recid_from_digest(<<1::256>>, signature, <<0::160>>)
+    assert reason =~ "unable to recover"
+  end
+
+  test "find_recid_from_digest rejects a real overflow-only recovery" do
+    digest = <<1::256>>
+    # r=2 permits x=n+2, exercising k256's real recovery-ID overflow branch.
+    signature = %Cartouche.Signature{r: 2, s: 1, recid: 2}
+    address = Recover.recover_eth_from_digest(digest, signature)
+
+    assert {:error, "too high recovery bit 2"} =
+             Recover.find_recid_from_digest(digest, signature, address)
   end
 end

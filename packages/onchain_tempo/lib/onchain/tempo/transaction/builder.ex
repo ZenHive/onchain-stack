@@ -20,12 +20,12 @@ defmodule Onchain.Tempo.Transaction.Builder do
 
   ## Dependencies
 
-  Uses `Cartouche.Signer.Curvy` for signing (keccak + secp256k1),
+  Uses `Cartouche.Signer.Secp256k1` for signing (keccak + secp256k1),
   `Cartouche.Recover` for recovery bit, `ExRLP` for RLP encoding, and
   `Onchain.RPC` for nonce fetching and gas estimation. All available
   transitively via `onchain`.
   """
-  alias Cartouche.Signer.Curvy
+  alias Cartouche.Signer.Secp256k1
   alias Onchain.Tempo.TIP20
 
   # EIP-2718 type byte for Tempo Transactions.
@@ -84,7 +84,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
          {:ok, nonce_key} <- optional_opt(opts, :nonce_key, 0, &validate_uint(:nonce_key, &1)),
          {:ok, valid_before} <- optional_opt(opts, :valid_before, 0, &validate_uint(:valid_before, &1)),
          {:ok, valid_after} <- optional_opt(opts, :valid_after, 0, &validate_uint(:valid_after, &1)),
-         {:ok, sender_address} <- Curvy.get_address(private_key),
+         {:ok, sender_address} <- Secp256k1.get_address(private_key),
          {:ok, nonce} <- resolve_nonce(opts, sender_address, rpc_url),
          calldata = TIP20.transfer_calldata(recipient, amount),
          call = [token, <<>>, calldata],
@@ -144,7 +144,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
          {:ok, nonce_key} <- optional_opt(opts, :nonce_key, 0, &validate_uint(:nonce_key, &1)),
          {:ok, valid_before} <- optional_opt(opts, :valid_before, 0, &validate_uint(:valid_before, &1)),
          {:ok, valid_after} <- optional_opt(opts, :valid_after, 0, &validate_uint(:valid_after, &1)),
-         {:ok, sender_address} <- Curvy.get_address(private_key),
+         {:ok, sender_address} <- Secp256k1.get_address(private_key),
          {:ok, nonce} <- resolve_nonce(opts, sender_address, rpc_url),
          {:ok, gas_limit} <- resolve_gas_limit(opts, calls, sender_address, rpc_url) do
       base_fields = [
@@ -188,7 +188,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
          {:ok, nonce_key} <- optional_opt(opts, :nonce_key, 0, &validate_uint(:nonce_key, &1)),
          {:ok, valid_before} <- optional_opt(opts, :valid_before, 0, &validate_uint(:valid_before, &1)),
          {:ok, valid_after} <- optional_opt(opts, :valid_after, 0, &validate_uint(:valid_after, &1)),
-         {:ok, sender_address} <- Curvy.get_address(private_key),
+         {:ok, sender_address} <- Secp256k1.get_address(private_key),
          {:ok, nonce} <- resolve_nonce(opts, sender_address, rpc_url),
          calldata = TIP20.transfer_calldata(recipient, amount),
          call = [token, <<>>, calldata],
@@ -228,7 +228,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
          {:ok, nonce_key} <- optional_opt(opts, :nonce_key, 0, &validate_uint(:nonce_key, &1)),
          {:ok, valid_before} <- optional_opt(opts, :valid_before, 0, &validate_uint(:valid_before, &1)),
          {:ok, valid_after} <- optional_opt(opts, :valid_after, 0, &validate_uint(:valid_after, &1)),
-         {:ok, sender_address} <- Curvy.get_address(private_key),
+         {:ok, sender_address} <- Secp256k1.get_address(private_key),
          {:ok, nonce} <- resolve_nonce(opts, sender_address, rpc_url),
          {:ok, gas_limit} <- resolve_gas_limit(opts, calls, sender_address, rpc_url) do
       base_fields = [
@@ -257,7 +257,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
   defp sign_and_encode(base_fields, private_key, sender_address) do
     signing_payload = <<@tempo_tx_type>> <> rlp_encode(base_fields)
 
-    with {:ok, sig} <- Curvy.sign(signing_payload, private_key),
+    with {:ok, sig} <- Secp256k1.sign(signing_payload, private_key),
          {:ok, recid} <- Cartouche.Recover.find_recid(signing_payload, sig, sender_address) do
       # Encode yParity as legacy v-value (27/28) to match ox/tempo convention.
       v = recid + 27

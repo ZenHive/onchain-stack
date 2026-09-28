@@ -2,7 +2,7 @@ defmodule Cartouche.Signer do
   @moduledoc """
   Cartouche.Signer is a GenServer which can sign messages. The runtime carrier
   is a `{backend_module, config}` pair implementing `Cartouche.Signer.Backend`
-  (for instance `Cartouche.Signer.Curvy` with a local key, or
+  (for instance `Cartouche.Signer.Secp256k1` with a local key, or
   `Cartouche.Signer.CloudKMS` with GCP Cloud KMS coordinates). A legacy
   `{module, function, args}` MFA is also accepted so existing call sites
   (`Cartouche.Signer.sign_direct/4`, and `start_link/1` handed a 3-tuple)
@@ -333,7 +333,7 @@ defmodule Cartouche.Signer do
   @spec sign_direct(String.t(), binary(), {module(), atom(), [any()]}, integer() | atom() | nil) ::
           {:ok, Cartouche.signature()} | {:error, String.t()}
   def sign_direct(message, address, {mod, fun, args}, chain_id_or_name) do
-    with {:ok, %Curvy.Signature{crv: :secp256k1, recid: nil} = signature} <-
+    with {:ok, %Cartouche.Signature{} = signature} <-
            apply(mod, fun, [message] ++ args) do
       emit_signature(keccak(message), signature, address, chain_id_or_name)
     end
@@ -383,7 +383,7 @@ defmodule Cartouche.Signer do
   # Sole packed-signature emission funnel. Low-s is applied here, before recid search,
   # so a high-s backend cannot produce a malleable signature and flipping s
   # cannot leave a stale recovery bit.
-  @spec emit_signature(<<_::256>>, Curvy.Signature.t(), binary(), integer() | atom() | nil) ::
+  @spec emit_signature(<<_::256>>, Cartouche.Signature.t(), binary(), integer() | atom() | nil) ::
           {:ok, Cartouche.signature()} | {:error, term()}
   defp emit_signature(digest, raw_signature, address, chain_id_or_name) do
     signature = Cartouche.Recover.normalize_low_s(raw_signature)
@@ -404,8 +404,8 @@ defmodule Cartouche.Signer do
   # bytes into it. A parity-only 65-byte form would write 0/1 or 27/28 into V1.v
   # and silently drop EIP-155 replay protection. Typed transactions already
   # extract y-parity from whatever width they receive.
-  @spec encode_eip155(Curvy.Signature.t(), 0..1, integer() | atom() | nil) :: Cartouche.signature()
-  defp encode_eip155(%Curvy.Signature{r: r, s: s}, recid, chain_id_or_name) do
+  @spec encode_eip155(Cartouche.Signature.t(), 0..1, integer() | atom() | nil) :: Cartouche.signature()
+  defp encode_eip155(%Cartouche.Signature{r: r, s: s}, recid, chain_id_or_name) do
     chain_id = Cartouche.Chain.chain_id_value(chain_id_or_name)
     v = if chain_id == 0, do: 27 + recid, else: chain_id * 2 + 35 + recid
 

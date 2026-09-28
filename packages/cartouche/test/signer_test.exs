@@ -3,7 +3,7 @@ defmodule Cartouche.SignerTest do
   use Cartouche.Hex
 
   alias Cartouche.Signer
-  alias Cartouche.Signer.Curvy
+  alias Cartouche.Signer.Secp256k1
   alias Cartouche.SignerTest.FixedSignature
   alias Cartouche.SignerTest.HighSBackend
 
@@ -30,7 +30,7 @@ defmodule Cartouche.SignerTest do
 
   describe "sign_direct/4" do
     test "produces a 65-byte EIP-155 signature recoverable to the address" do
-      mfa = {Curvy, :sign, [@priv_key]}
+      mfa = {Secp256k1, :sign, [@priv_key]}
 
       assert {:ok, <<_r::256, _s::256, _v::binary>> = sig} =
                Signer.sign_direct("test", @address, mfa, 0)
@@ -55,7 +55,7 @@ defmodule Cartouche.SignerTest do
 
   describe "{backend, config} carrier (pure-payload path)" do
     setup do
-      {:ok, pid} = Signer.start_link(mfa: {Curvy, @priv_key}, name: nil)
+      {:ok, pid} = Signer.start_link(mfa: {Secp256k1, @priv_key}, name: nil)
       %{signer: pid}
     end
 
@@ -114,7 +114,7 @@ defmodule Cartouche.SignerTest do
 
   describe "legacy MFA carrier" do
     test "start_link/1 still signs through a {module, function, args} triple" do
-      {:ok, pid} = Signer.start_link(mfa: {Curvy, :sign, [@priv_key]}, name: nil)
+      {:ok, pid} = Signer.start_link(mfa: {Secp256k1, :sign, [@priv_key]}, name: nil)
 
       assert Signer.address(pid) == @address
       assert {:ok, sig} = Signer.sign("test", pid)
@@ -140,9 +140,9 @@ defmodule Cartouche.SignerTest do
     end
   end
 
-  @spec high_s_signature(binary()) :: Curvy.Signature.t()
+  @spec high_s_signature(binary()) :: Cartouche.Signature.t()
   defp high_s_signature(message) do
-    {:ok, sig} = Curvy.sign(message, @priv_key)
+    {:ok, sig} = Secp256k1.sign(message, @priv_key)
     %{sig | s: @secp256k1_n - sig.s, recid: nil}
   end
 end

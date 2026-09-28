@@ -2,7 +2,7 @@ defmodule Onchain.Tempo.Verification.DifferentialTest do
   use ExUnit.Case, async: true
 
   alias Cartouche.Hash
-  alias Cartouche.Signer.Curvy
+  alias Cartouche.Signer.Secp256k1
   alias Onchain.Tempo.TIP20
   alias Onchain.Tempo.Transaction
   alias Onchain.Tempo.Transaction.Builder
@@ -61,7 +61,7 @@ defmodule Onchain.Tempo.Verification.DifferentialTest do
     assert SpecEncoder.to_hex(unsigned) == vec["unsigned"]
     assert "0x" <> Base.encode16(Hash.keccak(unsigned), case: :lower) == vec["sign_payload"]
 
-    {:ok, expected_sender} = Curvy.get_address(decode_key(keys["sender_private_key"]))
+    {:ok, expected_sender} = Secp256k1.get_address(decode_key(keys["sender_private_key"]))
     fp_payload = SpecEncoder.fee_payer_payload(Map.put(fields, :fee_token, @token), expected_sender)
     assert <<0x78, _::binary>> = fp_payload
     assert "0x" <> Base.encode16(Hash.keccak(fp_payload), case: :lower) == vec["fee_payer_sign_payload"]

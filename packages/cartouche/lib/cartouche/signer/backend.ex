@@ -16,7 +16,7 @@ defmodule Cartouche.Signer.Backend do
 
     * `:secp256k1` backends receive a **32-byte digest** (e.g. the keccak of an
       Ethereum tx, or a pre-computed EIP-712 / Hyperliquid typed-data hash) and
-      return a `Curvy.Signature` struct (`r`/`s`, `recid: nil` — recovery is the
+      return a `Cartouche.Signature` struct (`r`/`s`, optional `recid` — recovery is the
       caller's job).
     * `:ed25519` backends receive the **raw message bytes** (Ed25519 hashes
       internally, SHA-512) and return a 64-byte signature.
@@ -30,12 +30,12 @@ defmodule Cartouche.Signer.Backend do
   Two concerns that vary by *transport*, not by *custody*, stay out of the
   backend so each new secp256k1 backend inherits them for free:
 
-    * **Low-s canonicalization** (EIP-2 malleability). Local Curvy already emits
+    * **Low-s canonicalization** (EIP-2 malleability). Local k256 already emits
       low-s; DER-decoded KMS output (AWS/Azure) does not. The caller normalizes
       with `Cartouche.Recover.normalize_low_s/1` after `c:sign_payload/2`
       returns, so the invariant is explicit and backend-agnostic.
-    * **Recovery-bit search** (`find_recid`). secp256k1 backends return
-      `recid: nil`; the caller brute-forces the recid against the known address
+    * **Recovery-bit search** (`find_recid`). secp256k1 backends may return
+      `recid: nil`; the caller verifies the recid against the known address
       over the **same digest** the backend signed
       (`Cartouche.Recover.find_recid_from_digest/3`).
 
@@ -43,7 +43,7 @@ defmodule Cartouche.Signer.Backend do
 
   An opaque, backend-specific term carrying everything the backend needs to
   authenticate and address a key — a raw private-key binary for
-  `Cartouche.Signer.Curvy`, a Cloud-KMS key-coordinate tuple for
+  `Cartouche.Signer.Secp256k1`, a Cloud-KMS key-coordinate tuple for
   `Cartouche.Signer.CloudKMS`, an Ed25519 seed for
   `Cartouche.Solana.Signer.Ed25519`. The runtime carries a backend as a
   `{module, config}` pair.
@@ -81,12 +81,12 @@ defmodule Cartouche.Signer.Backend do
   @doc """
   Sign the exact payload bytes handed in — no internal hashing.
 
-  `:secp256k1` ⇒ `payload` is a 32-byte digest; returns `{:ok, %Curvy.Signature{}}`
+  `:secp256k1` ⇒ `payload` is a 32-byte digest; returns `{:ok, %Cartouche.Signature{}}`
   with `recid: nil`. `:ed25519` ⇒ `payload` is the raw message; returns
   `{:ok, <<_::512>>}`.
   """
   @callback sign_payload(payload :: binary(), config()) ::
-              {:ok, Curvy.Signature.t() | <<_::512>>} | {:error, term()}
+              {:ok, Cartouche.Signature.t() | <<_::512>>} | {:error, term()}
 
   @doc """
   Reject a backend whose `c:algorithm/1` is not `expected`.

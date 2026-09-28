@@ -3,7 +3,7 @@ defmodule Onchain.Tempo.TransactionTest do
 
   import Onchain.Tempo.TestHelpers
 
-  alias Cartouche.Signer.Curvy
+  alias Cartouche.Signer.Secp256k1
   alias Onchain.Tempo.Transaction
   alias Onchain.Tempo.Transaction.Builder
 
@@ -565,13 +565,13 @@ defmodule Onchain.Tempo.TransactionTest do
     end
 
     test "sender/1 recovers the client sender from a co-signed transaction" do
-      {:ok, expected} = Curvy.get_address(@client_key)
+      {:ok, expected} = Secp256k1.get_address(@client_key)
       assert {:ok, ^expected} = Transaction.sender(cosigned_transfer([]))
     end
 
     test "sender/1 recovers the same sender from complement-s signature encodings" do
       tx = cosigned_transfer([])
-      {:ok, expected} = Curvy.get_address(@client_key)
+      {:ok, expected} = Secp256k1.get_address(@client_key)
       assert {:ok, ^expected} = Transaction.sender(tx)
 
       <<r::256, s::256, v::8>> = List.last(tx.fields)
@@ -605,7 +605,7 @@ defmodule Onchain.Tempo.TransactionTest do
     end
 
     test "simulate_request/1 builds the TempoTransactionRequest wire object" do
-      {:ok, expected_from} = Curvy.get_address(@client_key)
+      {:ok, expected_from} = Secp256k1.get_address(@client_key)
       {:ok, req} = Transaction.simulate_request(cosigned_transfer([]))
 
       assert req["from"] == "0x" <> Base.encode16(expected_from, case: :lower)

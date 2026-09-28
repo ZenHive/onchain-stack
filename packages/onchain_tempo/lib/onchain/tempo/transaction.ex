@@ -25,13 +25,13 @@ defmodule Onchain.Tempo.Transaction do
   ## Dependencies
 
   Uses `ExRLP` (available transitively via `cartouche` → `onchain`) for RLP
-  decoding. Signing uses `Cartouche.Signer.Curvy` and `Cartouche.Recover`
+  decoding. Signing uses `Cartouche.Signer.Secp256k1` and `Cartouche.Recover`
   directly because Tempo 0x76 is a non-standard transaction type.
   """
 
   alias Cartouche.Recover
-  alias Cartouche.Signer.Curvy, as: CurvySigner
-  alias Curvy.Signature, as: CurvySig
+  alias Cartouche.Signature
+  alias Cartouche.Signer.Secp256k1, as: Secp256k1Signer
   alias Onchain.Tempo.TIP20
 
   @enforce_keys [:chain_id, :calls, :raw]
@@ -243,8 +243,8 @@ defmodule Onchain.Tempo.Transaction do
       fp_preimage_fields = build_fee_payer_preimage_fields(base_fields, fee_token, sender_address, has_key_auth)
       fp_signing_payload = <<@fee_payer_domain>> <> rlp_encode(fp_preimage_fields)
 
-      with {:ok, fp_sig} <- CurvySigner.sign(fp_signing_payload, fee_payer_key),
-           {:ok, fp_address} <- CurvySigner.get_address(fee_payer_key),
+      with {:ok, fp_sig} <- Secp256k1Signer.sign(fp_signing_payload, fee_payer_key),
+           {:ok, fp_address} <- Secp256k1Signer.get_address(fee_payer_key),
            {:ok, fp_recid} <- Recover.find_recid(fp_signing_payload, fp_sig, fp_address) do
         fp_sig_tuple = [
           if(fp_recid == 1, do: <<1>>, else: <<>>),
@@ -412,19 +412,9 @@ defmodule Onchain.Tempo.Transaction do
   @dialyzer {:nowarn_function, recover_sender: 2}
   defp recover_sender(signing_payload, <<r::unsigned-big-size(256), s::unsigned-big-size(256), v::8>>) do
     recid = if v >= 27, do: v - 27, else: v
-    # Curvy 0.3.1 binds recid before Signature.normalize/1 flips it
-    # (https://github.com/libitx/curvy/issues/8). Pre-normalize so complement-s
-    # encodings recover the same sender.
-    sig = CurvySig.normalize(%CurvySig{crv: :secp256k1, r: r, s: s, recid: recid})
+    sig = Signature.normalize(%Signature{r: r, s: s, recid: recid})
     {:ok, Recover.recover_eth(signing_payload, sig)}
   rescue
-    # Narrowed to the failure modes a malformed *signature* actually produces:
-    # RuntimeError ("Recovery ID not in range 0..3"), FunctionClauseError
-    # (r/s off the curve, from Curvy.Key.from_point/2), plus the ArgumentError /
-    # ErlangError the crypto NIFs raise on bad operands. Anything else is a bug
-    # in our own code and must crash rather than be relabelled a recovery
-    # failure — a bare rescue here previously turned an UndefinedFunctionError
-    # into "Failed to recover sender: ...".
     e in [RuntimeError, FunctionClauseError, ArgumentError, ErlangError, MatchError] ->
       {:error, "Failed to recover sender: #{Exception.message(e)}"}
   end

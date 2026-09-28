@@ -55,7 +55,7 @@ defmodule Cartouche.Application do
   # accepted for backends not covered by a shorthand.
   @spec signer_mfa(tuple()) :: Backend.t()
   defp signer_mfa({:priv_key, priv_key}) do
-    {Cartouche.Signer.Curvy, Cartouche.Hex.decode_hex_input!(priv_key)}
+    {Cartouche.Signer.Secp256k1, Cartouche.Hex.decode_hex_input!(priv_key)}
   end
 
   defp signer_mfa({:cloud_kms, kms_credentials, key_path, version}) do

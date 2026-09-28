@@ -4,7 +4,7 @@ defmodule Onchain.SignerCase do
   # Reusable test helpers for transaction signing tests (tasks 12, 13, 14).
   # Provides credential loading from env vars and receipt polling.
 
-  alias Cartouche.Signer.Curvy
+  alias Cartouche.Signer.Secp256k1
 
   @poll_interval_ms 3_000
   @max_poll_attempts 20
@@ -27,7 +27,7 @@ defmodule Onchain.SignerCase do
   @spec signer_address!() :: String.t()
   def signer_address! do
     key_binary = Onchain.Hex.decode!(signer_key!())
-    {:ok, addr_binary} = Curvy.get_address(key_binary)
+    {:ok, addr_binary} = Secp256k1.get_address(key_binary)
     Onchain.Address.checksum!(addr_binary)
   end
 

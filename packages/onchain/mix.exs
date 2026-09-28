@@ -14,7 +14,7 @@ end
 defmodule Onchain.MixProject do
   use Mix.Project
 
-  @version "0.14.0"
+  @version "0.15.0"
   @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
@@ -77,7 +77,7 @@ defmodule Onchain.MixProject do
 
   defp deps do
     [
-      sibling(:cartouche, "~> 0.6"),
+      sibling(:cartouche, "~> 0.10"),
       {:decimal, "~> 3.1.1"},
       # Two-segment on purpose: the three-segment cap turned every descripex
       # minor into a forced nine-repo release cascade, while the committed
@@ -250,7 +250,7 @@ defmodule Onchain.MixProject do
       # Tidewave/bandit's HTTP stack (plug, finch, mint, gun, cowlib, etc.)
       # is not in lib/'s call graph and bloats PLT to ~800 modules.
       plt_add_deps: :apps_direct,
-      plt_add_apps: [:ex_unit, :mix, :hieroglyph, :curvy],
+      plt_add_apps: [:ex_unit, :mix, :hieroglyph],
       plt_local_path: "priv/plts",
       plt_core_path: "priv/plts"
     ]

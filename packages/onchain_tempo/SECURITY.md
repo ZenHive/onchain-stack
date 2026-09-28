@@ -26,7 +26,7 @@ This opens a private advisory visible only to you and the maintainers.
 ### In scope
 
 - Transaction construction, deserialization, and payment matching (`Onchain.Tempo.Transaction`)
-- Signing and fee-payer co-signing (Curvy / recid recovery paths)
+- Signing and fee-payer co-signing (k256 / recid recovery paths)
 - TIP-20 selector and calldata encoding (`Onchain.Tempo.TIP20`)
 - RPC broadcast / receipt parsing and event-log decoding
 

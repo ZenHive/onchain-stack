@@ -522,11 +522,10 @@ defmodule Onchain.AATest do
       end
 
     <<r::256, s::256, v::8>> = Hex.decode!(sig)
-    curvy_sig = %Curvy.Signature{crv: :secp256k1, r: r, s: s, recid: v - 27}
+    signature = %Cartouche.Signature{r: r, s: s, recid: v - 27}
 
-    curvy_sig
-    |> Curvy.recover_key(digest, hash: :keccak)
-    |> Curvy.Key.to_pubkey(compressed: false)
+    digest
+    |> Cartouche.Recover.recover_public_key_from_digest(signature)
     |> Cartouche.Address.from_public_key()
     |> Hex.encode()
   end

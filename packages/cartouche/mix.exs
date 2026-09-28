@@ -14,7 +14,7 @@ end
 defmodule Cartouche.MixProject do
   use Mix.Project
 
-  @version "0.9.1"
+  @version "0.10.0"
   @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
@@ -185,7 +185,7 @@ defmodule Cartouche.MixProject do
       # in the Cartouche.Hash doctests. A ZenHive divergence from upstream
       # signet; never cherry-picked into a PR branch.
       {:ex_keccak, "~> 0.7.8"},
-      {:curvy, "~> 0.3.1"},
+      {:ex_secp256k1, "~> 0.8.0"},
       {:goth, "~> 1.4.5", optional: true},
       {:ex_rlp, "~> 0.6.0"},
       # Promoted from transitive (via :hieroglyph) to direct so consumer

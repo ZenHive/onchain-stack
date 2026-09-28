@@ -29,7 +29,7 @@ where the `ABI.*` modules live.
 3. **A signer is a process, not a value.** `new Wallet(pk)` becomes a supervised
    `Cartouche.Signer` GenServer (started from config or
    `Cartouche.Signer.start_link/1`), addressed by name or pid through the
-   `signer:` option. `Cartouche.Signer.Curvy` is the raw-key backend if you
+   `signer:` option. `Cartouche.Signer.Secp256k1` is the raw-key backend if you
    need a function call without a process.
 4. **Nothing validates an EIP-55 checksum.** `Cartouche.Hex.checksum_address/1`
    *produces* one; `Cartouche.Hex.decode_address!/1` checks length only. ethers'
@@ -78,11 +78,11 @@ precision — there is no `BigNumber`/`bigint` distinction anywhere.
 | ethers v6 | viem | Cartouche | Difference |
 |---|---|---|---|
 | `Wallet.createRandom()` | `generatePrivateKey()` + `privateKeyToAccount` | `Cartouche.Keys.generate_keypair/0` → `{address, private_key}` | 32 random bytes, no mnemonic (BIP-39/32 is roadmap task 9015) |
-| `new Wallet(pk)` | `privateKeyToAccount(pk)` | config `signer: [default: {:priv_key, "0x…"}]`, or `Cartouche.Signer.start_link(mfa: {Cartouche.Signer.Curvy, :sign, [pk]}, name: MySigner)` | a **process** — see rule 3; the `:default` entry registers as `Cartouche.Signer.Default` and is what every `signer:`-less call uses |
+| `new Wallet(pk)` | `privateKeyToAccount(pk)` | config `signer: [default: {:priv_key, "0x…"}]`, or `Cartouche.Signer.start_link(mfa: {Cartouche.Signer.Secp256k1, :sign, [pk]}, name: MySigner)` | a **process** — see rule 3; the `:default` entry registers as `Cartouche.Signer.Default` and is what every `signer:`-less call uses |
 | `wallet.address` | `account.address` | `Cartouche.Signer.address/1` | 20 raw bytes, fetched from the process |
-| — (address from a key, no object) | `privateKeyToAddress` | `Cartouche.Signer.Curvy.get_address/1` | — |
-| `wallet.signingKey.publicKey` | `privateKeyToAccount(pk).publicKey` | `Cartouche.Signer.Curvy.public_key/1` | — |
-| `signingKey.sign(digest)` | `sign({ hash, privateKey })` | `Cartouche.Signer.Curvy.sign_digest/2` | returns `%Curvy.Signature{}` **without a recovery id**; `Cartouche.Recover.find_recid_from_digest/3` recovers it against the expected address |
+| — (address from a key, no object) | `privateKeyToAddress` | `Cartouche.Signer.Secp256k1.get_address/1` | — |
+| `wallet.signingKey.publicKey` | `privateKeyToAccount(pk).publicKey` | `Cartouche.Signer.Secp256k1.public_key/1` | — |
+| `signingKey.sign(digest)` | `sign({ hash, privateKey })` | `Cartouche.Signer.Secp256k1.sign_digest/2` | returns `%Cartouche.Signature{}` with a recovery id; `Cartouche.Recover.find_recid_from_digest/3` recovers it against the expected address |
 | a KMS signer (third-party plugins) | `toAccount` with a custom `sign` | `{:cloud_kms, credentials, key_path, version}` signer spec | GCP Cloud KMS is a first-class backend; KMS emits no recovery bit, so Cartouche tries all four |
 
 ## Messages and typed data
@@ -91,7 +91,7 @@ precision — there is no `BigNumber`/`bigint` distinction anywhere.
 |---|---|---|---|
 | `signer.signMessage(msg)` | `signMessage` | `Cartouche.Signer.sign_message/3` | — (`sign/3` is the unprefixed, EIP-155 primitive — see rule 2) |
 | `hashMessage(msg)` | `hashMessage` | `Cartouche.Hash.keccak(Cartouche.Recover.prefix_eth(msg))` | — |
-| `verifyMessage(msg, sig)` | `recoverMessageAddress` / `verifyMessage` | `Cartouche.Recover.recover_personal_sign/2` | returns the 20-byte address — compare it yourself; accepts packed `r‖s‖v` with `v` in `{0, 1, 27, 28, EIP-155}` or a `%Curvy.Signature{}` |
+| `verifyMessage(msg, sig)` | `recoverMessageAddress` / `verifyMessage` | `Cartouche.Recover.recover_personal_sign/2` | returns the 20-byte address — compare it yourself; accepts packed `r‖s‖v` with `v` in `{0, 1, 27, 28, EIP-155}` or a `%Cartouche.Signature{}` |
 | `recoverAddress(digest, sig)` | `recoverAddress` | `Cartouche.Recover.recover_eth_from_digest/2` | — |
 | — | — | `Cartouche.Recover.recover_eth/2` | keccaks the message first and applies **no** prefix — the inverse of `Cartouche.Signer.sign/3`, with no ethers equivalent |
 | `TypedDataEncoder.encode(d, t, v)` | — | `Cartouche.Typed.encode/1` | same `0x1901 ‖ domainSeparator ‖ hashStruct` bytes |

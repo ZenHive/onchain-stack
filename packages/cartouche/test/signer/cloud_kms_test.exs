@@ -205,7 +205,7 @@ defmodule Cartouche.Signer.CloudKMSTest do
   end
 
   defp high_s_sign_plug(conn) do
-    der = Curvy.Signature.to_der(%Curvy.Signature{crv: :secp256k1, r: 123, s: @secp256k1_n - 1})
+    der = :public_key.der_encode(:"ECDSA-Sig-Value", {:"ECDSA-Sig-Value", 123, @secp256k1_n - 1})
 
     Req.Test.json(conn, %{
       signature: Base.encode64(der),

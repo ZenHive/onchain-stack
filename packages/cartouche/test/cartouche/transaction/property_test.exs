@@ -4,7 +4,7 @@ defmodule Cartouche.Transaction.PropertyTest do
 
   alias Cartouche.Recover
   alias Cartouche.Signer
-  alias Cartouche.Signer.Curvy
+  alias Cartouche.Signer.Secp256k1
   alias Cartouche.Test.HighSSignerBackend
   alias Cartouche.Transaction
   alias Cartouche.Transaction.V1
@@ -26,7 +26,7 @@ defmodule Cartouche.Transaction.PropertyTest do
   @property_runs 40
 
   setup do
-    %{signer: start_signer!({Curvy, @private_key})}
+    %{signer: start_signer!({Secp256k1, @private_key})}
   end
 
   for version <- [:v1, :v2930, :v2, :v3, :v4] do
@@ -51,7 +51,7 @@ defmodule Cartouche.Transaction.PropertyTest do
   end
 
   property "INV-SIGN-LOW-S: every 65-byte signing route canonicalizes s", %{signer: pure_signer} do
-    legacy_signer = start_signer!({Curvy, :sign, [@private_key]})
+    legacy_signer = start_signer!({Secp256k1, :sign, [@private_key]})
     high_s_signer = start_signer!({HighSSignerBackend, @private_key})
 
     check all(message <- StreamData.binary(max_length: 128), max_runs: @property_runs) do
@@ -63,7 +63,7 @@ defmodule Cartouche.Transaction.PropertyTest do
         Signer.sign(message, pure_signer, chain_id: 0),
         Signer.sign(message, legacy_signer, chain_id: 0),
         Signer.sign(message, high_s_signer, chain_id: 0),
-        Signer.sign_direct(message, @signer_address, {Curvy, :sign, [@private_key]}, 0)
+        Signer.sign_direct(message, @signer_address, {Secp256k1, :sign, [@private_key]}, 0)
       ]
 
       Enum.each(signatures, fn result ->

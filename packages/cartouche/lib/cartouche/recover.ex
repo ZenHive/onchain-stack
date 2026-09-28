@@ -9,7 +9,7 @@ defmodule Cartouche.Recover do
   without a recovery bit (e.g. some HSM / KMS backends return only `(r, s)`),
   `find_recid/3` brute-forces the two valid recids against an expected address.
 
-  Signatures may be supplied either as a `Curvy.Signature` struct (when the
+  Signatures may be supplied either as a `Cartouche.Signature` struct (when the
   recovery bit lives in `:recid`) or as packed `r <> s <> v` bytes. `v` is one
   or more bytes (65 bytes total when it fits in a single byte; longer when
   EIP-155 `v` exceeds 255). It is interpreted as recid `0`/`1` (raw form),
@@ -30,9 +30,9 @@ defmodule Cartouche.Recover do
   @secp256k1_n 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
   @secp256k1_half_n div(@secp256k1_n, 2)
 
-  @spec decode_signature(Curvy.Signature.t() | String.t() | Cartouche.signature()) ::
-          Curvy.Signature.t() | :invalid_hex
-  defp decode_signature(%Curvy.Signature{} = s), do: s
+  @spec decode_signature(Cartouche.Signature.t() | String.t() | Cartouche.signature()) ::
+          Cartouche.Signature.t() | :invalid_hex
+  defp decode_signature(%Cartouche.Signature{} = s), do: s
 
   defp decode_signature("0x" <> _signature_hex = signature) do
     with {:ok, signature_bytes} <- Hex.decode_hex(signature) do
@@ -43,8 +43,7 @@ defmodule Cartouche.Recover do
   defp decode_signature(<<r::integer-size(256), s::integer-size(256), v_bin::binary>>) when byte_size(v_bin) >= 1 do
     v = :binary.decode_unsigned(v_bin)
 
-    %Curvy.Signature{
-      crv: :secp256k1,
+    %Cartouche.Signature{
       r: r,
       s: s,
       recid:
@@ -89,7 +88,7 @@ defmodule Cartouche.Recover do
     iex> use Cartouche.Hex
     iex> # Decoded Signature
     iex> priv_key = ~h[0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf]
-    iex> {:ok, sig} = Cartouche.Signer.Curvy.sign("test", priv_key)
+    iex> {:ok, sig} = Cartouche.Signer.Secp256k1.sign("test", priv_key)
     iex> {:ok, recid} = Cartouche.Recover.find_recid("test", sig, ~h[0x63CC7C25E0CDB121ABB0FE477A6B9901889F99A7])
     iex> Cartouche.Recover.recover_public_key("test", %{sig|recid: recid}) |> to_hex()
     "0x0480076bfb96955526052b2676dfca87e0b7869ce85e00c5dbce29e76b8429d6dbf0f33b1a0095b2a9a4d9ea2a9746b122995a5b5874ee3161138c9d19f072b2d9"
@@ -97,7 +96,7 @@ defmodule Cartouche.Recover do
     iex> use Cartouche.Hex
     iex> # Binary Signature
     iex> priv_key = ~h[0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf]
-    iex> {:ok, sig} = Cartouche.Signer.Curvy.sign("test", priv_key)
+    iex> {:ok, sig} = Cartouche.Signer.Secp256k1.sign("test", priv_key)
     iex> {:ok, recid} = Cartouche.Recover.find_recid("test", sig, ~h[0x63CC7C25E0CDB121ABB0FE477A6B9901889F99A7])
     iex> signature = <<sig.r::256, sig.s::256, recid>>
     iex> Cartouche.Recover.recover_public_key("test", signature) |> to_hex()
@@ -106,14 +105,14 @@ defmodule Cartouche.Recover do
     iex> use Cartouche.Hex
     iex> # EIP-155 Signature
     iex> priv_key = ~h[0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf]
-    iex> {:ok, sig} = Cartouche.Signer.Curvy.sign("test", priv_key)
+    iex> {:ok, sig} = Cartouche.Signer.Secp256k1.sign("test", priv_key)
     iex> {:ok, recid} = Cartouche.Recover.find_recid("test", sig, ~h[0x63CC7C25E0CDB121ABB0FE477A6B9901889F99A7])
     iex> recovery_bit = 35 + 5 * 2 + recid
     iex> signature = <<sig.r::256, sig.s::256, recovery_bit::8>>
     iex> Cartouche.Recover.recover_public_key("test", signature) |> to_hex()
     "0x0480076bfb96955526052b2676dfca87e0b7869ce85e00c5dbce29e76b8429d6dbf0f33b1a0095b2a9a4d9ea2a9746b122995a5b5874ee3161138c9d19f072b2d9"
   """
-  @spec recover_public_key(binary(), Curvy.Signature.t() | binary()) :: binary()
+  @spec recover_public_key(binary(), Cartouche.Signature.t() | binary()) :: binary()
   def recover_public_key(message, signature) do
     recover_public_key_from_digest(keccak(message), signature)
   end
@@ -129,15 +128,16 @@ defmodule Cartouche.Recover do
 
   High-s signatures are normalized before recovery, flipping `s` and the
   recovery bit together. Equivalent low-s and complement-s signatures recover
-  the same public key, for both packed bytes and `Curvy.Signature` structs.
+  the same public key, for both packed bytes and `Cartouche.Signature` structs.
   """
-  @spec recover_public_key_from_digest(<<_::256>>, Curvy.Signature.t() | binary()) :: binary()
+  @spec recover_public_key_from_digest(<<_::256>>, Cartouche.Signature.t() | binary()) :: binary()
   def recover_public_key_from_digest(digest, signature) do
-    signature
-    |> decode_signature()
-    |> Curvy.Signature.normalize()
-    |> Curvy.recover_key(digest, hash: :keccak)
-    |> Curvy.Key.to_pubkey(compressed: false)
+    signature = signature |> decode_signature() |> Cartouche.Signature.normalize()
+
+    case recover_digest(digest, signature) do
+      {:ok, public_key} -> public_key
+      {:error, reason} -> raise ArgumentError, "Invalid secp256k1 signature: #{reason}"
+    end
   end
 
   @doc """
@@ -145,16 +145,16 @@ defmodule Cartouche.Recover do
 
   If `s > n/2`, replaces it with `n - s` (and leaves `recid` as `nil`, since the
   recovery bit is re-derived by `find_recid_from_digest/3` afterward). Local
-  Curvy already emits low-`s`, so this is a no-op there; it exists so DER-decoded
+  Secp256k1 already emits low-`s`, so this is a no-op there; it exists so DER-decoded
   KMS/HSM backends (which may return high-`s`) inherit the invariant without each
   re-solving the malleability fix. Idempotent.
   """
-  @spec normalize_low_s(Curvy.Signature.t()) :: Curvy.Signature.t()
-  def normalize_low_s(%Curvy.Signature{s: s} = signature) when s > @secp256k1_half_n do
+  @spec normalize_low_s(Cartouche.Signature.t()) :: Cartouche.Signature.t()
+  def normalize_low_s(%Cartouche.Signature{s: s} = signature) when s > @secp256k1_half_n do
     %{signature | s: @secp256k1_n - s, recid: nil}
   end
 
-  def normalize_low_s(%Curvy.Signature{} = signature), do: signature
+  def normalize_low_s(%Cartouche.Signature{} = signature), do: signature
 
   @doc """
   Recovers a signer's Ethereum address from a signed message. The message will
@@ -165,13 +165,13 @@ defmodule Cartouche.Recover do
 
     iex> use Cartouche.Hex
     iex> priv_key = ~h[0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf]
-    iex> {:ok, sig} = Cartouche.Signer.Curvy.sign("test", priv_key)
+    iex> {:ok, sig} = Cartouche.Signer.Secp256k1.sign("test", priv_key)
     iex> {:ok, recid} = Cartouche.Recover.find_recid("test", sig, ~h[0x63CC7C25E0CDB121ABB0FE477A6B9901889F99A7])
     iex> Cartouche.Recover.recover_eth("test", %{sig|recid: recid})
     ...> |> to_hex()
     "0x63cc7c25e0cdb121abb0fe477a6b9901889f99a7"
   """
-  @spec recover_eth(binary(), Curvy.Signature.t() | binary()) :: <<_::160>>
+  @spec recover_eth(binary(), Cartouche.Signature.t() | binary()) :: <<_::160>>
   def recover_eth(message, signature) do
     message
     |> recover_public_key(signature)
@@ -192,13 +192,13 @@ defmodule Cartouche.Recover do
       iex> use Cartouche.Hex
       iex> priv_key = ~h[0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf]
       iex> prefixed = Cartouche.Recover.prefix_eth("hello")
-      iex> {:ok, sig} = Cartouche.Signer.Curvy.sign(prefixed, priv_key)
+      iex> {:ok, sig} = Cartouche.Signer.Secp256k1.sign(prefixed, priv_key)
       iex> {:ok, recid} = Cartouche.Recover.find_recid(prefixed, sig, ~h[0x63CC7C25E0CDB121ABB0FE477A6B9901889F99A7])
       iex> packed = <<sig.r::256, sig.s::256, 27 + recid>>
       iex> Cartouche.Recover.recover_personal_sign("hello", packed) |> to_hex()
       "0x63cc7c25e0cdb121abb0fe477a6b9901889f99a7"
   """
-  @spec recover_personal_sign(binary(), Curvy.Signature.t() | binary()) :: <<_::160>>
+  @spec recover_personal_sign(binary(), Cartouche.Signature.t() | binary()) :: <<_::160>>
   def recover_personal_sign(message, signature) do
     message
     |> prefix_eth()
@@ -212,7 +212,7 @@ defmodule Cartouche.Recover do
   Digest-native counterpart to `recover_eth/2`; see
   `recover_public_key_from_digest/2`.
   """
-  @spec recover_eth_from_digest(<<_::256>>, Curvy.Signature.t() | binary()) :: <<_::160>>
+  @spec recover_eth_from_digest(<<_::256>>, Cartouche.Signature.t() | binary()) :: <<_::160>>
   def recover_eth_from_digest(digest, signature) do
     digest
     |> recover_public_key_from_digest(signature)
@@ -228,13 +228,13 @@ defmodule Cartouche.Recover do
 
     iex> use Cartouche.Hex
     iex> priv_key = ~h[0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf]
-    iex> {:ok, sig} = Cartouche.Signer.Curvy.sign("test", priv_key)
+    iex> {:ok, sig} = Cartouche.Signer.Secp256k1.sign("test", priv_key)
     iex> {:ok, recid} = Cartouche.Recover.find_recid("test", sig, ~h[0x63CC7C25E0CDB121ABB0FE477A6B9901889F99A7])
     iex> Cartouche.Recover.recover_eth("test", %{sig|recid: recid})
     ...> |> to_hex()
     "0x63cc7c25e0cdb121abb0fe477a6b9901889f99a7"
   """
-  @spec find_recid(binary(), Curvy.Signature.t(), <<_::160>>) ::
+  @spec find_recid(binary(), Cartouche.Signature.t(), <<_::160>>) ::
           {:ok, 0..1} | {:error, String.t()}
   def find_recid(message, signature, address) do
     find_recid_from_digest(keccak(message), signature, address)
@@ -250,12 +250,17 @@ defmodule Cartouche.Recover do
   without re-hashing assumptions. Same guess-check over the four candidate recids,
   accepting only `0`/`1`.
   """
-  @spec find_recid_from_digest(<<_::256>>, Curvy.Signature.t(), <<_::160>>) ::
+  @spec find_recid_from_digest(<<_::256>>, Cartouche.Signature.t(), <<_::160>>) ::
           {:ok, 0..1} | {:error, String.t()}
   def find_recid_from_digest(digest, signature, address) do
     recid =
       Enum.find(0..3, fn recid ->
-        recover_eth_from_digest(digest, %{signature | recid: recid}) == address
+        candidate = Cartouche.Signature.normalize(%{signature | recid: recid})
+
+        case recover_digest(digest, candidate) do
+          {:ok, public_key} -> from_public_key(public_key) == address
+          {:error, _} -> false
+        end
       end)
 
     case recid do
@@ -269,4 +274,11 @@ defmodule Cartouche.Recover do
         {:ok, recid}
     end
   end
+
+  defp recover_digest(digest, %Cartouche.Signature{r: r, s: s, recid: recid})
+       when r > 0 and r < @secp256k1_n and s > 0 and s < @secp256k1_n and recid in 0..3 do
+    ExSecp256k1.recover(digest, <<r::256>>, <<s::256>>, recid)
+  end
+
+  defp recover_digest(_digest, _signature), do: {:error, :invalid_signature}
 end

@@ -133,7 +133,10 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
       assert String.starts_with?(hex, "0x76")
       assert {:ok, tx} = Transaction.deserialize(hex)
       assert {:ok, sender} = Transaction.sender(tx)
-      {:ok, expected} = Cartouche.Signer.Curvy.get_address(Base.decode16!(String.trim_leading(@priv, "0x"), case: :lower))
+
+      {:ok, expected} =
+        Cartouche.Signer.Secp256k1.get_address(Base.decode16!(String.trim_leading(@priv, "0x"), case: :lower))
+
       assert sender == expected
       assert tx.chain_id == 42_431
       assert Enum.at(tx.fields, 3) == quantity_bin(gas)

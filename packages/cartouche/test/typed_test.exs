@@ -86,7 +86,7 @@ defmodule Cartouche.TypedTest do
         assert to_hex(Cartouche.Hash.keccak(encoded)) == vector["digest"]
         signature = from_hex!(vector["signature"])
         assert to_hex(Cartouche.Recover.recover_eth(encoded, signature)) == vector["signer"]
-        backend = {Cartouche.Signer.Curvy, :sign, [from_hex!(fixture["privateKey"])]}
+        backend = {Cartouche.Signer.Secp256k1, :sign, [from_hex!(fixture["privateKey"])]}
         assert {:ok, ^signature} = Cartouche.Signer.sign_direct(encoded, from_hex!(vector["signer"]), backend, 0)
       end
     end

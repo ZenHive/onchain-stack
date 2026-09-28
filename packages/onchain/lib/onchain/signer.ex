@@ -25,7 +25,7 @@ defmodule Onchain.Signer do
 
   use Descripex, namespace: "/signer"
 
-  alias Cartouche.Signer.Curvy
+  alias Cartouche.Signer.Secp256k1
   alias Cartouche.Transaction.V2
   alias Onchain.Address
   alias Onchain.Hex
@@ -206,7 +206,7 @@ defmodule Onchain.Signer do
     with {:ok, key_bin} <- decode_private_key(private_key),
          {:ok, addr_bin} <- safe_get_address(key_bin, private_key) do
       encoded = V2.encode(unsigned_trx)
-      mfa = {Curvy, :sign, [key_bin]}
+      mfa = {Secp256k1, :sign, [key_bin]}
 
       case Cartouche.Signer.sign_direct(encoded, addr_bin, mfa, chain_id) do
         {:ok, signature} ->
@@ -392,17 +392,11 @@ defmodule Onchain.Signer do
   # Accepts: 32-byte binary, hex string (64 chars, with/without 0x).
   defp decode_private_key(input), do: Onchain.PrivateKey.decode(input)
 
-  # Wraps Curvy.get_address/1 to catch crashes from malformed keys (e.g. <<0::256>>).
-  # Returns {:error, {:invalid_private_key, original_input}} instead of crashing.
-  #
-  # Verified against Cartouche.Signer.Curvy: a scalar outside [1, n-1] fails the
-  # `<<0>>` pubkey-prefix match (MatchError); a non-32-byte or non-binary key has no
-  # matching `Curvy.Key.from_privkey/2` clause (FunctionClauseError). Every other
-  # exception — a typo'd call, a missing dep — propagates as the bug it is.
   defp safe_get_address(key_bin, original_input) do
-    Curvy.get_address(key_bin)
-  rescue
-    _ in [FunctionClauseError, MatchError] -> {:error, {:invalid_private_key, original_input}}
+    case Secp256k1.get_address(key_bin) do
+      {:ok, address} -> {:ok, address}
+      {:error, _} -> {:error, {:invalid_private_key, original_input}}
+    end
   end
 
   # Returns {:ok, value} for present keys, {:error, {:missing_option, key}} for absent ones.

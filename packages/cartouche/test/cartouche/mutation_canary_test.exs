@@ -16,7 +16,7 @@ defmodule Cartouche.MutationCanaryTest do
   alias Cartouche.Hash
   alias Cartouche.Recover
   alias Cartouche.Signer
-  alias Cartouche.Signer.Curvy
+  alias Cartouche.Signer.Secp256k1
   alias Cartouche.Test.HighSSignerBackend
   alias Cartouche.Transaction.V1
 
@@ -66,7 +66,7 @@ defmodule Cartouche.MutationCanaryTest do
 
     test "the unmutated signer packs v = chain_id * 2 + 35 + parity" do
       assert {:ok, <<_r::256, _s::256, v::8>>} =
-               Signer.sign_direct(@message, @signer_address, {Curvy, :sign, [@private_key]}, @chain_id)
+               Signer.sign_direct(@message, @signer_address, {Secp256k1, :sign, [@private_key]}, @chain_id)
 
       assert (v - (@chain_id * 2 + 35)) in [0, 1]
     end
@@ -126,7 +126,7 @@ defmodule Cartouche.MutationCanaryTest do
   defp wrong_chain_id_mutant(chain_id) do
     digest = Hash.keccak(@message)
 
-    assert {:ok, raw_signature} = Curvy.sign_payload(digest, @private_key)
+    assert {:ok, raw_signature} = Secp256k1.sign_payload(digest, @private_key)
     signature = Recover.normalize_low_s(raw_signature)
 
     assert {:ok, recid} = Recover.find_recid_from_digest(digest, signature, @signer_address)
@@ -135,7 +135,7 @@ defmodule Cartouche.MutationCanaryTest do
   end
 
   defp signed_v1 do
-    signer = start_signer!({Curvy, @private_key})
+    signer = start_signer!({Secp256k1, @private_key})
     transaction = V1.new(1, {100, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>, @chain_id)
 
     assert {:ok, signature} = Signer.sign(V1.encode(transaction), signer, chain_id: @chain_id)

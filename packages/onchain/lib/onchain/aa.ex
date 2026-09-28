@@ -73,7 +73,7 @@ defmodule Onchain.AA do
   import Bitwise
 
   alias Cartouche.Hash
-  alias Cartouche.Signer.Curvy, as: CurvySigner
+  alias Cartouche.Signer.Secp256k1, as: Secp256k1Signer
   alias Onchain.AA.UserOperation
   alias Onchain.Address
   alias Onchain.Hex
@@ -593,7 +593,7 @@ defmodule Onchain.AA do
   # Signs a final 32-byte digest directly (no further hashing) and finds the
   # recovery id, producing a 65-byte r‖s‖v signature with v ∈ {27, 28}.
   defp sign_digest(digest, key_bin, signer_addr) do
-    with {:ok, sig} <- CurvySigner.sign_digest(digest, key_bin),
+    with {:ok, sig} <- Secp256k1Signer.sign_digest(digest, key_bin),
          {:ok, recid} <- find_recid(digest, sig, signer_addr) do
       {:ok, Hex.encode(<<sig.r::256, sig.s::256, 27 + recid::8>>)}
     else
@@ -611,22 +611,16 @@ defmodule Onchain.AA do
   end
 
   defp recover_address(sig, digest) do
-    sig
-    |> Curvy.recover_key(digest, hash: :keccak)
-    |> Curvy.Key.to_pubkey(compressed: false)
-    |> Cartouche.Address.from_public_key()
+    Cartouche.Recover.recover_eth_from_digest(digest, sig)
   end
 
   defp decode_private_key(input), do: Onchain.PrivateKey.decode(input)
 
-  # Verified against Cartouche.Signer.Curvy: a scalar outside [1, n-1] fails the
-  # `<<0>>` pubkey-prefix match (MatchError); a non-32-byte or non-binary key has no
-  # matching `Curvy.Key.from_privkey/2` clause (FunctionClauseError). Every other
-  # exception — a typo'd call, a missing dep — propagates as the bug it is.
   defp safe_get_address(key_bin, original_input) do
-    CurvySigner.get_address(key_bin)
-  rescue
-    _ in [FunctionClauseError, MatchError] -> {:error, {:invalid_private_key, original_input}}
+    case Secp256k1Signer.get_address(key_bin) do
+      {:ok, address} -> {:ok, address}
+      {:error, _} -> {:error, {:invalid_private_key, original_input}}
+    end
   end
 
   # --- Private: RPC ---

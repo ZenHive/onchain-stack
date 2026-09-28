@@ -1,4 +1,4 @@
-defmodule Cartouche.Signer.Curvy do
+defmodule Cartouche.Signer.Secp256k1 do
   @moduledoc """
   Signer backend that signs with a local secp256k1 private key.
 
@@ -7,7 +7,8 @@ defmodule Cartouche.Signer.Curvy do
   32-byte digest it is handed directly; `sign/2` is a convenience wrapper that
   keccaks a raw message first.
 
-  Note: this should not be used in production systems. Please see `Cartouche.Signer.CloudKMS`.
+  Uses the precompiled RustCrypto k256 backend. Private keys remain in BEAM memory;
+  use `Cartouche.Signer.CloudKMS` when keys must stay in an HSM.
   """
   @behaviour Cartouche.Signer.Backend
 
@@ -23,17 +24,14 @@ defmodule Cartouche.Signer.Curvy do
   ## Examples
 
       iex> priv_key = "800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf" |> Base.decode16!(case: :mixed)
-      iex> {:ok, pub} = Cartouche.Signer.Curvy.public_key(priv_key)
+      iex> {:ok, pub} = Cartouche.Signer.Secp256k1.public_key(priv_key)
       iex> Cartouche.Hex.to_address(Cartouche.Address.from_public_key(pub))
       "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
   """
   @impl true
-  @spec public_key(binary()) :: {:ok, binary()} | {:error, String.t()}
+  @spec public_key(binary()) :: {:ok, binary()} | {:error, atom()}
   def public_key(private_key) do
-    private_key
-    |> Curvy.Key.from_privkey()
-    |> Curvy.Key.to_pubkey(compressed: false)
-    |> ok!()
+    ExSecp256k1.create_public_key(private_key)
   end
 
   @doc ~S"""
@@ -42,11 +40,11 @@ defmodule Cartouche.Signer.Curvy do
   ## Examples
 
       iex> priv_key = "800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf" |> Base.decode16!(case: :mixed)
-      iex> {:ok, address} = Cartouche.Signer.Curvy.get_address(priv_key)
+      iex> {:ok, address} = Cartouche.Signer.Secp256k1.get_address(priv_key)
       iex> Cartouche.Hex.to_address(address)
       "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
   """
-  @spec get_address(binary()) :: {:ok, binary()} | {:error, String.t()}
+  @spec get_address(binary()) :: {:ok, binary()} | {:error, atom()}
   def get_address(private_key) do
     with {:ok, pub} <- public_key(private_key) do
       {:ok, Cartouche.Address.from_public_key(pub)}
@@ -64,20 +62,17 @@ defmodule Cartouche.Signer.Curvy do
       iex> use Cartouche.Hex
       iex> priv_key = ~h[0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf]
       iex> message_hash = ~h[0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658]
-      iex> {:ok, sig} = Cartouche.Signer.Curvy.sign_payload(message_hash, priv_key)
+      iex> {:ok, sig} = Cartouche.Signer.Secp256k1.sign_payload(message_hash, priv_key)
       iex> {:ok, recid} = Cartouche.Recover.find_recid("test", sig, ~h[0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7])
       iex> Cartouche.Recover.recover_eth("test", %{sig|recid: recid}) |> Cartouche.Hex.to_address()
       "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
   """
   @impl true
-  @spec sign_payload(<<_::256>>, binary()) :: {:ok, Curvy.Signature.t()} | {:error, String.t()}
+  @spec sign_payload(<<_::256>>, binary()) :: {:ok, Cartouche.Signature.t()} | {:error, atom()}
   def sign_payload(<<digest::binary-size(32)>>, private_key) do
-    priv_key = Curvy.Key.from_privkey(private_key)
-
-    digest
-    |> Curvy.sign(priv_key, hash: :keccak)
-    |> Curvy.Signature.parse()
-    |> ok!()
+    with {:ok, {r, s, recid}} <- ExSecp256k1.sign(digest, private_key) do
+      {:ok, %Cartouche.Signature{r: :binary.decode_unsigned(r), s: :binary.decode_unsigned(s), recid: recid}}
+    end
   end
 
   @doc ~S"""
@@ -91,12 +86,12 @@ defmodule Cartouche.Signer.Curvy do
 
       iex> use Cartouche.Hex
       iex> priv_key = ~h[0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf]
-      iex> {:ok, sig} = Cartouche.Signer.Curvy.sign("test", priv_key)
+      iex> {:ok, sig} = Cartouche.Signer.Secp256k1.sign("test", priv_key)
       iex> {:ok, recid} = Cartouche.Recover.find_recid("test", sig, ~h[0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7])
       iex> Cartouche.Recover.recover_eth("test", %{sig|recid: recid}) |> Cartouche.Hex.to_address()
       "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
   """
-  @spec sign(String.t(), binary()) :: {:ok, Curvy.Signature.t()} | {:error, String.t()}
+  @spec sign(String.t(), binary()) :: {:ok, Cartouche.Signature.t()} | {:error, atom()}
   def sign(message, private_key) when is_binary(message) do
     sign_payload(keccak(message), private_key)
   end
@@ -104,11 +99,8 @@ defmodule Cartouche.Signer.Curvy do
   @doc ~S"""
   Deprecated alias for `sign_payload/2`; signs an already-digested message.
   """
-  @spec sign_digest(String.t(), binary()) :: {:ok, Curvy.Signature.t()} | {:error, String.t()}
+  @spec sign_digest(String.t(), binary()) :: {:ok, Cartouche.Signature.t()} | {:error, atom()}
   def sign_digest(message_hash, private_key) when is_binary(message_hash) do
     sign_payload(message_hash, private_key)
   end
-
-  @spec ok!(term()) :: {:ok, term()}
-  defp ok!(v), do: {:ok, v}
 end
