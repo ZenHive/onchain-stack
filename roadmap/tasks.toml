@@ -9844,7 +9844,7 @@ id = "9026"
 phase = 2000
 bundle = "cartouche_signer_backends"
 target_repo = "cartouche"
-status = "pending"
+status = "in_progress"
 title = "Replace curvy with a Rust k256 backend for all secp256k1 signing and recovery"
 scores = { d = 5, b = 8, u = 7 }
 markers = ["security"]
@@ -9865,6 +9865,7 @@ Low-s normalization (EIP-2, `Recover.normalize_low_s/1`) and RFC 6979 determinis
 This is a public-API break in a 0.x package, so it needs a minor bump. mpp is the one known out-of-repo consumer that pattern-matches `%Curvy.Signature{}`.
 """
 created_at = "2026-09-28"
+started_at = "2026-09-28"
 scored_at = "2026-09-28"
 
 [bundles.onchain_tempo_faucet_ex]
