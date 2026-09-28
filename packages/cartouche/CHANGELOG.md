@@ -16,6 +16,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Breaking — 0.10.0
+
+* **secp256k1 signing and recovery now run on `ex_secp256k1` (RustCrypto `k256`, precompiled Rustler NIF); `curvy` is no longer a dependency.** curvy 0.3.1 is pure Elixir, unaudited, and makes no constant-time guarantee. k256 is the curve implementation alloy-signer uses. RFC 6979 signatures are byte-identical to curvy 0.3.1 for the pinned vectors (`test/fixtures/curvy-0.3.1.json`), and emitted signatures stay EIP-2 low-`s`.
+* **New type `Cartouche.Signature` (`r`, `s`, `recid`) replaces `Curvy.Signature`** in every public spec: `Cartouche.Signer.Backend.sign_payload/2`, `Cartouche.Recover.*`, and `Cartouche.Signer.CloudKMS`. KMS DER parsing is `Cartouche.Signature.from_der/1`; `Cartouche.Signature.normalize/1` flips high-`s` together with the recovery bit.
+* **`Cartouche.Signer.Curvy` is renamed to `Cartouche.Signer.Secp256k1`** — no deprecated alias is kept. Invalid private keys now return `{:error, _}` tuples instead of raising.
+* **Migration:** replace `Cartouche.Signer.Curvy` with `Cartouche.Signer.Secp256k1`, and `%Curvy.Signature{crv: :secp256k1, r: r, s: s, recid: recid}` with `%Cartouche.Signature{r: r, s: s, recid: recid}`. Packed Ethereum signatures and transaction encodings are unchanged. The standalone `mpp` app pattern-matches the old struct and must migrate before adopting 0.10.
+
 ### Documentation
 
 * `docs/verification-ledger.md` is now an ExDoc extra, so the README's link to the EIP-712 conformance section resolves on hexdocs instead of only on GitHub.

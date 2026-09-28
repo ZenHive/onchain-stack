@@ -4,6 +4,12 @@ Completed roadmap tasks.
 
 ---
 
+## Unreleased — v0.15.0
+
+### Changed
+
+- **Requires cartouche `~> 0.10`, whose secp256k1 backend is now `ex_secp256k1` (RustCrypto k256) instead of `curvy`.** `Onchain.AA` and `Onchain.Signer` sign through `Cartouche.Signer.Secp256k1` and recover through `Cartouche.Recover`; curvy is no longer in onchain's dependency tree. Signature structs surfaced from cartouche are now `%Cartouche.Signature{}` rather than `%Curvy.Signature{}`.
+
 ## v0.14.0 — node-capability classification, fee reads, and the onchain-stack move (2026-08-27)
 
 ### Added

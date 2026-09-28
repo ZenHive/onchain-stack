@@ -90,7 +90,7 @@ exception to its rule 2** — and the exception has to be stated, not assumed:
 
 ### Key Design Decisions
 
-- **Signing uses Curvy directly** — Tempo 0x76 is non-standard; `Onchain.Signer` handles EIP-1559 only. Direct `Cartouche.Signer.Curvy` + `Cartouche.Recover.find_recid/3` is correct.
+- **Signing uses the local secp256k1 backend directly** — Tempo 0x76 is non-standard; `Onchain.Signer` handles EIP-1559 only. Direct `Cartouche.Signer.Secp256k1` + `Cartouche.Recover.find_recid/3` is correct.
 - **TIP20 owns all selectors** — Single source of truth, eliminates duplication.
 - **RPC uses plain errors** — `{:error, "message"}` not wrapped error structs.
 - **ExRLP is transitive** — Available via onchain → cartouche. `@dialyzer` suppressions needed.

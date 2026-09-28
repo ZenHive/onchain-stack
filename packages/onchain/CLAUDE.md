@@ -69,7 +69,7 @@ Layout). The boundary is **ephemeral vs durable**, not read vs write.
 - **Pure Elixir** — no native deps, no Rustler, no compilation of C/Rust
 - **cartouche** is the primary Ethereum dep — RPC, ABI encoding, signing, crypto all in one (transitively pulls in `hieroglyph` for ABI), resolved via `sibling(:cartouche, ...)`
 - **zen_websocket** for WebSocket transport (eth_subscribe real-time subscriptions) — a standalone (unabsorbed) dep, plain Hex requirement, no sibling/3 involved
-- Cartouche wraps **curvy** (pure Elixir secp256k1) internally for signing/key ops — never add curvy as a direct dep
+- Cartouche wraps **ex_secp256k1** (precompiled RustCrypto k256 NIF) internally for signing/key ops via `Cartouche.Signer.Secp256k1` — never add a secp256k1 library as a direct dep
 - Consumers configure RPC URL via `config :cartouche` or pass URL per-call
 - Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`
 - Plain structs with `defstruct` + `@enforce_keys`, no private macro deps
