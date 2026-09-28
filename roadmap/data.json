@@ -14556,6 +14556,59 @@
       "created_at": "2026-09-23",
       "scored_at": "2026-09-23",
       "cross_repo": []
+    },
+    {
+      "id": "9026",
+      "phase": 2000,
+      "bundle": "cartouche_signer_backends",
+      "target_repo": "cartouche",
+      "status": "pending",
+      "title": "Replace curvy with a Rust k256 backend for all secp256k1 signing and recovery",
+      "scores": {
+        "d": 5,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.5,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [
+        "security"
+      ],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "`mix deps.tree` in cartouche, onchain and onchain_tempo no longer lists curvy; `grep -rn Curvy packages/*/lib` returns nothing outside a deprecation alias",
+        "Differential test: for a fixed set of private keys and digests (include the existing doctest key 0x8005…f4bf and the published Ethereum signing vectors already pinned in cartouche tests), the new backend produces byte-identical r/s/v to curvy 0.3.1. Capture curvy's output once as a fixture before removing it, and note in the test where it came from",
+        "A test signs a digest whose raw k256 output would be high-s and asserts the emitted signature has s <= secp256k1n/2",
+        "Recover.recover_eth/2 and find_recid round-trip on signatures from the new backend and from CloudKMS (DER-parsed) input; malformed DER still returns an error tuple",
+        "A cartouche-owned signature struct replaces Curvy.Signature in every public @spec and struct field; the CHANGELOG lists the break, the new type and the migration line for consumers",
+        "Signer modules stay at >=95% coverage; dialyzer runs locally (KMS PLT rule) with no new warnings; focused tests for cartouche, onchain and onchain_tempo signing paths pass"
+      ],
+      "out_of_scope": [
+        "Porting RLP, transaction encoding or EIP-712 to alloy. Those are deterministic; conformance vectors are the right tool, not a runtime Rust dependency",
+        "Migrating mpp. It lives in its own repo and needs its own follow-up once this cartouche version is published",
+        "Solana ed25519 signing, which already uses OTP :crypto rather than curvy",
+        "New KMS or custody backends"
+      ],
+      "touches": [
+        "packages/cartouche/lib/cartouche/signer.ex",
+        "packages/cartouche/lib/cartouche/signer/",
+        "packages/cartouche/lib/cartouche/recover.ex",
+        "packages/cartouche/lib/cartouche/recovery_bit.ex",
+        "packages/cartouche/lib/cartouche/transaction/signature.ex",
+        "packages/cartouche/mix.exs",
+        "packages/cartouche/test/",
+        "packages/onchain/lib/",
+        "packages/onchain/mix.exs",
+        "packages/onchain_tempo/lib/",
+        "packages/onchain_tempo/mix.exs"
+      ],
+      "body": "Cartouche's secp256k1 signing runs on `curvy`, a pure-Elixir implementation (Hex description) whose last release is 0.3.1 from 2023-01-12 (`mix hex.info curvy`, 2026-09-29). It makes no constant-time guarantee and has no audit. `Cartouche.Signer.Curvy`'s moduledoc says it \"should not be used in production\", but production code signs with it anyway. Found by grep on 2026-09-29: mpp signs fee-payer transactions, Permit2 digests, EIP-3009 authorizations and Tempo access-key payloads through it (mpp/lib/mpp/methods/**, mpp/lib/mpp/client/providers/tempo.ex). Onchain and onchain_tempo sign through it as well.\n\nReplace curvy as cartouche's secp256k1 implementation with `ex_secp256k1`. Its sign/recover path runs on RustCrypto `k256`, the same crate alloy-signer uses (verified by reading ex_secp256k1 0.8.0's native/ex_secp256k1/src/lib.rs). It ships as a precompiled Rustler NIF, so cartouche gains no native build of its own. This was decided on 2026-09-29 against the alternative of porting cartouche wholesale to alloy. The risk sits in the curve arithmetic, not in RLP, tx encoding or EIP-712, which are deterministic and vector-testable. Only ~2k of cartouche's ~22k hand-written lines touch signing, and cartouche's RPC, trace, Solana and codegen surface gains nothing from alloy.\n\nThe seam already exists: `Cartouche.Signer.Backend` (pure 32-byte digest contract, task 104). The work that is really breaking is the signature type. `Curvy.Signature` leaks into public specs (`Cartouche.Recover`, the backend behaviour, CloudKMS parsing) and consumers pattern-match on it. Introduce a cartouche-owned signature struct (r, s, recid) and move every in-repo consumer onto it. Afterwards, curvy must not remain a dependency of cartouche, onchain or onchain_tempo. The Signer.Curvy module name may stay as a deprecated alias of the new backend or be renamed. Pick one and record it in the CHANGELOG.\n\nLow-s normalization (EIP-2, `Recover.normalize_low_s/1`) and RFC 6979 deterministic nonces must hold on the new path. k256 provides the latter. Prove both with tests rather than assuming them.\n\nThis is a public-API break in a 0.x package, so it needs a minor bump. mpp is the one known out-of-repo consumer that pattern-matches `%Curvy.Signature{}`.\n",
+      "created_at": "2026-09-28",
+      "scored_at": "2026-09-28",
+      "cross_repo": []
     }
   ]
 }

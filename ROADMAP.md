@@ -207,17 +207,17 @@
 | Task 2124 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC node-custody methods — eth_accounts, eth_coinbase, eth_fillTransaction, eth_sign, eth_signTransaction, eth_sendTransaction [D:4/B:6/U:4 → Eff:1.25?] 📋 |
 | Task 2125 | ✅ | 🎁 **cartouche_rpc_correctness** · Cartouche.RPC.fill_transaction/2 cannot deserialize a spec-conforming eth_fillTransaction result [D:5/B:5/U:4 → Eff:0.9?] ⚠️ |
 | Task 2126 | ✅ | 🎁 **cartouche_rpc_correctness** · Spec-path fill_transaction V1 results drop chainId, so encode is pre-EIP-155 [D:4/B:5/U:4 → Eff:1.12?] 📋 |
-| Task 2127 | ⬜ | 🎁 **cartouche_rpc_correctness** · 🚀 **stack_read_surface_boundary** · base_fee/1 portability — probe the real hosted-provider refusal, then decide standard vs extension [D:3/B:7/U:4 → Eff:1.83] 🚀 |
-| Task 2128 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own eth_getLogs in cartouche — stateless log queries, and delete onchain's copy [D:3/B:8/U:7 → Eff:2.5] 🎯 |
-| Task 2129 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own the transaction and receipt read-back in cartouche — 4 methods, and delete onchain's copies [D:4/B:7/U:6 → Eff:1.62] 🚀 |
-| Task 2130 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own the state reads in cartouche — eth_getStorageAt and eth_getProof (EIP-1186) [D:3/B:6/U:5 → Eff:1.83] 🚀 |
-| Task 2131 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own the node-introspection surface in cartouche — and mark the three methods no tagged spec carries [D:3/B:6/U:6 → Eff:2.0] 🎯 |
+| Task 2127 | ⬜ | 🎁 **cartouche_rpc_correctness** · 🚀 **stack_read_surface_boundary** · base_fee/1 portability — probe the real hosted-provider refusal, then decide standard vs extension [D:3/B:7/U:4 → Eff:1.83?] 🚀 |
+| Task 2128 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own eth_getLogs in cartouche — stateless log queries, and delete onchain's copy [D:3/B:8/U:7 → Eff:2.5?] 🎯 |
+| Task 2129 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own the transaction and receipt read-back in cartouche — 4 methods, and delete onchain's copies [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
+| Task 2130 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own the state reads in cartouche — eth_getStorageAt and eth_getProof (EIP-1186) [D:3/B:6/U:5 → Eff:1.83?] 🚀 |
+| Task 2131 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own the node-introspection surface in cartouche — and mark the three methods no tagged spec carries [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
 | Task 2132 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Own eth_simulateV1 in cartouche — the portable simulation entry point [D:5/B:7/U:6 → Eff:1.3] 📋 |
-| Task 2133 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 EIP-712 conformance: encode_type non-termination, bytesN padding direction, array-of-struct support, int types [D:4/B:9/U:8 → Eff:2.12] 🎯 |
-| Task 2134 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 EIP-191 personal_sign byte length, a recovery helper that applies the prefix, and the 65-byte signature invariant [D:3/B:7/U:6 → Eff:2.17] 🎯 |
-| Task 2135 | ⬜ | 🎁 **cartouche_rpc_correctness** · 🚀 **stack_read_surface_boundary** · Portability contract for the non-standard read surface: trace_* and debug_traceCall [D:3/B:7/U:7 → Eff:2.33] 🎯 |
-| Task 2136 | ✅ | 🎁 **cartouche_rpc_read_surface** · Multi-endpoint live-test seam so node-portability rule 4 can actually be executed [D:3/B:8/U:8 → Eff:2.67] 🎯 |
-| Task 2137 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Move the transport hardening into cartouche — retry, telemetry, node-refusal classification, batch [D:5/B:9/U:9 → Eff:1.8] 🚀 |
+| Task 2133 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 EIP-712 conformance: encode_type non-termination, bytesN padding direction, array-of-struct support, int types [D:4/B:9/U:8 → Eff:2.12?] 🎯 |
+| Task 2134 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 EIP-191 personal_sign byte length, a recovery helper that applies the prefix, and the 65-byte signature invariant [D:3/B:7/U:6 → Eff:2.17?] 🎯 |
+| Task 2135 | ⬜ | 🎁 **cartouche_rpc_correctness** · 🚀 **stack_read_surface_boundary** · Portability contract for the non-standard read surface: trace_* and debug_traceCall [D:3/B:7/U:7 → Eff:2.33?] 🎯 |
+| Task 2136 | ✅ | 🎁 **cartouche_rpc_read_surface** · Multi-endpoint live-test seam so node-portability rule 4 can actually be executed [D:3/B:8/U:8 → Eff:2.67?] 🎯 |
+| Task 2137 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Move the transport hardening into cartouche — retry, telemetry, node-refusal classification, batch [D:5/B:9/U:9 → Eff:1.8?] 🚀 |
 | Task 9002 | ⬜ | 🎁 **cartouche_signer_backends** · Put secp256k1 sign and recover behind a native backend — curvy costs ~2.8 ms per signature on the DEX order path [D:5/B:7/U:7 → Eff:1.4] 📋 |
 | Task 9006 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 Normalize high-s signatures at Cartouche's recovery boundary — recover_public_key_from_digest/2 still hits the curvy#8 recid bug [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 | Task 9007 | ⬜ | 🎁 **cartouche_release_010** · 🚀 **stack_read_surface_boundary** · Reconcile Cartouche release notes against everything landed since 0.9.1 [D:2/B:7/U:7 → Eff:3.5] 🎯 |
@@ -227,6 +227,7 @@
 | Task 9015 | ⬜ | 🎁 **cartouche_local_keys** · 🔒 Local key material for Cartouche.Signer — BIP-39 mnemonics, BIP-32/44 HD derivation, and Web3 Secret Storage (keystore v3) import/export [D:5/B:6/U:6 → Eff:1.2] 📋 |
 | Task 9016 `[P]` | ⬜ | 🎁 **cartouche_dev_node_actions** · Typed dev-node control wrappers — anvil_*/hardhat_*/evm_* (balance, storage, code, nonce, impersonation, mining, time, snapshots, fork reset) under the non-standard-namespace portability contract [D:3/B:5/U:6 → Eff:1.83] 🚀 |
 | Task 9022 | ✅ | 🎁 **cartouche_tooling_quality** · Separate focused dispatch aliases from complete post-merge QA [D:3/B:7/U:7 → Eff:2.33] 🎯 |
+| Task 9026 | ⬜ | 🎁 **cartouche_signer_backends** · 🔒 Replace curvy with a Rust k256 backend for all secp256k1 signing and recovery [D:5/B:8/U:7 → Eff:1.5] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 2001: Spec corrections (immediate onchain wins)
@@ -313,7 +314,7 @@
 | Task 3028 `[P]` | ✅ | 🎁 **onchain_dex** · *Onchain.DEX.Router* · DEX swap routing (optimal path across pools) [D:7/B:8/U:7 → Eff:1.07?] 📋 |
 | Task 3029 `[P]` | ✅ | 🎁 **onchain_dex** · *Onchain.MEV* · MEV protection (private transaction submission) [D:6/B:8/U:7 → Eff:1.25?] 📋 |
 | Task 3080 | ✅ | 🎁 **onchain_dex** · *Onchain.MEV* · Audit-surfaced: Onchain.MEV accepts block tags where a concrete block is required [D:3/B:4/U:4 → Eff:1.33?] 📋 |
-| Task 3094 | ⬜ | 🎁 **onchain_dex** · *Onchain.DEX* · Onchain.DEX swap execution: encode an executable swap for a quoted route, with a slippage bound [D:6/B:8/U:7 → Eff:1.25] 📋 |
+| Task 3094 | ⬜ | 🎁 **onchain_dex** · *Onchain.DEX* · Onchain.DEX swap execution: encode an executable swap for a quoted route, with a slippage bound [D:6/B:8/U:7 → Eff:1.25?] 📋 |
 <!-- TASKS:END -->
 
 ### Phase 3009: Account Abstraction (ERC-4337)
@@ -323,8 +324,8 @@
 |------|--------|-------|
 | Task 3069 `[P]` | ✅ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · ERC-4337 UserOperation construction, signing, and bundler RPC [D:7/B:8/U:7 → Eff:1.07?] 📋 |
 | Task 3079 | ✅ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Audit-surfaced: ERC-4337 to_rpc_params validation can diverge from user_op_hash [D:4/B:5/U:5 → Eff:1.25?] 📋 |
-| Task 3097 | ⛔ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Onchain.AA account clients: execute/executeBatch calldata, initCode, and the counterfactual sender [D:6/B:8/U:6 → Eff:1.17] 📋 |
-| Task 3098 | ⛔ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Onchain.AA paymaster client: ERC-7677 sponsorship round-trip [D:5/B:6/U:5 → Eff:1.1] 📋 |
+| Task 3097 | ⛔ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Onchain.AA account clients: execute/executeBatch calldata, initCode, and the counterfactual sender [D:6/B:8/U:6 → Eff:1.17?] 📋 |
+| Task 3098 | ⛔ | 🎁 **onchain_account_abstraction** · *Onchain.AA* · Onchain.AA paymaster client: ERC-7677 sponsorship round-trip [D:5/B:6/U:5 → Eff:1.1?] 📋 |
 <!-- TASKS:END -->
 
 ### Phase 3010: RPC Composition Layer
@@ -363,12 +364,12 @@
 | Task 3085 `[P]` | ✅ | 🎁 **onchain_rpc_composition** · Onchain.RPC block-level reads — receipts, transaction counts, transactions by index, and the block access list [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
 | Task 3086 `[P]` | ⬜ | 🎁 **onchain_rpc_composition** · Onchain.RPC.get_storage_values — eth_getStorageValues batched multi-account slot reads [D:3/B:6/U:5 → Eff:1.83?] 🚀 |
 | Task 3087 | 🔶 | 🎁 **onchain_differential_testing** · 🔒 Mutation-adequacy campaign over the signing, key and address surface [D:5/B:8/U:3 → Eff:1.1?] 📋 ⛔ muex #20/#23/#24 offen; kein brauchbarer Survivor-Report möglich. Unblock: ein muex-Release, das einen geplanteten Mutanten aus dem task-1044-Korpus als Survivor meldet (Gate-Probe vor dem Kampagnenstart). |
-| Task 3088 | ✅ | 🎁 **onchain_abi_decode_hardening** · 🔒 Expose hieroglyph's strict decode mode through the Onchain.ABI, Contract and Log decode surface [D:4/B:7/U:6 → Eff:1.62] 🚀 |
-| Task 3089 | ⬜ | 🎁 **onchain_signer_backend_contract** · 🚀 **stack_read_surface_boundary** · 🔒 Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA [D:3/B:7/U:6 → Eff:2.17] 🎯 |
-| Task 3090 | ⬜ | 🎁 **onchain_subscription_hardening** · 🚀 **stack_read_surface_boundary** · HTTP log/block/pending polling over Cartouche.Filter, so subscribers work on the RPC URL this library defaults to [D:5/B:6/U:5 → Eff:1.1] 📋 |
-| Task 3091 | ✅ | 🎁 **onchain_node_portability** · Normalize node-capability refusals into typed errors instead of passing the raw JSON-RPC code through [D:3/B:7/U:7 → Eff:2.33] 🎯 |
-| Task 3092 | ⬜ | 🎁 **onchain_node_portability** · Onchain.RPC node introspection — eth_config and eth_capabilities so a consumer can discover what their node actually serves [D:4/B:7/U:6 → Eff:1.62] 🚀 |
-| Task 3093 | ⬜ | 🎁 **onchain_rpc_composition** · Onchain.RPC.create_access_list — compute the EIP-2930 access list that Signer.build_transaction already accepts but cannot produce [D:4/B:6/U:5 → Eff:1.38] 📋 |
+| Task 3088 | ✅ | 🎁 **onchain_abi_decode_hardening** · 🔒 Expose hieroglyph's strict decode mode through the Onchain.ABI, Contract and Log decode surface [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
+| Task 3089 | ⬜ | 🎁 **onchain_signer_backend_contract** · 🚀 **stack_read_surface_boundary** · 🔒 Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA [D:3/B:7/U:6 → Eff:2.17?] 🎯 |
+| Task 3090 | ⬜ | 🎁 **onchain_subscription_hardening** · 🚀 **stack_read_surface_boundary** · HTTP log/block/pending polling over Cartouche.Filter, so subscribers work on the RPC URL this library defaults to [D:5/B:6/U:5 → Eff:1.1?] 📋 |
+| Task 3091 | ✅ | 🎁 **onchain_node_portability** · Normalize node-capability refusals into typed errors instead of passing the raw JSON-RPC code through [D:3/B:7/U:7 → Eff:2.33?] 🎯 |
+| Task 3092 | ⬜ | 🎁 **onchain_node_portability** · Onchain.RPC node introspection — eth_config and eth_capabilities so a consumer can discover what their node actually serves [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
+| Task 3093 | ⬜ | 🎁 **onchain_rpc_composition** · Onchain.RPC.create_access_list — compute the EIP-2930 access list that Signer.build_transaction already accepts but cannot produce [D:4/B:6/U:5 → Eff:1.38?] 📋 |
 <!-- TASKS:END -->
 
 ### Phase 3013: EIP-7702 Execution Rail
@@ -424,10 +425,10 @@
 | Task 4051 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.V4.PositionManager* · Implement Onchain.Aave.V4.PositionManager ergonomic write wrappers (supply/borrow/repay analogs) [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
 | Task 4052 | ✅ | 🎁 **onchain_aave_v4_support** · 🚀 **onchain_aave_v0_5** · *test/onchain/aave/v4/* · 🔒 Prove V4 reads and PositionManager writes against deployed mainnet state [D:6/B:9/U:9 → Eff:1.5?] 🚀 |
 | Task 4057 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.V4.Hub* · Wrap remaining IHub preview converters and Hub bound constants [D:3/B:4/U:5 → Eff:1.5?] 🚀 |
-| Task 4066 | ⬜ | 🎁 **onchain_aave_v4_support** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.V4.TokenizationSpoke* · Execute the V4 Tokenization Spoke: ERC-4626 writes and the share token's ERC-20 surface [D:5/B:8/U:8 → Eff:1.6] 🚀 |
-| Task 4067 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.V4.PositionManager* · Wrap V4 position configuration and position-manager authorization, and close the Taker fork-evidence gap [D:4/B:8/U:8 → Eff:2.0] 🎯 |
-| Task 4069 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.Contracts* · Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs [D:4/B:9/U:9 → Eff:2.25] 🎯 |
-| Task 4070 | ⬜ | 🎁 **onchain_aave_v4_support** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Contracts* · Register the ether.fi Cash V4 whitelabel instance on Optimism [D:4/B:8/U:8 → Eff:2.0] 🎯 |
+| Task 4066 | ⬜ | 🎁 **onchain_aave_v4_support** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.V4.TokenizationSpoke* · Execute the V4 Tokenization Spoke: ERC-4626 writes and the share token's ERC-20 surface [D:5/B:8/U:8 → Eff:1.6?] 🚀 |
+| Task 4067 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.V4.PositionManager* · Wrap V4 position configuration and position-manager authorization, and close the Taker fork-evidence gap [D:4/B:8/U:8 → Eff:2.0?] 🎯 |
+| Task 4069 | ✅ | 🎁 **onchain_aave_v4_support** · *Onchain.Aave.Contracts* · Re-sync the V4 address registry with the deployed surface and stop hardcoding three Hubs [D:4/B:9/U:9 → Eff:2.25?] 🎯 |
+| Task 4070 | ⬜ | 🎁 **onchain_aave_v4_support** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Contracts* · Register the ether.fi Cash V4 whitelabel instance on Optimism [D:4/B:8/U:8 → Eff:2.0?] 🎯 |
 | Task 9009 | ⬜ | 🎁 **onchain_aave_v4_support** · Detect V4 address-book drift against upstream instead of only against the committed snapshot [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 | Task 9020 | ✅ | 🎁 **onchain_aave_v4_support** · Complete Config permission grants for risk-premium and dynamic-config updates [D:4/B:8/U:7 → Eff:1.88] 🚀 |
 <!-- TASKS:END -->
@@ -444,8 +445,8 @@
 | Task 4060 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Onchain.Aave.Pool — setUserUseReserveAsCollateral and repayWithATokens [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
 | Task 4061 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave.Pool* · Expose typed direct reserve data and normalized index reads [D:4/B:5/U:5 → Eff:1.25?] 📋 |
 | Task 4062 | ✅ | 🎁 **onchain_aave_v3_write_gaps** · Make the integration gate settle: bound math_revm runtime so --include integration terminates [D:4/B:7/U:8 → Eff:1.88?] 🚀 |
-| Task 4071 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave* · Calldata-only mode for every Aave write: build without sending [D:4/B:8/U:7 → Eff:1.88] 🚀 |
-| Task 4072 | ⛔ | 🎁 **onchain_aave_v3_write_gaps** · *Onchain.Aave.Pool* · Pool flash-loan surface: flashLoanSimple and flashLoan builders plus premium reads [D:4/B:7/U:6 → Eff:1.62] 🚀 |
+| Task 4071 | ⬜ | 🎁 **onchain_aave_v3_write_gaps** · 🚀 **onchain_aave_v0_5** · *Onchain.Aave* · Calldata-only mode for every Aave write: build without sending [D:4/B:8/U:7 → Eff:1.88?] 🚀 |
+| Task 4072 | ⛔ | 🎁 **onchain_aave_v3_write_gaps** · *Onchain.Aave.Pool* · Pool flash-loan surface: flashLoanSimple and flashLoan builders plus premium reads [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
 | Task 4074 | ⬜ | 🎁 **onchain_aave_faucet_ex** · Route Onchain.Aave.Faucet and the test-support funding helpers through faucet_ex [D:4/B:6/U:7 → Eff:1.62] 🚀 |
 <!-- TASKS:END -->
 
@@ -460,10 +461,10 @@
 <!-- TASKS:BEGIN phase=4008 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 4063 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · *Onchain.Aave.Events* · Decode deployed Aave V3 Pool events from logs with topic-filter fetch [D:5/B:8/U:7 → Eff:1.5] 🚀 |
-| Task 4064 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · Surface decoded revert reasons on Aave write and call failures [D:4/B:7/U:7 → Eff:1.75] 🚀 |
-| Task 4065 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · Adopt strict ABI decoding across Aave response decode paths [D:3/B:6/U:5 → Eff:1.83] 🚀 |
-| Task 4068 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · *Onchain.Aave.Events* · Decode V4 Hub, Spoke and Tokenization Spoke events from logs [D:5/B:8/U:7 → Eff:1.5] 🚀 |
+| Task 4063 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · *Onchain.Aave.Events* · Decode deployed Aave V3 Pool events from logs with topic-filter fetch [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
+| Task 4064 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · Surface decoded revert reasons on Aave write and call failures [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
+| Task 4065 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · Adopt strict ABI decoding across Aave response decode paths [D:3/B:6/U:5 → Eff:1.83?] 🚀 |
+| Task 4068 | ⬜ | 🎁 **onchain_aave_event_error_decoding** · *Onchain.Aave.Events* · Decode V4 Hub, Spoke and Tokenization Spoke events from logs [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 4009: Flash-Loan Execution
@@ -471,7 +472,7 @@
 <!-- TASKS:BEGIN phase=4009 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 4073 | ⛔ | 🎁 **onchain_aave_flash_executor** · *Onchain.Aave.Executor* · Flash-loan executor contract: an atomic action bundle funded and repaid inside one Aave flash loan [D:8/B:9/U:6 → Eff:0.94] ⚠️ |
+| Task 4073 | ⛔ | 🎁 **onchain_aave_flash_executor** · *Onchain.Aave.Executor* · Flash-loan executor contract: an atomic action bundle funded and repaid inside one Aave flash loan [D:8/B:9/U:6 → Eff:0.94?] ⚠️ |
 <!-- TASKS:END -->
 
 ---
@@ -495,11 +496,11 @@
 <!-- TASKS:BEGIN phase=5003 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 5008 | ✅ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.LpSugar* · Bindings.LpSugar — the full read surface and the count()-driven pagination driver [D:6/B:9/U:9 → Eff:1.5] 🚀 |
-| Task 5009 `[P]` | ⬜ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.RewardsSugar* · Bindings.RewardsSugar and Bindings.VeSugar [D:4/B:7/U:7 → Eff:1.75] 🚀 |
-| Task 5010 `[P]` | ⬜ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.RelaySugar* · Bindings.RelaySugar and Bindings.TokenSugar [D:3/B:6/U:6 → Eff:2.0] 🎯 |
-| Task 5011 `[P]` | ⬜ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.Factories* · Bindings.Factories — PoolFactory, CLFactory and SlipstreamHelper [D:4/B:6/U:6 → Eff:1.5] 🚀 |
-| Task 5012 `[P]` | ⬜ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.Voter* · Bindings.Voter — the read surface (epochs, weights, gauge and pool registry) [D:3/B:6/U:6 → Eff:2.0] 🎯 |
+| Task 5008 | ✅ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.LpSugar* · Bindings.LpSugar — the full read surface and the count()-driven pagination driver [D:6/B:9/U:9 → Eff:1.5?] 🚀 |
+| Task 5009 `[P]` | ⬜ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.RewardsSugar* · Bindings.RewardsSugar and Bindings.VeSugar [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
+| Task 5010 `[P]` | ⬜ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.RelaySugar* · Bindings.RelaySugar and Bindings.TokenSugar [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
+| Task 5011 `[P]` | ⬜ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.Factories* · Bindings.Factories — PoolFactory, CLFactory and SlipstreamHelper [D:4/B:6/U:6 → Eff:1.5?] 🚀 |
+| Task 5012 `[P]` | ⬜ | 🎁 **onchain_aerodrome_bindings** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Bindings.Voter* · Bindings.Voter — the read surface (epochs, weights, gauge and pool registry) [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
 <!-- TASKS:END -->
 
 ### Phase 5004: Pure Math
@@ -507,10 +508,10 @@
 <!-- TASKS:BEGIN phase=5004 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 5013 | ⬜ | 🎁 **onchain_aerodrome_math** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Math.Tick* · Math.Tick — port Slipstream TickMath and grade it over a swept int24 domain [D:6/B:10/U:8 → Eff:1.5] 🚀 |
-| Task 5014 `[P]` | ⬜ | 🎁 **onchain_aerodrome_math** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Math.Liquidity* · Math.Liquidity — amounts and liquidity conversion plus signed and unsigned deltas, differentially graded [D:5/B:8/U:7 → Eff:1.5] 🚀 |
-| Task 5015 `[P]` | ⬜ | 🎁 **onchain_aerodrome_math** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Math.Stable* · Math.Stable — the Solidly stable invariant and v2 constant-product quoting [D:5/B:7/U:7 → Eff:1.4] 📋 |
-| Task 5016 | ⬜ | 🎁 **onchain_aerodrome_math** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Math.Price* · Math.Price — decimals-aware price conversion from sqrtX96, reserves and the stable invariant [D:4/B:8/U:8 → Eff:2.0] 🎯 |
+| Task 5013 | ⬜ | 🎁 **onchain_aerodrome_math** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Math.Tick* · Math.Tick — port Slipstream TickMath and grade it over a swept int24 domain [D:6/B:10/U:8 → Eff:1.5?] 🚀 |
+| Task 5014 `[P]` | ⬜ | 🎁 **onchain_aerodrome_math** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Math.Liquidity* · Math.Liquidity — amounts and liquidity conversion plus signed and unsigned deltas, differentially graded [D:5/B:8/U:7 → Eff:1.5?] 🚀 |
+| Task 5015 `[P]` | ⬜ | 🎁 **onchain_aerodrome_math** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Math.Stable* · Math.Stable — the Solidly stable invariant and v2 constant-product quoting [D:5/B:7/U:7 → Eff:1.4?] 📋 |
+| Task 5016 | ⬜ | 🎁 **onchain_aerodrome_math** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Math.Price* · Math.Price — decimals-aware price conversion from sqrtX96, reserves and the stable invariant [D:4/B:8/U:8 → Eff:2.0?] 🎯 |
 <!-- TASKS:END -->
 
 ### Phase 5005: Price Layer
@@ -518,8 +519,8 @@
 <!-- TASKS:BEGIN phase=5005 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 5017 | ⬜ | 🎁 **onchain_aerodrome_price** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Analytics.Price* · Types.Price and .PriceMap plus Analytics.Price — pure spot pricing and numeraire route resolution [D:5/B:8/U:8 → Eff:1.6] 🚀 |
-| Task 5018 | ⬜ | 🎁 **onchain_aerodrome_price** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Sugar.Prices* · Bindings.Chainlink and Sugar.Prices — anchor feeds with a staleness policy, materialising a PriceMap [D:5/B:8/U:8 → Eff:1.6] 🚀 |
+| Task 5017 | ⬜ | 🎁 **onchain_aerodrome_price** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Analytics.Price* · Types.Price and .PriceMap plus Analytics.Price — pure spot pricing and numeraire route resolution [D:5/B:8/U:8 → Eff:1.6?] 🚀 |
+| Task 5018 | ⬜ | 🎁 **onchain_aerodrome_price** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Sugar.Prices* · Bindings.Chainlink and Sugar.Prices — anchor feeds with a staleness policy, materialising a PriceMap [D:5/B:8/U:8 → Eff:1.6?] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 5006: Analytics
@@ -527,10 +528,10 @@
 <!-- TASKS:BEGIN phase=5006 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 5019 `[P]` | ⬜ | 🎁 **onchain_aerodrome_analytics** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Analytics.Pool* · Analytics.Pool — pool typing, TVL, staked share and verified fee-unit semantics [D:4/B:7/U:8 → Eff:1.88] 🚀 |
-| Task 5020 `[P]` | ⬜ | 🎁 **onchain_aerodrome_analytics** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Analytics.Position* · Analytics.Position — principal, range state and valuation, cross-graded against Sugar's own amounts [D:5/B:8/U:8 → Eff:1.6] 🚀 |
-| Task 5021 | ⬜ | 🎁 **onchain_aerodrome_analytics** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Analytics.APR* · Analytics.APR — separate fee and emission rates, each carrying its denominator as data [D:5/B:8/U:9 → Eff:1.7] 🚀 |
-| Task 5022 | ⬜ | 🎁 **onchain_aerodrome_analytics** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Analytics.APR* · APR invariant enforcement, the 7.53 percent golden, and the tiered coverage gate [D:6/B:10/U:8 → Eff:1.5] 🚀 |
+| Task 5019 `[P]` | ⬜ | 🎁 **onchain_aerodrome_analytics** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Analytics.Pool* · Analytics.Pool — pool typing, TVL, staked share and verified fee-unit semantics [D:4/B:7/U:8 → Eff:1.88?] 🚀 |
+| Task 5020 `[P]` | ⬜ | 🎁 **onchain_aerodrome_analytics** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Analytics.Position* · Analytics.Position — principal, range state and valuation, cross-graded against Sugar's own amounts [D:5/B:8/U:8 → Eff:1.6?] 🚀 |
+| Task 5021 | ⬜ | 🎁 **onchain_aerodrome_analytics** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Analytics.APR* · Analytics.APR — separate fee and emission rates, each carrying its denominator as data [D:5/B:8/U:9 → Eff:1.7?] 🚀 |
+| Task 5022 | ⬜ | 🎁 **onchain_aerodrome_analytics** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Analytics.APR* · APR invariant enforcement, the 7.53 percent golden, and the tiered coverage gate [D:6/B:10/U:8 → Eff:1.5?] 🚀 |
 <!-- TASKS:END -->
 
 ### Phase 5007: Read API
@@ -538,8 +539,8 @@
 <!-- TASKS:BEGIN phase=5007 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 5023 `[P]` | ⬜ | 🎁 **onchain_aerodrome_read_api** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Sugar.Pools* · Sugar.Pools and Sugar.Tokens — the ergonomic pool and token read API [D:4/B:8/U:8 → Eff:2.0] 🎯 |
-| Task 5024 `[P]` | ⬜ | 🎁 **onchain_aerodrome_read_api** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Sugar.Positions* · Sugar.Positions, .VeNfts, .Rewards and .Relays — the account-scoped read API [D:4/B:7/U:7 → Eff:1.75] 🚀 |
+| Task 5023 `[P]` | ⬜ | 🎁 **onchain_aerodrome_read_api** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Sugar.Pools* · Sugar.Pools and Sugar.Tokens — the ergonomic pool and token read API [D:4/B:8/U:8 → Eff:2.0?] 🎯 |
+| Task 5024 `[P]` | ⬜ | 🎁 **onchain_aerodrome_read_api** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.Sugar.Positions* · Sugar.Positions, .VeNfts, .Rewards and .Relays — the account-scoped read API [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
 | Task 9010 | ✅ | 🎁 **onchain_aerodrome_types** · *Onchain.Aerodrome.TypesCase* · TypesCase resolves overloaded Sugar ABI entries by name alone — disambiguate by input types like the drift test does [D:2/B:4/U:4 → Eff:2.0] 🎯 |
 <!-- TASKS:END -->
 
@@ -548,9 +549,9 @@
 <!-- TASKS:BEGIN phase=5008 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 5032 `[P]` | ⬜ | 🎁 **onchain_aerodrome_evidence_release** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.AbiDrift* · Runnable ABI-drift detector: re-fetch every priv/abis entry and diff selector sets [D:4/B:7/U:7 → Eff:1.75] 🚀 |
-| Task 5033 | ⬜ | 🎁 **onchain_aerodrome_evidence_release** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome* · Live integration proof of the full read, analytics and price surface across two endpoints [D:4/B:8/U:9 → Eff:2.12] 🎯 |
-| Task 5034 | ⬜ | 🎁 **onchain_aerodrome_evidence_release** · 🚀 **onchain_aerodrome_v0_1** · *OnchainAerodrome* · 📝 Cut 0.1.0: CHANGELOG, README status, SECURITY scope, descripex roster and a hex build dry run [D:3/B:6/U:7 → Eff:2.17] 🎯 |
+| Task 5032 `[P]` | ⬜ | 🎁 **onchain_aerodrome_evidence_release** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome.AbiDrift* · Runnable ABI-drift detector: re-fetch every priv/abis entry and diff selector sets [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
+| Task 5033 | ⬜ | 🎁 **onchain_aerodrome_evidence_release** · 🚀 **onchain_aerodrome_v0_1** · *Onchain.Aerodrome* · Live integration proof of the full read, analytics and price surface across two endpoints [D:4/B:8/U:9 → Eff:2.12?] 🎯 |
+| Task 5034 | ⬜ | 🎁 **onchain_aerodrome_evidence_release** · 🚀 **onchain_aerodrome_v0_1** · *OnchainAerodrome* · 📝 Cut 0.1.0: CHANGELOG, README status, SECURITY scope, descripex roster and a hex build dry run [D:3/B:6/U:7 → Eff:2.17?] 🎯 |
 <!-- TASKS:END -->
 
 ### Phase 5009: Write Surface
@@ -558,14 +559,14 @@
 <!-- TASKS:BEGIN phase=5009 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 5025 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Contracts* · 🔒 Capture Router, Gauge and NFPM ABIs from Sourcify and extend the registry with two-source-verified addresses [D:5/B:9/U:8 → Eff:1.7] 🚀 |
-| Task 5026 `[P]` | ✅ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.CalldataFixture* · 🔒 Golden-calldata evidence harness: an independent cast oracle plus eth_call impersonation, proven on Voter [D:5/B:8/U:8 → Eff:1.6] 🚀 |
-| Task 5027 `[P]` | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Voter* · 🔒 Write.Voter — vote, reset, poke, claims, managed deposits and distribute [D:5/B:7/U:6 → Eff:1.3] 📋 |
-| Task 5028 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Router* · 🔒 Write.Router — swap and liquidity calldata builders with Signer opt-in [D:6/B:8/U:7 → Eff:1.25] 📋 |
-| Task 5029 `[P]` | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Gauge* · 🔒 Write.Gauge — stake, unstake and claim calldata builders [D:4/B:7/U:7 → Eff:1.75] 🚀 |
-| Task 5030 `[P]` | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.NFPM* · 🔒 Write.NFPM — Slipstream concentrated-liquidity position lifecycle [D:6/B:8/U:7 → Eff:1.25] 📋 |
-| Task 5031 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.CalldataFixture* · 🔒 Mutation-survivor audit: prove the golden-calldata comparators actually discriminate [D:5/B:9/U:6 → Eff:1.5] 🚀 |
-| Task 5035 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *OnchainAerodrome* · 📝 Cut 0.2.0: live write-surface evidence capstone, CHANGELOG, SECURITY scope and descripex roster for Write.* [D:4/B:7/U:7 → Eff:1.75] 🚀 |
+| Task 5025 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Contracts* · 🔒 Capture Router, Gauge and NFPM ABIs from Sourcify and extend the registry with two-source-verified addresses [D:5/B:9/U:8 → Eff:1.7?] 🚀 |
+| Task 5026 `[P]` | ✅ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.CalldataFixture* · 🔒 Golden-calldata evidence harness: an independent cast oracle plus eth_call impersonation, proven on Voter [D:5/B:8/U:8 → Eff:1.6?] 🚀 |
+| Task 5027 `[P]` | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Voter* · 🔒 Write.Voter — vote, reset, poke, claims, managed deposits and distribute [D:5/B:7/U:6 → Eff:1.3?] 📋 |
+| Task 5028 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Router* · 🔒 Write.Router — swap and liquidity calldata builders with Signer opt-in [D:6/B:8/U:7 → Eff:1.25?] 📋 |
+| Task 5029 `[P]` | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.Gauge* · 🔒 Write.Gauge — stake, unstake and claim calldata builders [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
+| Task 5030 `[P]` | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.Write.NFPM* · 🔒 Write.NFPM — Slipstream concentrated-liquidity position lifecycle [D:6/B:8/U:7 → Eff:1.25?] 📋 |
+| Task 5031 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *Onchain.Aerodrome.CalldataFixture* · 🔒 Mutation-survivor audit: prove the golden-calldata comparators actually discriminate [D:5/B:9/U:6 → Eff:1.5?] 🚀 |
+| Task 5035 | ⬜ | 🎁 **onchain_aerodrome_write** · 🚀 **onchain_aerodrome_v0_2** · *OnchainAerodrome* · 📝 Cut 0.2.0: live write-surface evidence capstone, CHANGELOG, SECURITY scope and descripex roster for Write.* [D:4/B:7/U:7 → Eff:1.75?] 🚀 |
 <!-- TASKS:END -->
 
 ---
@@ -602,8 +603,8 @@
 | Task 6061 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_solidity* · Migrate Solidity source parsing from solang-parser to solar-parse [D:6/B:8/U:7 → Eff:1.25?] 📋 |
 | Task 6062 | ✅ | 🎁 **onchain_evm_standalone** · *release* · Cut the v0.6.0 release — upload precompiled NIF artifacts, commit checksums, publish to Hex [D:4/B:9/U:8 → Eff:2.12?] 🎯 |
 | Task 6063 | ✅ | 🎁 **onchain_evm_standalone** · Close the assertion gap in the semantics harness: every vector asserted against every key the oracle checks [D:5/B:8/U:6 → Eff:1.4?] 📋 |
-| Task 6064 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_evm, Onchain.EVM* · Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch [D:5/B:9/U:8 → Eff:1.7] 🚀 |
-| Task 6065 | ⬜ | 🎁 **onchain_evm_standalone** · *Onchain.EVM* · simulate_batch: per-call value and sender, so ETH-bearing and multi-actor sequences are simulable [D:5/B:7/U:6 → Eff:1.3] 📋 |
+| Task 6064 | ✅ | 🎁 **onchain_evm_standalone** · *native/onchain_evm, Onchain.EVM* · Unblock non-mainnet forks in Onchain.EVM — OP-Stack/L2 hardfork schedule or a caller-supplied spec_id escape hatch [D:5/B:9/U:8 → Eff:1.7?] 🚀 |
+| Task 6065 | ⬜ | 🎁 **onchain_evm_standalone** · *Onchain.EVM* · simulate_batch: per-call value and sender, so ETH-bearing and multi-actor sequences are simulable [D:5/B:7/U:6 → Eff:1.3?] 📋 |
 | Task 9019 | ✅ | 🎁 **onchain_evm_standalone** · 🐛 Preserve fork chain identity through every simulation path [D:3/B:9/U:8 → Eff:2.83] 🎯 |
 <!-- TASKS:END -->
 
@@ -665,7 +666,7 @@
 | Task 8010 | ✅ | 🎁 **onchain_tempo_integration_coverage** · Stop hardcoding Builder @default_gas_limit — estimate gas per-tx (mirror mppx) [D:3/B:4/U:6 → Eff:1.67?] 🚀 |
 | Task 8011 | ✅ | 🎁 **onchain_tempo_cartouche_migration** · Update transport stub off the :cartouche,:client seam after onchain's Req migration [D:2/B:5/U:5 → Eff:2.5?] 🎯 |
 | Task 8012 | ✅ | 🎁 **onchain_tempo_verification** · 🔒 Mutation-grade 0x76 transaction and signing invariants [D:5/B:9/U:8 → Eff:1.7?] 🚀 |
-| Task 8013 | ⬜ | 🎁 **onchain_tempo_verification** · 🔒 Verify optional 0x76 key_authorization across encode, sign, and recover [D:5/B:7/U:4 → Eff:1.1] 📋 |
+| Task 8013 | ⬜ | 🎁 **onchain_tempo_verification** · 🔒 Verify optional 0x76 key_authorization across encode, sign, and recover [D:5/B:7/U:4 → Eff:1.1?] 📋 |
 | Task 8014 | ✅ | 🎁 **onchain_tempo_verification** · 🔒 Normalize ECDSA signatures to low-s before Curvy recovery in Onchain.Tempo.Transaction and report the curvy recover_key recid bug upstream [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 | Task 8015 | ⬜ | 🎁 **onchain_tempo_faucet_ex** · Delegate Onchain.Tempo.Faucet to faucet_ex and retire the in-package Moderato faucet client [D:3/B:6/U:7 → Eff:2.17] 🎯 |
 <!-- TASKS:END -->
