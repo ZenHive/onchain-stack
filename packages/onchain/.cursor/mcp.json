@@ -6,7 +6,7 @@
     "harness": {
       "url": "http://localhost:4018/harness/mcp"
     },
-    "harness_tidewave": {
+    "harness_eval": {
       "url": "http://localhost:4018/tidewave/mcp"
     }
   }

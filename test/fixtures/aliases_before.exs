@@ -3,7 +3,7 @@
     "check.dispatch" => [
       "fn _ ->\n  Mix.raise(\n    \"check.dispatch runs per package, not at the monorepo root — \" <>\n      \"cd packages/<name> && mix check.dispatch for each package the task touches.\"\n  )\nend"
     ],
-    "ci" => ["\"onchain.bounds\"", "&packages_ci/1"],
+    "ci" => ["\"onchain.bounds\"", "\"cmd elixir test/alias_separation_test.exs\"", "&packages_ci/1"],
     "tidewave" => ["\"run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4037) end)'\""]
   },
   "packages/cartouche/mix.exs" => %{

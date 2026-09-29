@@ -74,7 +74,12 @@ defmodule AliasSeparationTest do
     source = File.read!(Path.join(@root, "mix.exs"))
     aliases = AliasGraph.read!(source)
     assert aliases == Map.fetch!(@before, "mix.exs")
-    assert aliases["ci"] == [inspect("onchain.bounds"), "&packages_ci/1"]
+
+    assert aliases["ci"] == [
+             inspect("onchain.bounds"),
+             inspect("cmd elixir test/alias_separation_test.exs"),
+             "&packages_ci/1"
+           ]
 
     # Invoke the guard itself, without loading root dependencies.
     Mix.start()

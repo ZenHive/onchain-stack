@@ -279,7 +279,9 @@ runs, in order:
 1. **`mix onchain.bounds`** — seconds of AST parsing; catches the one failure
    class the monorepo introduces (see sibling/3 above) before spending seven
    package gates discovering it downstream.
-2. Each package's own `mix ci`, **strictly serial** — `packages_ci/1` in the
+2. **`elixir test/alias_separation_test.exs`** (via `mix cmd`) — the alias
+   regression check; a failure aborts before any package gate runs.
+3. Each package's own `mix ci`, **strictly serial** — `packages_ci/1` in the
    root `mix.exs` shells into `packages/<name>` with `MIX_ENV`/`MIX_TARGET`
    cleared (so the package's own `def cli` env pins apply, not whatever the
    root process inherited) and raises on the first non-zero exit.
@@ -551,7 +553,8 @@ the independent calldata tests. Focused tests that use Foundry `cast` also
 need that directory on PATH; missing cast fails with installation instructions.
 
 The alias regression check is `elixir test/alias_separation_test.exs`
-(no package dependency bootstrap). Its baseline fixture records the pre-change
+(no package dependency bootstrap); root `mix ci` runs it right after
+`onchain.bounds`. Its baseline fixture records the pre-change
 alias graph; it checks the expanded full-QA graph and the root dispatch guard.
 
 The root `mix.exs` also defines `check.dispatch` — as a **loud failure** that
@@ -564,6 +567,8 @@ root gets guidance instead of a silent "task not found" or a cheap green.
 root aggregate on 4037, which loads all seven packages. The former hieroglyph
 and cartouche package listeners are retired. The other packages retain their
 own ports; do not start or control an operator's running server.
+onchain_solana has no `mix tidewave` alias of its own: it is reachable only
+through the 4037 aggregate (`tidewave_all`).
 
 ## Health & publish tooling
 

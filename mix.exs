@@ -72,7 +72,9 @@ defmodule OnchainStack.MixProject do
       # class the monorepo introduces — a Hex requirement that has rotted because
       # locally the path dep always wins. No point spending seven package gates
       # to discover it afterwards.
-      ci: ["onchain.bounds", &packages_ci/1],
+      # Then the alias regression check (plain `elixir`, no deps bootstrap): it
+      # proves check.dispatch stays cheap and full QA stays complete.
+      ci: ["onchain.bounds", "cmd elixir test/alias_separation_test.exs", &packages_ci/1],
       # Harness registers `check_command: "mix check.dispatch"` free-text, and a
       # reviewer that runs it at the ROOT must not get a silent "task not found"
       # or — worse — a cheap green. Fail loudly with the actual instruction:
