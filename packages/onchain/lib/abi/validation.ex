@@ -12,7 +12,8 @@ defmodule ABI.Validation do
     {chunks, rest} =
       Enum.map_reduce(types, data, fn %{type: type}, bytes ->
         remaining = consume(type, bytes, opts)
-        {canonical(type, binary_part(bytes, 0, byte_size(bytes) - byte_size(remaining))), remaining}
+        size = byte_size(bytes) - byte_size(remaining)
+        {canonical(type, binary_part(bytes, 0, size)), remaining}
       end)
 
     if rest != <<>> do
@@ -25,9 +26,131 @@ defmodule ABI.Validation do
   end
 
   # Legacy decoders consumed tuple tails in declaration order, ignoring offsets.
-  # Normalize those offsets before alloy follows them; validation above retains
-  # the existing strict padding/length contract without decoding values here.
-  defp canonical({:tuple, types}, data) do
+  # Normalize those offsets before alloy follows them. Payloads that already
+  # use that layout are returned unchanged — rebuilding them copies every
+  # dynamic tail.
+  defp canonical(type, data) do
+    if identity?(type, data), do: data, else: rewrite(type, data)
+  end
+
+  defp identity?({:tuple, []}, data), do: data == <<>>
+  defp identity?({:array, _, 0}, data), do: data == <<>>
+
+  defp identity?(type, data) do
+    if FunctionSelector.dynamic?(type), do: match?({:ok, <<>>}, skip(type, data)), else: true
+  end
+
+  # Word-only scan. `consume/3` already checked padding and lengths; this only
+  # asks whether offset words already name the declaration-order tails.
+  defp skip(type, data) do
+    if FunctionSelector.dynamic?(type), do: skip_dynamic(type, data), else: take_static(type, data)
+  end
+
+  defp skip_dynamic(type, <<len::256, rest::binary>>) when type in [:string, :bytes] do
+    padded = padded_bytes(len)
+
+    if byte_size(rest) < padded do
+      :mismatch
+    else
+      <<_::binary-size(^padded), rest::binary>> = rest
+      {:ok, rest}
+    end
+  end
+
+  defp skip_dynamic({:array, type}, <<count::256, rest::binary>>), do: skip_repeated(type, count, rest)
+  defp skip_dynamic({:array, type, count}, data), do: skip_repeated(type, count, data)
+
+  defp skip_dynamic({:tuple, types}, data) do
+    case split_head(types, data, []) do
+      {:ok, markers, tails} -> scan_tails(markers, tails, byte_size(data) - byte_size(tails))
+      :mismatch -> :mismatch
+    end
+  end
+
+  defp skip_dynamic(_, _), do: :mismatch
+
+  defp skip_repeated(_type, 0, data), do: {:ok, data}
+
+  defp skip_repeated(type, count, data) do
+    if FunctionSelector.dynamic?(type) do
+      skip_dynamic_repeated(type, count, data)
+    else
+      take_static({:array, type, count}, data)
+    end
+  end
+
+  defp skip_dynamic_repeated(type, count, data) do
+    head_bytes = count * @word_size_bytes
+
+    if byte_size(data) < head_bytes do
+      :mismatch
+    else
+      <<head::binary-size(^head_bytes), tails::binary>> = data
+      check_offsets(type, count, head, tails, head_bytes)
+    end
+  end
+
+  defp check_offsets(_type, 0, <<>>, tails, _offset), do: {:ok, tails}
+  defp check_offsets(_type, 0, _, _, _), do: :mismatch
+
+  defp check_offsets(type, count, <<claimed::256, head::binary>>, tails, offset) when claimed == offset do
+    case skip(type, tails) do
+      {:ok, rest} -> check_offsets(type, count - 1, head, rest, offset + (byte_size(tails) - byte_size(rest)))
+      :mismatch -> :mismatch
+    end
+  end
+
+  defp check_offsets(_, _, _, _, _), do: :mismatch
+
+  defp split_head([], data, acc), do: {:ok, Enum.reverse(acc), data}
+
+  defp split_head([%{type: type} | types], data, acc) do
+    if FunctionSelector.dynamic?(type) do
+      case data do
+        <<offset::256, rest::binary>> -> split_head(types, rest, [{:tail, offset, type} | acc])
+        _ -> :mismatch
+      end
+    else
+      case take_static(type, data) do
+        {:ok, rest} -> split_head(types, rest, [:head | acc])
+        :mismatch -> :mismatch
+      end
+    end
+  end
+
+  defp scan_tails([], tails, _offset), do: {:ok, tails}
+  defp scan_tails([:head | markers], tails, offset), do: scan_tails(markers, tails, offset)
+
+  defp scan_tails([{:tail, claimed, type} | markers], tails, offset) when claimed == offset do
+    case skip(type, tails) do
+      {:ok, rest} -> scan_tails(markers, rest, offset + (byte_size(tails) - byte_size(rest)))
+      :mismatch -> :mismatch
+    end
+  end
+
+  defp scan_tails(_, _, _), do: :mismatch
+
+  defp take_static(type, data) do
+    size = static_bytes(type)
+
+    if byte_size(data) < size do
+      :mismatch
+    else
+      <<_::binary-size(^size), rest::binary>> = data
+      {:ok, rest}
+    end
+  end
+
+  defp static_bytes({:tuple, types}), do: Enum.sum_by(types, &static_bytes(&1.type))
+  defp static_bytes({:array, type, count}), do: count * static_bytes(type)
+  defp static_bytes({:bytes, 0}), do: 0
+  defp static_bytes(_type), do: @word_size_bytes
+
+  defp padded_bytes(size) do
+    size + Math.mod(@word_size_bytes - Math.mod(size, @word_size_bytes), @word_size_bytes)
+  end
+
+  defp rewrite({:tuple, types}, data) do
     {heads, tails} =
       Enum.map_reduce(types, data, fn %{type: type}, bytes ->
         if FunctionSelector.dynamic?(type) do
@@ -57,15 +180,15 @@ defmodule ABI.Validation do
     IO.iodata_to_binary([parts, Enum.reverse(tail_parts)])
   end
 
-  defp canonical({:array, type}, <<count::256, rest::binary>>) do
-    <<count::256>> <> canonical({:array, type, count}, rest)
+  defp rewrite({:array, type}, <<count::256, rest::binary>>) do
+    <<count::256>> <> rewrite({:array, type, count}, rest)
   end
 
-  defp canonical({:array, type, count}, data) do
-    canonical({:tuple, List.duplicate(%{type: type}, count)}, data)
+  defp rewrite({:array, type, count}, data) do
+    rewrite({:tuple, List.duplicate(%{type: type}, count)}, data)
   end
 
-  defp canonical(_, data), do: data
+  defp rewrite(_type, data), do: data
 
   @spec consume(FunctionSelector.type(), binary(), keyword()) :: binary()
   defp consume({:uint, bits}, data, opts) do

@@ -1,42 +1,43 @@
 # Task 9031: production alloy ABI migration
 
-Benchmarks are reporting only, per the operator's correction. There is no
-performance stop condition. The production backend is active; the former
-handwritten codecs survive only as namespaced benchmark oracles in `legacy/`.
-`ABI.TypeEncoder` and `ABI.TypeDecoder` retain their documented API facades,
-doctests and exception contracts. The yecc/leex grammar sources are removed.
+The production backend is active. The former handwritten codecs survive only as
+namespaced benchmark oracles in `legacy/`. `ABI.TypeEncoder` and
+`ABI.TypeDecoder` retain their documented API facades, doctests and exception
+contracts. The yecc/leex grammar sources are removed. `bench/abi.exs` exits
+non-zero when any workload's mean is more than 2× the legacy mean.
 
 ## Production comparison
 
 Measured 2026-09-29 on Linux / Intel Core Ultra 7 265, Elixir 1.20.4,
 OTP 29.1, 20 schedulers, alloy-dyn-abi/alloy-json-abi 1.6.1, release Rust build.
 Benchee: concurrency 1, warmup 1 second, runtime 3 seconds, memory 1 second.
-No other tests/builds from this invocation ran during timing. Each job checks
-exact equality against the legacy output before timing. Both sides receive
-pre-parsed selectors; production schema resources and signatures are warm.
+Each job checks exact equality against the legacy output before timing. Both
+sides receive pre-parsed selectors; production schema resources and signatures
+are warm. Canonical decode payloads skip the declaration-order offset rewrite.
 
 | Workload | Old ips | Alloy ips | Old bytes | Alloy bytes | Alloy / old time |
 |---|---:|---:|---:|---:|---:|
-| ERC-20 transfer encode | 421,009.87 | 405,604.02 | 4,392 | 576 | 1.038× |
-| aggregate3 decode (500 results) | 4,012.62 | 1,275.66 | 656,912 | 1,841,818 | 3.146× |
-| Transfer event decode (single log) | 665,166.14 | 708,264.17 | 2,688 | 2,360 | 0.939× |
-| Transfer event decode (10000 logs) | 64.10 | 66.76 | 27,039,808 | 24,781,408 | 0.960× |
-| nested tuple/array encode | 3,389.22 | 32,689.28 | 739,448 | 10,440 | 0.104× |
+| ERC-20 transfer encode | 354,746.41 | 355,983.55 | 4,392 | 576 | 0.997× |
+| aggregate3 decode (500 results) | 3,013.10 | 2,283.34 | 656,912 | 708,776 | 1.320× |
+| Transfer event decode (single log) | 372,659.57 | 508,921.21 | 2,688 | 1,704 | 0.732× |
+| Transfer event decode (10000 logs) | 27.62 | 60.66 | 27,039,808 | 18,857,392 | 0.455× |
+| nested tuple/array encode | 3,458.72 | 27,618.17 | 739,448 | 10,440 | 0.125× |
 
 Memory is **BEAM process allocation**, excluding Rust heap allocation. Full
 precision and deviations are in `results.json` and `benchmark-output.txt`.
-The benchmark exited **0**. Timings have substantial variance on this shared host;
-see the raw deviations rather than treating these means as universal speedups.
+The benchmark exited **0**. Means are the gate. This host is noisy (aggregate3
+deviation ±68% alloy / ±165% old); aggregate3 medians are 374 µs versus 220 µs
+(1.70×), still inside the gate.
 
 The one-shot type-rendering + fresh NIF-resource compilation measurements were:
-ERC-20 **8 µs**, Transfer **12 µs**, aggregate3 **187 µs**, nested **9 µs**.
-These wall-clock samples include the dirty-scheduler handoff, are not medians,
-and exclude persistent-cache insertion/signature-cache population. The aggregate3
-sample is reported unchanged rather than rerun to discard an outlier.
+ERC-20 **861 µs**, Transfer **11 µs**, aggregate3 **5 µs**, nested **5 µs**.
+These are single samples, include the dirty-scheduler handoff, and exclude
+persistent-cache insertion. The ERC-20 sample is an outlier, not a median.
 
 `prototype-results.json` / `prototype-output.txt` retain the earlier cached
-prototype measurement (all workloads faster than legacy). The production
-comparison above includes the compatibility checks that prototype lacked.
+prototype measurement. `compatibility-results.json` retains the production
+measurement from before canonical payloads skipped the offset rewrite
+(aggregate3 at 3.146×). The table above is the current code.
 
 ## Phase explanation
 
@@ -44,35 +45,16 @@ Separate diagnostic measurements average 1,000 instrumented native calls:
 
 | Workload | Term decode µs | Alloy + preflight µs | Term encode µs |
 |---|---:|---:|---:|
-| ERC-20 transfer encode | 0.191 | 0.062 | 0.021 |
-| Transfer event decode (single log) | 0.121 | 0.228 | 0.134 |
-| aggregate3 decode (500 results) | 0.032 | 78.456 | 38.119 |
-| nested tuple/array encode | 12.403 | 5.336 | 0.181 |
+| ERC-20 transfer encode | 0.196 | 0.066 | 0.028 |
+| Transfer event decode (single log) | 0.432 | 0.232 | 0.239 |
+| aggregate3 decode (500 results) | 0.037 | 81.193 | 37.690 |
+| nested tuple/array encode | 12.670 | 5.802 | 0.256 |
 
-The aggregate3 workload is **3.146× slower** overall (783.9 µs versus 249.2 µs).
-Its native phases sum to about **116.6 µs**: term input is negligible, alloy
-plus allocation preflight takes 78.5 µs, and result conversion takes 38.1 µs.
-Most total time therefore lies outside those native phases: Elixir's legacy
-padding/length checks, offset normalization, shape rendering, cache lookup and
-scheduler crossings. The 1.84 MB BEAM allocation supports the compatibility
-walks/copies as the main optimization target; it is not evidence that alloy
-itself costs 783.9 µs.
-
-ERC-20 encoding is **1.038× slower** (2.465 µs versus 2.375 µs).
-Its native phases are 0.191 µs input, 0.062 µs alloy and 0.021 µs output;
-the rest includes facade normalization, cache lookup and dirty-scheduler handoff.
-The 90 ns mean difference is small relative to the benchmark's variation.
-The other three workloads are faster in this run. Instrumentation has its own
-cost, so the phases are diagnostic rather than an exact decomposition of
-Benchee's mean.
-
-`compatibility-results.json` preserves an earlier production measurement.
-The final run follows fixes preserving a body field named `__abi__topic` and
-selecting the event scheduler from cached schema metadata, so dynamic events
-also use one NIF crossing. It was rerun for code changes, not to seek a passing
-performance threshold.
-A useful follow-up is to consolidate compatibility validation/normalization
-walks without changing strict errors or the captured oracle.
+Aggregate3 is **1.320× slower** on the mean (438.0 µs versus 331.9 µs). Its
+native phases sum to about **118.9 µs**. The rest is Elixir validation, result
+rendering, cache lookup and the dirty-scheduler handoff. Instrumentation has
+its own cost, so the phases are diagnostic rather than an exact decomposition
+of Benchee's mean.
 
 ## Boundary and safety
 
@@ -113,12 +95,11 @@ errors. Native properties exercise malformed types/values/payloads and resources
 ## Verification
 
 - Focused core suite, fixture replay, new properties, filter tests and shutdown
-  probe pass: **570 checks** (152 doctests, 25 properties, 393 tests), with
+  probe pass: **571 checks** (152 doctests, 25 properties, 394 tests), with
   three pre-existing integration exclusions.
-- All seven package VMs exit **0** after their focused tests and the common
-  `bench/teardown_test.exs` resource-retention probe. Commands are recorded in
-  `consumer-exits.json`. Counts: onchain 570, Aave 18, Aerodrome 77, EVM 133,
-  JS 2, Solana 59, Tempo 16. This is scoped verification, not a claim of full QA.
+- An earlier consumer sweep (`consumer-exits.json`) exited 0: onchain 570,
+  Aave 18, Aerodrome 77, EVM 133, JS 2, Solana 59, Tempo 16. Scoped verification,
+  not full QA. The onchain count above is the later rerun.
 - Aerodrome's existing types/decode fixture suites pass unchanged (77 checks).
 - EVM's moved-infrastructure, Solidity and parameter checks pass (133 checks).
 - `cargo clippy --locked --manifest-path native/onchain_abi/Cargo.toml --all-targets -- -D warnings`
@@ -139,7 +120,7 @@ errors. Native properties exercise malformed types/values/payloads and resources
 
 Native artifacts are under `artifacts/precompiled/release/` (ignored build output).
 Publish commands and the cargo-free consumer procedure are documented in
-`../CLAUDE.md`. The changelog is deliberately untouched under harness policy.
+`../CLAUDE.md`.
 No full suite, coverage or general analyzers were run; full post-merge QA remains
 separate, and this repository has no automatic CI runner.
 

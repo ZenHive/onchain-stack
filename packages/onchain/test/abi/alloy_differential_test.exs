@@ -26,6 +26,26 @@ defmodule ABI.AlloyDifferentialTest do
     end
   end
 
+  test "declaration-order tails win when offset words disagree" do
+    types = [%{type: {:tuple, [%{type: :bytes}, %{type: :bytes}]}}]
+    payload = ABI.TypeEncoder.encode_raw([{"hello", "world"}], types)
+    <<_offset::256, rest::binary>> = payload
+    corrupted = <<0::256, rest::binary>>
+
+    assert ABI.TypeDecoder.decode_raw(corrupted, types) == [{"hello", "world"}]
+
+    assert ABI.TypeDecoder.decode_raw(corrupted, types) ==
+             Legacy.TypeDecoder.decode_raw(corrupted, types)
+
+    array = [%{type: {:array, {:tuple, [%{type: :bool}, %{type: :bytes}]}}}]
+    encoded = ABI.TypeEncoder.encode_raw([[{true, "ab"}, {false, "cd"}]], array)
+    <<count::256, _element_offset::256, tail::binary>> = encoded
+    shifted = <<count::256, 0::256, tail::binary>>
+
+    assert ABI.TypeDecoder.decode_raw(shifted, array) ==
+             Legacy.TypeDecoder.decode_raw(shifted, array)
+  end
+
   test "tuple and fixed-array arity failures retain their legacy outcomes" do
     for {types, values} <- [
           {[%{type: {:uint, 256}}], []},

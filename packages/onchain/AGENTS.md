@@ -732,7 +732,8 @@ recursive converter handles values without JSON serialization. `ABI.TypeEncoder`
 and `ABI.TypeDecoder` retain their public APIs and doctests as compatibility
 facades, including `StrictViolation`. `ABI.Validation` preserves legacy strict
 padding, trailing-byte and length errors and normalizes the historically ignored
-tuple offsets before alloy follows them. No handwritten value codec remains in
+tuple offsets before alloy follows them. Payloads whose offsets already name
+those tails are passed through unchanged. No handwritten value codec remains in
 those facade modules. Zero-width aggregate shape and packed-array padding need
 explicit compatibility adaptation around alloy.
 

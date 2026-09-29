@@ -8,6 +8,7 @@ Completed roadmap tasks.
 
 ### Changed
 
+- **ABI encode and decode run through an alloy-dyn-abi NIF.** `ABI.TypeEncoder` and `ABI.TypeDecoder` stay as facades: the same public functions, doctests, and `TypeDecoder.StrictViolation` behaviour. The handwritten codecs and the yecc/leex type parser are gone. A selector or event compiles once into a NIF resource (parsed types plus topic0) and is cached on the Elixir side; bulk log decode is one batch call. Canonical payloads skip the declaration-order offset rewrite. Precompiled NIF artifacts ship via `Onchain.Precompiled`, which moved here from onchain_evm, so consumers do not need a Rust toolchain.
 - **Requires cartouche `~> 0.10`, whose secp256k1 backend is now `ex_secp256k1` (RustCrypto k256) instead of `curvy`.** `Onchain.AA` and `Onchain.Signer` sign through `Cartouche.Signer.Secp256k1` and recover through `Cartouche.Recover`; curvy is no longer in onchain's dependency tree. Signature structs surfaced from cartouche are now `%Cartouche.Signature{}` rather than `%Curvy.Signature{}`.
 
 ## v0.14.0 — node-capability classification, fee reads, and the onchain-stack move (2026-08-27)

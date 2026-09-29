@@ -5,90 +5,90 @@
   "elixir": "1.20.4",
   "compile_costs": {
     "ERC-20": {
-      "one_time_compile_us": 8
+      "one_time_compile_us": 861
     },
     "Transfer": {
-      "one_time_compile_us": 12
+      "one_time_compile_us": 11
     },
     "aggregate3": {
-      "one_time_compile_us": 187
+      "one_time_compile_us": 5
     },
     "nested": {
-      "one_time_compile_us": 9
+      "one_time_compile_us": 5
     }
   },
   "measurements": {
     "ERC-20 transfer encode / alloy": {
-      "ips": 405604.01785369596,
-      "average_ns": 2465.458812,
+      "ips": 355983.5510965733,
+      "average_ns": 2809.1185587637283,
       "memory_bytes": 576.0
     },
     "ERC-20 transfer encode / old": {
-      "ips": 421009.86619444226,
-      "average_ns": 2375.241248,
+      "ips": 354746.4113380853,
+      "average_ns": 2818.91505604821,
       "memory_bytes": 4392.0
     },
     "Transfer event decode (10000 logs) / alloy": {
-      "ips": 66.75794587995236,
-      "average_ns": 14979490.258706467,
-      "memory_bytes": 24781408.0
+      "ips": 60.65612863481443,
+      "average_ns": 16486380.23076923,
+      "memory_bytes": 18857392.0
     },
     "Transfer event decode (10000 logs) / old": {
-      "ips": 64.10375526394712,
-      "average_ns": 15599710.124352332,
+      "ips": 27.62304608333608,
+      "average_ns": 36201655.56626506,
       "memory_bytes": 27039808.0
     },
     "Transfer event decode (single log) / alloy": {
-      "ips": 708264.165169804,
-      "average_ns": 1411.902577,
-      "memory_bytes": 2360.0
+      "ips": 508921.21277317416,
+      "average_ns": 1964.940692,
+      "memory_bytes": 1704.0
     },
     "Transfer event decode (single log) / old": {
-      "ips": 665166.1418697597,
-      "average_ns": 1503.383797,
+      "ips": 372659.56757792685,
+      "average_ns": 2683.414266,
       "memory_bytes": 2688.0
     },
     "aggregate3 decode (500 results) / alloy": {
-      "ips": 1275.663836078478,
-      "average_ns": 783905.5805439331,
-      "memory_bytes": 1841818.3744292238
+      "ips": 2283.3372694306804,
+      "average_ns": 437955.4494152047,
+      "memory_bytes": 708776.0
     },
     "aggregate3 decode (500 results) / old": {
-      "ips": 4012.622729486827,
-      "average_ns": 249213.5611582626,
+      "ips": 3013.104840533264,
+      "average_ns": 331883.57290050964,
       "memory_bytes": 656912.0
     },
     "nested tuple/array encode / alloy": {
-      "ips": 32689.28491063432,
-      "average_ns": 30591.06379150817,
+      "ips": 27618.1684859718,
+      "average_ns": 36208.04907855978,
       "memory_bytes": 10440.0
     },
     "nested tuple/array encode / old": {
-      "ips": 3389.2155311954593,
-      "average_ns": 295053.5281086935,
+      "ips": 3458.7247766898504,
+      "average_ns": 289123.9010225738,
       "memory_bytes": 739448.0
     }
   },
   "native_phase_averages": {
     "ERC-20 transfer encode": {
-      "term_decode_ns": 190.712,
-      "alloy_ns": 61.629,
-      "term_encode_ns": 21.379
+      "term_decode_ns": 196.127,
+      "alloy_ns": 65.825,
+      "term_encode_ns": 27.989
     },
     "Transfer event decode (single log)": {
-      "term_decode_ns": 121.351,
-      "alloy_ns": 228.448,
-      "term_encode_ns": 133.919
+      "term_decode_ns": 432.037,
+      "alloy_ns": 231.734,
+      "term_encode_ns": 239.094
     },
     "aggregate3 decode (500 results)": {
-      "term_decode_ns": 32.202,
-      "alloy_ns": 78456.194,
-      "term_encode_ns": 38119.142
+      "term_decode_ns": 36.541,
+      "alloy_ns": 81193.132,
+      "term_encode_ns": 37689.876
     },
     "nested tuple/array encode": {
-      "term_decode_ns": 12402.944,
-      "alloy_ns": 5336.261,
-      "term_encode_ns": 181.492
+      "term_decode_ns": 12669.862,
+      "alloy_ns": 5801.725,
+      "term_encode_ns": 256.379
     }
   },
   "phase_note": "1000 instrumented calls; excludes Elixir validation/normalization/cache and scheduler handoff; alloy phase includes payload preflight.",

@@ -154,5 +154,5 @@ regressions =
 
 if regressions != [] do
   IO.puts(:stderr, "REPORT: exceeds 2x slowdown: #{Enum.join(regressions, ", ")}.")
-  IO.puts("Benchmarks are reporting only; continue migration and report phase costs.")
+  System.halt(1)
 end
