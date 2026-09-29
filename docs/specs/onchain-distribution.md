@@ -1,10 +1,8 @@
 # Native distribution and Rust supply chain
 
 How the in-repo NIF crates are built, shipped and gated, and how in-family
-dependencies resolve for development versus publishing. Status is `draft`:
-the checkout half (DIST-4/DIST-5) does not hold on a fresh clone today
-(task 9043), and the cargo gates (DIST-13..15) are not built yet (task 9044).
-Flip to `active` once both land. Each rule's source follows it.
+dependencies resolve for development versus publishing. Status is `draft`
+until the cargo gates (DIST-13..15, task 9044) exist; flip to `active` then. Each rule's source follows it.
 
 DIST-1: The precompiled target set is exactly aarch64/x86_64 Darwin, aarch64/x86_64 GNU/Linux and x86_64 musl at NIF 2.15; `Onchain.Precompiled.targets/0` matches `scripts/build-precompiled.sh`, and no Windows target is declared.
   Source: packages/onchain/lib/onchain/precompiled.ex; task 9031 (five targets).
@@ -15,8 +13,8 @@ DIST-2: A checksum mismatch or a missing checksum entry fails the NIF load; neit
 DIST-3: A Hex-installed package never source-builds because its checksum file is missing; the load fails instead.
   Source: Onchain.Precompiled.force_build?/4; task 9043 (acceptance criterion 2).
 
-DIST-4: In this repo's checkout, a missing checksum file makes the NIF source-build.
-  Source: Onchain.Precompiled moduledoc.
+DIST-4: With the `.onchain-monorepo-root` marker present and `ONCHAIN_PUBLISH` not `1`, core source-builds its NIF even when checksums are committed and declares Rustler non-optional; onchain_evm's crates keep downloading when their checksums exist.
+  Source: task 9043 (1ead589); Onchain.Precompiled; packages/onchain/CLAUDE.md.
 
 DIST-5: A fresh clone with an empty rustler_precompiled cache and no build environment variable compiles at the repo root and in all seven packages.
   Source: task 9043 (acceptance criterion 1; broken since c9c7256).
