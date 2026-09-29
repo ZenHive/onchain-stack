@@ -13,7 +13,7 @@ Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) a
      degrades on it. See ~/.claude/setup-guide.md § "Skills vs Includes".
      Workspace layout and release ordering are maintained in ../../CLAUDE.md. -->
 @~/.claude/includes/critical-rules.md
-@~/.claude/includes/harness-workflow.md
+@~/.claude/includes/harness-guardrails.md
 <!-- Consolidated workspace layout and release ordering: see ../../CLAUDE.md. -->
 @~/.claude/includes/ethereum-rpc.md
 @~/.claude/includes/node-portability.md
