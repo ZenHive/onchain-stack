@@ -9939,7 +9939,7 @@ phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain"
 milestone = "onchain_core_consolidation"
-status = "in_progress"
+status = "done"
 title = "Split Solana out of cartouche into a new onchain_solana package"
 scores = { d = 5, b = 6, u = 7 }
 markers = ["security"]
@@ -9954,9 +9954,16 @@ Solana has nothing in common with the EVM core, but lives inside cartouche: the 
 Create packages/onchain_solana as its own Hex package in this monorepo, following the existing package conventions (own mix.exs with sibling/3, CHANGELOG, CLAUDE.md, per-package gate via the shared helpers). Since it has never been published, it starts directly under the final Onchain.Solana.* namespace — no intermediate Cartouche.Solana release. Shared pieces it still needs from cartouche (Cartouche.CloudKMS HTTP client for the KMS signer) stay in cartouche and are consumed through a sibling dependency; do not duplicate them.
 
 Premise verified 2026-09-29 by grep: the only consumer of Cartouche.Solana.* outside cartouche is mpp (lib/mpp/methods/solana*.ex, usdc/solana.ex). mpp lives in its own repo."""
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1790652316269-053e90d9, 0779c47a8da34a06c4b9c54aa2bb5219d464f8d4)."
+delivered_by = "codex"
+verified = true
+verified_by = "claude"
+verification_ref = "harness-run:run-1790652316269-053e90d9"
 created_at = "2026-09-29"
 started_at = "2026-09-29"
 scored_at = "2026-09-29"
+done_at = "2026-09-29"
+shipped_in = "0779c47a8da34a06c4b9c54aa2bb5219d464f8d4"
 
 [[task]]
 id = "9030"
