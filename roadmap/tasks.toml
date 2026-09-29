@@ -10020,6 +10020,8 @@ touches = ["packages/onchain/native/", "packages/onchain/lib/abi/", "packages/on
 assignee = "codex"
 model = "gpt-6-astra"
 body = """
+Answered 2026-09-29 (run question): ABI.TypeEncoder and ABI.TypeDecoder stay as thin facades over the alloy NIF. Their handwritten codec bodies are deleted, but the module names, public functions, doctests and exception behaviour (including TypeDecoder.StrictViolation) stay unchanged. The NIF returns error tuples and the facades raise the existing exceptions. Renaming to Onchain.* belongs to 9036. The existing ABI tests remain the byte-identical oracle and are not edited to fit. The Benchee old-vs-alloy run happens against the old implementation (e.g. the pre-change commit, or a bench-only copy under bench/) before the old code is deleted.
+
 Operator decision 2026-09-29: deterministic encoding moves to alloy through a NIF so new EIPs arrive by a crate bump instead of hand-written Elixir. This reverses the out_of_scope note on task 9026 ('conformance vectors, not a runtime Rust dependency').
 
 Build the NIF into packages/onchain using the rustler_precompiled setup onchain_evm already has (Onchain.Precompiled, the five targets in its @targets list, build-precompiled script, checksum file) — move that infrastructure into the core rather than duplicating it, so onchain_evm consumes it. Consumers must never need a Rust toolchain.
