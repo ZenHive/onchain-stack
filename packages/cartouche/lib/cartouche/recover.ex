@@ -275,6 +275,7 @@ defmodule Cartouche.Recover do
     end
   end
 
+  @spec recover_digest(<<_::256>>, Cartouche.Signature.t()) :: {:ok, binary()} | {:error, atom()}
   defp recover_digest(digest, %Cartouche.Signature{r: r, s: s, recid: recid})
        when r > 0 and r < @secp256k1_n and s > 0 and s < @secp256k1_n and recid in 0..3 do
     ExSecp256k1.recover(digest, <<r::256>>, <<s::256>>, recid)

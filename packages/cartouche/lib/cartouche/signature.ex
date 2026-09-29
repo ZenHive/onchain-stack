@@ -30,6 +30,7 @@ defmodule Cartouche.Signature do
 
   def from_der(_), do: {:error, :invalid_signature}
 
+  @spec canonical_integer?(binary()) :: boolean()
   defp canonical_integer?(<<0, next, _::binary>>), do: next >= 128
   defp canonical_integer?(<<first, _::binary>>), do: first < 128
   defp canonical_integer?(_), do: false

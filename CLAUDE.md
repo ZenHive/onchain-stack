@@ -64,8 +64,8 @@ eight packages.
 ## Toolchain — one pin for the whole repo
 
 ```
-erlang 29.0.3
-elixir 1.20.2-otp-29
+erlang 29.1
+elixir 1.20.4-otp-29
 ```
 
 Lives in exactly one file, `.tool-versions` at the repo root. The eight

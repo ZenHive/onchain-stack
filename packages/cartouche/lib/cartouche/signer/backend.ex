@@ -82,7 +82,7 @@ defmodule Cartouche.Signer.Backend do
   Sign the exact payload bytes handed in — no internal hashing.
 
   `:secp256k1` ⇒ `payload` is a 32-byte digest; returns `{:ok, %Cartouche.Signature{}}`
-  with `recid: nil`. `:ed25519` ⇒ `payload` is the raw message; returns
+  with an optional recovery ID. `:ed25519` ⇒ `payload` is the raw message; returns
   `{:ok, <<_::512>>}`.
   """
   @callback sign_payload(payload :: binary(), config()) ::

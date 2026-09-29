@@ -76,9 +76,10 @@
 | Task 9004 | ✅ | 🎁 **monorepo_root_gates** · Drop --summary-only from the six packages that still carry it — it disqualifies ex_unit_json's flaky-retry and hides which test failed [D:2/B:6/U:5 → Eff:2.75] 🎯 |
 | Task 9005 | ⬜ | 🎁 **monorepo_root_gates** · The consolidated root .mcp.json reaches only cartouche's tidewave (port 4013); the other seven packages' dev servers are unaddressable [D:2/B:5/U:4 → Eff:2.25] 🎯 |
 | Task 9011 | ✅ | 🎁 **monorepo_root_gates** · check.dispatch runs NO tests in onchain_aave, onchain_aerodrome and onchain_evm — the reviewer gate grades three packages without executing their suites [D:4/B:9/U:8 → Eff:2.12] 🎯 |
-| Task 9012 | ⬜ | 🎁 **monorepo_root_gates** · Resolve Mint advisories reported by the Aave cold dependency install [D:3/B:7/U:7 → Eff:2.33] 🎯 |
+| Task 9012 | ⬜ | 🎁 **monorepo_root_gates** · Resolve current Mint advisories across root and package locks [D:3/B:7/U:7 → Eff:2.33] 🎯 |
 | Task 9023 | ⬜ | 🎁 **monorepo_root_gates** · mix ci in onchain_aave and onchain_aerodrome exits 139 after every gate is already green [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 | Task 9024 | ⬜ | 🎁 **monorepo_root_gates** · Wire elixir test/alias_separation_test.exs into the root mix ci alias [D:2/B:5/U:5 → Eff:2.5] 🎯 |
+| Task 9027 | ⬜ | 🎁 **monorepo_root_gates** · Make AGENTS freshness reproducible on harness nodes without stale workspace imports [D:3/B:5/U:6 → Eff:1.83] 🚀 |
 <!-- TASKS:END -->
 
 ---
@@ -228,6 +229,7 @@
 | Task 9016 `[P]` | ⬜ | 🎁 **cartouche_dev_node_actions** · Typed dev-node control wrappers — anvil_*/hardhat_*/evm_* (balance, storage, code, nonce, impersonation, mining, time, snapshots, fork reset) under the non-standard-namespace portability contract [D:3/B:5/U:6 → Eff:1.83] 🚀 |
 | Task 9022 | ✅ | 🎁 **cartouche_tooling_quality** · Separate focused dispatch aliases from complete post-merge QA [D:3/B:7/U:7 → Eff:2.33] 🎯 |
 | Task 9026 | ✅ | 🎁 **cartouche_signer_backends** · 🔒 Replace curvy with a Rust k256 backend for all secp256k1 signing and recovery [D:5/B:8/U:7 → Eff:1.5] 🚀 |
+| Task 9028 | ✅ | 🎁 **cartouche_signer_backends** · Restore private helper specs required by Cartouche Credo after k256 migration [D:1/B:4/U:6 → Eff:5.0] 🎯 |
 <!-- TASKS:END -->
 
 ### Phase 2001: Spec corrections (immediate onchain wins)
