@@ -15209,7 +15209,7 @@
       "bundle": "onchain_core_consolidation",
       "target_repo": "onchain_tempo",
       "milestone": "onchain_core_consolidation",
-      "status": "in_progress",
+      "status": "done",
       "title": "Tempo 0x76 encoding from tempo-primitives in an onchain_tempo NIF, graded against the Tempo spec including key_authorization",
       "scores": {
         "d": 6,
@@ -15250,10 +15250,16 @@
         "packages/onchain_tempo/CHANGELOG.md",
         "packages/onchain_tempo/CLAUDE.md"
       ],
+      "shipped_in": "21ed60ec",
       "body": "tempo-primitives 1.11.0 (crates.io, released 2026-08-20; github.com/tempoxyz/tempo) is the official Rust definition of Tempo's transaction types: TempoTxEnvelope, TempoTransaction, AASigned, and TempoSignature with SignatureType Secp256k1 / P256 / WebAuthn (docs.rs). revm and alloy-evm are optional dependencies behind the evm feature, but commonware-cryptography ^2026.7.1 is a required dependency (docs.rs dependency list).\n\nBuild the NIF as its own crate in packages/onchain_tempo, precompiled through the shared rustler_precompiled infrastructure task 9031 moves into core, not inside the core onchain NIF. Tempo types and commonware then ship only to onchain_tempo consumers, not to every onchain (or onchain_solana) user. Use default-features = false with std + serde.\n\n(2026-09-29 review) The current encoder is a usable oracle for key_authorization too. split_base_fields/1 (packages/onchain_tempo/lib/onchain/tempo/transaction.ex:396-401) keeps every field except the trailing sender signature, so key_authorization stays in the base fields when present. The `_has_key_auth` parameter of build_fee_payer_preimage_fields/4 (:405) is merely unused. tempo-primitives 1.11.0 includes key_authorization in the fee-payer hash the same way: fee_payer_signature_hash → rlp_encode_fields, src/transaction/tempo_transaction.rs:407-430 and :482-525. Byte parity with the old encoder is therefore required for all transactions, with and without key_authorization, and every key_authorization case is additionally graded against tempo-primitives, the Tempo spec and live Moderato. If a divergence does appear, tempo-primitives and the spec win, and the divergence is recorded in the outcome with the failing vector.\n\nonchain_tempo signs only Secp256k1 today (transaction.ex:34), and its struct is a positional RLP fields list (fee-payer signature at @fee_payer_sig_index 11, :185). Replacing the encoder means reworking that internal representation while keeping the public functions (build, cosign_fee_payer/3, has_fee_payer_placeholder?/1, decode) and their return contracts. What remains in Elixir is the thin protocol layer: TIP-20, fee-payer flow, faucet, RPC glue.\n",
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
+      "done_at": "2026-09-29",
       "scored_at": "2026-09-29",
+      "implemented": "Tempo 0x76 encoding moved to an onchain_tempo NIF on tempo-primitives with key_authorization byte parity; native verification + integration tests; follow-up bounds-doc fix 91ec6f2",
+      "verified": true,
+      "verified_by": "harness-reviewer",
+      "verification_ref": "harness-run:run-1790723365942-c735f91d",
       "spec_changes": [
         {
           "rule": "TEMPO-1",
