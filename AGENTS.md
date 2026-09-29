@@ -300,7 +300,7 @@ cd ~/_DATA/code/onchain-stack && mix ci
 runs, in order:
 
 1. **`mix onchain.bounds`** — seconds of AST parsing; catches the one failure
-   class the monorepo introduces (see sibling/3 above) before spending nine
+   class the monorepo introduces (see sibling/3 above) before spending seven
    package gates discovering it downstream.
 2. Each package's own `mix ci`, **strictly serial** — `packages_ci/1` in the
    root `mix.exs` shells into `packages/<name>` with `MIX_ENV`/`MIX_TARGET`
@@ -350,8 +350,8 @@ existed and should be migrated to load `shared/mix_helpers.exs` instead.
 **Consolidated config, root-owned:** `.tool-versions`, `.mix_audit_ignore`
 (one shared entry, six per-package symlinks — see the adjudication below),
 and the ExSlop/`.credo.exs` base policy now live once at the repo root instead
-of eight near-identical copies. There is no per-package override left: all
-nine `packages/<name>/.credo.exs` are symlinks to the root `.credo.exs`, so
+of eight near-identical copies. There is no per-package override left: every
+`packages/<name>/.credo.exs` are symlinks to the root `.credo.exs`, so
 editing the root policy is the only way to change any package's credo rules.
 
 ### The gates are real — do not re-decorate them
@@ -425,8 +425,8 @@ finding is a false positive here. Filed upstream as
 `mirego/elixir-security-advisories#8` (grouping fix) and `#9` (the one-line
 `Dump.dump/1` patch), both open and unreviewed as of the last check. The
 single ignore entry lives at the **root** `.mix_audit_ignore`, symlinked into
-the six packages whose dep tree resolves `gun` (hieroglyph and cartouche audit
-clean and carry no ignore file at all). Remove it once the importer fix lands
+all seven packages, each of whose dep tree resolves `gun` (onchain_solana gained
+it when its cartouche edge became onchain → zen_websocket). Remove it once the importer fix lands
 and the mirror splits the advisory — never add any *other* advisory id to
 that file; every other finding it would report is real.
 
@@ -463,12 +463,12 @@ remains:
   `.reach.exs` key, so there was nothing to exclude). Restored 2026-09-16 under
   reach 2.8.4, verified green by running it.
 
-**`--dead-code` is on in eight of seven packages; cartouche is the exception.**
+**`--dead-code` is on in six of seven packages; onchain is the exception.**
 The gate flag is `reach.check --dead-code --arch --smells` everywhere except
-cartouche, which runs `--arch --smells`.
+onchain, which runs `--arch --smells`.
 
-- **cartouche cannot run `--dead-code` at all.** At 67 files in scope
-  (`lib, sol/src, src, test/support`) the pass dies with
+- **onchain cannot run `--dead-code` at all.** Inherited from cartouche (67
+  files then); the merged 109-file scope reproduces it: the pass dies with
   `** (exit) exited in: Task.Supervised.stream(30000) ** (EXIT) time out` from
   `Reach.CLI.Pipe.safely/1`, after Architecture Policy has already printed OK.
   It is a reach-side timeout on the largest package in the family, not a
@@ -590,7 +590,7 @@ own ports; do not start or control an operator's running server.
 
 ## Health & publish tooling
 
-Both scripts are monorepo-aware (adapted 2026-08-27). They map the 8 packages
+Both scripts are monorepo-aware (adapted 2026-08-27). They map the 7 packages
 to `packages/<name>/` and the three external repos (descripex, zen_websocket,
 mpp) to `~/_DATA/code/<name>`; root location overridable via
 `ONCHAIN_STACK_DIR`.
@@ -598,15 +598,15 @@ mpp) to `~/_DATA/code/<name>`; root location overridable via
 - `fleet-health.sh` — one table: git state, toolchain pin, `mix hex.outdated`,
   `mix hex.audit`, `mix deps.audit`, open GitHub issues/PRs/Dependabot alerts.
   Read-only, no writes. The `onchain-stack` row owns git/fetch/toolchain/GitHub
-  for the whole monorepo; the 8 indented package rows own the per-package
+  for the whole monorepo; the 7 indented package rows own the per-package
   hex/audit columns plus path-scoped dirty (their shared cells render `-`, not
-  8 repeated numbers). It has no CI column (an absent gate must not read as a
+  7 repeated numbers). It has no CI column (an absent gate must not read as a
   passing one) and never fails on outdated deps or a dirty tree — normal
   working state.
 - `publish-prep.sh status` / `publish-prep.sh check <pkg> [--integration]` —
   local-vs-Hex version delta, and the deterministic pre-publish gauntlet
   (clean tree → version delta → deps.get → hex.audit → compile -Werror →
-  tests → CHANGELOG → `hex.build` dry-run). For the 8 in-repo packages the
+  tests → CHANGELOG → `hex.build` dry-run). For the 7 in-repo packages the
   whole gauntlet runs under `ONCHAIN_PUBLISH=1`, restores the package's
   `mix.lock` on exit, hard-fails on the Hex "excluded from the package"
   phrase, and positively checks that every declared `sibling/2` appears in
@@ -725,7 +725,7 @@ change warrants it.
   Actions workflows and never rebuilt as a `mix ci`/`precommit.full` step. The
   mechanism needs nothing but a scratch dir, `--mark-skip-all`, and a `diff`
   — no runner required. Owed to every package still carrying a skips file
-  (hieroglyph, cartouche, onchain, onchain_evm).
+  (onchain, onchain_evm).
 - **No package or the root tests a fresh dependency resolution.** Nothing
   runs `deps.unlock --all` against a scratch clone, so a bound that has
   stopped holding is invisible until a consumer trips on it. This is a

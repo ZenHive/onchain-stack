@@ -108,11 +108,11 @@ users run Alchemy, Infura, or a pruned Geth. What is specific to this repo:
 ## Toolchain & check commands
 
 Full post-merge QA: **`mix ci`** (= `precommit.full`), same shape as every other
-package (root `CLAUDE.md` § Gates). Coverage floor here is **70%**. `mix
+package (root `CLAUDE.md` § Gates). Coverage floors are per library (`mix onchain.coverage`, see below). `mix
 precommit` is the fast local loop (no dialyzer/coverage).
 
-- **`reach.check --dead-code --arch --smells` is scanned across `roots=dev, lib, src`** —
-  do not narrow that scope.
+- **`reach.check --arch --smells` is scanned across `lib, dev, sol/src, test/support`** —
+  do not narrow that scope (`--dead-code` times out; see Gate configuration below).
 - **`deps.audit.gated`** runs against `.mix_audit_ignore` (symlinked from the
   root file — see root `CLAUDE.md` § Adjudicated findings for the gun/cowlib
   false-positive rationale). Do not add any other advisory id to it.

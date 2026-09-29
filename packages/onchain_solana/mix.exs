@@ -113,6 +113,8 @@ defmodule OnchainSolana.MixProject do
         "agents.check"
       ],
       "agents.check": [&agents_check/1],
+      # onchain -> zen_websocket -> gun: the reviewed gun false positive applies.
+      "deps.audit": ["deps.audit --ignore-file .mix_audit_ignore"],
       "deps.audit.gated": [&advisory_freshness/1, "deps.audit"],
       ci: ["precommit.full"]
     ]

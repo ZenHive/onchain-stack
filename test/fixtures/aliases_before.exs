@@ -268,6 +268,7 @@
     "agents.check" => ["&agents_check/1"],
     "check.dispatch" => ["\"format --check-formatted\"", "\"compile --warnings-as-errors\""],
     "ci" => ["\"precommit.full\""],
+    "deps.audit" => ["\"deps.audit --ignore-file .mix_audit_ignore\""],
     "deps.audit.gated" => ["&advisory_freshness/1", "\"deps.audit\""],
     "precommit" => ["\"check.dispatch\"", "\"test.json\""],
     "precommit.full" => [
