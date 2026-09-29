@@ -9855,10 +9855,11 @@ phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain_tempo"
 milestone = "onchain_core_consolidation"
-status = "pending"
+status = "in_progress"
 title = "Tempo 0x76 encoding from tempo-primitives in an onchain_tempo NIF, graded against the Tempo spec including key_authorization"
 scores = { d = 6, b = 7, u = 6 }
 markers = ["security"]
+depends_on = [9031]
 acceptance_criteria = ["For transactions without key_authorization: current onchain_tempo output (tx bytes, signing hash, tx hash, cosigned bytes) over all fixtures and the existing priv/verification/0x76 vectors (ox_vectors.json) is captured before deletion, and the tempo-primitives path matches byte-for-byte", "For transactions with key_authorization: unsigned bytes, sender sign payload, 0x78 fee-payer preimage, serialized and cosigned bytes and recovered sender/fee-payer are graded against tempo-primitives and the Tempo spec (versions recorded), never against the old encoder; a test proves the preimage now includes key_authorization", "A live Moderato run records one success with and one without key_authorization, plus one relevant live error; absent endpoint access the run fails loudly with the exact setup needed, never skips", "The NIF is a separate crate in packages/onchain_tempo using the shared precompiled infrastructure; the core onchain NIF gains no Tempo or commonware dependency; the outcome records onchain_tempo NIF binary size and clean build time", "Secp256k1 signing round-trips as today; no new signature types are exposed; onchain_tempo contains no hand-written 0x76/0x78 RLP encoding; its public API is unchanged", "Focused tests pass and `mix check.dispatch` is green in every touched package (full `mix ci` is post-merge QA); Onchain.Tempo.Transaction stays >=95% coverage; onchain_tempo CHANGELOG and CLAUDE.md (native build notes) updated"]
 out_of_scope = ["tempo-alloy network/filler/relay transport — onchain_tempo keeps its Elixir RPC", "mpay-rs / mpp changes", "Folding onchain_tempo into the core package", "8013's mutation campaign, canary and ledger extension — they stay in 8013 and run against the new encoder"]
 touches = ["packages/onchain_tempo/native/", "packages/onchain_tempo/lib/", "packages/onchain_tempo/test/", "packages/onchain_tempo/priv/verification/", "packages/onchain_tempo/mix.exs", "packages/onchain_tempo/CHANGELOG.md", "packages/onchain_tempo/CLAUDE.md"]
@@ -9873,8 +9874,8 @@ The current encoder is not a trustworthy oracle for key_authorization. Onchain.T
 onchain_tempo signs only Secp256k1 today (transaction.ex:34), and its struct is a positional RLP fields list (fee-payer signature at @fee_payer_sig_index 11, :185). Replacing the encoder means reworking that internal representation while keeping the public functions (build, cosign_fee_payer/3, has_fee_payer_placeholder?/1, decode) and their return contracts. What remains in Elixir is the thin protocol layer: TIP-20, fee-payer flow, faucet, RPC glue.
 """
 created_at = "2026-09-29"
+started_at = "2026-09-29"
 scored_at = "2026-09-29"
-depends_on = [9031]
 
 [[task]]
 id = "9034"
