@@ -15056,7 +15056,7 @@
       "bundle": "onchain_core_consolidation",
       "target_repo": "onchain",
       "milestone": "onchain_core_consolidation",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Typed transactions and EIP-712 on alloy through the core NIF",
       "scores": {
         "d": 7,
@@ -15096,6 +15096,7 @@
       ],
       "body": "Replace the hand-written encoding in Cartouche.Transaction (legacy, EIP-2930, 1559, 4844, 7702, typed_decode, call) and Cartouche.Typed (EIP-712 hashing) with alloy through the core NIF boundary from task 9031. Use alloy-consensus envelopes, whose SignableTransaction::signature_hash gives the signing hash, and alloy-dyn-abi's eip712 TypedData::eip712_signing_hash. Enable dyn-abi's eip712 feature; DynSolType::coerce_json is also gated behind it (docs.rs alloy-dyn-abi 1.7.3). alloy's TransactionEnvelope derive emits serde for the RPC JSON shape (tagged by \"type\") under the serde feature, and TypedData deserializes from standard EIP-712 JSON. This was verified by reading alloy-tx-macros 2.4.1 and alloy-dyn-abi 1.7.3 source, not by compiling.\n\nMost of the work is the Elixir <-> alloy mapping, not the crate calls. Every V1/V2/V3/V4/V2930 struct, with its r/s/v and field layout, and the JSON entry points V1.from_json/1 and V2.from_json/1 (packages/onchain/lib/cartouche/transaction.ex:447, :1359), must map to and from alloy types without changing their public shape.\n\nSigning stays on ex_secp256k1 (k256, task 9026). The NIF produces signing hashes and encodes signed envelopes. The Cartouche.Transaction and Cartouche.Typed public API does not change.\n",
       "created_at": "2026-09-29",
+      "started_at": "2026-09-29",
       "scored_at": "2026-09-29",
       "cross_repo": []
     },
