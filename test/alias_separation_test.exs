@@ -41,6 +41,29 @@ defmodule AliasSeparationTest do
           end
         end)
 
+      expected =
+        if @relative == "packages/onchain/mix.exs" do
+          Enum.flat_map(expected, fn
+            ~s("doctor --raise") = step ->
+              [
+                step,
+                inspect("cmd env MIX_ENV=test mix doctor --raise --config-file .doctor-hieroglyph.exs"),
+                inspect("cmd env MIX_ENV=test mix doctor --raise --config-file .doctor-cartouche.exs")
+              ]
+
+            ~s("cmd env MIX_ENV=test mix test.json --cover --cover-threshold 70 --exclude integration") ->
+              [inspect("cmd env MIX_ENV=test mix onchain.coverage"), inspect("hieroglyph.manifest --check")]
+
+            ~s("reach.check --dead-code --arch --smells") ->
+              [inspect("reach.check --arch --smells")]
+
+            step ->
+              [step]
+          end)
+        else
+          expected
+        end
+
       assert aliases["ci"] == [inspect("precommit.full")]
       refute inspect("check.dispatch") in aliases["precommit.full"]
       assert AliasGraph.expand(aliases, "ci") == expected

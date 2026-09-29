@@ -1,18 +1,18 @@
 # Onchain
 
-Pure Elixir Ethereum library. Provides read (`eth_call`) and write (transaction signing) capabilities using [`cartouche`](https://hex.pm/packages/cartouche) as the sole Ethereum dependency. No native deps, no Rustler.
+Ethereum library with RPC, ABI encoding/decoding and transaction signing. The former hieroglyph and cartouche libraries now ship here with their `ABI.*` and `Cartouche.*` names unchanged. Cryptography uses the existing Keccak and secp256k1 NIF dependencies.
 
 ## Package Family
 
 | Package | Purpose | Deps |
 |---------|---------|------|
-| **onchain** (this) | Core Ethereum primitives, RPC, ABI, signing | cartouche |
+| **onchain** (this) | Core Ethereum primitives, RPC, ABI, signing | descripex, zen_websocket, crypto dependencies |
 | [onchain_aave](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_aave) | Aave V3 protocol wrappers | onchain |
 | [onchain_evm](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_evm) | Rust NIFs: revm simulation, Solidity parsing, codegen | onchain + rustler |
 | [onchain_js](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_js) | JS bridge: npm packages on the BEAM via QuickBEAM | onchain + quickbeam |
 | [onchain_tempo](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_tempo) | Tempo chain primitives: 0x76 transactions, TIP-20 encoding | onchain |
 
-Pick what you need — consumers who only need `eth_call` never compile Rust or Zig.
+EVM simulation and the JavaScript bridge remain separate optional packages.
 
 ## Installation
 

@@ -3,6 +3,12 @@ defmodule Onchain.RPCTest do
 
   alias Onchain.RPC
 
+  setup do
+    # This suite exercised the real transport before Cartouche's fixtures moved here.
+    Process.put(:onchain_real_rpc, true)
+    :ok
+  end
+
   # --- Unit tests: input validation (no network calls) ---
 
   describe "eth_call/3 input validation" do

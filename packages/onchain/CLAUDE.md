@@ -2,7 +2,7 @@
 
 @~/.claude/includes/verification-policy.md
 
-Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) and write (transaction signing) capabilities using `cartouche` as the sole Ethereum dependency.
+Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) and write (transaction signing) capabilities including the relocated `ABI.*` and `Cartouche.*` modules.
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules. harness-workflow is eager
      because this repo is harness-driven (the OTP dispatch→review→land loop is the active
@@ -11,12 +11,10 @@ Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) a
      ex-unit-json, dialyzer-json, agent-economy, reach) is skill-on-demand via the elixir /
      task-driver / dev-lifecycle plugins. Re-add an @-import per-surface only if Opus visibly
      degrades on it. See ~/.claude/setup-guide.md § "Skills vs Includes".
-     NOTE: onchain-workspace.md is the HARNESS workspace add-on (monorepo layout + sibling/3 +
-     dependency shape), eager family-wide. The retired Linear/cloud-delegation add-on is
-     onchain-workspace-delegation.md (DORMANT). -->
+     Workspace layout and release ordering are maintained in ../../CLAUDE.md. -->
 @~/.claude/includes/critical-rules.md
 @~/.claude/includes/harness-workflow.md
-@~/.claude/includes/onchain-workspace.md
+<!-- Consolidated workspace layout and release ordering: see ../../CLAUDE.md. -->
 @~/.claude/includes/ethereum-rpc.md
 @~/.claude/includes/node-portability.md
 
@@ -32,8 +30,7 @@ Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) a
      when actually driving harness dispatch:
        Read ~/_DATA/code/harness/skills/harness-driver/SKILL.md -->
 
-See the root `CLAUDE.md` for the hieroglyph/cartouche/onchain stack-boundary
-routing rule, the sibling/3 mechanism, and the shared gate adjudications. This
+See the root `CLAUDE.md` for the consolidated layout, the sibling/3 mechanism, and the shared gate adjudications. This
 file carries only what's specific to this package.
 
 ## Portfolio Context
@@ -41,7 +38,7 @@ file carries only what's specific to this package.
 This package is part of a multi-library portfolio (root `CLAUDE.md` §
 Layout). The boundary is **ephemeral vs durable**, not read vs write.
 
-- **onchain** (this package) — core Ethereum primitives, RPC, ABI, signing (pure Elixir, no native deps)
+- **onchain** (this package) — core Ethereum primitives, RPC, ABI, signing (includes crypto NIF dependencies)
 - **onchain_aave** / **onchain_aerodrome** — protocol wrappers (depend on onchain, pure Elixir)
 - **onchain_evm** — Rust NIFs: revm simulation, Solidity parsing, debug/trace, codegen
 - **onchain_js** — JS bridge: npm packages on the BEAM via QuickBEAM
@@ -67,7 +64,7 @@ Layout). The boundary is **ephemeral vs durable**, not read vs write.
 ## Architecture
 
 - **Pure Elixir** — no native deps, no Rustler, no compilation of C/Rust
-- **cartouche** is the primary Ethereum dep — RPC, ABI encoding, signing, crypto all in one (transitively pulls in `hieroglyph` for ABI), resolved via `sibling(:cartouche, ...)`
+- **ABI and Cartouche** ship inside this package: RPC, ABI encoding, signing and crypto retain their existing module names.
 - **zen_websocket** for WebSocket transport (eth_subscribe real-time subscriptions) — a standalone (unabsorbed) dep, plain Hex requirement, no sibling/3 involved
 - Cartouche wraps **ex_secp256k1** (precompiled RustCrypto k256 NIF) internally for signing/key ops via `Cartouche.Signer.Secp256k1` — never add a secp256k1 library as a direct dep
 - Consumers configure RPC URL via `config :cartouche` or pass URL per-call
@@ -224,3 +221,37 @@ mix credo --strict --format json               # Static analysis (JSON output)
 - **onchain_evm** — Rust NIFs + codegen: `sibling(:onchain, ...)` consumer
 - **onchain_js** — JS bridge (QuickBEAM): `sibling(:onchain, ...)` consumer
 - **onchain_tempo** — Tempo chain primitives: `sibling(:onchain, ...)` consumer
+
+## Consolidated ABI and Cartouche sources
+
+`lib/abi.ex`, `lib/abi/`, `lib/cartouche.ex`, `lib/cartouche/` and their Mix tasks
+were relocated without namespace or behavior changes. `src/*.xrl` and `src/*.yrl`
+are the ABI grammar sources; never edit generated `.erl` files. `priv/*.json`,
+`sol/`, the original test suites, fixtures and support modules move with them.
+`Cartouche.Application` is now onchain's application callback; existing
+`:cartouche` configuration keys and supervisor names remain compatible. Mix warns
+that the `:cartouche` application is absent when loading that legacy config;
+the keys are still read by the unchanged modules. Namespace/config migration
+belongs to the subsequent rename task.
+
+Full QA runs `mix onchain.coverage`: ABI retains 95%, Cartouche retains 85%,
+and the Cartouche signer modules retain a separate 95% floor; Onchain retains 70%. Generated
+`Cartouche.Contract.IConsole` keeps its pre-existing coverage exclusion.
+The original strict Doctor policies are retained in `.doctor-hieroglyph.exs`
+and `.doctor-cartouche.exs`. The ABI manifest check remains in full QA.
+
+Reach includes all hand-written `lib`, `dev`, `sol/src`, and `test/support` sources,
+excluding generated Erlang under `src` as hieroglyph did. The merged 109-file scope reproduces cartouche's `--dead-code` timeout:
+`Task.Supervised.stream(30000)` exits from `Reach.CLI.Pipe.safely/1` under reach
+2.8.4 after Architecture Policy reports OK. Full QA therefore runs
+`reach.check --arch --smells`, just as cartouche did. Re-test dead-code after a
+reach upgrade. No hand-written source scope was narrowed.
+
+Default tests combine the former exclusions: integration, differential,
+debug_namespace and dev_node. Cartouche's test config supplies its offline
+RPC stubs and default test signer. Live tests require the original credentials
+and node capabilities described by their test support modules.
+
+ABI verification notes live in `docs/abi-verification-ledger.md`; Cartouche's
+ledger is `docs/verification-ledger.md`. Original licenses and package history
+are preserved in `docs/hieroglyph/` and `docs/cartouche/`.

@@ -72,7 +72,7 @@ defmodule OnchainSolana.MixProject do
 
   defp deps do
     [
-      sibling(:cartouche, "~> 0.10"),
+      sibling(:onchain, "~> 0.15"),
       {:descripex, "~> 1.0"},
       {:req, "~> 0.6 or ~> 0.7"},
       {:jason, "~> 1.4"},

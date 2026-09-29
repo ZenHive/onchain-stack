@@ -7,7 +7,7 @@ import Config
 # describe-block via `Application.put_env(:cartouche, <Transport>, plug: ...)` or
 # per call via `req_options: [plug: ...]`.
 config :cartouche, Cartouche.OpenChain.API, plug: &Cartouche.OpenChainTest.TestClient.call/1
-config :cartouche, Cartouche.RPC, plug: &Cartouche.Test.Client.call/1
+config :cartouche, Cartouche.RPC, adapter: Cartouche.Test.RPCAdapter
 config :cartouche, :chain_id, :goerli
 config :cartouche, :open_chain_base_url, "https://example.com/open-chain"
 config :cartouche, :signer, default: {:priv_key, <<1::256>>}

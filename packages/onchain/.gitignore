@@ -54,3 +54,9 @@ onchain-*.tar
 # ExUnit failure tracking
 .mix_test_failures
 
+
+# Generated ABI lexer/parser and mutation-runner recovery files
+src/*_lexer.erl
+src/*_parser.erl
+*.hieroglyph-mutants.orig
+__pycache__/

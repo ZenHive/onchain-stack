@@ -88,7 +88,6 @@ defmodule OnchainTempo.MixProject do
       # Direct dep: lib/onchain/tempo/transaction{,/builder}.ex call Cartouche
       # (Signer, Transaction, RPC) themselves rather than only through onchain.
       # 0.10 provides the Cartouche-owned signature type and Secp256k1 backend.
-      sibling(:cartouche, "~> 0.10"),
       # Widened from `~> 0.5`: two-segment, so it always admitted 0.7.x, but the
       # stale floor understated what actually resolves here.
       {:req, "~> 0.6 or ~> 0.7"},

@@ -25,9 +25,10 @@ This is the canonical policy for **when** checks run. Project command catalogs d
 Maintain this policy in `~/.claude/includes/verification-policy.md`. Import it from project `CLAUDE.md`; regenerate `AGENTS.md` with `claude-marketplace/scripts/sync-agents-md.sh`. Keep scheduling rules here, project-specific commands and justified risk checks in the project. Do not duplicate the policy in project prose.
 
 
-Since **2026-08-27** the eight onchain library packages live in this one repo,
+Since **2026-08-27** the onchain library packages live in this one repo,
 `packages/<name>/`, absorbed with full git history from their former standalone
-checkouts. Each package is still its own Hex package with its own version,
+checkouts. There are now seven packages: hieroglyph and cartouche were folded into onchain
+with the `ABI.*` and `Cartouche.*` namespaces unchanged. Each remaining package is its own Hex package with its own version,
 `CHANGELOG.md`, and publish cycle — the repo boundary changed, the release unit
 did not.
 
@@ -65,9 +66,7 @@ gotchas. Everything family-wide lives here, once.
 
 | Package (`packages/…`) | Hex package | Role | Native |
 |---|---|---|---|
-| hieroglyph | `hieroglyph` | ABI encode/decode (`ABI.*`) | yecc/leex |
-| cartouche | `cartouche` | Substrate: signing, tx encoding, raw RPC, crypto | — |
-| onchain | `onchain` | Core primitives: RPC, ABI, ERC, signing | — |
+| onchain | `onchain` | Core primitives: RPC, ABI (`ABI.*`), ERC, signing (`Cartouche.*`) | yecc/leex; crypto NIF dependencies |
 | onchain_aave | `onchain_aave` | Aave V3 + V4 wrappers | — |
 | onchain_aerodrome | `onchain_aerodrome` | Aerodrome Finance (Base) bindings, Sugar-backed reads + analytics | — |
 | onchain_evm | `onchain_evm` | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
@@ -81,7 +80,7 @@ gotchas. Everything family-wide lives here, once.
 The monorepo root itself (`mix.exs` at the top level) is **not a Hex package
 and ships no runtime code**. It exists to hold `mix onchain.bounds`
 (`lib/mix/tasks/onchain_bounds.ex`) and the serial `ci` alias that drives all
-nine packages.
+seven packages.
 
 ---
 
@@ -108,10 +107,10 @@ org-settings story; it is anecdote now, not a live concern).
 ## The sibling/3 mechanism — dual-mode in-family dependencies
 
 In-family deps are declared in each package's `mix.exs` as a call to a local
-`sibling/2,3` helper, e.g. in `packages/cartouche/mix.exs`:
+`sibling/2,3` helper, e.g. in `packages/onchain_aave/mix.exs`:
 
 ```elixir
-sibling(:hieroglyph, "~> 1.6")
+sibling(:onchain, "~> 0.15")
 sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])
 ```
 
@@ -126,7 +125,7 @@ sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])
 
 The predicate is the **root marker file**, never "does the sibling directory
 exist" — in a consumer's unpacked `deps/`, every Hex package sits side by side,
-so `../cartouche/mix.exs` exists there too, and an existence check would fire
+so `../onchain/mix.exs` exists there too, and an existence check would fire
 exactly at the stranger it's meant to exclude.
 
 **The publish trap, and why every publish sets `ONCHAIN_PUBLISH=1`:** Hex
@@ -151,7 +150,7 @@ by moving to a real Hex dependency; the sibling/3 mechanism exists precisely so
 that fix can never regress silently.
 
 `mix onchain.bounds` (the root gate's first step) is the other half of this
-contract: it AST-parses every `sibling(:name, "req")` literal across all nine
+contract: it AST-parses every `sibling(:name, "req")` literal across all seven
 `mix.exs` files and checks the requirement still admits that sibling's
 in-repo `@version`. Inside the monorepo the path branch always wins locally,
 so a Hex requirement that has quietly rotted (a sibling moved to a new major,
@@ -164,39 +163,26 @@ or `mix onchain.bounds <pkg>...` (scoped).
 ## Dependency graph
 
 ```
-descripex ─┐                         (standalone, shared upstream)
-           ↓
-       hieroglyph ──→ cartouche ──→ onchain ──┬──→ onchain_aave
-                                       ↑       ├──→ onchain_aerodrome
-                 zen_websocket ────────┘       ├──→ onchain_evm
-                 (standalone, shared upstream) ├──→ onchain_js
-                                                └──→ onchain_tempo ──→ mpp
-                                                                     (standalone, leaf)
+descripex ──────┐
+zen_websocket ─┴→ onchain ─┬→ onchain_aave
+                           ├→ onchain_aerodrome
+                           ├→ onchain_evm
+                           ├→ onchain_js
+                           ├→ onchain_solana
+                           └→ onchain_tempo → mpp (standalone)
 ```
 
-Solana was extracted into `onchain_solana`; it depends on `cartouche` for shared
-HTTP, KMS, and signer backend helpers. Publish cartouche before onchain_solana.
-Migrating the standalone mpp consumer is separate work.
+`onchain` owns the original `ABI.*` and `Cartouche.*` modules, including shared
+HTTP, KMS and signer backends used by `onchain_solana`. Publish onchain first.
+Module names and `:cartouche` configuration keys remain unchanged.
 
-Edges (verify in each `packages/<pkg>/mix.exs` — this is a hint, not ground
-truth; sibling/3 calls are the source):
+Edges (the `sibling/3` calls in each `mix.exs` remain the source of truth):
 
-- hieroglyph → `descripex ~> 1.0`
-- cartouche → `sibling(:hieroglyph, "~> 1.6")`, `descripex ~> 1.0`
-- onchain → `sibling(:cartouche, ...)`, `descripex ~> ...`, `zen_websocket ~> 0.9.0`
-- onchain_aerodrome → `sibling(:onchain, ...)`, `descripex ~> ...`, plus a
-  dev/test-only `sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])` — ABI
-  parsing, codegen and pinned Base fork simulation (with the Base hardfork
-  schedule and fork chain identity preserved)
-- onchain_evm / onchain_js → `sibling(:onchain, ...)`, `descripex ~> ...`
-- onchain_tempo → `sibling(:onchain, ...)`, `sibling(:cartouche, ...)`,
-  `descripex ~> ...`
-- onchain_aave → `sibling(:onchain, ...)`, `descripex ~> ...`, plus a
-  dev/test-only `sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])` — **a
-  Hex dependency, not a raw path dep**, exactly because of the publish trap
-  above
-- mpp (standalone) → `onchain`, `cartouche`, `onchain_tempo`, `descripex` —
-  three-segment caps here, see below
+- onchain → `descripex`, `zen_websocket`; no in-repo dependencies
+- onchain_aave / onchain_aerodrome → `onchain`, plus dev/test-only `onchain_evm`
+- onchain_evm / onchain_js / onchain_tempo / onchain_solana → `onchain`
+- mpp (standalone) still needs a separate migration from its published
+  `cartouche` dependency; its checkout is outside this task.
 
 `descripex` and `zen_websocket` are roots — no first-party upstream of their
 own — so a release there starts the whole cascade. Because they're consumed
@@ -217,10 +203,10 @@ Canonical order when the whole stack moves:
 
 ```
 descripex ─┐
-zen_websocket ─┴→ hieroglyph → cartouche → onchain → {onchain_aave, onchain_aerodrome, onchain_evm, onchain_js, onchain_tempo} → mpp
+zen_websocket ─┴→ onchain → {onchain_aave, onchain_aerodrome, onchain_evm, onchain_js, onchain_solana, onchain_tempo} → mpp
 ```
 
-The five mid-tier siblings are mutually independent once `onchain` ships and
+The six mid-tier siblings are mutually independent once `onchain` ships and
 can publish in any order. `mpp` is always last.
 
 **What the monorepo changed:** a cross-package edit (e.g. widening a bound in
@@ -231,7 +217,7 @@ resolves fine regardless of publish order; only `mix hex.publish` still
 enforces the graph.
 
 **Tags** are cut by the agent right after the human confirms a publish, and are now
-package-scoped within one repo: `<pkg>-v<ver>` (e.g. `cartouche-v0.7.1`), not
+package-scoped within one repo: `<pkg>-v<ver>` (e.g. `onchain-v0.15.0`), not
 bare `v<ver>` — a bare tag would collide across packages sharing this repo.
 
 ---
@@ -351,7 +337,7 @@ gated on `MIX_ENV=test` via each package's `def cli`.
 
 **Shared gate helpers** live once at `shared/mix_helpers.exs`
 (`OnchainMonorepo.MixHelpers`, `agents_check/1` + `advisory_freshness/1` +
-`host_script/3`) instead of being copy-pasted into all eight `mix.exs` files
+`host_script/3`) instead of being copy-pasted into all seven `mix.exs` files
 (pre-monorepo, they drifted — only one package's copy carried an
 executable-bit guard). Every package loads it behind `Code.ensure_loaded?/1` +
 `File.exists?/1` — the file is **not** part of any published tarball (Hex
@@ -468,8 +454,8 @@ pass** down before reporting a single finding. 2.8.3's CHANGELOG records
 crashing during analysis"; both sites now use `function.meta[:module]`. What
 remains:
 
-- **hieroglyph** still scopes `.reach.exs` to
-  `source_paths: ["lib", "test/support"]`. That is **not** a #36 workaround and
+- **onchain** preserves hieroglyph’s generated-Erlang exclusion in `.reach.exs`,
+  retaining `lib`, `dev`, `sol/src`, and `test/support` as hand-written sources. That is **not** a #36 workaround and
   should stay: a smell in yecc/leex-generated Erlang under `src/` is unfixable
   by definition, so the scope is right regardless of the bug.
 - **onchain_js** ran `reach.check --arch` **only** for the same crash (JS nodes
@@ -477,7 +463,7 @@ remains:
   `.reach.exs` key, so there was nothing to exclude). Restored 2026-09-16 under
   reach 2.8.4, verified green by running it.
 
-**`--dead-code` is on in eight of nine packages; cartouche is the exception.**
+**`--dead-code` is on in eight of seven packages; cartouche is the exception.**
 The gate flag is `reach.check --dead-code --arch --smells` everywhere except
 cartouche, which runs `--arch --smells`.
 
@@ -521,7 +507,7 @@ override — never in `deps/`.
 **`ex_ast`'s override is measured, not assumed.** `reach 2.8.2` declares
 `ex_ast ~> 0.12.0`, which would hold a package at 0.12.10 unless it declares
 `{:ex_ast, "~> 0.13", override: true, only: [:dev, :test], runtime: false}`.
-All nine packages carry that override today. It was withheld for five of them
+All seven packages carry that override today. It was withheld for five of them
 for a while on the theory that `ex_ast` 0.13's subset-pattern matching "could"
 make `reach`'s smell checks report fewer findings; running
 `mix reach.check --dead-code --arch --smells` under both 0.12.10 and 0.13.1 in
@@ -595,56 +581,12 @@ The root `mix.exs` also defines `check.dispatch` — as a **loud failure** that
 prints this instruction and exits nonzero, so a reviewer that runs it at the
 root gets guidance instead of a silent "task not found" or a cheap green.
 
-### MCP config — two tidewave ports, and they mean different things
+### MCP config
 
-The root `.mcp.json` carries **two** tidewave entries:
-
-- **`tidewave` → `localhost:4013` is cartouche's dev server, nothing broader.**
-  Commit f9d6102 consolidated eight per-package `.mcp.json` files into that one
-  root file; eight tidewave entries could not survive the merge (they point at
-  eight different ports, one per package) and cartouche's was the copy that
-  carried over. It has meant "cartouche" ever since, despite sitting at the root.
-- **`tidewave_all` → `localhost:4037` is the monorepo-root aggregate**, added
-  2026-09-16 (`0fb58a6`). The root `mix.exs` declares all eight packages as
-  `only: :dev, override: true` path deps and runs a standalone Bandit serving
-  `Tidewave` on 4037, so one `project_eval` sees all eight applications in a
-  single node and can cross package boundaries in one expression.
-
-**The eight per-package ports stay as they are — that is a decision, not an
-oversight.** Each package's `mix.exs` still declares its own `tidewave` alias
-(hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010,
-onchain_aave 4012, cartouche 4013, onchain_js 4028, onchain_aerodrome 4035),
-and distinct ports are the feature: eight package dev servers can run in
-parallel. Converging them on one port was considered and **rejected** — the fix
-for "only cartouche is reachable" is the *additive* root aggregate above, not
-a reassignment. Do not "tidy" these ports into one; a 2026-09-16 session tried
-exactly that and it was reverted.
-
-What this leaves true: reaching one *specific* package's own dev server (say
-onchain_evm on 4009) still means pointing `.mcp.json` at that port first. The
-aggregate covers the common case — evaluating across the family — not that one.
-
-Two residual facts, deliberately left alone rather than "tidied":
-
-- `~/.claude/tidewave-ports.md` was reconciled with this repo on 2026-09-16:
-  the seven package ports are un-retired, 4013 names cartouche rather than "all
-  8 packages", and a note records that the convergence was rejected. It also
-  flags one latent collision worth knowing: **4007 (onchain) is `live_debugger`'s
-  default port** — harmless while onchain is a library with no Phoenix dev
-  server, but any Phoenix app running alongside must pin `live_debugger` to the
-  registry's `41xx` band instead of taking the default.
-- Seven packages still carry `.cursor/mcp.json`, `.codex/config.toml` and
-  `.grok/config.toml` (21 tracked files) pointing at their pre-merge port, and
-  some at the pre-rename `harness_tidewave` server name. f9d6102 consolidated
-  only the Claude Code config. The repo root did gain its own `.cursor/`,
-  `.codex/` and `.grok/` in `0fb58a6`, all pointing at the 4037 aggregate — the
-  21 per-package mirrors were left untouched.
-
-Both are folded into task 9005, which owns this whole surface. Do not resolve
-either by changing ports or deleting those files as a side effect of unrelated
-work.
-
----
+`tidewave` points at onchain's package port 4007. `tidewave_all` points at the
+root aggregate on 4037, which loads all seven packages. The former hieroglyph
+and cartouche package listeners are retired. The other packages retain their
+own ports; do not start or control an operator's running server.
 
 ## Health & publish tooling
 
@@ -714,7 +656,7 @@ analyzer; a green publish-parity report says nothing about that.
 
 ## After every task
 
-Applies uniformly across all nine packages now that the roadmap is
+Applies uniformly across all seven packages now that the roadmap is
 root-owned — update all affected docs as part of the task, not as a
 follow-up:
 
@@ -737,7 +679,7 @@ change warrants it.
   `mix.exs` *and* `mix hex.info <pkg>` / `mix hex.outdated` before any cascade
   decision — never trust a dated snapshot in this file or anywhere else.
 - **Stage path-scoped.** Never `git add -A` / `git commit -a` — with one
-  shared `.git` across all nine packages plus the root, this matters even
+  shared `.git` across all seven packages plus the root, this matters even
   more than it did in the standalone era. Stage explicit paths; verify
   `git diff --cached --name-only` before committing.
 - **Another session may be working in the same package (or a different one)

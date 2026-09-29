@@ -6,14 +6,14 @@
 # command for you to run.
 #
 # Layout since the monorepo migration:
-#   ~/_DATA/code/onchain-stack/packages/<pkg>   the nine in-repo packages
-#     hieroglyph cartouche onchain onchain_aave onchain_aerodrome
+#   ~/_DATA/code/onchain-stack/packages/<pkg>   the seven in-repo packages
+#     onchain onchain_aave onchain_aerodrome
 #     onchain_evm onchain_js onchain_solana onchain_tempo
 #   ~/_DATA/code/<repo>                          the three standalone repos
 #     descripex zen_websocket mpp
 # Each package is still its own Hex package with its own mix.exs, mix.lock and
 # CHANGELOG; only the checkout moved. The Hex package name equals the directory
-# name for all eleven.
+# name for all ten.
 #
 # THE MONOREPO'S ONE NEW FAILURE CLASS. In-family deps are declared as
 # `sibling(:name, "~> x.y")`. Inside the checkout (marker file
@@ -35,7 +35,7 @@
 # deps back.
 #
 # Usage:
-#   ./bin/publish-prep.sh status            # local-vs-Hex version table, all 11
+#   ./bin/publish-prep.sh status            # local-vs-Hex version table, all 10
 #   ./bin/publish-prep.sh check <repo>      # pre-flight one repo (offline tests)
 #   ./bin/publish-prep.sh check <repo> --integration   # also run integration tests
 #
@@ -51,15 +51,15 @@ set -uo pipefail
 STACK_DIR="${ONCHAIN_STACK_DIR:-$HOME/_DATA/code/onchain-stack}"
 CODE_DIR="${ONCHAIN_CODE_DIR:-$HOME/_DATA/code}"
 
-# The nine packages that live inside the monorepo. Order matters only within
+# The seven packages that live inside the monorepo. Order matters only within
 # REPOS below; this list is membership, not sequence.
-PACKAGES=(hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo)
+PACKAGES=(onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo)
 
 # Cascade order (upstream → downstream). status prints in this order.
 # descripex + zen_websocket are shared upstreams (used beyond this family) — they
 # head the cascade but a release there has a wider blast radius. zen_websocket
-# feeds onchain directly, not hieroglyph. mpp is always last.
-REPOS=(descripex zen_websocket hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo mpp)
+# feeds onchain directly. mpp is always last.
+REPOS=(descripex zen_websocket onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo mpp)
 
 c_red=$'\033[31m'; c_grn=$'\033[32m'; c_yel=$'\033[33m'; c_dim=$'\033[2m'; c_rst=$'\033[0m'
 # Colour only on a tty: the status table is routinely piped into a file or a
@@ -70,7 +70,7 @@ ok()   { printf '  %s✓%s %s\n' "$c_grn" "$c_rst" "$1"; }
 warn() { printf '  %s!%s %s\n' "$c_yel" "$c_rst" "$1"; }
 bad()  { printf '  %s✗%s %s\n' "$c_red" "$c_rst" "$1"; }
 
-# Is this repo one of the eight that live under packages/?
+# Is this repo one of the seven that live under packages/?
 is_package() {
   local p
   for p in "${PACKAGES[@]}"; do [ "$p" = "$1" ] && return 0; done
@@ -205,7 +205,7 @@ cmd_check() {
 
   # 1. clean working tree
   #
-  # Path-scoped for a package: the monorepo holds eight of them plus the root,
+  # Path-scoped for a package: the monorepo holds seven of them plus the root,
   # and a parallel session's WIP three directories over is not this package's
   # problem. `git status --porcelain -- .` from inside the package is the
   # narrowest true statement.
@@ -355,8 +355,8 @@ cmd_check() {
     printf '%sREADY.%s Publish (2FA required):\n' "$c_grn" "$c_rst"
     if [ "$pkg" = 1 ]; then
       # No `git push` in the handoff: the package is not its own repo any more.
-      # Pushing is a monorepo-root action and covers all eight at once, so
-      # gluing it onto a per-package publish line would push seven other
+      # Pushing is a monorepo-root action and covers all seven at once, so
+      # gluing it onto a per-package publish line would push six other
       # packages' commits as a side effect of releasing this one.
       # deps.get first: this script restores the DEV mix.lock on exit, and the
       # dev lock has no Hex entries for the siblings — hex.publish then fails

@@ -25,7 +25,7 @@ This is the canonical policy for **when** checks run. Project command catalogs d
 Maintain this policy in `~/.claude/includes/verification-policy.md`. Import it from project `CLAUDE.md`; regenerate `AGENTS.md` with `claude-marketplace/scripts/sync-agents-md.sh`. Keep scheduling rules here, project-specific commands and justified risk checks in the project. Do not duplicate the policy in project prose.
 
 
-Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) and write (transaction signing) capabilities using `cartouche` as the sole Ethereum dependency.
+Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) and write (transaction signing) capabilities including the relocated `ABI.*` and `Cartouche.*` modules.
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules. harness-workflow is eager
      because this repo is harness-driven (the OTP dispatch→review→land loop is the active
@@ -34,9 +34,7 @@ Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) a
      ex-unit-json, dialyzer-json, agent-economy, reach) is skill-on-demand via the elixir /
      task-driver / dev-lifecycle plugins. Re-add an @-import per-surface only if Opus visibly
      degrades on it. See ~/.claude/setup-guide.md § "Skills vs Includes".
-     NOTE: onchain-workspace.md is the HARNESS workspace add-on (monorepo layout + sibling/3 +
-     dependency shape), eager family-wide. The retired Linear/cloud-delegation add-on is
-     onchain-workspace-delegation.md (DORMANT). -->
+     Workspace layout and release ordering are maintained in ../../CLAUDE.md. -->
 <!-- @-import: ~/.claude/includes/critical-rules.md -->
 ## Answer in short text
 
@@ -274,7 +272,7 @@ Don't use without explicit user approval:
 
 OTP-native **implement → review → land** loop for roadmap-driven development. An AI orchestrator drives harness; harness dispatches headless implementer agents into isolated git worktrees, then a **cross-family reviewer AI** gates every deliverable (runs the project's checks itself, fixes inline, writes `.harness/review.json`). Optional auto-landing ff-merges approved work; a post-merge audit agent sweeps hygiene.
 
-**Promoted from** `docs/dogfooding-workflow.md` in the harness repo — that file remains the **incubator runbook** for harness-specific history, driver-script templates, and per-batch run logs. This include is the **portfolio-wide contract**. Version-controlled source: `priv/includes/harness-workflow.md` in the harness repo; install to `~/.claude/includes/harness-workflow.md` via `mix harness.install_includes`.
+**Promoted from** `docs/dogfooding-workflow.md` in the harness repo — that file remains the **incubator runbook** for harness-specific history, driver-script templates, and per-batch run logs. This include is the **portfolio-wide contract**. Version-controlled source: `priv/includes/harness-workflow.md` in the harness repo; propagate with `scripts/sync-harness-skills.sh` (include + marketplace skills; `mix harness.install_includes` covers only the include leg).
 
 ### Relationship to Other Includes (Layered — No Supersession)
 
@@ -287,7 +285,7 @@ OTP-native **implement → review → land** loop for roadmap-driven development
 | `agent-dispatch.md` / cloud-delegation stack | **Linear/Codex/Cursor PR delegation** without a running harness BEAM. Orthogonal path — projects can use cloud delegation *or* harness; harness subsumes the dispatch+review loop when the OTP node is running. |
 | `skills/harness-driver/SKILL.md` (harness repo) | **API surface contract** — MCP tools, `project_eval` patterns, `%LogRecord{}` fields, sharp edges. Load on demand when driving harness; this include covers *workflow*, the skill covers *surfaces*. |
 
-**Adopt per repo:** `@~/.claude/includes/harness-workflow.md` in the project's `CLAUDE.md` (load-on-demand row — not eager; same pattern as `workflow-philosophy.md`).
+**Adopt per repo:** eager `@~/.claude/includes/harness-workflow.md` in the `CLAUDE.md` of every repo that dispatches through harness — its guardrails (Recover, Don't Redo; the duplicate-land trap) fail by non-recognition, so an on-demand load is not equivalent. Repos that never dispatch carry nothing.
 
 ### The Loop
 
@@ -299,7 +297,7 @@ rmap task → implementer AI (worktree) → commit harness/<run-id> → reviewer
                                                               AUDIT (post-merge audit agent, best-effort)
 ```
 
-One run = one supervised `Harness.Run` gen_statem: fork worktree off target `HEAD`, dispatch implementer, commit diff to `harness/<run-id>`, dispatch cross-family reviewer into the same worktree. The reviewer runs the project's `check_command` hint, fixes what it can, writes `.harness/review.json`. **Success = reviewer `approve`** — never implementer exit code or self-report. There is **no mechanical verification gate** in harness; judgment lives in agents.
+One run = one supervised `Harness.Run` gen_statem: fork worktree off `origin/<target>` (local `HEAD` when no `target_branch` is set), dispatch implementer, commit diff to `harness/<run-id>`, dispatch cross-family reviewer into the same worktree. The reviewer runs the project's `check_command` hint, fixes what it can, writes `.harness/review.json`. **Success = reviewer `approve`** — never implementer exit code or self-report. There is **no mechanical verification gate** in harness; judgment lives in agents.
 
 Rejections return tasks to pending for an explicit recovery-aware orchestrator decision. Fix-and-approve is the near-absolute default for the reviewer.
 
@@ -397,7 +395,7 @@ configuration migration, skill propagation and activation.
 
 | `state` / `reason` | Meaning | Action |
 |---|---|---|
-| `:done` / `:approved` | Reviewer AI approved (possibly after inline fixes — check `reviewer_diff_size`). | Deliverable on `harness/<run-id>`. Review diff, integrate (or let auto-lander handle it), `rmap status <id> done`. |
+| `:done` / `:approved` | Reviewer AI approved (possibly after inline fixes — check `reviewer_diff_size`). | Deliverable on `harness/<run-id>`. Under `:auto`/`:pr` the lander writes rmap back — don't double-write; otherwise integrate and `rmap status <id> done`. |
 | `:failed` / `{:review_rejected, report}` | Reviewer rejected (degenerate — near-never by design). | Read `report` and retained-branch evidence; explicitly choose resume, rereview, fresh or defer. |
 | `:failed` / `{:review_stuck, report}` | No verdict: reviewer unavailable, crashed, or missing/malformed `.harness/review.json`. | Read `report`; choose recovery or defer while the environment is repaired. |
 | `:failed` / `{:worktree_failed,_}` `{:agent_spawn_failed,_}` `{:driver_crashed,_}` `{:commit_failed,_}` | Harness-side mechanical failure. | **Harness bug.** File via `rmap new`. |
@@ -446,7 +444,7 @@ The recovery primitives (`reland`/`rereview`/`resume_failed`) read the persisted
 - **Keep write-set fields accurate.** The dispatcher counts declared path intersections; it does not infer paths from the task body. If two tasks really edit the same function, either let write-set serialization sequence them or fold the coupled work into one rmap task (`task-prioritization.md` § "Refine, Don't Duplicate").
 - **One driver BEAM** for all concurrent runs in a wave.
 - **Integration order (manual landing):** smallest/isolated diffs onto target first; rebase siblings; consume the post-merge audit + QA evidence on the integrated revision.
-- **While a wave is in flight:** do not run `rmap status` / `rmap mark` / `rmap new` in parallel sessions against the same checkout — triggers `:checkout_polluted` false-positive.
+- **While a wave is in flight:** avoid `rmap status` / `rmap mark` / `rmap new` in parallel sessions against the same checkout — on runs with the pollution check active (non-isolating adapter or explicit `checkout_pollution_check?: true`) it false-positives `:checkout_polluted`.
 - **Repo-wide invariant tasks run EXCLUSIVE.** A task whose real write-set is "the whole surface" — introduce a repo-wide guard/invariant and convert every violating site (e.g. an AST-scan test over all of `test/`) — cannot be write-set-serialized by declared `touches`: any sibling land that adds a new violating site after the fork reddens the guard at landing time. Dispatch such tasks as a solo wave — nothing lands in parallel — or accept that the orchestrator repairs at landing.
 - **Land-conflict repair is a standard orchestrator move, not an incident.** When the lander blocks on a rebase conflict (reason retains the branch): fork a repair worktree off `origin/<target>`, cherry-pick the run commits, resolve (for additive `tasks.toml` collisions: renumber the branch-side new task to the next free id on origin **and rewrite in-diff string references to it** — CHANGELOG lines, code comments; then `rmap validate && rmap render`), point the retained `harness/<run-id>` branch at the repaired tip, and `dispatch-reland` — the lander keeps push authority and advances rmap itself. **Do not re-run gates on a roadmap/doc-only repair:** the reviewer already graded the code; renumbering tasks, merging doc entries, and re-rendering the roadmap change nothing the gates measure, and a clean disjoint auto-merge of verified code needs no re-grade (same token-economy rule as everywhere else). Re-run a check ONLY when the repair touched code, or when the conflict overlapped a repo-wide invariant the sibling lands could have violated (e.g. a new suite-wide guard vs tests added after the fork — run just that guard, not the stack). Never reset-to-pending (that redoes paid work), never hand-push to the target when a reland can land it.
 
@@ -515,7 +513,7 @@ landed before, or was reset and re-dispatched, already carries `roadmap: task <i
 (shipped …)` in history; without `BASE` the watcher reports `LANDED` before the implementer
 has written a line.
 
-The deadline branch is the other half. A run that fails review or blocks on a land conflict never
+**Silence is not success — the deadline branch is the other half.** A run that fails review or blocks on a land conflict never
 produces a landing commit, so a watcher with no bound waits forever on a wave that is already
 dead; on expiry it must print what did land in the range and name what did not, so the missing
 tasks get reconciled through `dispatch-status` instead of assumed.
@@ -533,12 +531,6 @@ into another AI investigation.
 Poll `dispatch-status <run-id>` only to diagnose a run that the watcher shows as *not*
 landing — a `:failed` verdict, a rebase conflict that retained the branch, a hung
 implementer. Status is for diagnosis; git is for waiting.
-
-**Silence is not success** — a run that fails review or blocks on a land conflict never
-produces a landing commit, so a watcher greping only for `-> done` stays quiet forever.
-Bound every wave watch with a deadline, and when it expires without `WAVE COMPLETE`,
-reconcile the missing tasks through `dispatch-status` / `result_store-list_run_records`
-before assuming anything.
 
 Same root cause as the duplicate-land trap above, seen from the dispatch side: **origin is
 the source of truth for what landed** — not an await return value, not a local
@@ -619,21 +611,9 @@ The two blind classes, both real-correctness, both passing every per-task check:
 - **Reviewer runs the checks.** No mechanical check stack. Correct-but-not-pristine work → reviewer fixes and approves (`reviewer_diff_size` > 0).
 - **Cold dialyzer PLT** belongs to the full post-merge QA budget, not routine reviewer checks.
 - **Nested Claude auth.** `ANTHROPIC_API_KEY` shadows subscription OAuth — scrub per run (`scrub_anthropic_key: true` or `env: %{"ANTHROPIC_API_KEY" => false}`).
-- **Parallel-session rmap mutations** during a run can false-positive `:checkout_polluted` — wait for the wave or use a separate worktree.
+- **Parallel-session rmap mutations** during a run can false-positive `:checkout_polluted` when the pollution check is active (skipped by default for the six isolating adapters) — wait for the wave or use a separate worktree.
 
-### Repo-Specific Detail
-
-| Need | Where |
-|---|---|
-| Harness API surfaces, MCP tool shapes | `skills/harness-driver/SKILL.md` in harness repo |
-| Driver script template, cutover history, run log | `docs/dogfooding-workflow.md` in harness repo |
-| Agent-gate architecture spec | `docs/agent-gate-workflow.md` in harness repo |
-| Cross-checkout consumer setup | `skills/harness-driver/SKILL.md` § "Context A" |
-| D/B/U scoring, task writing | `task-prioritization.md`, `task-writing.md` |
-| Manual session/PR/audit chain | `dev-lifecycle.md`, `worktree-workflow.md` |
-
-
-## Recovery-aware cron decisions
+### Recovery-aware cron decisions
 
 A singleton with no persisted attempts may dispatch directly. Any task with
 history, and every multi-task wave, goes to the orchestrator AI with project/task
@@ -663,137 +643,28 @@ retained Oban job data when absent from the run record. Unknown membership or
 missing fingerprints cannot establish safe recovery identity.
 
 Run records and status/verdict responses expose `dispatch_decision`; durable
-`task_ids` preserves coalesced membership. Deploy migration
-`20260918230000_add_dispatch_decision_to_run_records` before activating this code.
-The driving orchestrator owns runtime activation and installed-skill propagation.
+`task_ids` preserves coalesced membership.
 
 ### Graceful shutdown recovery
 
-Application shutdown settles runs in `Harness.Application.prep_stop/1`, before
-Oban, the endpoint, task supervision or storage stop. Stopping
-`Harness.Run.Supervisor` directly uses the same admission fence. Its shutdown
-child closes admission before the inner DynamicSupervisor terminates run children
-concurrently; the admission process remains alive until settlement finishes.
-Run processes trap supervisor exits and persist `state: :failed` with
-`reason: {:shutdown, interrupted_state}`. Dispatch jobs retain that reason in
-their cancellation error; this is an interrupted attempt, not an operator cancel.
-
-Admission is serialized at the agent-driver boundary, including reviewer
-reprompts/rotation, recovery and the in-run grader. Already-admitted invocations
-have five seconds to deliver their spawn handle; no new invocation is admitted
-after the fence closes. A hung pre-spawn driver is killed and logged. The fence
-child has a seven-second shutdown budget, run children have thirty seconds in
-parallel, and admission teardown has one second: a 38-second run-layer budget,
-below the documented 120-second service stop timeout. This budget does not cover
-transport drain or promise persistence when storage/callbacks exceed the budget;
-OTP reports forced termination. Store errors are logged and spill through the
-existing ResultStore dead-letter/replay path. A spill failure remains a visible
-persistence failure, never a successful write.
-
-Retained branches and worktrees are recovery evidence. After restart, inspect the
-shutdown record and compare its branch with `origin`; use `dispatch-rereview` for
-review-ready commits or `dispatch-resume_failed` for incomplete implementation.
-Both operations validate and pin the retained commit through the ordinary queue.
-A missing branch returns `source_unavailable_or_landed`; shutdown does not invent
-a commit or justify a hand-built `start_run`. If persistence spilled, repair the
-store and replay the spill before using record-based recovery. SIGKILL and power
-loss cannot run these callbacks and carry no graceful-cleanup guarantee.
+A node stop settles in-flight runs as `state: :failed`, `reason: {:shutdown, interrupted_state}` and retains their branches and worktrees. That is an interrupted attempt, not a verdict: after restart, compare the retained branch with `origin`, then `dispatch-rereview` review-ready commits or `dispatch-resume_failed` incomplete work (§ "Recover, Don't Redo"). SIGKILL and power loss carry no such guarantee. Admission fence, timing budgets and spill/replay: `skills/harness-driver/SKILL.md` § "Graceful shutdown recovery".
 
 ### Explicit audit selection
 
 The QA page `/harness/qa` owns the global audit agent/model picker and shows current eligibility and unavailable reasons. `Harness.Audit.Selection.configure(agent_name, model)` atomically persists this pair in SettingsStore; an empty agent selects automatic routing. Explicit selection starts a separate audit session and may reuse the implementation or review adapter. It still requires reviewer eligibility, an installed available adapter and an available explicit model; no fallback changes the saved choice. Automatic routing continues to exclude the run's implementer and reviewer and may produce `no_audit_agent`. QA summaries show the last incomplete reason directly. Changing selection affects new audit sessions and neither changes reviewer trust nor restarts existing jobs.
 
-<!-- @-import: ~/.claude/includes/onchain-workspace.md -->
-# Onchain Stack Workspace — Monorepo
+### Repo-Specific Detail
 
-Workspace layout for the onchain package family. **Since 2026-08-27 the eight
-library repos are one monorepo:** `~/_DATA/code/onchain-stack`, packages under
-`packages/<name>/`, absorbed with full git history. Each package remains its own
-Hex package with its own version, CHANGELOG, and publish cycle. Pairs with
-`harness-workflow.md` (loop shape); this file carries only the stack specifics.
+| Need | Where |
+|---|---|
+| Harness API surfaces, MCP tool shapes | `skills/harness-driver/SKILL.md` in harness repo |
+| Driver script template, cutover history, run log | `docs/dogfooding-workflow.md` in harness repo |
+| Agent-gate architecture spec | `docs/agent-gate-workflow.md` in harness repo |
+| Cross-checkout consumer setup | `skills/harness-driver/SKILL.md` § "Context A" |
+| D/B/U scoring, task writing | `task-prioritization.md`, `task-writing.md` |
+| Manual session/PR/audit chain | `dev-lifecycle.md`, `worktree-workflow.md` |
 
-The old standalone checkouts (`~/_DATA/code/hieroglyph`, `.../cartouche`, …) are
-retired — GitHub repos archived (never deleted; `ZenHive/onchain_evm` hosts NIF
-release assets). Do not work in them.
-
-### Layout
-
-| Package (`packages/…`) | Hex package | Role | Native |
-|---|---|---|---|
-| hieroglyph | `hieroglyph` | ABI encode/decode (`ABI.*`) | yecc/leex |
-| cartouche | `cartouche` | Substrate: signing, tx encoding, raw RPC, crypto | — |
-| onchain | `onchain` | Core primitives: RPC, ABI, ERC, signing | — |
-| onchain_aave | `onchain_aave` | Aave V3 + V4 wrappers | — |
-| onchain_aerodrome | `onchain_aerodrome` | Aerodrome Finance (Base) bindings | — |
-| onchain_evm | `onchain_evm` | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
-| onchain_js | `onchain_js` | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
-| onchain_tempo | `onchain_tempo` | Tempo chain primitives (0x76 tx, TIP-20) | — |
-
-**Still standalone repos** (not absorbed): `descripex`, `zen_websocket` (shared
-upstreams, consumed beyond this family) and `mpp` (leaf app). They live at
-`~/_DATA/code/<name>` as before.
-
-Dependency cascade (unchanged): hieroglyph → cartouche → onchain →
-{aave, aerodrome, evm, js, tempo}; descripex feeds everything, zen_websocket
-feeds onchain. Publish order stays upstream-first.
-
-### The sibling/3 mechanism (dual-mode deps)
-
-In-family deps are declared in each package's `mix.exs` as
-`sibling(:cartouche, "~> 0.7")`:
-
-- **Path branch** — when the marker file `.onchain-monorepo-root` is found by
-  walking up from the package (i.e. inside the monorepo): resolves to
-  `{name, path: "../<name>", override: true, …}`. Day-to-day dev needs no Hex
-  round-trips.
-- **Hex branch** — no marker (a consumer's `deps/` layout), or
-  `ONCHAIN_PUBLISH=1` set: resolves to `{name, "~> x.y", …}`.
-
-**Publish trap:** Hex ≥2.5 does NOT abort on path deps — it silently drops them
-from the tarball ("Dependencies excluded from the package"). Every publish runs
-with `ONCHAIN_PUBLISH=1` and greps `hex.build` output for that phrase
-(`bin/publish-prep.sh` does this). After publish-mode `deps.get`, restore the
-lock with `git checkout -- mix.lock`.
-
-### Gates
-
-- **Root gate:** `cd ~/_DATA/code/onchain-stack && mix ci` = `mix onchain.bounds`
-  (checks every literal `sibling/2,3` requirement against the sibling's live
-  `@version`) then each package's own `mix ci`, **strictly serial** (shared
-  advisory-mirror clone; parallel runs corrupt its `git pull --rebase`).
-- **Per-package:** unchanged — each package keeps its own `.reach.exs`,
-  `.doctor.exs`, sobelow config, coverage threshold. `cd packages/<name> && mix ci`
-  for focused work. Shared gate helpers: `shared/mix_helpers.exs`
-  (`OnchainMonorepo.MixHelpers`), loaded defensively so tarballs build without it.
-- **Roadmap:** one root rmap project (`roadmap/tasks.toml`, 342 tasks). Old
-  per-package task IDs are offset: hieroglyph +1000, cartouche +2000, onchain
-  +3000, aave +4000, aerodrome +5000, evm +6000, js +7000, tempo +8000. Tasks
-  carry `target_repo`; `touches` paths are `packages/<name>/…`-prefixed.
-
-### Harness
-
-One registered project, `onchain_stack`, source `~/_DATA/code/onchain-stack`
-(server mirror `/data/postgresql/code/onchain-stack`), `check_command:
-"mix check.dispatch"`, `target_branch: main`, warm paths for onchain_evm's Rust
-targets (`packages/onchain_evm/{native/*/target,priv/native}`). The eight
-per-repo harness registrations are retired with the repos. Write-set collision
-now happens naturally inside one repo — harness serializes overlapping waves.
-
-### Releases
-
-Per-package semver against the **published** Hex baseline; version bumps,
-CHANGELOG, and `mix hex.publish` (human, 2FA) all happen inside
-`packages/<name>/`. Tags in the monorepo are `<pkg>-v<ver>`. Cross-package
-cascades are now single-repo commits, but the Hex publish order is still
-upstream-first, one published version at a time.
-
-### Cross-References
-
-- `~/_DATA/code/onchain-stack/CLAUDE.md` — the coordination doc (cascade state,
-  operating rules, tooling)
-- `harness-workflow.md` — the portfolio implement→review→land contract
-- `onchain-workspace-delegation.md` — DORMANT pre-harness delegation workspace
-
+<!-- Consolidated workspace layout and release ordering: see ../../CLAUDE.md. -->
 <!-- @-import: ~/.claude/includes/ethereum-rpc.md -->
 ## Ethereum RPC (Full Archive Node)
 
@@ -967,8 +838,7 @@ paraphrasing:
      when actually driving harness dispatch:
        Read ~/_DATA/code/harness/skills/harness-driver/SKILL.md -->
 
-See the root `CLAUDE.md` for the hieroglyph/cartouche/onchain stack-boundary
-routing rule, the sibling/3 mechanism, and the shared gate adjudications. This
+See the root `CLAUDE.md` for the consolidated layout, the sibling/3 mechanism, and the shared gate adjudications. This
 file carries only what's specific to this package.
 
 ## Portfolio Context
@@ -976,7 +846,7 @@ file carries only what's specific to this package.
 This package is part of a multi-library portfolio (root `CLAUDE.md` §
 Layout). The boundary is **ephemeral vs durable**, not read vs write.
 
-- **onchain** (this package) — core Ethereum primitives, RPC, ABI, signing (pure Elixir, no native deps)
+- **onchain** (this package) — core Ethereum primitives, RPC, ABI, signing (includes crypto NIF dependencies)
 - **onchain_aave** / **onchain_aerodrome** — protocol wrappers (depend on onchain, pure Elixir)
 - **onchain_evm** — Rust NIFs: revm simulation, Solidity parsing, debug/trace, codegen
 - **onchain_js** — JS bridge: npm packages on the BEAM via QuickBEAM
@@ -1002,7 +872,7 @@ Layout). The boundary is **ephemeral vs durable**, not read vs write.
 ## Architecture
 
 - **Pure Elixir** — no native deps, no Rustler, no compilation of C/Rust
-- **cartouche** is the primary Ethereum dep — RPC, ABI encoding, signing, crypto all in one (transitively pulls in `hieroglyph` for ABI), resolved via `sibling(:cartouche, ...)`
+- **ABI and Cartouche** ship inside this package: RPC, ABI encoding, signing and crypto retain their existing module names.
 - **zen_websocket** for WebSocket transport (eth_subscribe real-time subscriptions) — a standalone (unabsorbed) dep, plain Hex requirement, no sibling/3 involved
 - Cartouche wraps **ex_secp256k1** (precompiled RustCrypto k256 NIF) internally for signing/key ops via `Cartouche.Signer.Secp256k1` — never add a secp256k1 library as a direct dep
 - Consumers configure RPC URL via `config :cartouche` or pass URL per-call
@@ -1159,3 +1029,37 @@ mix credo --strict --format json               # Static analysis (JSON output)
 - **onchain_evm** — Rust NIFs + codegen: `sibling(:onchain, ...)` consumer
 - **onchain_js** — JS bridge (QuickBEAM): `sibling(:onchain, ...)` consumer
 - **onchain_tempo** — Tempo chain primitives: `sibling(:onchain, ...)` consumer
+
+## Consolidated ABI and Cartouche sources
+
+`lib/abi.ex`, `lib/abi/`, `lib/cartouche.ex`, `lib/cartouche/` and their Mix tasks
+were relocated without namespace or behavior changes. `src/*.xrl` and `src/*.yrl`
+are the ABI grammar sources; never edit generated `.erl` files. `priv/*.json`,
+`sol/`, the original test suites, fixtures and support modules move with them.
+`Cartouche.Application` is now onchain's application callback; existing
+`:cartouche` configuration keys and supervisor names remain compatible. Mix warns
+that the `:cartouche` application is absent when loading that legacy config;
+the keys are still read by the unchanged modules. Namespace/config migration
+belongs to the subsequent rename task.
+
+Full QA runs `mix onchain.coverage`: ABI retains 95%, Cartouche retains 85%,
+and the Cartouche signer modules retain a separate 95% floor; Onchain retains 70%. Generated
+`Cartouche.Contract.IConsole` keeps its pre-existing coverage exclusion.
+The original strict Doctor policies are retained in `.doctor-hieroglyph.exs`
+and `.doctor-cartouche.exs`. The ABI manifest check remains in full QA.
+
+Reach includes all hand-written `lib`, `dev`, `sol/src`, and `test/support` sources,
+excluding generated Erlang under `src` as hieroglyph did. The merged 109-file scope reproduces cartouche's `--dead-code` timeout:
+`Task.Supervised.stream(30000)` exits from `Reach.CLI.Pipe.safely/1` under reach
+2.8.4 after Architecture Policy reports OK. Full QA therefore runs
+`reach.check --arch --smells`, just as cartouche did. Re-test dead-code after a
+reach upgrade. No hand-written source scope was narrowed.
+
+Default tests combine the former exclusions: integration, differential,
+debug_namespace and dev_node. Cartouche's test config supplies its offline
+RPC stubs and default test signer. Live tests require the original credentials
+and node capabilities described by their test support modules.
+
+ABI verification notes live in `docs/abi-verification-ledger.md`; Cartouche's
+ledger is `docs/verification-ledger.md`. Original licenses and package history
+are preserved in `docs/hieroglyph/` and `docs/cartouche/`.

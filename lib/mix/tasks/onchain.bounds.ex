@@ -18,7 +18,7 @@ defmodule Mix.Tasks.Onchain.Bounds do
       sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])
 
   Both the name and the requirement must be literals — the task reads the source
-  AST, it does not evaluate the file (evaluating a `mix.exs` would define eight
+  AST, it does not evaluate the file (evaluating a `mix.exs` would define seven
   `*.MixProject` modules inside the running Mix and drag the shared-helper load
   along with them).
 
@@ -33,7 +33,7 @@ defmodule Mix.Tasks.Onchain.Bounds do
 
   use Mix.Task
 
-  @packages ~w(hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo)
+  @packages ~w(onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo)
 
   @doc "The package roster, in cascade order (upstream first)."
   @spec packages() :: [String.t()]

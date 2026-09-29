@@ -3,16 +3,16 @@
 # than guessed at.
 #
 # `tidewave_all` (4037) is the monorepo-root server: `mix tidewave` at the root
-# loads all eight packages into one node, so a single project_eval crosses
-# package boundaries. `tidewave` (4013) is cartouche's own dev server and
-# nothing broader — the other seven packages each bind their own port
-# (hieroglyph 4006, onchain 4007, onchain_evm 4009, onchain_tempo 4010,
+# loads all seven packages into one node, so a single project_eval crosses
+# package boundaries. `tidewave` (4007) is onchain's own dev server and
+# nothing broader — other packages retain their own ports
+# (onchain 4007, onchain_evm 4009, onchain_tempo 4010,
 # onchain_aave 4012, onchain_js 4028, onchain_aerodrome 4035) so that several
 # package dev servers can run in parallel, and none of those is reachable from
 # here without pointing a client at that port.
 
 [mcp_servers.tidewave]
-url = "http://localhost:4013/tidewave/mcp"
+url = "http://localhost:4007/tidewave/mcp"
 
 [mcp_servers.tidewave_all]
 url = "http://localhost:4037/tidewave/mcp"
