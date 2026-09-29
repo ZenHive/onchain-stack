@@ -263,6 +263,11 @@
       "name": "[onchain_morpho] Morpho Blue Read Layer",
       "order": 9001,
       "status": "pending"
+    },
+    "9100": {
+      "name": "[onchain] Core consolidation — one package, alloy-backed encoding",
+      "order": 9100,
+      "status": "pending"
     }
   },
   "bundles": {
@@ -596,6 +601,11 @@
       "order": 2,
       "description": "A viem-shaped client facade: one struct binding chain + transport, threaded through the read/write/simulate surface, with receipt polling and confirmation tracking."
     },
+    "onchain_core_consolidation": {
+      "phase": 9100,
+      "order": 1,
+      "description": "Fold hieroglyph + cartouche into onchain, move Solana to onchain_solana, replace hand-written encoding (ABI, typed transactions, EIP-712, Tempo 0x76) with an alloy NIF behind a generic boundary, keep one codegen, then rename to Onchain.* in a single breaking release. Order is move → replace → rename so the existing test suites stay the behavioural oracle across every step."
+    },
     "onchain_dex": {
       "phase": 3007,
       "order": 1,
@@ -795,6 +805,12 @@
       "order": 502,
       "status": "pending",
       "target_version": "0.2.0"
+    },
+    "onchain_core_consolidation": {
+      "name": "[onchain] One core package, encoding from alloy",
+      "description": "Tests whether one core package whose deterministic encoding (ABI, typed transactions, EIP-712, Tempo 0x76) comes from alloy/tempo crates through a NIF can replace hieroglyph + cartouche + onchain byte-identically — so a new EIP or transaction type arrives by a crate bump, and the Elixir surface shrinks to network I/O and glue.",
+      "order": 260,
+      "status": "pending"
     },
     "onchain_js_v0_3": {
       "name": "[onchain_js] First real npm library end-to-end",
@@ -5296,7 +5312,7 @@
       },
       "eff": 2.5,
       "dep_layer": 1,
-      "unlocks": 0,
+      "unlocks": 2,
       "markers": [],
       "depends_on": [
         2136,
@@ -5347,7 +5363,7 @@
       },
       "eff": 1.63,
       "dep_layer": 1,
-      "unlocks": 1,
+      "unlocks": 3,
       "markers": [],
       "depends_on": [
         2136,
@@ -5716,7 +5732,7 @@
       },
       "eff": 2.67,
       "dep_layer": 0,
-      "unlocks": 9,
+      "unlocks": 11,
       "markers": [],
       "depends_on": [],
       "assignee": "codex",
@@ -5771,7 +5787,7 @@
       },
       "eff": 1.8,
       "dep_layer": 0,
-      "unlocks": 9,
+      "unlocks": 11,
       "markers": [],
       "depends_on": [],
       "assignee": "codex",
@@ -6925,7 +6941,7 @@
       },
       "eff": 2.17,
       "dep_layer": 0,
-      "unlocks": 1,
+      "unlocks": 3,
       "markers": [
         "security"
       ],
@@ -14694,6 +14710,418 @@
       "scored_at": "2026-09-29",
       "implemented": "Added both private helper specs during audit(1c0b4f9). Changed files formatted, compile --warnings-as-errors passed, strict Credo clean, 70 focused tests/doctests passed, MIX_ENV=test Dialyzer passed with only the existing five optional-Goth exclusions. No independent verification claimed.",
       "delivered_by": "codex",
+      "cross_repo": []
+    },
+    {
+      "id": "9029",
+      "phase": 9100,
+      "bundle": "onchain_core_consolidation",
+      "target_repo": "onchain",
+      "milestone": "onchain_core_consolidation",
+      "status": "pending",
+      "title": "Split Solana out of cartouche into a new onchain_solana package",
+      "scores": {
+        "d": 5,
+        "b": 6,
+        "u": 7
+      },
+      "eff": 1.3,
+      "dep_layer": 0,
+      "unlocks": 7,
+      "markers": [
+        "security"
+      ],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "packages/cartouche/lib contains no Solana or Base58 module; grep -rn 'Solana\\|Base58' packages/cartouche/lib returns nothing",
+        "packages/onchain_solana exists, exposes Onchain.Solana.* and Onchain.Solana.Base58, and every Solana test that existed in cartouche passes there unchanged apart from module names (same test count)",
+        "cd packages/onchain_solana && mix check.dispatch passes, and ONCHAIN_PUBLISH=1 mix hex.build prints no 'excluded from the package' line",
+        "Root wiring updated: root mix.exs ci package list, mix onchain.bounds, bin/publish-prep.sh and fleet-health.sh package maps include onchain_solana; root CLAUDE.md Layout table lists it and AGENTS.md is regenerated",
+        "cartouche CHANGELOG records the removal with a migration line pointing to onchain_solana"
+      ],
+      "out_of_scope": [
+        "Migrating mpp to onchain_solana — separate follow-up in the mpp repo once onchain_solana is published",
+        "Publishing onchain_solana — human-gated",
+        "Any behaviour change to Solana code"
+      ],
+      "touches": [
+        "packages/cartouche/lib/cartouche/solana/",
+        "packages/cartouche/lib/cartouche/base58.ex",
+        "packages/cartouche/lib/cartouche.ex",
+        "packages/cartouche/lib/cartouche/application.ex",
+        "packages/cartouche/test/",
+        "packages/onchain_solana/",
+        "mix.exs",
+        "bin/",
+        "CLAUDE.md",
+        "AGENTS.md"
+      ],
+      "body": "Solana has nothing in common with the EVM core, but lives inside cartouche: the Cartouche.Solana.* modules (rpc, transaction, token, token_program, system_program, pda, ata, keys, programs, signer, signer/ed25519, signer/cloud_kms) plus Cartouche.Base58, which only Solana uses. This must leave cartouche before hieroglyph + cartouche are folded into onchain, otherwise Solana lands in the EVM core.\n\nCreate packages/onchain_solana as its own Hex package in this monorepo, following the existing package conventions (own mix.exs with sibling/3, CHANGELOG, CLAUDE.md, per-package gate via the shared helpers). Since it has never been published, it starts directly under the final Onchain.Solana.* namespace — no intermediate Cartouche.Solana release. Shared pieces it still needs from cartouche (Cartouche.CloudKMS HTTP client for the KMS signer) stay in cartouche and are consumed through a sibling dependency; do not duplicate them.\n\nPremise verified 2026-09-29 by grep: the only consumer of Cartouche.Solana.* outside cartouche is mpp (lib/mpp/methods/solana*.ex, usdc/solana.ex). mpp lives in its own repo.",
+      "created_at": "2026-09-29",
+      "scored_at": "2026-09-29",
+      "cross_repo": []
+    },
+    {
+      "id": "9030",
+      "phase": 9100,
+      "bundle": "onchain_core_consolidation",
+      "target_repo": "onchain",
+      "milestone": "onchain_core_consolidation",
+      "status": "pending",
+      "title": "Fold hieroglyph and cartouche into onchain — move only, namespaces unchanged",
+      "scores": {
+        "d": 6,
+        "b": 8,
+        "u": 8
+      },
+      "eff": 1.33,
+      "dep_layer": 1,
+      "unlocks": 6,
+      "markers": [],
+      "depends_on": [
+        "9029"
+      ],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "packages/hieroglyph and packages/cartouche no longer exist; every module they contained is under packages/onchain with its original module name",
+        "The moved test suites pass unchanged in packages/onchain: test count equals the sum of the three packages' counts before the move (record both numbers in the task outcome)",
+        "No package's mix.exs references sibling(:cartouche) or sibling(:hieroglyph); mix onchain.bounds passes; ONCHAIN_PUBLISH=1 mix hex.build in packages/onchain prints no 'excluded from the package' line",
+        "cd packages/<name> && mix check.dispatch passes for onchain and every in-repo dependent",
+        "No coverage threshold was lowered; root CLAUDE.md (Layout, dependency graph, cascade order), packages/onchain/CLAUDE.md, AGENTS.md, bin/publish-prep.sh and fleet-health.sh reflect the new layout",
+        "rmap validate passes and no pending task's touches reference packages/cartouche or packages/hieroglyph"
+      ],
+      "out_of_scope": [
+        "Renaming ABI.* / Cartouche.* to Onchain.* — the rename task in this bundle",
+        "Removing duplicate modules — the dedupe task and the stack_read_surface_boundary milestone",
+        "hex.retire of hieroglyph/cartouche and any publish — human-gated, after the rename"
+      ],
+      "touches": [
+        "packages/hieroglyph/",
+        "packages/cartouche/",
+        "packages/onchain/",
+        "packages/onchain_aave/mix.exs",
+        "packages/onchain_aerodrome/mix.exs",
+        "packages/onchain_evm/mix.exs",
+        "packages/onchain_js/mix.exs",
+        "packages/onchain_tempo/mix.exs",
+        "packages/onchain_solana/mix.exs",
+        "mix.exs",
+        "lib/mix/tasks/onchain_bounds.ex",
+        "bin/",
+        "CLAUDE.md",
+        "AGENTS.md",
+        "roadmap/tasks.toml"
+      ],
+      "body": "Three packages form one layer today (hieroglyph → cartouche → onchain), which costs a publish cascade per change, the sibling/3 publish trap, and duplicated modules. Move all of hieroglyph and cartouche into packages/onchain as a pure relocation: ABI.* and Cartouche.* keep their module names, no behaviour changes, no dedupe. The existing test suites move with the code and are the proof nothing changed; later tasks in this bundle replace and rename on top of this.\n\nIncludes: lib, src (yecc/leex), priv, test and test/support of both packages; merged deps in onchain's mix.exs; the in-repo dependents (onchain_aave, onchain_aerodrome, onchain_evm, onchain_js, onchain_tempo, onchain_solana) drop their sibling(:cartouche)/sibling(:hieroglyph) edges; root tooling and docs stop listing the two packages; pending tasks in roadmap/tasks.toml whose touches point at packages/cartouche or packages/hieroglyph are re-pointed at the new paths.\n\nGate configuration: keep the stricter coverage threshold per moved module (cartouche signer modules stay at their 95%). hieroglyph's .reach.exs excludes generated Erlang under src/ — keep that exclusion. cartouche could not run reach --dead-code (timeout at 67 files); if the merged package hits the same timeout, document it the same way in packages/onchain/CLAUDE.md rather than narrowing scope.",
+      "created_at": "2026-09-29",
+      "scored_at": "2026-09-29",
+      "cross_repo": []
+    },
+    {
+      "id": "9031",
+      "phase": 9100,
+      "bundle": "onchain_core_consolidation",
+      "target_repo": "onchain",
+      "milestone": "onchain_core_consolidation",
+      "status": "pending",
+      "title": "Core alloy NIF with a generic boundary, and ABI encode/decode on alloy-dyn-abi",
+      "scores": {
+        "d": 8,
+        "b": 8,
+        "u": 8
+      },
+      "eff": 1.0,
+      "dep_layer": 2,
+      "unlocks": 4,
+      "markers": [
+        "security"
+      ],
+      "depends_on": [
+        "9030"
+      ],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "Before deleting anything, capture the current implementation's output over the existing ABI test corpus (including the ethers.js testcases vectors) as a fixture; the alloy-backed ABI.* reproduces it byte-for-byte and all existing ABI tests pass unchanged",
+        "ABI.TypeEncoder, ABI.TypeDecoder and the src/ yecc/leex parser are deleted; no ABI.* public function signature changed",
+        "A property or fuzz test feeds malformed types, values and payloads and always gets an error tuple — no NIF panic, no VM crash",
+        "onchain_evm uses the moved precompiled infrastructure; precompiled NIFs build for all five targets; ONCHAIN_PUBLISH=1 mix hex.build of onchain includes the checksum file; a fresh project without cargo on PATH can compile onchain",
+        "packages/onchain CHANGELOG and CLAUDE.md (native build notes) updated"
+      ],
+      "out_of_scope": [
+        "Typed transactions and EIP-712 — separate task",
+        "Tempo 0x76 — separate task",
+        "Codegen and the Solidity parser move — separate task",
+        "Changing the ABI.* public API"
+      ],
+      "touches": [
+        "packages/onchain/native/",
+        "packages/onchain/lib/abi/",
+        "packages/onchain/lib/abi.ex",
+        "packages/onchain/src/",
+        "packages/onchain/lib/onchain/precompiled.ex",
+        "packages/onchain/mix.exs",
+        "packages/onchain/mix.lock",
+        "packages/onchain/test/",
+        "packages/onchain_evm/lib/onchain/precompiled.ex",
+        "packages/onchain_evm/lib/onchain/evm.ex",
+        "packages/onchain_evm/mix.exs",
+        "packages/onchain_evm/scripts/"
+      ],
+      "body": "Operator decision 2026-09-29: deterministic encoding moves to alloy through a NIF so new EIPs arrive by a crate bump instead of hand-written Elixir. This reverses the out_of_scope note on task 9026 ('conformance vectors, not a runtime Rust dependency').\n\nBuild the NIF into packages/onchain using the rustler_precompiled setup onchain_evm already has (Onchain.Precompiled, the five targets in its @targets list, build-precompiled script, checksum file) — move that infrastructure into the core rather than duplicating it, so onchain_evm consumes it. Consumers must never need a Rust toolchain.\n\nThe boundary is generic, not one NIF function per Elixir function: type strings / JSON ABI plus values in, bytes or decoded values out. alloy-dyn-abi has coerce_str but no JSON-value coercion, so write one recursive Elixir-term ↔ DynSolValue converter. Then swap the backend under the existing ABI.* public API (encode/decode, selectors, events, errors, packed) to alloy-dyn-abi / alloy-json-abi and delete the hand-written encoder, decoder and the yecc/leex type parser.\n\nSafety: a panic must never reach the BEAM (catch_unwind → error tuple); malformed input returns an error tuple; large payloads run on a dirty scheduler or are bounded so a normal scheduler is never blocked for long.",
+      "created_at": "2026-09-29",
+      "scored_at": "2026-09-29",
+      "cross_repo": []
+    },
+    {
+      "id": "9032",
+      "phase": 9100,
+      "bundle": "onchain_core_consolidation",
+      "target_repo": "onchain",
+      "milestone": "onchain_core_consolidation",
+      "status": "pending",
+      "title": "Typed transactions and EIP-712 on alloy through the core NIF",
+      "scores": {
+        "d": 7,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.07,
+      "dep_layer": 3,
+      "unlocks": 1,
+      "markers": [
+        "security"
+      ],
+      "depends_on": [
+        "9031"
+      ],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "Before deleting, capture the current implementation's RLP bytes, signing hashes and tx hashes over every transaction fixture in the test suite as a differential fixture; the alloy path matches byte-for-byte for every transaction type",
+        "EIP-712: the EIP's own Mail example and all existing Cartouche.Typed tests produce identical hashes and signatures",
+        "Decode round-trip: encode → decode → encode is identity for every fixture; malformed RLP returns an error tuple, never a panic",
+        "Hand-written RLP/typed-tx encoding modules are deleted; public function signatures of Cartouche.Transaction and Cartouche.Typed unchanged; signer modules stay >=95% coverage",
+        "Focused signing tests in onchain and onchain_tempo pass; CHANGELOG updated"
+      ],
+      "out_of_scope": [
+        "Tempo 0x76 — separate task",
+        "Replacing ex_secp256k1 signing",
+        "Renaming modules"
+      ],
+      "touches": [
+        "packages/onchain/native/",
+        "packages/onchain/lib/cartouche/transaction.ex",
+        "packages/onchain/lib/cartouche/transaction/",
+        "packages/onchain/lib/cartouche/typed.ex",
+        "packages/onchain/test/"
+      ],
+      "body": "Replace the hand-written encoding in Cartouche.Transaction (legacy, EIP-2930, 1559, 4844, 7702, typed_decode, call) and Cartouche.Typed (EIP-712 hashing) with alloy-consensus envelopes and alloy-dyn-abi's eip712 TypedData through the generic NIF boundary from the ABI task. alloy's TransactionEnvelope derive emits serde for the RPC JSON shape (tagged by \"type\") under the serde feature, and TypedData deserializes from the standard EIP-712 JSON — verified by reading alloy-tx-macros 2.4.1 and alloy-dyn-abi 1.7.3 source, not by compiling.\n\nSigning stays on ex_secp256k1 (k256, landed in task 9026); the NIF produces signing hashes and encodes signed envelopes. The Cartouche.Transaction / Cartouche.Typed public API does not change in this task.",
+      "created_at": "2026-09-29",
+      "scored_at": "2026-09-29",
+      "cross_repo": []
+    },
+    {
+      "id": "9033",
+      "phase": 9100,
+      "bundle": "onchain_core_consolidation",
+      "target_repo": "onchain_tempo",
+      "milestone": "onchain_core_consolidation",
+      "status": "pending",
+      "title": "Tempo 0x76 encoding from tempo-primitives in the core NIF; onchain_tempo becomes a thin layer",
+      "scores": {
+        "d": 6,
+        "b": 7,
+        "u": 6
+      },
+      "eff": 1.08,
+      "dep_layer": 3,
+      "unlocks": 1,
+      "markers": [
+        "security"
+      ],
+      "depends_on": [
+        "9031"
+      ],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "Before deleting, capture the current onchain_tempo encoding output (tx bytes, signing hash, tx hash) over all its fixtures and the mutation-verification campaign vectors; the tempo-primitives path matches byte-for-byte",
+        "Every signature type onchain_tempo supports today still round-trips; no new signature types added",
+        "onchain_tempo no longer contains 0x76 RLP encoding code; its public API is unchanged; its focused tests pass",
+        "The task outcome records core NIF binary size and clean build time before and after",
+        "onchain_tempo CHANGELOG and CLAUDE.md updated"
+      ],
+      "out_of_scope": [
+        "tempo-alloy network/filler/relay transport — onchain_tempo keeps its Elixir RPC",
+        "mpay-rs / mpp changes",
+        "Folding onchain_tempo into the core package"
+      ],
+      "touches": [
+        "packages/onchain/native/",
+        "packages/onchain_tempo/lib/",
+        "packages/onchain_tempo/test/",
+        "packages/onchain_tempo/mix.exs",
+        "packages/onchain_tempo/CHANGELOG.md",
+        "packages/onchain_tempo/CLAUDE.md"
+      ],
+      "body": "tempo-primitives (github.com/tempoxyz/tempo, MIT OR Apache-2.0, 1.11.0) is the official Rust definition of Tempo's transaction types: TempoTxEnvelope with the 0x76 AA transaction, serde support, signature types Secp256k1 / P256 / WebAuthn. Encode and decode 0x76 through it in the core NIF and delete onchain_tempo's hand-written 0x76 encoding. What remains in onchain_tempo is the thin protocol layer: TIP-20, fee-payer flow, faucet, RPC glue.\n\nUse default-features = false with std + serde: the default 'evm' feature pulls revm and alloy-evm (checked in its Cargo.toml). commonware-cryptography is a non-optional dependency — premise unverified whether it bloats the NIF: measure build time and binary size of the core NIF before and after. If the NIF binary grows by more than 50% or a clean build by more than 5 minutes, stop and report the numbers instead of landing.",
+      "created_at": "2026-09-29",
+      "scored_at": "2026-09-29",
+      "cross_repo": []
+    },
+    {
+      "id": "9034",
+      "phase": 9100,
+      "bundle": "onchain_core_consolidation",
+      "target_repo": "onchain",
+      "milestone": "onchain_core_consolidation",
+      "status": "pending",
+      "title": "One contract codegen on the alloy parser — delete mix cartouche.gen, Cartouche.VM and Assembly",
+      "scores": {
+        "d": 6,
+        "b": 6,
+        "u": 6
+      },
+      "eff": 1.0,
+      "dep_layer": 3,
+      "unlocks": 1,
+      "markers": [],
+      "depends_on": [
+        "9031"
+      ],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "mix cartouche.gen, Cartouche.VM, Cartouche.Assembly and contract/i_console.ex are gone from packages/onchain; onchain_evm calls the parser in the core instead of carrying its own copy",
+        "The committed Sleuth binding is regenerated by the surviving generator and its existing tests pass; onchain_aave / onchain_aerodrome codegen users still compile and pass focused tests",
+        "The generator test suite covers constructor, events, errors, tuple args and overloaded functions; coverage of the generator >=80%",
+        "CHANGELOG lists the removed mix task and modules with the replacement"
+      ],
+      "out_of_scope": [
+        "revm / simulation — stays in onchain_evm",
+        "New generator features"
+      ],
+      "touches": [
+        "packages/onchain/lib/mix/",
+        "packages/onchain/lib/cartouche/vm.ex",
+        "packages/onchain/lib/cartouche/assembly.ex",
+        "packages/onchain/lib/cartouche/contract/",
+        "packages/onchain/lib/cartouche/sleuth.ex",
+        "packages/onchain/native/",
+        "packages/onchain/test/",
+        "packages/onchain_evm/lib/onchain/contract/",
+        "packages/onchain_evm/lib/onchain/solidity.ex",
+        "packages/onchain_evm/lib/onchain/solidity/",
+        "packages/onchain_evm/native/"
+      ],
+      "body": "Two contract generators exist: mix cartouche.gen (1,505 lines, signet heritage, emits call_/exec_vm_ wrappers and produced the 37k-line generated i_console.ex) and Onchain.Contract.Generator in onchain_evm, which parses Solidity / ABI JSON through alloy (Onchain.Solidity.parse_abi_json/1, parse_sol_file/2). Keep only the alloy one and move it with its parser into the core NIF, so codegen does not require onchain_evm.\n\nCartouche.VM (an Elixir EVM for pure functions) and Cartouche.Assembly exist for the generated exec_vm_* wrappers; revm in onchain_evm already covers local execution. Premise verified by grep 2026-09-29: outside their own tests, VM/Assembly/IConsole are used only by cartouche.gen and cartouche test/support contracts. Delete them and their tests, or move them to onchain_evm if anything outside that set turns up. Regenerate the committed Sleuth binding with the surviving generator; drop i_console.ex unless a runtime caller exists.",
+      "created_at": "2026-09-29",
+      "scored_at": "2026-09-29",
+      "cross_repo": []
+    },
+    {
+      "id": "9035",
+      "phase": 9100,
+      "bundle": "onchain_core_consolidation",
+      "target_repo": "onchain",
+      "milestone": "onchain_core_consolidation",
+      "status": "pending",
+      "title": "Remove the remaining duplicate module pairs between Cartouche.* / ABI.* and Onchain.*",
+      "scores": {
+        "d": 5,
+        "b": 7,
+        "u": 7
+      },
+      "eff": 1.4,
+      "dep_layer": 2,
+      "unlocks": 1,
+      "markers": [],
+      "depends_on": [
+        "9030",
+        2128,
+        2129,
+        2137,
+        3089
+      ],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "A written mapping (in the task outcome) lists every module under packages/onchain/lib and its future Onchain.* name; no two modules map to the same name",
+        "No function exists in both a Cartouche.* / ABI.* module and an Onchain.* module with the same purpose; each removed duplicate's tests are merged into the survivor's tests",
+        "Focused tests of the core and every in-repo dependent pass; CHANGELOG lists every removed module and its replacement"
+      ],
+      "out_of_scope": [
+        "The rename itself",
+        "Work already owned by stack_read_surface_boundary tasks"
+      ],
+      "touches": [
+        "packages/onchain/lib/",
+        "packages/onchain/test/",
+        "packages/onchain_aave/lib/",
+        "packages/onchain_aerodrome/lib/",
+        "packages/onchain_evm/lib/",
+        "packages/onchain_js/lib/",
+        "packages/onchain_tempo/lib/",
+        "packages/onchain_solana/lib/"
+      ],
+      "body": "After the fold, the core carries pairs that do the same thing: Onchain.ABI over ABI, Onchain.Hex and Onchain.Address over Cartouche.Hex/Address, Onchain.Sleuth vs Cartouche.Sleuth, Onchain.ERC20 vs Cartouche.Erc20, Onchain.Block vs Cartouche.Block, and RPC methods present in both Cartouche.RPC and Onchain.RPC. The stack_read_surface_boundary milestone tasks already own getLogs, tx/receipt read-back, transport hardening and the signer carrier; this task removes every remaining pair so the rename can map each module to exactly one Onchain.* name.\n\nFor each pair keep one implementation — the one with the better tested behaviour — and delete the other, updating in-repo callers. Where the two differ in return shape, keep the richer one and note the change in the CHANGELOG.",
+      "created_at": "2026-09-29",
+      "scored_at": "2026-09-29",
+      "cross_repo": []
+    },
+    {
+      "id": "9036",
+      "phase": 9100,
+      "bundle": "onchain_core_consolidation",
+      "target_repo": "onchain",
+      "milestone": "onchain_core_consolidation",
+      "status": "pending",
+      "title": "Rename ABI.* and Cartouche.* to Onchain.* and prepare the single breaking release",
+      "scores": {
+        "d": 5,
+        "b": 8,
+        "u": 7
+      },
+      "eff": 1.5,
+      "dep_layer": 4,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [
+        "9032",
+        "9033",
+        "9034",
+        "9035"
+      ],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "grep -rn 'defmodule ABI\\|defmodule Cartouche\\|ABI\\.\\|Cartouche\\.' packages/*/lib returns nothing",
+        "Focused tests of the core and every in-repo dependent pass; mix onchain.bounds passes; ONCHAIN_PUBLISH=1 mix hex.build of onchain prints no 'excluded from the package' line",
+        "onchain CHANGELOG has a migration section with the complete old→new module table; README and CLAUDE.md files use the new names; AGENTS.md regenerated",
+        "The task outcome lists the exact publish order and the hex.retire commands for the human"
+      ],
+      "out_of_scope": [
+        "Migrating external consumers (aave_sim, blockwatch, bourse, faucet_ex, mpp, strip0x) — follow-ups in their own repos after publish",
+        "Running mix hex.publish or mix hex.retire — human-gated (2FA)"
+      ],
+      "touches": [
+        "packages/onchain/",
+        "packages/onchain_aave/",
+        "packages/onchain_aerodrome/",
+        "packages/onchain_evm/",
+        "packages/onchain_js/",
+        "packages/onchain_tempo/",
+        "packages/onchain_solana/",
+        "CLAUDE.md",
+        "AGENTS.md"
+      ],
+      "body": "OPEN DECISION for the operator before dispatch: version of the breaking release — 0.16.0 (0.x semantics) or 1.0.0. Answer goes here before dispatch.\n\nApply the module mapping from the dedupe task: every ABI.* and Cartouche.* module becomes its Onchain.* name, in the core and in every in-repo dependent (onchain_aave, onchain_aerodrome, onchain_evm, onchain_js, onchain_tempo, onchain_solana). This is the one breaking release consumers migrate through, so the CHANGELOG carries a complete old→new table. Prepare, but do not run, the publish and the retirement of the old packages: the final hieroglyph and cartouche releases are not needed — `mix hex.retire hieroglyph <ver> renamed --message \"merged into onchain\"` and the same for cartouche are handed to the human.",
+      "created_at": "2026-09-29",
+      "scored_at": "2026-09-29",
       "cross_repo": []
     }
   ]

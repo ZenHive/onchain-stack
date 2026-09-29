@@ -41,6 +41,13 @@
 - **hypothesis:** Proves an npm Ethereum library can be installed, loaded and driven from Elixir through QuickBEAM with no Node.js on the host — solc-js is the first consumer that has to work for real.
 - **pinned tasks:** 0/2 done
 
+### onchain_core_consolidation — [onchain] One core package, encoding from alloy
+
+- **target_version:** none
+- **status:** ⬜ pending
+- **hypothesis:** Tests whether one core package whose deterministic encoding (ABI, typed transactions, EIP-712, Tempo 0x76) comes from alloy/tempo crates through a NIF can replace hieroglyph + cartouche + onchain byte-identically — so a new EIP or transaction type arrives by a crate bump, and the Elixir surface shrinks to network I/O and glue.
+- **pinned tasks:** 0/8 done
+
 ### onchain_aerodrome_v0_2 — [onchain_aerodrome] Write surface without simulation
 
 - **target_version:** 0.2.0
