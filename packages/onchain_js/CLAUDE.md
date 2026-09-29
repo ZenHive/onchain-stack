@@ -15,7 +15,7 @@ JavaScript bridge for the onchain portfolio — run npm packages on the BEAM via
      These are niche custom Hex packages — re-add a specific @-import (e.g. quickbeam/oxc) only if
      Opus visibly guesses its API wrong. See ~/.claude/setup-guide.md § "Elixir + JS/TS on the BEAM". -->
 @~/.claude/includes/critical-rules.md
-@~/.claude/includes/harness-workflow.md
+@~/.claude/includes/harness-guardrails.md
 @~/.claude/includes/onchain-workspace.md
 
 See the root `CLAUDE.md` for the family layout, the sibling/3 mechanism, and
