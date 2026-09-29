@@ -202,7 +202,7 @@ a time**. The path-dep branch of `sibling/3` means the working tree always
 resolves fine regardless of publish order; only `mix hex.publish` still
 enforces the graph.
 
-**Tags** are cut after a successful publish, by hand, and are now
+**Tags** are cut by the agent right after the human confirms a publish, and are now
 package-scoped within one repo: `<pkg>-v<ver>` (e.g. `cartouche-v0.7.1`), not
 bare `v<ver>` — a bare tag would collide across packages sharing this repo.
 
@@ -677,9 +677,10 @@ analyzer; a green publish-parity report says nothing about that.
    run it yourself.
 11. After the human confirms, `mix hex.info <pkg>` should show the new
     version before starting the next downstream package.
-12. Tag: `git tag -a <pkg>-v<ver> -m "<pkg> <ver>"`, pushed separately, by the
-    human, after the publish. A missing tag says nothing about whether a
-    version shipped — tags lag, they don't gate.
+12. Tag: once the human confirms the publish, the agent cuts and pushes
+    `git tag -a <pkg>-v<ver> <published-commit> -m "<pkg> <ver>"` itself — do
+    not hand this back. A missing tag says nothing about whether a version
+    shipped — tags lag, they don't gate.
 
 ---
 
