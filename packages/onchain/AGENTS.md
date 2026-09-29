@@ -531,7 +531,7 @@ Layout). The boundary is **ephemeral vs durable**, not read vs write.
 
 ## Architecture
 
-- **Pure Elixir** — no native deps, no Rustler, no compilation of C/Rust
+- **ABI codecs use an alloy Rust NIF**, shipped as checksum-verified precompiled artifacts. Supported consumers do not need Cargo.
 - **ABI and Cartouche** ship inside this package: RPC, ABI encoding, signing and crypto retain their existing module names.
 - **zen_websocket** for WebSocket transport (eth_subscribe real-time subscriptions) — a standalone (unabsorbed) dep, plain Hex requirement, no sibling/3 involved
 - Cartouche wraps **ex_secp256k1** (precompiled RustCrypto k256 NIF) internally for signing/key ops via `Cartouche.Signer.Secp256k1` — never add a secp256k1 library as a direct dep
@@ -693,8 +693,7 @@ mix credo --strict --format json               # Static analysis (JSON output)
 ## Consolidated ABI and Cartouche sources
 
 `lib/abi.ex`, `lib/abi/`, `lib/cartouche.ex`, `lib/cartouche/` and their Mix tasks
-were relocated without namespace or behavior changes. `src/*.xrl` and `src/*.yrl`
-are the ABI grammar sources; never edit generated `.erl` files. `priv/*.json`,
+were relocated without namespace or behavior changes. The former yecc/leex grammar is removed; type parsing uses alloy. `priv/*.json`,
 `sol/`, the original test suites, fixtures and support modules move with them.
 `Cartouche.Application` is now onchain's application callback; existing
 `:cartouche` configuration keys and supervisor names remain compatible. Mix warns
@@ -723,3 +722,78 @@ and node capabilities described by their test support modules.
 ABI verification notes live in `docs/abi-verification-ledger.md`; Cartouche's
 ledger is `docs/verification-ledger.md`. Original licenses and package history
 are preserved in `docs/hieroglyph/` and `docs/cartouche/`.
+
+
+## Core ABI native build and release verification
+
+`ABI.Native` is the generic Rustler boundary in `native/onchain_abi`. It accepts
+operations, type strings or compiled schema resources, and BEAM values. Its one
+recursive converter handles values without JSON serialization. `ABI.TypeEncoder`
+and `ABI.TypeDecoder` retain their public APIs and doctests as compatibility
+facades, including `StrictViolation`. `ABI.Validation` preserves legacy strict
+padding, trailing-byte and length errors and normalizes the historically ignored
+tuple offsets before alloy follows them. No handwritten value codec remains in
+those facade modules. Zero-width aggregate shape and packed-array padding need
+explicit compatibility adaptation around alloy.
+
+Bare `fixed`/`ufixed`, explicit `MxN`, and nested forms remain rejected with an
+explicit error and the exthereum/abi#54 tracking link. Solidity cannot yet assign
+to or from fixed-point types, so real contracts do not emit them; implementing a
+codec and range rules now would not support a usable Solidity feature. This is
+the rationale retained from `docs/hieroglyph/README.md`.
+
+Schemas and signature hashes are cached in bounded `:persistent_term` maps
+(up to 1,024 entries per cache). Resources hold immutable parsed types and event
+topic0; they contain no VM environment or process-owned terms. Misses beyond the
+bound compile without retention. Concurrent misses may lose a cache insertion,
+which affects only performance. `Cartouche.Filter` groups logs by topic, calls
+`ABI.Event.decode_events/3`, then restores original log order.
+
+Normal-scheduler work is restricted to events with static schemas of at most
+32 nodes and 256 type bytes, four topics and 4,096 data bytes. All other work
+runs on dirty CPU schedulers. Every NIF entry catches unwinding panics and returns
+error tuples. Types are limited to 4,096 bytes/64 nesting markers, payloads to
+16 MiB, and traversal/conversion to 100,000 nodes; batches contain at most 10,000
+logs and share an output-node budget. Payload preflight bounds alloy allocation
+before decoding, including repeated/overlapping offsets.
+
+`Onchain.Precompiled` and `scripts/build-precompiled.sh` now live here;
+`onchain_evm` consumes the module and delegates its build script here. Source
+builds in a checkout use `ONCHAIN_BUILD=1`; `ONCHAIN_EVM_BUILD=1` still controls
+EVM crates. Hex installs with absent/mismatched checksums fail rather than
+silently source-building. Core rejects platforms outside the five shipped targets.
+
+Publish-time commands (run from this package; artifacts must be built from the
+exact release revision):
+
+```sh
+# Requires Rust targets, Zig and cargo-zigbuild on the release builder only.
+# Use an empty OUT_DIR; the script rejects stale artifact directories.
+OUT_DIR="$PWD/artifacts/precompiled/release" scripts/build-precompiled.sh
+# Produces aarch64/x86_64 Darwin, aarch64/x86_64 GNU/Linux, x86_64 musl.
+# After the operator publishes the package-scoped GitHub release assets:
+mix rustler_precompiled.download ABI.Native --all --print
+# Commit checksum-Elixir.ABI.Native.exs, then verify packaging:
+ONCHAIN_PUBLISH=1 mix deps.get
+ONCHAIN_PUBLISH=1 mix hex.build | tee artifacts/hex-build.log
+! grep -q 'excluded from the package' artifacts/hex-build.log
+# Inspect metadata/files and ensure checksum-Elixir.ABI.Native.exs is included.
+# Restore the development lock after publish preparation.
+git restore mix.lock
+```
+
+Verify a fresh consumer of the built tarball with Cargo absent from PATH and
+all force-build environment variables unset. After `mix deps.get`, run
+`mix compile` and `mix run -e 'IO.inspect(ABI.encode("f(uint256)", [1]))'`.
+Use an empty build directory; ensure `System.find_executable("cargo") == nil`.
+An offline smoke check can seed `RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH` with the
+locally built tarballs. That verifies checksum/loading/compilation but **does not
+verify a GitHub release download**; repeat with an empty cache after asset upload.
+Never publish onchain before its checksummed assets are downloadable. EVM's own
+assets and version remain independent of the core package release.
+
+Performance is reporting only. `bench/abi.exs` compares the production facades
+with the preserved pre-migration codecs under `bench/legacy`; `bench/results.json`
+and `bench/README.md` record ips, BEAM allocation and compilation/phase costs.
+`bench/teardown_test.exs` is the shared consumer shutdown probe: run it together
+with focused package tests and record the OS exit status after the VM halts.

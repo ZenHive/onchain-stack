@@ -1,0 +1,96 @@
+{
+  "otp": "29",
+  "cache": "warm; resource compilation and metadata cached per selector",
+  "schedulers": 20,
+  "elixir": "1.20.4",
+  "compile_costs": {
+    "ERC-20": {
+      "one_time_compile_us": 20
+    },
+    "Transfer": {
+      "one_time_compile_us": 9
+    },
+    "aggregate3": {
+      "one_time_compile_us": 7
+    },
+    "nested": {
+      "one_time_compile_us": 933
+    }
+  },
+  "measurements": {
+    "ERC-20 transfer encode / alloy": {
+      "ips": 418830.0346108785,
+      "average_ns": 2387.603365,
+      "memory_bytes": 576.0
+    },
+    "ERC-20 transfer encode / old": {
+      "ips": 389617.96479561995,
+      "average_ns": 2566.616764,
+      "memory_bytes": 4392.0
+    },
+    "Transfer event decode (10000 logs) / alloy": {
+      "ips": 64.58023643913769,
+      "average_ns": 15484613.484536082,
+      "memory_bytes": 25901288.0
+    },
+    "Transfer event decode (10000 logs) / old": {
+      "ips": 63.735551212781814,
+      "average_ns": 15689830.572916666,
+      "memory_bytes": 27039808.0
+    },
+    "Transfer event decode (single log) / alloy": {
+      "ips": 721535.972125022,
+      "average_ns": 1385.932287,
+      "memory_bytes": 2472.0
+    },
+    "Transfer event decode (single log) / old": {
+      "ips": 679682.8626406487,
+      "average_ns": 1471.274406,
+      "memory_bytes": 2688.0
+    },
+    "aggregate3 decode (500 results) / alloy": {
+      "ips": 1337.4524685860672,
+      "average_ns": 747690.1224438903,
+      "memory_bytes": 1841816.0
+    },
+    "aggregate3 decode (500 results) / old": {
+      "ips": 4652.687480847192,
+      "average_ns": 214929.54429380962,
+      "memory_bytes": 656912.0
+    },
+    "nested tuple/array encode / alloy": {
+      "ips": 41658.6698088597,
+      "average_ns": 24004.60707430765,
+      "memory_bytes": 10440.0
+    },
+    "nested tuple/array encode / old": {
+      "ips": 3424.2051884589987,
+      "average_ns": 292038.5739062652,
+      "memory_bytes": 739448.0
+    }
+  },
+  "native_phase_averages": {
+    "ERC-20 transfer encode": {
+      "term_decode_ns": 197.501,
+      "alloy_ns": 63.353,
+      "term_encode_ns": 21.05
+    },
+    "Transfer event decode (single log)": {
+      "term_decode_ns": 123.412,
+      "alloy_ns": 226.413,
+      "term_encode_ns": 139.184
+    },
+    "aggregate3 decode (500 results)": {
+      "term_decode_ns": 28.918,
+      "alloy_ns": 81649.853,
+      "term_encode_ns": 38978.573
+    },
+    "nested tuple/array encode": {
+      "term_decode_ns": 11760.454,
+      "alloy_ns": 5284.202,
+      "term_encode_ns": 184.426
+    }
+  },
+  "phase_note": "1000 instrumented calls; excludes Elixir validation/normalization/cache and scheduler handoff; alloy phase includes payload preflight.",
+  "memory_note": "Benchee measures BEAM process allocation, not Rust heap allocation."
+}

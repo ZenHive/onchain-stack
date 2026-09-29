@@ -1,0 +1,73 @@
+{
+  "otp": "29",
+  "cache": "warm; resource compilation and metadata cached per selector",
+  "schedulers": 20,
+  "elixir": "1.20.4",
+  "compile_costs": {
+    "ERC-20": {
+      "one_time_compile_us": 9
+    },
+    "Transfer": {
+      "one_time_compile_us": 15
+    },
+    "aggregate3": {
+      "one_time_compile_us": 10
+    },
+    "nested": {
+      "one_time_compile_us": 12
+    }
+  },
+  "measurements": {
+    "ERC-20 transfer encode / alloy": {
+      "ips": 508740.7056049219,
+      "average_ns": 1965.637876,
+      "memory_bytes": 224.0
+    },
+    "ERC-20 transfer encode / old": {
+      "ips": 388178.9267333319,
+      "average_ns": 2576.131601,
+      "memory_bytes": 4040.0
+    },
+    "Transfer event decode (10000 logs) / alloy": {
+      "ips": 107.57946454569701,
+      "average_ns": 9295454.334365325,
+      "memory_bytes": 7878112.0
+    },
+    "Transfer event decode (10000 logs) / old": {
+      "ips": 36.01383985455461,
+      "average_ns": 27767102.98148148,
+      "memory_bytes": 27039848.0
+    },
+    "Transfer event decode (single log) / alloy": {
+      "ips": 1010013.8214230377,
+      "average_ns": 990.085461,
+      "memory_bytes": 936.0
+    },
+    "Transfer event decode (single log) / old": {
+      "ips": 499299.285130795,
+      "average_ns": 2002.806793,
+      "memory_bytes": 2688.0
+    },
+    "aggregate3 decode (500 results) / alloy": {
+      "ips": 7784.391366919603,
+      "average_ns": 128462.19477730533,
+      "memory_bytes": 1296.0
+    },
+    "aggregate3 decode (500 results) / old": {
+      "ips": 3578.1069129765087,
+      "average_ns": 279477.3952598675,
+      "memory_bytes": 648912.0
+    },
+    "nested tuple/array encode / alloy": {
+      "ips": 43825.724947030656,
+      "average_ns": 22817.64879436988,
+      "memory_bytes": 208.0
+    },
+    "nested tuple/array encode / old": {
+      "ips": 3164.53766951607,
+      "average_ns": 316001.926484548,
+      "memory_bytes": 737456.0
+    }
+  },
+  "memory_note": "Benchee measures BEAM process allocation, not Rust heap allocation."
+}

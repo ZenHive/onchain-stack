@@ -6,31 +6,58 @@ defmodule ABI.Parser do
   @doc false
   @spec parse!(String.t(), keyword()) :: FunctionSelector.type() | FunctionSelector.t()
   def parse!(str, opts \\ []) do
-    {:ok, tokens, _} = str |> String.to_charlist() |> :ethereum_abi_lexer.string()
+    case opts[:as] do
+      :type -> parse_type(str)
+      mode -> parse_selector(str, mode)
+    end
+  end
 
-    tokens =
-      case opts[:as] do
-        nil -> tokens
-        :type -> [{:"expecting type", 1} | tokens]
-        :selector -> [{:"expecting selector", 1} | tokens]
+  defp parse_type(str), do: str |> native(:type) |> reject_type()
+
+  defp reject_type(type) do
+    reject_unsupported!(type)
+    type
+  end
+
+  defp parse_selector(str, mode) do
+    [input | returns] = String.split(str, "->", parts: 2)
+
+    {name, params} =
+      case String.split(input, "(", parts: 2) do
+        [name, rest] -> {String.trim(name), "(" <> rest}
+        _ -> {"", input}
       end
 
-    {:ok, ast} = :ethereum_abi_parser.parse(tokens)
+    types = native(params, :params)
+    types = if mode == nil and name == "" and returns == [], do: [%{type: {:tuple, types}}], else: types
 
-    case ast do
-      {:type, type} ->
-        reject_unsupported!(type)
-        type
-
-      {:selector, selector_parts} ->
-        selector_parts |> Map.get(:types, []) |> Enum.each(&reject_unsupported!(&1.type))
-
-        case Map.get(selector_parts, :returns) do
-          nil -> :ok
-          returns -> reject_unsupported!(returns)
+    %FunctionSelector{
+      function: if(name == "", do: nil, else: name),
+      types: types,
+      returns:
+        case returns do
+          [] -> nil
+          [type] -> parse_type(String.trim(type))
         end
+    }
+  end
 
-        struct!(FunctionSelector, selector_parts)
+  defp native(str, kind) do
+    case ABI.Native.abi(:parse, str, kind) do
+      {:ok, result} ->
+        result
+
+      {:error, "unsupported:" <> name} ->
+        name = if name in ["fixed", "ufixed"], do: name <> "128x18", else: name
+        raise_unsupported!(name)
+
+      {:error, reason} ->
+        message =
+          if String.trim(str) == "",
+            do: [~c"syntax error before: ", []],
+            else: [~c"syntax error before: ", String.to_charlist(reason)]
+
+        :erlang.error({:badmatch, {:error, {1, :ethereum_abi_parser, message}}})
     end
   end
 

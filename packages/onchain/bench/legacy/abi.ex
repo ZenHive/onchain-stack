@@ -1,4 +1,4 @@
-defmodule ABI do
+defmodule ABI.Bench.Legacy do
   @moduledoc """
   Documentation for ABI, the function interface language for Solidity.
   Generally, the ABI describes how to take binary Ethereum and transform
@@ -24,19 +24,20 @@ defmodule ABI do
   use Descripex.Discoverable,
     modules: [
       ABI,
-      ABI.Event,
+      ABI.Bench.Legacy.Event,
       ABI.FunctionSelector,
-      ABI.TypeEncoder,
-      ABI.TypeDecoder,
+      ABI.Bench.Legacy.TypeEncoder,
+      ABI.Bench.Legacy.TypeDecoder,
       ABI.Math
     ]
 
-  alias ABI.Event
+  alias ABI.Bench.Legacy.Event
+  alias ABI.Bench.Legacy.TypeDecoder
+  alias ABI.Bench.Legacy.TypeDecoder.StrictViolation
+  alias ABI.Bench.Legacy.TypeEncoder
   alias ABI.FunctionSelector
+  alias ABI.Math
   alias ABI.Parser
-  alias ABI.TypeDecoder
-  alias ABI.TypeDecoder.StrictViolation
-  alias ABI.TypeEncoder
 
   api(:encode, "Encodes the given data into the function signature or tuple signature.",
     params: [
@@ -263,16 +264,16 @@ defmodule ABI do
 
   ## Examples
 
-      iex> ABI.method_id("transfer(address,uint256)") |> Base.encode16(case: :lower)
+      iex> ABI.Bench.Legacy.method_id("transfer(address,uint256)") |> Base.encode16(case: :lower)
       "a9059cbb"
 
-      iex> ABI.method_id("deposit()") |> Base.encode16(case: :lower)
+      iex> ABI.Bench.Legacy.method_id("deposit()") |> Base.encode16(case: :lower)
       "d0e30db0"
 
-      iex> ABI.method_id(%ABI.FunctionSelector{function: "deposit", types: []}) |> Base.encode16(case: :lower)
+      iex> ABI.Bench.Legacy.method_id(%ABI.FunctionSelector{function: "deposit", types: []}) |> Base.encode16(case: :lower)
       "d0e30db0"
 
-      iex> ABI.method_id(%ABI.FunctionSelector{function: nil, types: [%{type: {:uint, 256}}]})
+      iex> ABI.Bench.Legacy.method_id(%ABI.FunctionSelector{function: nil, types: [%{type: {:uint, 256}}]})
       ""
   """
   @spec method_id(binary() | FunctionSelector.t()) :: binary()
@@ -283,7 +284,12 @@ defmodule ABI do
   def method_id(%FunctionSelector{function: nil}), do: <<>>
 
   def method_id(%FunctionSelector{} = function_selector) do
-    ABI.Alloy.signature(function_selector, :function)
+    <<id::binary-size(4), _::binary>> =
+      function_selector
+      |> FunctionSelector.encode()
+      |> Math.kec()
+
+    id
   end
 
   api(:decode, "Decodes the given data based on the function or tuple signature.",
@@ -1229,6 +1235,8 @@ defmodule ABI do
   """
   @spec parse_specification([map()]) :: [FunctionSelector.t()]
   def parse_specification(doc) do
-    Enum.map(doc, &FunctionSelector.parse_specification_item/1)
+    doc
+    |> Enum.map(&FunctionSelector.parse_specification_item/1)
+    |> Enum.filter(& &1)
   end
 end

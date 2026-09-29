@@ -60,3 +60,5 @@ src/*_lexer.erl
 src/*_parser.erl
 *.hieroglyph-mutants.orig
 __pycache__/
+
+/artifacts/

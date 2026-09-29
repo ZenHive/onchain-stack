@@ -115,7 +115,7 @@ defmodule Cartouche.Filter do
     {:noreply, poll_filter(state)}
   end
 
-  @spec event_decoders(list()) :: %{binary() => function()}
+  @spec event_decoders(list()) :: %{binary() => ABI.FunctionSelector.t()}
   defp event_decoders(events) do
     for event <- events, into: %{} do
       function_selector =
@@ -132,10 +132,7 @@ defmodule Cartouche.Filter do
             ABI.FunctionSelector.decode(event_abi)
         end
 
-      {ABI.Event.event_signature(function_selector),
-       fn event_topics, event_data ->
-         ABI.Event.decode_event(event_data, event_topics, function_selector)
-       end}
+      {ABI.Event.event_signature(function_selector), function_selector}
     end
   end
 
@@ -255,32 +252,36 @@ defmodule Cartouche.Filter do
 
   defp uninstall_filter(_state), do: :ok
 
-  @spec parse_events([Log.t()], %{binary() => function()}) :: {[Log.t()], [{{atom(), [term()]}, Log.t()}]}
+  @spec parse_events([Log.t()], %{binary() => ABI.FunctionSelector.t()}) :: {[Log.t()], list()}
   defp parse_events(logs, decoders) do
-    events = do_parse_events(logs, decoders, [])
-    {logs, Enum.reverse(events)}
-  end
+    events =
+      logs
+      |> Enum.with_index()
+      |> Enum.group_by(fn {log, _} -> List.first(log.topics) end)
+      |> Enum.flat_map(fn {topic, entries} ->
+        case Map.get(decoders, topic) do
+          nil ->
+            []
 
-  @spec do_parse_events([Log.t()], %{binary() => function()}, [{{atom(), [term()]}, Log.t()}]) ::
-          [{{atom(), [term()]}, Log.t()}]
-  defp do_parse_events([], _, events), do: events
+          selector ->
+            inputs = Enum.map(entries, fn {log, _} -> {log.data, log.topics} end)
 
-  defp do_parse_events([log | rest_logs], decoders, acc_events) do
-    [topic_0 | _topic_rest] = log.topics
+            inputs
+            |> ABI.Event.decode_events(selector)
+            |> Enum.zip(entries)
+            |> Enum.flat_map(fn
+              {{:ok, name, params}, {log, index}} ->
+                [{index, {{name, params}, log}}]
 
-    case Map.get(decoders, topic_0) do
-      nil ->
-        do_parse_events(rest_logs, decoders, acc_events)
-
-      decoder_fn ->
-        case decoder_fn.(log.topics, log.data) do
-          {:ok, event_name, event_params} ->
-            do_parse_events(rest_logs, decoders, [{{event_name, event_params}, log} | acc_events])
-
-          {:error, error} ->
-            Logger.error("Error decoding log: #{error}")
-            do_parse_events(rest_logs, decoders, acc_events)
+              {{:error, error}, _} ->
+                Logger.error("Error decoding log: #{inspect(error)}")
+                []
+            end)
         end
-    end
+      end)
+      |> Enum.sort_by(&elem(&1, 0))
+      |> Enum.map(&elem(&1, 1))
+
+    {logs, events}
   end
 end

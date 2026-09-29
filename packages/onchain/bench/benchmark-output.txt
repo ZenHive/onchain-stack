@@ -1,0 +1,90 @@
+Compiling 3 files (.ex)
+     warning: ABI.Bench.Legacy.method_id/1 is undefined (module ABI.Bench.Legacy is not available or is yet to be defined)
+     │
+ 253 │     ABI.Bench.Legacy.method_id(function_selector) <>
+     │                      ~
+     │
+     └─ bench/legacy/type_encoder.ex:253:22: ABI.Bench.Legacy.TypeEncoder.encode/2
+
+Operating System: Linux
+CPU Information: Intel(R) Core(TM) Ultra 7 265
+Number of Available Cores: 20
+Available memory: 62.40 GB
+Elixir 1.20.4
+Erlang 29.1
+JIT enabled: true
+
+Benchmark suite executing with the following configuration:
+warmup: 1 s
+time: 3 s
+memory time: 1 s
+reduction time: 0 ns
+parallel: 1
+inputs: none specified
+Estimated total run time: 50 s
+Excluding outliers: false
+
+Benchmarking ERC-20 transfer encode / alloy ...
+Benchmarking ERC-20 transfer encode / old ...
+Benchmarking Transfer event decode (10000 logs) / alloy ...
+Benchmarking Transfer event decode (10000 logs) / old ...
+Benchmarking Transfer event decode (single log) / alloy ...
+Benchmarking Transfer event decode (single log) / old ...
+Benchmarking aggregate3 decode (500 results) / alloy ...
+Benchmarking aggregate3 decode (500 results) / old ...
+Benchmarking nested tuple/array encode / alloy ...
+Benchmarking nested tuple/array encode / old ...
+Calculating statistics...
+Formatting results...
+
+Name                                                 ips        average  deviation         median         99th %
+Transfer event decode (single log) / alloy      708.26 K        1.41 μs   ±877.47%        1.27 μs        1.76 μs
+Transfer event decode (single log) / old        665.17 K        1.50 μs  ±1151.12%        1.20 μs        1.95 μs
+ERC-20 transfer encode / old                    421.01 K        2.38 μs   ±716.45%        1.85 μs        3.63 μs
+ERC-20 transfer encode / alloy                  405.60 K        2.47 μs   ±534.44%        2.14 μs        4.29 μs
+nested tuple/array encode / alloy                32.69 K       30.59 μs   ±343.72%       23.64 μs       57.18 μs
+aggregate3 decode (500 results) / old             4.01 K      249.21 μs    ±78.52%      207.41 μs     1082.95 μs
+nested tuple/array encode / old                   3.39 K      295.05 μs     ±6.35%      288.29 μs      363.31 μs
+aggregate3 decode (500 results) / alloy           1.28 K      783.91 μs    ±32.61%      739.57 μs     1669.19 μs
+Transfer event decode (10000 logs) / alloy      0.0668 K    14979.49 μs    ±14.69%    14545.19 μs    21273.24 μs
+Transfer event decode (10000 logs) / old        0.0641 K    15599.71 μs    ±10.10%    15187.53 μs    21937.73 μs
+
+Comparison: 
+Transfer event decode (single log) / alloy      708.26 K
+Transfer event decode (single log) / old        665.17 K - 1.06x slower +0.0915 μs
+ERC-20 transfer encode / old                    421.01 K - 1.68x slower +0.96 μs
+ERC-20 transfer encode / alloy                  405.60 K - 1.75x slower +1.05 μs
+nested tuple/array encode / alloy                32.69 K - 21.67x slower +29.18 μs
+aggregate3 decode (500 results) / old             4.01 K - 176.51x slower +247.80 μs
+nested tuple/array encode / old                   3.39 K - 208.98x slower +293.64 μs
+aggregate3 decode (500 results) / alloy           1.28 K - 555.21x slower +782.49 μs
+Transfer event decode (10000 logs) / alloy      0.0668 K - 10609.44x slower +14978.08 μs
+Transfer event decode (10000 logs) / old        0.0641 K - 11048.72x slower +15598.30 μs
+
+Memory usage statistics:
+
+Name                                               average  deviation         median         99th %
+Transfer event decode (single log) / alloy         2.30 KB     ±0.00%        2.30 KB        2.30 KB
+Transfer event decode (single log) / old           2.63 KB     ±0.00%        2.63 KB        2.63 KB
+ERC-20 transfer encode / old                       4.29 KB     ±0.00%        4.29 KB        4.29 KB
+ERC-20 transfer encode / alloy                     0.56 KB     ±0.00%        0.56 KB        0.56 KB
+nested tuple/array encode / alloy                 10.20 KB     ±0.00%       10.20 KB       10.20 KB
+aggregate3 decode (500 results) / old            641.52 KB     ±0.00%      641.52 KB      641.52 KB
+nested tuple/array encode / old                  722.12 KB     ±0.00%      722.12 KB      722.12 KB
+aggregate3 decode (500 results) / alloy         1798.65 KB     ±0.00%     1798.65 KB     1798.65 KB
+Transfer event decode (10000 logs) / alloy     24200.59 KB     ±0.00%    24200.59 KB    24200.59 KB
+Transfer event decode (10000 logs) / old       26406.06 KB     ±0.00%    26406.06 KB    26406.06 KB
+
+Comparison: 
+Transfer event decode (single log) / alloy         2.30 KB
+Transfer event decode (single log) / old           2.63 KB - 1.14x memory usage +0.32 KB
+ERC-20 transfer encode / old                       4.29 KB - 1.86x memory usage +1.98 KB
+ERC-20 transfer encode / alloy                     0.56 KB - 0.24x memory usage -1.74219 KB
+nested tuple/array encode / alloy                 10.20 KB - 4.42x memory usage +7.89 KB
+aggregate3 decode (500 results) / old            641.52 KB - 278.35x memory usage +639.21 KB
+nested tuple/array encode / old                  722.12 KB - 313.33x memory usage +719.81 KB
+aggregate3 decode (500 results) / alloy         1798.65 KB - 780.43x memory usage +1796.35 KB
+Transfer event decode (10000 logs) / alloy     24200.59 KB - 10500.60x memory usage +24198.29 KB
+Transfer event decode (10000 logs) / old       26406.06 KB - 11457.55x memory usage +26403.76 KB
+REPORT: exceeds 2x slowdown: aggregate3 decode (500 results).
+Benchmarks are reporting only; continue migration and report phase costs.

@@ -1,0 +1,75 @@
+Compiling 1 file (.yrl)
+Compiling 1 file (.xrl)
+Compiling 2 files (.erl)
+Compiling 91 files (.ex)
+Generated onchain app
+Operating System: Linux
+CPU Information: Intel(R) Core(TM) Ultra 7 265
+Number of Available Cores: 20
+Available memory: 62.40 GB
+Elixir 1.20.4
+Erlang 29.1
+JIT enabled: true
+
+Benchmark suite executing with the following configuration:
+warmup: 1 s
+time: 3 s
+memory time: 1 s
+reduction time: 0 ns
+parallel: 1
+inputs: none specified
+Estimated total run time: 50 s
+Excluding outliers: false
+
+Benchmarking ERC-20 transfer encode / alloy ...
+Benchmarking ERC-20 transfer encode / old ...
+Benchmarking Transfer event decode (10000 logs) / alloy ...
+Benchmarking Transfer event decode (10000 logs) / old ...
+Benchmarking Transfer event decode (single log) / alloy ...
+Benchmarking Transfer event decode (single log) / old ...
+Benchmarking aggregate3 decode (500 results) / alloy ...
+Benchmarking aggregate3 decode (500 results) / old ...
+Benchmarking nested tuple/array encode / alloy ...
+Benchmarking nested tuple/array encode / old ...
+Calculating statistics...
+Formatting results...
+
+Name                                                 ips        average  deviation         median         99th %
+Transfer event decode (single log) / alloy     1010.01 K        0.99 μs  ±1699.20%        0.87 μs        1.20 μs
+ERC-20 transfer encode / alloy                  508.74 K        1.97 μs   ±692.15%        1.68 μs        5.53 μs
+Transfer event decode (single log) / old        499.30 K        2.00 μs  ±1405.14%        1.45 μs        2.70 μs
+ERC-20 transfer encode / old                    388.18 K        2.58 μs  ±1230.73%        1.88 μs        4.18 μs
+nested tuple/array encode / alloy                43.83 K       22.82 μs   ±282.84%       18.87 μs       45.20 μs
+aggregate3 decode (500 results) / alloy           7.78 K      128.46 μs    ±82.49%      116.87 μs      423.81 μs
+aggregate3 decode (500 results) / old             3.58 K      279.48 μs   ±158.95%      199.12 μs     3272.68 μs
+nested tuple/array encode / old                   3.16 K      316.00 μs    ±20.03%      313.53 μs      400.87 μs
+Transfer event decode (10000 logs) / alloy       0.108 K     9295.45 μs    ±20.64%     8941.16 μs    16725.48 μs
+Transfer event decode (10000 logs) / old        0.0360 K    27767.10 μs    ±58.61%    19481.39 μs    83415.99 μs
+
+Comparison: 
+Transfer event decode (single log) / alloy     1010.01 K
+ERC-20 transfer encode / alloy                  508.74 K - 1.99x slower +0.98 μs
+Transfer event decode (single log) / old        499.30 K - 2.02x slower +1.01 μs
+ERC-20 transfer encode / old                    388.18 K - 2.60x slower +1.59 μs
+nested tuple/array encode / alloy                43.83 K - 23.05x slower +21.83 μs
+aggregate3 decode (500 results) / alloy           7.78 K - 129.75x slower +127.47 μs
+aggregate3 decode (500 results) / old             3.58 K - 282.28x slower +278.49 μs
+nested tuple/array encode / old                   3.16 K - 319.17x slower +315.01 μs
+Transfer event decode (10000 logs) / alloy       0.108 K - 9388.54x slower +9294.46 μs
+Transfer event decode (10000 logs) / old        0.0360 K - 28045.16x slower +27766.11 μs
+
+Memory usage statistics:
+
+Name                                          Memory usage
+Transfer event decode (single log) / alloy         0.91 KB
+ERC-20 transfer encode / alloy                     0.22 KB - 0.24x memory usage -0.69531 KB
+Transfer event decode (single log) / old           2.63 KB - 2.87x memory usage +1.71 KB
+ERC-20 transfer encode / old                       3.95 KB - 4.32x memory usage +3.03 KB
+nested tuple/array encode / alloy                  0.20 KB - 0.22x memory usage -0.71094 KB
+aggregate3 decode (500 results) / alloy            1.27 KB - 1.38x memory usage +0.35 KB
+aggregate3 decode (500 results) / old            633.70 KB - 693.28x memory usage +632.79 KB
+nested tuple/array encode / old                  720.17 KB - 787.88x memory usage +719.26 KB
+Transfer event decode (10000 logs) / alloy      7693.47 KB - 8416.79x memory usage +7692.55 KB
+Transfer event decode (10000 logs) / old       26406.10 KB - 28888.73x memory usage +26405.19 KB
+
+**All measurements for memory usage were the same**

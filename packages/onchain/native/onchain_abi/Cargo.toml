@@ -1,0 +1,19 @@
+[package]
+name = "onchain_abi"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.95"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = { version = "0.38", features = ["big_integer"] }
+alloy-dyn-abi = "=1.6.1"
+alloy-sol-type-parser = "=1.7.3"
+alloy-json-abi = "=1.6.1"
+alloy-primitives = "=1.6.1"
+num-bigint = "0.4"
+
+[lints.clippy]
+unwrap_used = "deny"

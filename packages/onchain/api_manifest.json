@@ -58,16 +58,16 @@
                 "description": "Keyword options forwarded to decode/3, including strict: true.",
                 "kind": "value"
               },
-              "signature_or_selector": {
-                "description": "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct. The first 4 bytes of calldata are checked against this selector.",
-                "kind": "value"
-              },
               "calldata": {
                 "description": "Full selector-prefixed calldata bytes. Must be at least 4 bytes; first 4 bytes are the method ID and the remainder is the ABI-encoded payload.",
                 "kind": "value",
                 "schema": {
                   "type": "string"
                 }
+              },
+              "signature_or_selector": {
+                "description": "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct. The first 4 bytes of calldata are checked against this selector.",
+                "kind": "value"
               }
             },
             "errors": [
@@ -113,16 +113,16 @@
                 "description": "Keyword options forwarded to decode/3, including strict: true.",
                 "kind": "value"
               },
-              "error_definitions": {
-                "description": "List of candidate error signatures, each either a raw signature string (\"InsufficientBalance(uint256,uint256)\") or a pre-parsed ABI.FunctionSelector. The first definition whose 4-byte selector matches revert_data[0..3] is used to decode the payload. The built-in Error(string) (0x08c379a0) and Panic(uint256) (0x4e487b71) errors are recognized implicitly as a fallback, so they resolve even when this list is empty; a user definition colliding with a built-in selector still wins.",
-                "kind": "value"
-              },
               "revert_data": {
                 "description": "Selector-prefixed revert payload (4-byte error ID + ABI-encoded args), e.g. the data field returned by a Solidity 0.8.4+ custom-error revert.",
                 "kind": "value",
                 "schema": {
                   "type": "string"
                 }
+              },
+              "error_definitions": {
+                "description": "List of candidate error signatures, each either a raw signature string (\"InsufficientBalance(uint256,uint256)\") or a pre-parsed ABI.FunctionSelector. The first definition whose 4-byte selector matches revert_data[0..3] is used to decode the payload. The built-in Error(string) (0x08c379a0) and Panic(uint256) (0x4e487b71) errors are recognized implicitly as a fallback, so they resolve even when this list is empty; a user definition colliding with a built-in selector still wins.",
+                "kind": "value"
               }
             },
             "errors": [
@@ -170,10 +170,6 @@
                 "description": "Keyword options. check_event_signature: false skips the topics[0] verification (useful when topics[0] has already been stripped).",
                 "kind": "value"
               },
-              "function_signature": {
-                "description": "Either a raw event signature string or a pre-parsed ABI.FunctionSelector struct.",
-                "kind": "value"
-              },
               "topics": {
                 "description": "List of 32-byte topic hashes (the topics field of the log). topics[0] is verified against the event signature unless check_event_signature: false is passed.",
                 "kind": "value",
@@ -183,6 +179,10 @@
                   },
                   "type": "array"
                 }
+              },
+              "function_signature": {
+                "description": "Either a raw event signature string or a pre-parsed ABI.FunctionSelector struct.",
+                "kind": "value"
               }
             },
             "errors": [
@@ -633,10 +633,6 @@
                 "description": "Optional keyword list. Supports check_event_signature: false to skip topics[0] verification (anonymous events or pre-stripped topics), and strict: true to reject non-canonical payloads.",
                 "kind": "value"
               },
-              "function_selector": {
-                "description": "Pre-parsed FunctionSelector with type metadata including indexed flags",
-                "kind": "value"
-              },
               "topics": {
                 "description": "List of topic binaries (each 32 bytes). topics[0] is the event signature hash unless check_event_signature is false",
                 "source": "eth_getLogs",
@@ -647,6 +643,10 @@
                   },
                   "type": "array"
                 }
+              },
+              "function_selector": {
+                "description": "Pre-parsed FunctionSelector with type metadata including indexed flags",
+                "kind": "value"
               }
             },
             "errors": [
@@ -674,6 +674,36 @@
             "composes_with": [
               "event_signature"
             ]
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_events",
+          "description": "Decode a batch of event logs with one native call per bounded chunk.",
+          "signature": "decode_events(logs, function_selector, opts \\\\ [])",
+          "spec": "decode_events([{binary(), [binary()]}], ABI.FunctionSelector.t(), keyword()) :: [term()]",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode a bounded batch of event logs with shared schema compilation.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Event decode options",
+                "kind": "value"
+              },
+              "logs": {
+                "description": "List of {data, topics} pairs",
+                "kind": "value"
+              },
+              "function_selector": {
+                "description": "Parsed event selector",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "list",
+              "description": "One result per input log"
+            }
           }
         },
         {
@@ -731,7 +761,7 @@
         }
       ],
       "module": "ABI.Event",
-      "description": "Decodes Ethereum event log data into Solidity-typed arguments.\n\nSplits the topic list (indexed parameters) from the data blob (non-indexed\nparameters) per the ABI specification, and optionally verifies that\n`topics[0]` matches the `keccak256` hash of the event signature.\n\n\n## API Functions\n| Function | Arity | Description | Param Kinds |\n| --- | --- | --- | --- |\n| `canonical` | 2 | Render the canonical signature string of an event for hashing or display, optionally including indexed and parameter-name annotations. | `function_selector: value`, `opts: value` |\n| `event_signature` | 1 | Compute the keccak-256 hash of the event's canonical signature, used as topics[0] in event logs. | `function_selector: value` |\n| `encode_event_topics` | 2 | Build an eth_getLogs topic filter list from an event selector and indexed argument values. | `function_selector: value`, `indexed_values: value` |\n| `decode_event` | 4 | Decode an Ethereum event log, splitting indexed parameters from topics and non-indexed parameters from the data blob, optionally verifying topics[0] against the event signature. | `data: exchange_data`, `topics: exchange_data`, `function_selector: value`, `opts: value` |",
+      "description": "Decodes Ethereum event log data into Solidity-typed arguments.\n\nSplits the topic list (indexed parameters) from the data blob (non-indexed\nparameters) per the ABI specification, and optionally verifies that\n`topics[0]` matches the `keccak256` hash of the event signature.\n\n\n## API Functions\n| Function | Arity | Description | Param Kinds |\n| --- | --- | --- | --- |\n| `canonical` | 2 | Render the canonical signature string of an event for hashing or display, optionally including indexed and parameter-name annotations. | `function_selector: value`, `opts: value` |\n| `event_signature` | 1 | Compute the keccak-256 hash of the event's canonical signature, used as topics[0] in event logs. | `function_selector: value` |\n| `decode_events` | 3 | Decode a bounded batch of event logs with shared schema compilation. | `logs: value`, `function_selector: value`, `opts: value` |\n| `encode_event_topics` | 2 | Build an eth_getLogs topic filter list from an event selector and indexed argument values. | `function_selector: value`, `indexed_values: value` |\n| `decode_event` | 4 | Decode an Ethereum event log, splitting indexed parameters from topics and non-indexed parameters from the data blob, optionally verifying topics[0] against the event signature. | `data: exchange_data`, `topics: exchange_data`, `function_selector: value`, `opts: value` |",
       "namespace": "/selector"
     },
     {
@@ -1291,5 +1321,5 @@
       "namespace": "/math"
     }
   ],
-  "generated_at": "2026-08-22T07:02:14.219010Z"
+  "generated_at": "2026-09-29T09:18:59.751836Z"
 }

@@ -3,7 +3,7 @@ defmodule Onchain.PrecompiledTest do
 
   alias Onchain.Precompiled
 
-  @script "scripts/build-precompiled.sh"
+  @script "../onchain/scripts/build-precompiled.sh"
 
   describe "shipped targets" do
     test "match the build script TARGETS array exactly" do
@@ -25,8 +25,9 @@ defmodule Onchain.PrecompiledTest do
 
     test "build script covers both crates and pins glibc 2.28 plus NIF 2.15" do
       script = File.read!(@script)
-      assert script =~ "onchain_evm"
-      assert script =~ "onchain_solidity"
+      wrapper = File.read!("scripts/build-precompiled.sh")
+      assert wrapper =~ "onchain_evm"
+      assert wrapper =~ "onchain_solidity"
       assert script =~ ~r/GLIBC_VERSION="\$\{GLIBC_VERSION:-2\.28\}"/
       assert script =~ ~r/NIF_VERSION="\$\{NIF_VERSION:-2\.15\}"/
       assert Precompiled.nif_versions() == ["2.15"]
@@ -159,7 +160,7 @@ defmodule Onchain.PrecompiledTest do
 
   describe "build script" do
     test "--dry-run prints every crate/target artifact name" do
-      {output, 0} = System.cmd("bash", [@script, "--dry-run"], cd: File.cwd!())
+      {output, 0} = System.cmd("bash", ["scripts/build-precompiled.sh", "--dry-run"], cd: File.cwd!())
       version = Mix.Project.config()[:version]
 
       for crate <- ["onchain_evm", "onchain_solidity"],

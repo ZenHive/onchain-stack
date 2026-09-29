@@ -1,4 +1,4 @@
-defmodule ABI.Event do
+defmodule ABI.Bench.Legacy.Event do
   @moduledoc """
   Decodes Ethereum event log data into Solidity-typed arguments.
 
@@ -9,9 +9,11 @@ defmodule ABI.Event do
 
   use Descripex, namespace: "/selector"
 
+  alias ABI.Bench.Legacy.TypeDecoder
+  alias ABI.Bench.Legacy.TypeDecoder.StrictViolation
+  alias ABI.Bench.Legacy.TypeEncoder
   alias ABI.FunctionSelector
   alias ABI.Math
-  alias ABI.TypeEncoder
 
   api(
     :decode_event,
@@ -75,9 +77,15 @@ defmodule ABI.Event do
 
   @typep length_pair :: %{got: non_neg_integer(), expected: non_neg_integer()}
 
+  # Decoded argument map keyed by parameter name; values are decoded ABI
+  # values, or `{:indexed_hash, <<32 bytes>>}` for reference-typed topics.
+  @typep decoded_map :: %{optional(String.t()) => term()}
   # A list of ABI argument descriptors (the `:types` of a FunctionSelector).
   @typep arg_types :: [FunctionSelector.argument_type()]
   @typep topic_filter :: binary() | :any
+  # The `topics[0]` verification failure, mirrored from `t:decode_error/0`.
+  @typep sig_mismatch ::
+           {:event_signature_mismatch, %{expected: binary(), got: binary()}}
 
   api(
     :encode_event_topics,
@@ -109,7 +117,7 @@ defmodule ABI.Event do
 
   ## Examples
 
-      iex> ABI.Event.encode_event_topics(
+      iex> ABI.Bench.Legacy.Event.encode_event_topics(
       ...>   %ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
@@ -150,7 +158,7 @@ defmodule ABI.Event do
 
   ## Examples
 
-      iex> ABI.Event.decode_event(
+      iex> ABI.Bench.Legacy.Event.decode_event(
       ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],
       ...>   [
       ...>     ~h[0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef],
@@ -172,7 +180,7 @@ defmodule ABI.Event do
           "to" => ~h[0x7795126b3ae468f44c901287de98594198ce38ea]
       }}
 
-      iex> ABI.Event.decode_event(
+      iex> ABI.Bench.Legacy.Event.decode_event(
       ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],
       ...>   [
       ...>     ~h[0x0000000000000000000000000000000000000000000000000000000000000001],
@@ -194,7 +202,7 @@ defmodule ABI.Event do
            got: ~h[0x0000000000000000000000000000000000000000000000000000000000000001]
          }}}
 
-      iex> ABI.Event.decode_event(
+      iex> ABI.Bench.Legacy.Event.decode_event(
       ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],
       ...>   [
       ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],
@@ -210,7 +218,7 @@ defmodule ABI.Event do
       ...>   })
       {:error, {:topics_length_mismatch, %{got: 2, expected: 3}}}
 
-      iex> ABI.Event.decode_event(
+      iex> ABI.Bench.Legacy.Event.decode_event(
       ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],
       ...>   [
       ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],
@@ -244,22 +252,140 @@ defmodule ABI.Event do
   @spec decode_event(binary(), [binary()], FunctionSelector.t(), keyword()) ::
           {:ok, String.t() | nil, map()} | {:error, decode_error()}
   def decode_event(data, topics, function_selector, opts \\ []) do
-    ABI.AlloyEvents.decode(data, topics, function_selector, opts)
+    do_decode_event(data, topics, function_selector, opts)
+  rescue
+    e in StrictViolation -> {:error, {:strict_violation, e.detail}}
   end
 
-  api(:decode_events, "Decode a bounded batch of event logs with shared schema compilation.",
-    params: [
-      logs: [kind: :value, description: "List of {data, topics} pairs"],
-      function_selector: [kind: :value, description: "Parsed event selector"],
-      opts: [kind: :value, default: [], description: "Event decode options"]
-    ],
-    returns: %{type: :list, description: "One result per input log"}
-  )
+  @spec do_decode_event(
+          binary(),
+          [binary()],
+          FunctionSelector.t(),
+          keyword()
+        ) :: {:ok, String.t() | nil, map()} | {:error, decode_error()}
+  defp do_decode_event(data, topics, function_selector, opts) do
+    # An anonymous event emits no topics[0], so there is neither a slot to
+    # decode nor a signature to verify (abi-spec.html#events). `event_topic0/1`
+    # already honours this on the encode side; folding it in here keeps the two
+    # directions symmetric -- without it every anonymous log fails as
+    # `:topics_length_mismatch`.
+    check_event_signature =
+      Keyword.get(opts, :check_event_signature, true) and
+        not anonymous_event?(function_selector)
 
-  @doc "Decode a batch of event logs with one native call per bounded chunk."
-  @spec decode_events([{binary(), [binary()]}], FunctionSelector.t(), keyword()) :: [term()]
-  def decode_events(logs, function_selector, opts \\ []) do
-    ABI.AlloyEvents.decode_batch(logs, function_selector, opts)
+    # Solidity's own ABI JSON always emits a `name` for every event input
+    # (possibly ""), but hand-written or partial ABI JSON can omit the key
+    # entirely — `parse_specification_type/1` then yields a type map with no
+    # `:name` at all. Key those by their positional index so the decoded map
+    # stays total; without this the name-keying below raises (KeyError on the
+    # topic path, FunctionClauseError on the data path), breaking this
+    # function's documented "never raises" contract.
+    named_types =
+      Enum.with_index(function_selector.types, fn type, index ->
+        Map.put_new(type, :name, Integer.to_string(index))
+      end)
+
+    # First, split the types into indexed and not indexed
+    {indexed_types, non_indexed_types} =
+      Enum.split_with(named_types, fn t -> Map.get(t, :indexed) end)
+
+    indexed_types_full =
+      if check_event_signature do
+        [%{type: {:bytes, 32}, name: "__abi__topic"} | indexed_types]
+      else
+        indexed_types
+      end
+
+    expected_count = Enum.count(indexed_types_full)
+    actual_count = Enum.count(topics)
+
+    if expected_count == actual_count do
+      indexed_data = decode_indexed_topics(indexed_types_full, topics, opts)
+
+      verified =
+        maybe_verify(indexed_data, function_selector, check_event_signature)
+
+      with {:ok, idx} <- verified,
+           {:ok, non_idx} <-
+             decode_non_indexed(data, non_indexed_types, opts) do
+        {:ok, function_selector.function, Map.merge(idx, non_idx)}
+      end
+    else
+      lengths = %{got: actual_count, expected: expected_count}
+      {:error, {:topics_length_mismatch, lengths}}
+    end
+  end
+
+  @spec decode_indexed_topics(arg_types(), [binary()], keyword()) ::
+          decoded_map()
+  defp decode_indexed_topics(indexed_types_full, topics, opts) do
+    indexed_types_full
+    |> Enum.zip(topics)
+    |> Map.new(fn {type, topic} ->
+      {type.name, decode_indexed(type, topic, opts)}
+    end)
+  end
+
+  @spec decode_non_indexed(binary(), arg_types(), keyword()) ::
+          {:ok, decoded_map()} | {:error, {:malformed_data, String.t()}}
+  defp decode_non_indexed(data, non_indexed_types, opts) do
+    # The wrapping tuple is synthetic — it exists only to drive head/tail
+    # decoding of the data blob, and THIS function owns the top-level keys
+    # (parameter name -> value, merged with the indexed topics below). Strip
+    # `:name` from the wrapper's members so `decode_structs: true` cannot turn
+    # that synthetic level into an atom-keyed map (which would then hit
+    # `Tuple.to_list/1` and surface as the caller's malformed data). Members
+    # keep their own nested types intact, so a struct-typed parameter still
+    # decodes as a map under `decode_structs: true`.
+    wrapper_types = Enum.map(non_indexed_types, &Map.delete(&1, :name))
+    tuple_type = [%{type: {:tuple, wrapper_types}}]
+    [non_indexed_data] = TypeDecoder.decode_raw(data, tuple_type, opts)
+
+    map =
+      non_indexed_data
+      |> Tuple.to_list()
+      |> Enum.zip(non_indexed_types)
+      |> Map.new(fn {res, %{name: name}} -> {name, res} end)
+
+    {:ok, map}
+  rescue
+    e in StrictViolation ->
+      reraise e, __STACKTRACE__
+
+    # These are the exception types TypeDecoder.decode_raw/3 can genuinely
+    # raise while walking arbitrary chain-supplied non-indexed payload bytes:
+    # MatchError (truncated/malformed binary — the primary case, see the
+    # "too short to decode" test), CaseClauseError (non-canonical bool byte,
+    # non-strict mode), and RuntimeError (unsupported type marker, an element
+    # count that cannot fit the remaining bytes, or trailing bytes after all
+    # types consumed, non-strict mode). Any other exception indicates a real
+    # bug rather than malformed event data, so it should propagate instead of
+    # being reported as the caller's fault — notably the ArgumentError that
+    # `decode_structs: true` raises for a non-interned field-name atom, which
+    # carries a migration hint and raises identically out of `ABI.decode/3`.
+    e in [MatchError, CaseClauseError, RuntimeError] ->
+      {:error, {:malformed_data, Exception.message(e)}}
+  end
+
+  @spec maybe_verify(decoded_map(), FunctionSelector.t(), boolean()) ::
+          {:ok, decoded_map()} | {:error, sig_mismatch()}
+  defp maybe_verify(indexed_data, function_selector, true) do
+    verify_event_signature(indexed_data, function_selector)
+  end
+
+  defp maybe_verify(indexed_data, _function_selector, false) do
+    {:ok, indexed_data}
+  end
+
+  @spec decode_indexed(FunctionSelector.argument_type(), binary(), keyword()) ::
+          {:indexed_hash, binary()} | term()
+  defp decode_indexed(param, topic, opts) do
+    if reference_type?(param.type) do
+      {:indexed_hash, topic}
+    else
+      [value] = TypeDecoder.decode_raw(topic, [param], opts)
+      value
+    end
   end
 
   # Per the Solidity ABI spec, indexed parameters of reference types
@@ -361,6 +487,19 @@ defmodule ABI.Event do
   defp tuple_to_list(values) when is_tuple(values), do: Tuple.to_list(values)
   defp tuple_to_list(values) when is_list(values), do: values
 
+  @spec verify_event_signature(decoded_map(), FunctionSelector.t()) ::
+          {:ok, decoded_map()} | {:error, sig_mismatch()}
+  defp verify_event_signature(indexed_data, function_selector) do
+    {got, res} = Map.pop(indexed_data, "__abi__topic")
+    expected = event_signature(function_selector)
+
+    if got == expected do
+      {:ok, res}
+    else
+      {:error, {:event_signature_mismatch, %{expected: expected, got: got}}}
+    end
+  end
+
   api(
     :event_signature,
     "Compute the keccak-256 hash of the event's canonical signature, used as topics[0] in event logs.",
@@ -377,7 +516,7 @@ defmodule ABI.Event do
 
   ## Examples
 
-      iex> ABI.Event.event_signature(
+      iex> ABI.Bench.Legacy.Event.event_signature(
       ...>   %ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
@@ -392,7 +531,9 @@ defmodule ABI.Event do
   """
   @spec event_signature(FunctionSelector.t()) :: binary()
   def event_signature(function_selector) do
-    ABI.Alloy.signature(function_selector, :event)
+    function_selector
+    |> FunctionSelector.encode()
+    |> Math.kec()
   end
 
   api(
@@ -420,7 +561,7 @@ defmodule ABI.Event do
 
   ## Examples
 
-      iex> ABI.Event.canonical(
+      iex> ABI.Bench.Legacy.Event.canonical(
       ...>   %ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
@@ -432,7 +573,7 @@ defmodule ABI.Event do
       ...> )
       "Transfer(address,address,uint256)"
 
-      iex> ABI.Event.canonical(
+      iex> ABI.Bench.Legacy.Event.canonical(
       ...>   %ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
@@ -445,7 +586,7 @@ defmodule ABI.Event do
       ...> )
       "Transfer(address from,address to,uint256 amount)"
 
-      iex> ABI.Event.canonical(
+      iex> ABI.Bench.Legacy.Event.canonical(
       ...>   %ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
@@ -458,7 +599,7 @@ defmodule ABI.Event do
       ...> )
       "Transfer(address indexed,address indexed,uint256)"
 
-      iex> ABI.Event.canonical(
+      iex> ABI.Bench.Legacy.Event.canonical(
       ...>   %ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [

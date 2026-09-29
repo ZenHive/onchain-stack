@@ -1,0 +1,29 @@
+{
+  "source": "unpacked locally built Hex tarball",
+  "artifacts": "local checksum-verified cache; no release upload/download claim",
+  "results": [
+    {
+      "command": [
+        "mix",
+        "deps.get"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "mix",
+        "compile"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "mix",
+        "run",
+        "-e",
+        "nil = System.find_executable(\"cargo\"); <<_::32, 1::256>> = ABI.encode(\"f(uint256)\", [1]); IO.puts(\"cargo-free consumer OK\")"
+      ],
+      "exit_code": 0
+    }
+  ]
+}

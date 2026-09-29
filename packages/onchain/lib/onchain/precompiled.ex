@@ -1,10 +1,11 @@
 defmodule Onchain.Precompiled do
   @moduledoc """
-  Shared `RustlerPrecompiled` options for both NIF crates.
+  Shared `RustlerPrecompiled` options for the core ABI and EVM NIF crates.
 
   The `:targets` list is the set `scripts/build-precompiled.sh` actually
   produces. Windows is omitted on purpose — `cargo-zigbuild` cannot produce
-  `x86_64-pc-windows-msvc`, so Windows consumers source-build.
+  `x86_64-pc-windows-msvc`. Core rejects unsupported hosts explicitly; the
+  existing EVM source-build policy is unchanged.
 
   A missing `checksum-*.exs` source-builds in this repo's checkout so `mix ci`
   is green before the first GitHub Release. The same missing file fails the
@@ -47,14 +48,19 @@ defmodule Onchain.Precompiled do
   @spec opts(String.t()) :: keyword()
   def opts(crate) when is_binary(crate) do
     version = Mix.Project.config()[:version]
+    app = if crate == "onchain_abi", do: :onchain, else: :onchain_evm
+
+    if app == :onchain and current_target() not in @targets do
+      raise "onchain ABI NIF has no precompiled artifact for this platform; supported targets: #{Enum.join(@targets, ", ")}"
+    end
 
     maybe_force_build(
-      otp_app: :onchain_evm,
+      otp_app: app,
       crate: crate,
       # Monorepo era: release assets live on onchain-stack under the per-package
       # tag schema `onchain_evm-v<ver>`. Versions <= 0.5.x keep downloading from
       # the archived ZenHive/onchain_evm repo — never delete it.
-      base_url: "https://github.com/ZenHive/onchain-stack/releases/download/onchain_evm-v#{version}",
+      base_url: "https://github.com/ZenHive/onchain-stack/releases/download/#{app}-v#{version}",
       version: version,
       targets: @targets,
       nif_versions: @nif_versions
@@ -102,7 +108,7 @@ defmodule Onchain.Precompiled do
 
     if force_build?(
          current_target(),
-         System.get_env("ONCHAIN_EVM_BUILD"),
+         System.get_env(if(crate == "onchain_abi", do: "ONCHAIN_BUILD", else: "ONCHAIN_EVM_BUILD")),
          checksum_presence(crate),
          install_source()
        ) do
@@ -119,6 +125,7 @@ defmodule Onchain.Precompiled do
   end
 
   @spec crate_module(String.t()) :: module()
+  defp crate_module("onchain_abi"), do: ABI.Native
   defp crate_module("onchain_evm"), do: Onchain.EVM
   defp crate_module("onchain_solidity"), do: Onchain.Solidity
 

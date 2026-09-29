@@ -1,0 +1,30 @@
+{
+  "onchain": {
+    "command": "mix test test/abi test/abi_test.exs test/abi_regression_test.exs test/filter_test.exs ../onchain/bench/teardown_test.exs",
+    "exit_code": 0
+  },
+  "onchain_aave": {
+    "command": "mix test test/onchain_aave_test.exs test/onchain/aave/v4/tokenization_spoke_test.exs ../onchain/bench/teardown_test.exs",
+    "exit_code": 0
+  },
+  "onchain_aerodrome": {
+    "command": "mix test test/onchain/aerodrome/types test/onchain/aerodrome/bindings/abi_test.exs test/onchain/aerodrome/bindings/lp_sugar_test.exs ../onchain/bench/teardown_test.exs",
+    "exit_code": 0
+  },
+  "onchain_evm": {
+    "command": "mix test test/onchain/precompiled_test.exs test/onchain/solidity_test.exs test/onchain/evm/params_test.exs ../onchain/bench/teardown_test.exs",
+    "exit_code": 0
+  },
+  "onchain_js": {
+    "command": "mix test test/onchain_js_test.exs ../onchain/bench/teardown_test.exs",
+    "exit_code": 0
+  },
+  "onchain_solana": {
+    "command": "mix test test/solana/transaction_test.exs test/signer_boundary_test.exs ../onchain/bench/teardown_test.exs",
+    "exit_code": 0
+  },
+  "onchain_tempo": {
+    "command": "mix test test/onchain/tempo/tip20_test.exs ../onchain/bench/teardown_test.exs",
+    "exit_code": 0
+  }
+}
