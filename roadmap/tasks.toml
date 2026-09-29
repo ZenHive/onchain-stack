@@ -9787,7 +9787,7 @@ phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain"
 milestone = "onchain_core_consolidation"
-status = "in_progress"
+status = "pending"
 title = "Core alloy NIF with a generic boundary, and ABI encode/decode on alloy-dyn-abi"
 scores = { d = 8, b = 8, u = 8 }
 markers = ["security"]
