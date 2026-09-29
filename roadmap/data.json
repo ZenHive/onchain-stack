@@ -13476,9 +13476,9 @@
         "CloudKMS behaviour changes beyond whatever a new recover callback forces"
       ],
       "files_to_modify": [
-        "packages/cartouche/lib/cartouche/signer/backend.ex",
-        "packages/cartouche/lib/cartouche/recover.ex",
-        "packages/cartouche/mix.exs"
+        "packages/onchain/lib/cartouche/signer/backend.ex",
+        "packages/onchain/lib/cartouche/recover.ex",
+        "packages/onchain/mix.exs"
       ],
       "body": "Cartouche's default signer runs secp256k1 in pure Elixir through `curvy`, and that is now\nthe dominant cost of every signature it produces.\n\nMeasured 2026-09-15 from `bourse` (the DEX client consuming this package) against its\nsigning path, as synchronous scheduler time:\n\n    Cartouche.Signer.Curvy sign_hash          2.788 ms\n    Cartouche.Recover recover_signer_address  2.030 ms\n    one signed hyperliquid order (end to end) 5.657 ms\n\nThe keccak half of that figure is already gone: commit 54539cb swapped both\n`Cartouche.Hash.keccak/1` and `Hieroglyph`'s `ABI.Math.kec/1` from `ex_sha3` onto the\n`ex_keccak` Rust NIF, taking a 32-byte keccak from 181.96 us to 0.306 us. What remains in\nthe 5.657 ms is curvy's ECDSA. A consumer that signs on request — bourse places orders\nper-call, synchronously — pays that per order.\n\nTasks 2104, 2116 and 2118 built and hardened the contract this work plugs into:\n`Cartouche.Signer.Backend` is a behaviour with `sign_payload/2`, `public_key/1` and\n`algorithm/1`, implemented by `Cartouche.Signer.Curvy` and `Cartouche.Signer.CloudKMS`.\nWhat none of them supplied is a native implementation. `ex_secp256k1` is the obvious\ncandidate: it ships precompiled through `rustler_precompiled`, which this repo already\ndepends on for `ex_keccak` and for revm in `onchain_evm`, so it adds no new toolchain\nrequirement.\n\nRecovery does not sit behind that contract yet: `Cartouche.Recover.recover_public_key_from_digest/2`\ncalls `Curvy.recover_key/3` directly. Recovery is 2.030 ms of the measurement above, so\nleaving it on curvy captures barely half the win.\n\nOpen decisions, decided here so an implementer does not answer them silently:\n\n1. **The NIF backend is additive, not the default, in this change.** Curvy stays the\n   default so no consumer's signatures change shape without opting in. Flipping the default\n   is a separate decision once the equivalence evidence below exists.\n2. **`ex_secp256k1` unless a live probe disproves it.** If it cannot produce a recoverable\n   signature carrying the recovery id that `Cartouche.Recover` and EIP-155/EIP-712 need,\n   say so in the delivery with the observed output and use `libsecp256k1` instead — do not\n   paper over it with a curvy fallback inside the backend.\n3. **Recovery moves behind the same behaviour.** Splitting sign and recover across two\n   mechanisms is what made this cost hard to see. Say so in the delivery if a `recover/2`\n   callback cannot be shaped for CloudKMS, which cannot recover at all.\n\nLow-s stays a library-wide invariant per task 2118 — a new backend must not reintroduce the\nbypass that task closed.\n\nThe measurement is the reason this is worth doing; it is not a claim that anyone has\ncomplained about latency.\n",
       "created_at": "2026-09-15",
@@ -13705,8 +13705,8 @@
         "The CHANGELOG is reconciled against `git log packages/cartouche` since the 0.9.1 cut, not only against the two tasks named here, so no further landed change is left unrecorded."
       ],
       "touches": [
-        "packages/cartouche/CHANGELOG.md",
-        "packages/cartouche/mix.exs"
+        "packages/onchain/CHANGELOG.md",
+        "packages/onchain/mix.exs"
       ],
       "body": "Two consecutive audits (408b2b6, 0f5ad9b) found landed Cartouche work with no\nrelease-note entry, so this is a class, not two incidents: harness reserves CHANGELOG\nedits during dispatch, and nothing reconciles them afterwards. Close the class in one\nrelease-preparation pass rather than one entry at a time.\n\nAudit 408b2b6: no entry for task 2134's EIP-191 byte-length fix, recover_personal_sign/2,\nvariable-width packed signatures, or explicit chain-id normalization.\n\nAudit 0f5ad9b: no entry for task 2133 (c3c6ff1a61f4 / 81944554ab4e), which is not\nadditive. EIP-712 fixed-bytes encoding was wrong before (left-padded) and is right now\n(right-padded), so every consumer that passed a short `bytesN` value gets a different\ndigest and therefore a different signature, silently and without an error. Cartouche is a\nsigning library; a consumer discovering this from a rejected on-chain signature is the\nfailure mode to avoid.\n\nWalk the git log for `packages/cartouche` since the 0.9.1 cut and write entries for\neverything found, not only the two tasks above. Decide the version bump against the\npublished 0.9.1 baseline with the breaking behaviour in mind. Do not rewrite historical\nentries.\n",
       "created_at": "2026-09-15",
@@ -13963,9 +13963,9 @@
         "Protocol address tables (Aave, Aerodrome) — they stay in their packages; only chain-level, protocol-agnostic contracts belong here"
       ],
       "touches": [
-        "packages/cartouche/lib/cartouche/chain.ex",
-        "packages/cartouche/lib/cartouche/chain/",
-        "packages/cartouche/lib/mix/",
+        "packages/onchain/lib/cartouche/chain.ex",
+        "packages/onchain/lib/cartouche/chain/",
+        "packages/onchain/lib/mix/",
         "packages/onchain/lib/onchain/multicall.ex",
         "packages/onchain/lib/onchain/ens.ex"
       ],
@@ -14011,9 +14011,9 @@
         "Any change in onchain — `Onchain.Client` adopts this in its own task"
       ],
       "touches": [
-        "packages/cartouche/lib/cartouche/rpc.ex",
-        "packages/cartouche/lib/cartouche/http.ex",
-        "packages/cartouche/lib/cartouche/transport/"
+        "packages/onchain/lib/cartouche/rpc.ex",
+        "packages/onchain/lib/cartouche/http.ex",
+        "packages/onchain/lib/cartouche/transport/"
       ],
       "body": "The family has exactly one transport shape: one URL, one request. Task 2137 moves retry, refusal classification, telemetry and the array-batch primitive down into cartouche; this task composes the next layer on top of them — several endpoints, ranked by health, with failover. It depends on 2137 for the classification, because the interesting failover decision (a provider that does not serve `trace_*` or `eth_getBlockReceipts` should not fail the call when a second provider does) is only expressible once refusals are tagged rather than opaque strings. Task 2136's multi-endpoint live-test seam is the test infrastructure to reuse here; it is a test seam, not a runtime transport.\n\nThe one rule that must not be got wrong: application errors are final. A revert, an invalid-params error, a nonce-too-low — retrying those on another endpoint is at best wasted and at worst double-submits a transaction. Transport failures and capability refusals fail over; everything the node answered with a JSON-RPC error object that is not a refusal class is returned as-is from the endpoint that produced it.\n\nDesign freedom: whether this is a new module, an option on `send_rpc/3`, or both, is the implementer's call — read how `Cartouche.RPC` threads its `:decode` option and follow that convention rather than inventing a second one. Health tracking needs process state; keep it an explicit, supervised, optional component so a caller who passes a single URL pays nothing.\n\nAuthority: the live endpoints. Provider documentation on which methods they serve is reference material; the request-counting live test is the evidence.\n\nDispatch trigger: transport-layer change on the money path with a live-evidence requirement, and a sequenced dependency on 2137 that a reviewer must confirm was actually built on, not around.\n\n2026-09-16 (parity-task review): the 'application errors are final' rule covers JSON-RPC error objects, not a transport timeout after the request was sent. Re-sending on another endpoint is safe for reads and for `eth_sendRawTransaction` (same signed bytes, same hash) but double-applies `eth_sendTransaction` and the dev-node write methods the dev-node-actions task wraps. Failover therefore needs a per-method idempotency class alongside the refusal class from 2137 — added as an acceptance criterion.\n",
       "created_at": "2026-09-16",
@@ -14058,10 +14058,10 @@
         "Any keystore format other than Web3 Secret Storage v3"
       ],
       "touches": [
-        "packages/cartouche/lib/cartouche/keys.ex",
-        "packages/cartouche/lib/cartouche/keys/",
-        "packages/cartouche/lib/cartouche/signer/",
-        "packages/cartouche/mix.exs"
+        "packages/onchain/lib/cartouche/keys.ex",
+        "packages/onchain/lib/cartouche/keys/",
+        "packages/onchain/lib/cartouche/signer/",
+        "packages/onchain/mix.exs"
       ],
       "body": "Decide first: the scrypt implementation. Pure Elixir scrypt at n=262144 is expected to be slow; the threshold is 2 seconds for the reference vector on the dev machine. Under it, ship pure Elixir (no native build, no supply-chain surface). Over it, add a NIF-backed Hex package — evaluate what is maintained on Hex at implementation time, prefer one already depending only on OTP, and record the choice. pbkdf2 needs no decision: `:crypto.pbkdf2_hmac/5` is in OTP since 24.\n\nWhy: key handling in cartouche is oddly shaped — Google Cloud KMS signing is a first-class backend for both EVM and Solana, but the commodity local paths every Ethereum library ships (mnemonic, HD derivation, keystore file) do not exist anywhere in the family (grep for bip39/mnemonic/keystore/scrypt across all eight packages, 2026-09-16: zero hits). A developer with an anvil mnemonic or a geth keystore file cannot get a signer out of this stack without a second library.\n\nPoint arithmetic for non-hardened derivation needs secp256k1 point addition; cartouche already depends on `curvy` for signing (signer/curvy.ex) — read what it exposes before adding a dependency.\n\nAuthority: the BIP-39 and BIP-32 specifications and their published test vectors; the Web3 Secret Storage definition and its two vectors; anvil's derived accounts as a live cross-check; one external reference tool accepting a keystore this code writes.\n\nDispatch trigger: signing and key-material surface — security-marked, needs an independent reviewer on redaction and KDF correctness.\n",
       "created_at": "2026-09-16",
@@ -14105,8 +14105,8 @@
         "Ganache or other dev-node dialects"
       ],
       "touches": [
-        "packages/cartouche/lib/cartouche/rpc/",
-        "packages/cartouche/test/support/live.ex"
+        "packages/onchain/lib/cartouche/rpc/",
+        "packages/onchain/test/support/live.ex"
       ],
       "body": "viem's test client (`setBalance`, `impersonateAccount`, `mine`, `snapshot`, `revert`, ...) is what makes integration tests against a fork cheap to write; nothing in the family wraps these methods (grep for `anvil_`, `evm_mine`, `evm_snapshot` across lib/ and test/ 2026-09-16: hits only in cartouche's live test helper, cartouche's dev-node test, and onchain_evm's integration tests — all raw strings, each spelling the calls independently).\n\nWrap the surface, typed, and fold the existing hand-rolled call sites onto it. The interesting part is not the wrappers, it is the contract: these are node-privileged, non-standard methods, and task 2135 owns how cartouche marks and classifies such a surface. Build on that contract; do not invent a second marking scheme.\n\nAuthority: the foundry repository's anvil RPC implementation (`crates/anvil/src/eth/api.rs` at a named tag) and the hardhat network reference; the live anvil decides semantics. Note anvil and hardhat disagree in places (task 2131's body records one such divergence for a standard method) — where they do, pin anvil's behaviour and document the hardhat difference.\n\nDispatch trigger: parallel-safe, self-contained, and gives the family's integration tests a shared surface — worth a reviewer confirming the state-change assertions are real rather than shape checks.\n",
       "created_at": "2026-09-16",
