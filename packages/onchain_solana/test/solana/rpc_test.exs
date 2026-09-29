@@ -134,9 +134,6 @@ defmodule Onchain.Solana.RPCTest do
 
     @spec call(Plug.Conn.t()) :: Plug.Conn.t()
     def call(conn) do
-      # ---------------------------------------------------------------------------
-      # Core transport
-      # ---------------------------------------------------------------------------
       %{"method" => method, "id" => id} =
         conn |> Req.Test.raw_body() |> IO.iodata_to_binary() |> Jason.decode!()
 
@@ -149,6 +146,10 @@ defmodule Onchain.Solana.RPCTest do
       Req.Test.json(conn, Map.merge(%{"jsonrpc" => "2.0", "id" => id}, payload))
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Core transport
+  # ---------------------------------------------------------------------------
 
   describe "send_rpc/3" do
     test "returns raw result" do
@@ -176,9 +177,6 @@ defmodule Onchain.Solana.RPCTest do
     end
 
     test "returns invalid_params for atom-keyed maps with non-encodable values" do
-      # ---------------------------------------------------------------------------
-      # Account methods
-      # ---------------------------------------------------------------------------
       assert {:error, {:invalid_params, %Protocol.UndefinedError{}}} =
                RPC.send_rpc("getSlot", [%{non_stdlib_key: self()}])
     end
@@ -188,6 +186,10 @@ defmodule Onchain.Solana.RPCTest do
                RPC.send_rpc("getSlot", [%CustomParam{value: 1}])
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Account methods
+  # ---------------------------------------------------------------------------
 
   describe "get_balance/2" do
     test "returns lamport balance" do
@@ -259,9 +261,6 @@ defmodule Onchain.Solana.RPCTest do
 
       assert {:ok, []} = RPC.get_multiple_accounts([@test_pubkey], encoding: :"base64+zstd")
 
-      # ---------------------------------------------------------------------------
-      # Blockhash / slot methods
-      # ---------------------------------------------------------------------------
       assert_receive {:solana_rpc_request,
                       %{
                         "method" => "getMultipleAccounts",
@@ -269,6 +268,10 @@ defmodule Onchain.Solana.RPCTest do
                       }}
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Blockhash / slot methods
+  # ---------------------------------------------------------------------------
 
   describe "get_latest_blockhash/1" do
     test "returns decoded blockhash and last valid block height" do
@@ -300,14 +303,15 @@ defmodule Onchain.Solana.RPCTest do
     end
   end
 
+  # ---------------------------------------------------------------------------
+  # Transaction methods
+  # ---------------------------------------------------------------------------
+
   describe "get_transaction/2" do
     test "returns full transaction data" do
       assert {:ok, trx} = RPC.get_transaction("some_signature")
 
       assert trx["blockTime"] == 1_708_300_522
-      # ---------------------------------------------------------------------------
-      # Transaction methods
-      # ---------------------------------------------------------------------------
       assert trx["slot"] == 255_900
       assert trx["version"] == "legacy"
 
@@ -412,6 +416,10 @@ defmodule Onchain.Solana.RPCTest do
     end
   end
 
+  # ---------------------------------------------------------------------------
+  # Rent / fees
+  # ---------------------------------------------------------------------------
+
   describe "get_minimum_balance_for_rent_exemption/2" do
     test "returns lamports for token account size" do
       assert RPC.get_minimum_balance_for_rent_exemption(165) == {:ok, 2_039_280}
@@ -420,11 +428,11 @@ defmodule Onchain.Solana.RPCTest do
     test "returns lamports for zero-data account" do
       assert RPC.get_minimum_balance_for_rent_exemption(0) == {:ok, 890_880}
     end
-
-    # ---------------------------------------------------------------------------
-    # Rent / fees
-    # ---------------------------------------------------------------------------
   end
+
+  # ---------------------------------------------------------------------------
+  # Token methods
+  # ---------------------------------------------------------------------------
 
   describe "get_token_account_balance/2" do
     test "returns parsed token amount" do
@@ -437,10 +445,6 @@ defmodule Onchain.Solana.RPCTest do
                 }}
     end
   end
-
-  # ---------------------------------------------------------------------------
-  # Token methods
-  # ---------------------------------------------------------------------------
 
   describe "get_token_accounts_by_owner/3" do
     test "filter by mint returns token accounts" do
@@ -468,6 +472,10 @@ defmodule Onchain.Solana.RPCTest do
     end
   end
 
+  # ---------------------------------------------------------------------------
+  # Fee methods
+  # ---------------------------------------------------------------------------
+
   describe "get_recent_prioritization_fees/2" do
     test "returns fee list" do
       assert RPC.get_recent_prioritization_fees() ==
@@ -481,7 +489,7 @@ defmodule Onchain.Solana.RPCTest do
   end
 
   # ---------------------------------------------------------------------------
-  # Fee methods
+  # Node info
   # ---------------------------------------------------------------------------
 
   describe "get_health/1" do
@@ -498,8 +506,9 @@ defmodule Onchain.Solana.RPCTest do
   end
 
   # ---------------------------------------------------------------------------
-  # Node info
+  # Write methods
   # ---------------------------------------------------------------------------
+
   describe "send_transaction/2" do
     test "sends transaction struct and returns signature" do
       fee_payer = <<1::256>>
@@ -516,9 +525,6 @@ defmodule Onchain.Solana.RPCTest do
     end
 
     test "sends raw bytes" do
-      # ---------------------------------------------------------------------------
-      # Write methods
-      # ---------------------------------------------------------------------------
       assert RPC.send_transaction(<<1, 2, 3>>) ==
                {:ok, "4Lz3raap9pEVGjT4EuVmNxTzMEj3EhVFKBonVFcnjiMwFKwEqh9TuPRYSv3TpK6ia4W33kMtJMdRJiL"}
     end
@@ -583,6 +589,10 @@ defmodule Onchain.Solana.RPCTest do
     end
   end
 
+  # ---------------------------------------------------------------------------
+  # Config / response-shaping edge cases
+  # ---------------------------------------------------------------------------
+
   describe "request config edge cases" do
     test "min_context_slot is propagated through the commitment config" do
       Application.put_env(:cartouche, RPC, plug: &RecordingClient.call/1)
@@ -628,9 +638,6 @@ defmodule Onchain.Solana.RPCTest do
     end
 
     test "simulate_transaction propagates commitment, sig_verify, and replace_recent_blockhash" do
-      # ---------------------------------------------------------------------------
-      # Config / response-shaping edge cases
-      # ---------------------------------------------------------------------------
       assert {:ok, %{err: nil}} =
                RPC.simulate_transaction(<<1, 2, 3>>,
                  commitment: :confirmed,
@@ -655,6 +662,10 @@ defmodule Onchain.Solana.RPCTest do
       assert {:error, %{code: -32_005}} = RPC.get_health()
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # send_and_confirm / poll_signature
+  # ---------------------------------------------------------------------------
 
   describe "send_and_confirm/2" do
     test "confirms immediately when the node already reports finalized" do
@@ -704,9 +715,6 @@ defmodule Onchain.Solana.RPCTest do
         %{
           "slot" => 1,
           "confirmations" => nil,
-          # ---------------------------------------------------------------------------
-          # send_and_confirm / poll_signature
-          # ---------------------------------------------------------------------------
           "err" => %{"InstructionError" => [0, "Custom"]},
           "confirmationStatus" => "processed"
         }

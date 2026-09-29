@@ -32,10 +32,6 @@ defmodule Onchain.Solana.RPC do
   @typedoc "JSON-RPC error envelope returned by a Solana node or by response validation."
   @type rpc_error :: %{code: integer(), message: String.t()}
 
-  # ---------------------------------------------------------------------------
-  # Core transport
-  # ---------------------------------------------------------------------------
-
   @typedoc "Error returned when JSON encoding rejects the outbound request body."
   @type invalid_params_error :: {:invalid_params, Exception.t()}
 
@@ -44,6 +40,10 @@ defmodule Onchain.Solana.RPC do
 
   @spec solana_node() :: String.t() | nil
   defp solana_node, do: Application.get_env(:cartouche, :solana_node)
+
+  # ---------------------------------------------------------------------------
+  # Core transport
+  # ---------------------------------------------------------------------------
 
   api(:send_rpc, "Send a raw JSON-RPC request to the configured Solana node.",
     params: [
@@ -142,10 +142,6 @@ defmodule Onchain.Solana.RPC do
       {:error, {:invalid_params, e}}
   end
 
-  # ---------------------------------------------------------------------------
-  # Helpers
-  # ---------------------------------------------------------------------------
-
   @spec decode_response(binary(), integer(), String.t()) ::
           {:ok, term()} | {:error, rpc_error() | Jason.DecodeError.t()}
   defp decode_response(response, id, method) do
@@ -163,6 +159,10 @@ defmodule Onchain.Solana.RPC do
       end
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Helpers
+  # ---------------------------------------------------------------------------
 
   @spec encode_pubkey(<<_::256>>) :: String.t()
   defp encode_pubkey(<<pubkey::binary-32>>), do: Base58.encode(pubkey)
@@ -186,9 +186,6 @@ defmodule Onchain.Solana.RPC do
         do: encoding_string(e),
         else: "base64"
 
-    # ---------------------------------------------------------------------------
-    # Account methods
-    # ---------------------------------------------------------------------------
     opts
     |> commitment_config()
     |> Map.put("encoding", encoding)
@@ -210,6 +207,10 @@ defmodule Onchain.Solana.RPC do
     config = commitment_config(opts)
     if config == %{}, do: params, else: params ++ [config]
   end
+
+  # ---------------------------------------------------------------------------
+  # Account methods
+  # ---------------------------------------------------------------------------
 
   api(:get_balance, "Get the SOL balance for an account.",
     params: [
@@ -325,9 +326,6 @@ defmodule Onchain.Solana.RPC do
     returns: %{
       type: :ok_error_tuple,
       ok: %{
-        # ---------------------------------------------------------------------------
-        # Blockhash / slot methods
-        # ---------------------------------------------------------------------------
         type: :account_info_list,
         description:
           "List containing `nil` for missing accounts or account maps with keys `:data`, `:executable`, `:lamports`, `:owner`, `:rent_epoch`, and `:space`."
@@ -365,6 +363,10 @@ defmodule Onchain.Solana.RPC do
       space: info["space"]
     }
   end
+
+  # ---------------------------------------------------------------------------
+  # Blockhash / slot methods
+  # ---------------------------------------------------------------------------
 
   api(:get_latest_blockhash, "Get the latest blockhash and last valid block height.",
     params: [
@@ -414,9 +416,6 @@ defmodule Onchain.Solana.RPC do
     opts: [
       commitment: [
         kind: :value,
-        # ---------------------------------------------------------------------------
-        # Transaction methods
-        # ---------------------------------------------------------------------------
         description: "Commitment level atom: `:finalized`, `:confirmed`, or `:processed`."
       ],
       min_context_slot: [kind: :value, description: "Minimum context slot as a non-negative integer."]
@@ -461,6 +460,10 @@ defmodule Onchain.Solana.RPC do
   def get_block_height(opts \\ []) do
     send_rpc("getBlockHeight", params_with_config([], opts), opts)
   end
+
+  # ---------------------------------------------------------------------------
+  # Transaction methods
+  # ---------------------------------------------------------------------------
 
   api(:get_transaction, "Get a transaction by its base58 transaction signature.",
     params: [
@@ -563,9 +566,6 @@ defmodule Onchain.Solana.RPC do
     with {:ok, result} <- send_rpc("getSignatureStatuses", params, opts) do
       statuses =
         result
-        # ---------------------------------------------------------------------------
-        # Token methods
-        # ---------------------------------------------------------------------------
         |> unwrap_value()
         |> Enum.map(fn
           nil ->
@@ -621,6 +621,10 @@ defmodule Onchain.Solana.RPC do
       opts
     )
   end
+
+  # ---------------------------------------------------------------------------
+  # Token methods
+  # ---------------------------------------------------------------------------
 
   api(:get_token_account_balance, "Get the SPL token balance for a token account.",
     params: [
@@ -703,9 +707,6 @@ defmodule Onchain.Solana.RPC do
       ],
       min_context_slot: [kind: :value, description: "Minimum context slot as a non-negative integer."],
       encoding: [
-        # ---------------------------------------------------------------------------
-        # Fee methods
-        # ---------------------------------------------------------------------------
         kind: :value,
         default: :json_parsed,
         description: "Account data encoding; defaults to `:json_parsed` for structured token account data."
@@ -750,10 +751,6 @@ defmodule Onchain.Solana.RPC do
         program_id = Keyword.get(filter, :program_id) ->
           %{"programId" => encode_pubkey(program_id)}
 
-        # ---------------------------------------------------------------------------
-        # Node info methods
-        # ---------------------------------------------------------------------------
-
         true ->
           raise ArgumentError, "get_token_accounts_by_owner requires :mint or :program_id filter"
       end
@@ -775,6 +772,10 @@ defmodule Onchain.Solana.RPC do
       {:ok, accounts}
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Fee methods
+  # ---------------------------------------------------------------------------
 
   api(:get_recent_prioritization_fees, "Get recent prioritization fees for optional account locks.",
     params: [
@@ -804,11 +805,6 @@ defmodule Onchain.Solana.RPC do
   @spec get_recent_prioritization_fees([<<_::256>>], keyword()) ::
           {:ok, [%{slot: non_neg_integer(), prioritization_fee: non_neg_integer()}]}
           | {:error, term()}
-
-  # ---------------------------------------------------------------------------
-  # Write methods
-  # ---------------------------------------------------------------------------
-
   def get_recent_prioritization_fees(addresses \\ [], opts \\ []) do
     encoded = Enum.map(addresses, &encode_pubkey/1)
     params = if encoded == [], do: [], else: [encoded]
@@ -822,6 +818,10 @@ defmodule Onchain.Solana.RPC do
       {:ok, fees}
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Node info methods
+  # ---------------------------------------------------------------------------
 
   api(:get_health, "Check Solana node health.",
     params: [
@@ -872,6 +872,10 @@ defmodule Onchain.Solana.RPC do
       {:ok, %{solana_core: result["solana-core"], feature_set: result["feature-set"]}}
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Write methods
+  # ---------------------------------------------------------------------------
 
   api(:send_transaction, "Send a signed Solana transaction to the network.",
     params: [
@@ -991,11 +995,6 @@ defmodule Onchain.Solana.RPC do
 
   Returns simulation result including logs, compute units consumed, and errors.
   """
-
-  # ---------------------------------------------------------------------------
-  # High-level helpers
-  # ---------------------------------------------------------------------------
-
   @spec simulate_transaction(binary() | Transaction.t(), keyword()) ::
           {:ok, map()} | {:error, term()}
   def simulate_transaction(transaction, opts \\ [])
@@ -1068,6 +1067,10 @@ defmodule Onchain.Solana.RPC do
       opts
     )
   end
+
+  # ---------------------------------------------------------------------------
+  # High-level helpers
+  # ---------------------------------------------------------------------------
 
   api(:send_and_confirm, "Send a signed transaction and poll until it reaches the target confirmation level.",
     params: [
