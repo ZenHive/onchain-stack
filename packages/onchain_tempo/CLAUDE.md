@@ -12,7 +12,7 @@
      onchain-workspace) is retired — harness replaced it. Re-add an @-import per-surface only if
      Opus visibly degrades on it. See ~/.claude/setup-guide.md § "Skills vs Includes". -->
 @~/.claude/includes/critical-rules.md
-@~/.claude/includes/harness-workflow.md
+@~/.claude/includes/harness-guardrails.md
 @~/.claude/includes/onchain-workspace.md
 @~/.claude/includes/node-portability.md
 
