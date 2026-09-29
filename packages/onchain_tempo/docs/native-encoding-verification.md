@@ -114,8 +114,8 @@ unmodified host freshness command remains blocked on its missing import.
 - `scripts/build-precompiled.sh --dry-run`: all five expected Tempo artifact
   names generated; no release upload was performed.
 
-The root `mix onchain.bounds` attempt was stopped after it began compiling root
-aggregate dependencies and hit the core artifact 404; this checkout has no
-tracked `onchain_bounds.ex` task despite the root documentation. The new
-`~> 0.15` requirement admits the in-tree core version 0.15.0. No full root gate
-is claimed.
+`MIX_ENV=test mix onchain.bounds onchain_tempo` passes: `~> 0.15` admits the
+in-tree core 0.15.0. The task module is `lib/mix/tasks/onchain.bounds.ex`.
+Published Hex onchain 0.15.0 does not yet contain the Tempo crate-dispatch
+clauses added here, so that core change has to be published before
+onchain_tempo 0.12.0. No full root `mix ci` is claimed.
