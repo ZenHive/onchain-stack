@@ -5284,13 +5284,13 @@
         "Changing the :ethereum_node default value"
       ],
       "files_to_modify": [
-        "packages/cartouche/lib/cartouche/rpc.ex",
-        "packages/cartouche/test/rpc_test.exs",
-        "packages/cartouche/test/rpc_integration_test.exs"
+        "packages/onchain/lib/cartouche/rpc.ex",
+        "packages/onchain/test/rpc_test.exs",
+        "packages/onchain/test/rpc_integration_test.exs"
       ],
       "touches": [
-        "packages/cartouche/README.md",
-        "packages/cartouche/CHANGELOG.md"
+        "packages/onchain/README.md",
+        "packages/onchain/CHANGELOG.md"
       ],
       "body": "`Cartouche.RPC.base_fee/1` (lib/cartouche/rpc.ex) wraps `eth_baseFee`. Its status was re-verified on 2026-08-27 and the earlier \"Erigon extension\" label was too simple: the method is Erigon-origin (erigontech/erigon#11992, 2024-09-18), was adopted by reth (2026-05-08), Nethermind (2026-05-15) and go-ethereum (PR #34904, shipped v1.17.4 on 2026-06-22), and was merged into `ethereum/execution-apis` **`main`** on 2026-06-15 (PR #795, title \"feat: eth_baseFee\", whose own body describes it as documenting a method \"supported by enterprise RPCs and Erigon\"). It is nonetheless carried by **no tagged spec release** — the newest is `v1.0.0-beta.7` (2026-06-10), five days before the merge — it is absent from the vendored `openrpc-v1.0.0-beta.4.json`, and neither Alchemy nor Infura documents it. So it is spec-resident on an unreleased branch and still non-portable in practice. Our own reth node serves it, so every check the library runs is green here while consumers on the most common hosted endpoints get an error.\n\nDo not resolve this by reading `execution-apis` `main` and concluding \"standard, nothing to do\" — that is precisely the inference this task exists to prevent, and rule 1 of node-portability.md now says to read a tagged release rather than the branch. Alchemy mainnet was observed on 2026-08-25 answering `-32600 \"eth_baseFee is not available on the ETH_MAINNET\"`; that single observation is the trigger for this task, not its conclusion.\n\nTask 122 shipped the wrapper and did include an acceptance criterion about unsupported nodes, but it was satisfied with a mocked plug asserting `-32601 \"The method eth_baseFee does not exist/is not available\"` (test/rpc_test.exs:180, :458). That message was assumed, not observed — and it does not match what Alchemy actually returns. The mock therefore ratifies a guess and stays green regardless of what providers really do. This task replaces that guess with evidence.\n\nThe exposure is sharpened by cartouche's own defaults: `lib/cartouche/application.ex` defaults `:ethereum_node` to `https://mainnet.infura.io`, and README.md's configuration example recommends Infura. A user following the README's own example and calling `base_fee/1` hits the refusal.\n\nTwo things are genuinely open and should be decided with the probe results in hand, not pre-decided here:\n\n(1) Whether `base_fee/1` should keep calling `eth_baseFee` and simply document the constraint, or switch to reading `baseFeePerGas` from the pending block header. Note the question is NOT \"standard vs extension\" — the spec settles that, and the answer is \"standard on main, in no release\". The real question is deployment lag: whether a substrate library tracks the spec or tracks what the consumer's endpoint actually serves — which every EIP-1559 node serves. `Onchain.RPC.base_fee/1` in the sibling `onchain` package took the second route on 2026-08-25 and verified the two equivalent against reth v2.5.1 in a single batch request (`eth_baseFee` == pending `baseFeePerGas` == 71_739_926, while `latest` was 68_871_658 — so the pending header, not the latest one, carries the \"next block\" semantics). See the `NOTE (portability):` comment above that function for the worked precedent. Switching is a behaviour-preserving change on nodes that serve both, but it is a public API's semantics, so it deserves the evidence.\n\n(2) Whether the fix is scoped to this one function or generalized. Prefer scoping it here; a capability-probe framework is explicitly out of scope.\n\nPremise to confirm before building on it: that Infura also refuses `eth_baseFee` is expected but unverified — only Alchemy was probed. Probe both; if a provider does serve it, say so rather than asserting a uniform refusal.\n\nAuthority is the live providers plus `ethereum/execution-apis`. A third-party client's behaviour is reference material only.\n",
       "created_at": "2026-08-25",
@@ -5333,13 +5333,13 @@
         "ABI event decoding — that is hieroglyph's layer, above the log struct"
       ],
       "files_to_modify": [
-        "packages/cartouche/lib/cartouche/rpc.ex",
-        "packages/cartouche/lib/cartouche/filter.ex"
+        "packages/onchain/lib/cartouche/rpc.ex",
+        "packages/onchain/lib/cartouche/filter.ex"
       ],
       "touches": [
-        "packages/cartouche/test/rpc_integration_test.exs",
-        "packages/cartouche/test/filter_test.exs",
-        "packages/cartouche/CHANGELOG.md",
+        "packages/onchain/test/rpc_integration_test.exs",
+        "packages/onchain/test/filter_test.exs",
+        "packages/onchain/CHANGELOG.md",
         "packages/onchain/lib/onchain/rpc.ex",
         "packages/onchain/CHANGELOG.md"
       ],
@@ -5386,13 +5386,13 @@
         "Re-encoding the RPC transaction object back to raw RLP"
       ],
       "files_to_modify": [
-        "packages/cartouche/lib/cartouche/rpc.ex",
-        "packages/cartouche/lib/cartouche/transaction.ex"
+        "packages/onchain/lib/cartouche/rpc.ex",
+        "packages/onchain/lib/cartouche/transaction.ex"
       ],
       "touches": [
-        "packages/cartouche/lib/cartouche/block.ex",
-        "packages/cartouche/test/rpc_integration_test.exs",
-        "packages/cartouche/CHANGELOG.md",
+        "packages/onchain/lib/cartouche/block.ex",
+        "packages/onchain/test/rpc_integration_test.exs",
+        "packages/onchain/CHANGELOG.md",
         "packages/onchain/lib/onchain/rpc.ex",
         "packages/onchain/CHANGELOG.md"
       ],
@@ -5438,11 +5438,11 @@
         "Client-side Merkle-Patricia verification of a proof against the state root — a real feature, genuinely separate, and not needed to own the read"
       ],
       "files_to_modify": [
-        "packages/cartouche/lib/cartouche/rpc.ex"
+        "packages/onchain/lib/cartouche/rpc.ex"
       ],
       "touches": [
-        "packages/cartouche/test/rpc_integration_test.exs",
-        "packages/cartouche/CHANGELOG.md",
+        "packages/onchain/test/rpc_integration_test.exs",
+        "packages/onchain/CHANGELOG.md",
         "packages/onchain/lib/onchain/rpc.ex",
         "packages/onchain/CHANGELOG.md",
         "packages/onchain_evm/lib/onchain/trace.ex",
@@ -5491,11 +5491,11 @@
         "net_version — already present in the tagged spec since v1.0.0-beta.1 and outside this task's set; if cartouche lacks it, that is its own task"
       ],
       "files_to_modify": [
-        "packages/cartouche/lib/cartouche/rpc.ex"
+        "packages/onchain/lib/cartouche/rpc.ex"
       ],
       "touches": [
-        "packages/cartouche/test/rpc_integration_test.exs",
-        "packages/cartouche/CHANGELOG.md",
+        "packages/onchain/test/rpc_integration_test.exs",
+        "packages/onchain/CHANGELOG.md",
         "packages/onchain/lib/onchain/rpc.ex",
         "packages/onchain/CHANGELOG.md"
       ],
@@ -5542,11 +5542,11 @@
         "Refactoring onchain_tempo's AA-specific simulate/3 — it is a domain caller, not a duplicate wrapper; see the body"
       ],
       "files_to_modify": [
-        "packages/cartouche/lib/cartouche/rpc.ex"
+        "packages/onchain/lib/cartouche/rpc.ex"
       ],
       "touches": [
-        "packages/cartouche/test/rpc_integration_test.exs",
-        "packages/cartouche/CHANGELOG.md"
+        "packages/onchain/test/rpc_integration_test.exs",
+        "packages/onchain/CHANGELOG.md"
       ],
       "body": "`eth_simulateV1` entered the execution-apis spec at tag `v1.0.0-beta.5` (2026-06-03, `src/eth/execute.yaml`) — verified by walking the tags directly, beta.1 through beta.7 — and it IS present in the vendored local spec. It is squarely cartouche's under the stack boundary, and it is the portable answer to the privileged `trace_callMany` / `debug_traceCall` pair cartouche already wraps.\n\nClient support is real and was verified against each client's own source, not from memory: geth (`internal/ethapi/api.go`, `BlockChainAPI.SimulateV1`), reth (`crates/rpc/rpc-eth-api/src/core.rs`, with the tracking issue closed as implemented), erigon (`rpc/jsonrpc/eth_simulation.go`, and its rpcdaemon README lists it supported) and nethermind (`EthRpcModule.cs`). So the premise the earlier version of this task flagged as unverified is now confirmed for the archive node's client — but confirm the node's live answer anyway before building on it, because a client implementing a method and an endpoint serving it are different facts.\n\n**One existing caller, and it is NOT a duplicate to delete.** onchain_tempo calls `eth_simulateV1` at lib/onchain/tempo/rpc.ex:128, but it is a domain consumer, not a competing wrapper: it builds a single AA-folded 0x76 call, interprets the result as success / revert / unsupported for a fee-payer gas-drain guard, and carries an empirically-verified note that `tempo_simulateV1` is not deployed on Tempo mainnet or Moderato. That is exactly the layering the boundary prescribes — the chain-specific package re-presents the node method for its domain. It stays.\n\nWhat it does reveal is a second transport escape: it builds its own `do_rpc_request/4` directly on Req + Jason rather than going through the shared transport, mirroring why `Onchain.HTTP` exists. Worth noting, out of scope here.\n\nTwo things to take from that module rather than reinvent: its `-32601` -> `:unsupported` classification is the capability-probe shape this method needs, and its `-38013` handling shows that execution errors arrive as JSON-RPC errors distinct from transport failure. cartouche's decode must keep those three outcomes — succeeded, reverted/rejected, method unsupported — distinguishable, because collapsing them is what makes a fail-open caller unsafe.\n\nAuthority: the tagged execution-apis spec plus the live node.\n",
       "created_at": "2026-08-26",
@@ -5706,12 +5706,12 @@
         "base_fee/1 — its own task owns that @doc"
       ],
       "files_to_modify": [
-        "packages/cartouche/lib/cartouche/rpc.ex",
-        "packages/cartouche/test/rpc_integration_test.exs"
+        "packages/onchain/lib/cartouche/rpc.ex",
+        "packages/onchain/test/rpc_integration_test.exs"
       ],
       "touches": [
-        "packages/cartouche/README.md",
-        "packages/cartouche/CHANGELOG.md"
+        "packages/onchain/README.md",
+        "packages/onchain/CHANGELOG.md"
       ],
       "body": "Verified against ethereum/execution-apis `main` by two independent checks this session: the `trace_*` namespace does not appear in the specification at all, and `src/debug/trace.yaml` carries only `debug_traceBlockByNumber`, `debug_traceBlockByHash` and `debug_traceTransaction` — NOT `debug_traceCall`. So cartouche ships four non-standard read methods.\n\nNone of them carries any portability note. Grepping rpc.ex for Erigon / non-standard / Alchemy / Infura / portab returns only `fill_transaction` comments. There is no capability probe, and README.md's node-compatibility section affirmatively tells the reader the surface is nearly all standard, naming only `base_fee` and archive depth as exceptions.\n\nThis is a larger portability hole than `base_fee/1` and it is the one with no task. `base_fee` at least got a README caveat; the trace surface is invisible in the docs, the roadmap, and the module docs simultaneously.\n\nOrigin, for the @doc wording: `trace_*` is the OpenEthereum/Parity namespace, inherited by Erigon and implemented by reth (our own archive node serves it — that is why every existing trace integration test is green here). Do not write that reth lacks it; verify each client claim against that client's own documentation before putting it in a @doc, and cite what you checked.\n\nThe probe precedent to follow is `Onchain.Trace.available?/1` in the sibling onchain_evm package — read it before designing a new shape. This is rule 3 of node-portability.md applied where it actually bites: name who serves it, name the consumer-visible error, and expose a probe rather than failing deep in a pipeline.\n",
       "created_at": "2026-08-26",
@@ -5807,12 +5807,12 @@
         "Bang variants (foo!/N) — a separate ergonomic decision, not transport"
       ],
       "files_to_modify": [
-        "packages/cartouche/lib/cartouche/rpc.ex",
-        "packages/cartouche/lib/cartouche/http.ex"
+        "packages/onchain/lib/cartouche/rpc.ex",
+        "packages/onchain/lib/cartouche/http.ex"
       ],
       "touches": [
-        "packages/cartouche/test/rpc_test.exs",
-        "packages/cartouche/CHANGELOG.md"
+        "packages/onchain/test/rpc_test.exs",
+        "packages/onchain/CHANGELOG.md"
       ],
       "body": "This task is what makes the stack boundary's clean cut actually safe to execute, and it was found by reading both call pipelines rather than by reasoning from the layer diagram.\n\nThe boundary says cartouche owns the transport and every in-spec method; onchain re-presents, never re-derives. Tasks 128-132 move the methods down. But a straight deletion of onchain's duplicate wrappers would be a real regression, because onchain's wrappers are not thin: each one runs inside `:telemetry.span([:onchain, :rpc, :request], ...)` (lib/onchain/rpc.ex:1310-1313), optionally inside `retry_rpc/4` (:1317-1367, transport failures retried, application errors final at :1366-1368), and its result passes through `classify_node_refusal/1` (:1374-1391), which turns `-32601` / `-32600` / `-32001` into tagged, branchable outcomes and was pinned against live Alchemy responses (moduledoc, rpc.ex:41-99). cartouche's `send_rpc/3` (lib/cartouche/rpc.ex:515-556) has none of these.\n\nEvery one of those is a transport concern. Under the boundary they belong in cartouche by definition — the layer that owns the JSON-RPC wire owns retrying it, measuring it, and telling the caller why a node refused. That they grew in onchain is an artifact of the old rule that put wrappers there.\n\nThere is a structural reason this cannot be fixed by delegation, which is worth stating so nobody proposes it later: onchain composes the hardening OUTSIDE the raw call, whereas cartouche's typed wrappers put the decode INSIDE `send_rpc/3` via its `:decode` option. So `Onchain.RPC.foo/2` delegating to `Cartouche.RPC.foo/2` inverts the nesting and silently drops retry, because `retry_rpc/4` is hardcoded to call `Helpers.do_rpc/3` (:1350) and cannot wrap a typed call. Generalizing it is part of this task, not a rider on a per-method port.\n\nThe node-refusal classification is the highest-value piece and should be treated as such. It is exactly what node-portability rule 3 asks for — \"expose a capability probe rather than failing deep in a pipeline\" — and cartouche currently forces consumers to string-match error text to discover that an endpoint does not serve a method. Tasks 131, 132 and 135 all need this: 131 wraps three methods no tagged spec carries, 132 needs `-32601` distinguishable from a failed simulation, and 135 needs a probe for the trace namespace. onchain_tempo independently reinvented the same `-32601 -> :unsupported` classification (onchain_tempo/lib/onchain/tempo/rpc.ex) — a third implementation of one idea, which is the signal that it belongs one layer down.\n\nThe onchain-side question — whether onchain's duplicated wrappers disappear entirely or survive returning cartouche structs — is DELIBERATELY DEFERRED until this task ships, and no task should presume either answer before then. The reason is that this task changes the answer: today a bare deletion would cost consumers retry, telemetry and refusal classification, which makes keeping the wrapper look cheaper; once cartouche has all three, deletion becomes close to free and the trade-off mostly evaporates. Deciding before that is deciding against a constraint that is about to stop existing.\n\nSequencing note (rewritten 2026-09-23): inside the monorepo onchain resolves cartouche through the sibling/3 path dep, so this lands in one diff and onchain's own retry/telemetry/classification can be removed here or in the read-surface tasks 2128–2131 that depend on this one. `mix onchain.bounds` keeps the published Hex requirement honest; no lock bump is involved.\n",
       "created_at": "2026-08-27",
