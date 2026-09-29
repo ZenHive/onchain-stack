@@ -10320,12 +10320,11 @@ scored_at = "2026-09-29"
 
 [[task]]
 id = "9043"
-spec_changes = [{ rule = "DIST-4", op = "change" }, { rule = "DIST-5", op = "add" }]
 phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain"
 milestone = "onchain_core_consolidation"
-status = "in_progress"
+status = "done"
 title = "A fresh monorepo checkout compiles onchain's alloy NIF before any release assets exist"
 scores = { d = 3, b = 8, u = 9 }
 depends_on = [9031]
@@ -10346,9 +10345,17 @@ Make the checkout self-sufficient again without weakening the Hex path. One shap
 
 The 9033 (onchain_tempo NIF) and 9034 (codegen NIF) tasks will reuse Onchain.Precompiled, so whatever rule lands here is the one they inherit.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1790724022756-49c7c245, 1ead58919988b8c5fab44543237fe74a229ca3d3)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1790724022756-49c7c245"
 created_at = "2026-09-29"
 started_at = "2026-09-29"
 scored_at = "2026-09-29"
+done_at = "2026-09-29"
+shipped_in = "1ead58919988b8c5fab44543237fe74a229ca3d3"
+spec_changes = [{ rule = "DIST-4", op = "change" }, { rule = "DIST-5", op = "add" }]
 
 [[task]]
 id = "9044"

@@ -15924,7 +15924,7 @@
       "bundle": "onchain_core_consolidation",
       "target_repo": "onchain",
       "milestone": "onchain_core_consolidation",
-      "status": "in_progress",
+      "status": "done",
       "title": "A fresh monorepo checkout compiles onchain's alloy NIF before any release assets exist",
       "scores": {
         "d": 3,
@@ -15966,10 +15966,17 @@
         "packages/onchain_solana/mix.lock",
         "packages/onchain_tempo/mix.lock"
       ],
+      "shipped_in": "1ead58919988b8c5fab44543237fe74a229ca3d3",
       "body": "Since 9031 (c9c7256), a fresh checkout of main cannot compile anything that depends on onchain unless the machine happens to have the onchain_abi artifact in its rustler_precompiled cache. The harness server has one; a clean laptop does not. Observed 2026-09-30 on macOS in a fresh worktree at 66af428:\n\n- Without ONCHAIN_BUILD: `packages/onchain_tempo` `mix compile` tries to download https://github.com/ZenHive/onchain-stack/releases/download/onchain-v0.15.0/libonchain_abi-v0.15.0-nif-2.15-aarch64-apple-darwin.so.tar.gz and gets a 404. The committed checksum-Elixir.ABI.Native.exs lists five targets, but those assets were never uploaded. Uploading them is the 9036 release step.\n- With ONCHAIN_BUILD=1: `packages/onchain` builds from source, but the root project and every in-repo dependent (verified: onchain_tempo, and the root, which the pre-commit hook compiles) fail with \"Rustler dependency is needed to force the build\". rustler is `optional: true` in onchain's mix.exs, and a path dependency's optional deps are not pulled into the dependent.\n\nThe earlier onchain_evm design (task 6053's acceptance criteria) already stated the rule this breaks: a Hex-installed package must download and verify, while the library's own checkout source-builds while no release exists. 9031 moved Onchain.Precompiled into core but lost the in-checkout half once it committed a checksum file ahead of its assets.\n\nMake the checkout self-sufficient again without weakening the Hex path. One shape that fits the existing sibling/3 marker convention: onchain declares rustler non-optional when the `.onchain-monorepo-root` marker is present (and ONCHAIN_PUBLISH is unset), and Onchain.Precompiled source-builds in the checkout. The published tarball's dependency declaration must stay exactly as it is today. Another shape is fine if it meets the criteria.\n\nThe 9033 (onchain_tempo NIF) and 9034 (codegen NIF) tasks will reuse Onchain.Precompiled, so whatever rule lands here is the one they inherit.\n",
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
+      "done_at": "2026-09-29",
       "scored_at": "2026-09-29",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1790724022756-49c7c245, 1ead58919988b8c5fab44543237fe74a229ca3d3).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1790724022756-49c7c245",
       "spec_changes": [
         {
           "rule": "DIST-4",
