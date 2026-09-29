@@ -14,7 +14,7 @@ EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Eli
      / dev-lifecycle plugins. Re-add an @-import per-surface only if Opus visibly degrades on it.
      See ~/.claude/setup-guide.md. -->
 @~/.claude/includes/critical-rules.md
-@~/.claude/includes/harness-workflow.md
+@~/.claude/includes/harness-guardrails.md
 @~/.claude/includes/onchain-workspace.md
 @~/.claude/includes/ethereum-rpc.md
 @~/.claude/includes/node-portability.md
