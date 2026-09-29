@@ -1,37 +1,8 @@
 defmodule Onchain.Tempo.Transaction do
-  @moduledoc """
-  Tempo Transaction (EIP-2718 type 0x76) — RLP deserialization, payment call
-  matching, and fee payer co-signing (0x78 domain).
+  @moduledoc "Tempo transaction decoding, payment matching, and fee payer co-signing."
 
-  A Tempo Transaction is an RLP-encoded envelope prefixed with `0x76`:
-
-      0x76 || rlp([chain_id, max_priority_fee_per_gas, max_fee_per_gas, gas_limit,
-                    calls, access_list, nonce_key, nonce, valid_before, valid_after,
-                    fee_token, fee_payer_signature, aa_authorization_list,
-                    key_authorization?, sender_signature])
-
-  Each `call` is `rlp([to, value, input])`.
-
-  This module extracts the fields needed for payment verification (`chain_id`,
-  `calls`) and preserves the full serialized hex as `raw` for broadcast
-  passthrough. When fee payer mode is enabled, it co-signs the transaction
-  with a server-side key using the 0x78 domain separator.
-
-  Sender recovery accepts high-s ECDSA signatures by normalizing to BIP-62
-  low-s form, flipping `s` and the recovery bit together before recovery.
-  Equivalent low-s and complement-s encodings recover the same sender. This
-  does not rewrite `raw` or imply that a high-s envelope is broadcastable.
-
-  ## Dependencies
-
-  Uses `ExRLP` (available transitively via `cartouche` → `onchain`) for RLP
-  decoding. Signing uses `Cartouche.Signer.Secp256k1` and `Cartouche.Recover`
-  directly because Tempo 0x76 is a non-standard transaction type.
-  """
-
-  alias Cartouche.Recover
-  alias Cartouche.Signature
   alias Cartouche.Signer.Secp256k1, as: Secp256k1Signer
+  alias Onchain.Tempo.Codec
   alias Onchain.Tempo.TIP20
 
   @enforce_keys [:chain_id, :calls, :raw]
@@ -46,18 +17,12 @@ defmodule Onchain.Tempo.Transaction do
   @type t :: %__MODULE__{
           chain_id: non_neg_integer(),
           calls: [call()],
-          fields: [term()],
+          fields: map(),
           raw: String.t()
         }
 
   @typedoc "A single call within the transaction's batch."
   @type call :: %{to: binary(), value: non_neg_integer(), input: binary()}
-
-  # EIP-2718 type byte for Tempo Transactions.
-  @tempo_tx_type 0x76
-
-  # RLP field index for `calls` in the 0x76 envelope (see spec).
-  @calls_index 4
 
   # Calldata sizes used in pattern match guards (4-byte selector + ABI-encoded args).
   # transfer: 4 + 32 (address) + 32 (uint256) = 68 → 64 bytes after selector
@@ -98,11 +63,9 @@ defmodule Onchain.Tempo.Transaction do
   @spec deserialize(String.t()) :: {:ok, t()} | {:error, String.t()}
   def deserialize(hex) when is_binary(hex) do
     with {:ok, binary} <- decode_hex(hex),
-         {:ok, rlp_body} <- strip_type_prefix(binary),
-         {:ok, fields} <- rlp_decode(rlp_body),
-         {:ok, chain_id} <- extract_chain_id(fields),
-         {:ok, calls} <- extract_calls(fields) do
-      {:ok, %__MODULE__{chain_id: chain_id, calls: calls, fields: fields, raw: hex}}
+         {:ok, %{"transaction" => transaction} = fields} <- Codec.run("decode", %{"raw" => Codec.hex(binary)}) do
+      calls = native_calls(transaction["calls"])
+      {:ok, %__MODULE__{chain_id: Codec.integer(transaction["chainId"]), calls: calls, fields: fields, raw: hex}}
     end
   end
 
@@ -180,13 +143,6 @@ defmodule Onchain.Tempo.Transaction do
 
   # --- Fee payer support ---
 
-  # 0x76 RLP field indices.
-  @fee_token_index 10
-  @fee_payer_sig_index 11
-
-  # Fee payer signing domain prefix (distinct from 0x76 sender domain).
-  @fee_payer_domain 0x78
-
   @doc """
   Check if the transaction has a fee payer signature placeholder (`0x00`).
 
@@ -195,8 +151,7 @@ defmodule Onchain.Tempo.Transaction do
   """
   @spec has_fee_payer_placeholder?(t()) :: boolean()
   def has_fee_payer_placeholder?(%__MODULE__{fields: fields}) do
-    fee_payer_sig = Enum.at(fields, @fee_payer_sig_index)
-    fee_payer_sig == <<0x00>>
+    fields["placeholder"] == true
   end
 
   @doc """
@@ -207,8 +162,7 @@ defmodule Onchain.Tempo.Transaction do
   """
   @spec fee_token_empty?(t()) :: boolean()
   def fee_token_empty?(%__MODULE__{fields: fields}) do
-    fee_token = Enum.at(fields, @fee_token_index)
-    fee_token == <<>> or fee_token == []
+    is_nil(fields["transaction"]["feeToken"])
   end
 
   @doc """
@@ -229,57 +183,25 @@ defmodule Onchain.Tempo.Transaction do
     * `{:ok, updated_tx}` — transaction with new `raw` hex for broadcast
     * `{:error, reason}` — on signing or recovery failure
   """
-  @dialyzer {:nowarn_function, cosign_fee_payer: 3}
   @spec cosign_fee_payer(t(), binary(), binary()) :: {:ok, t()} | {:error, String.t()}
   def cosign_fee_payer(%__MODULE__{fields: fields} = tx, fee_payer_key, fee_token)
       when is_binary(fee_payer_key) and byte_size(fee_payer_key) == 32 and is_binary(fee_token) and
              byte_size(fee_token) == 20 do
-    sender_sig_raw = List.last(fields)
-    {base_fields, has_key_auth} = split_base_fields(fields)
+    transaction = Map.put(fields["transaction"], "feeToken", Codec.hex(fee_token))
 
-    client_signing_payload = <<@tempo_tx_type>> <> rlp_encode(base_fields)
-
-    with {:ok, sender_address} <- recover_sender(client_signing_payload, sender_sig_raw) do
-      fp_preimage_fields = build_fee_payer_preimage_fields(base_fields, fee_token, sender_address, has_key_auth)
-      fp_signing_payload = <<@fee_payer_domain>> <> rlp_encode(fp_preimage_fields)
-
-      with {:ok, fp_sig} <- Secp256k1Signer.sign(fp_signing_payload, fee_payer_key),
-           {:ok, fp_address} <- Secp256k1Signer.get_address(fee_payer_key),
-           {:ok, fp_recid} <- Recover.find_recid(fp_signing_payload, fp_sig, fp_address) do
-        fp_sig_tuple = [
-          if(fp_recid == 1, do: <<1>>, else: <<>>),
-          :binary.encode_unsigned(fp_sig.r),
-          :binary.encode_unsigned(fp_sig.s)
-        ]
-
-        signed_fields =
-          base_fields
-          |> List.replace_at(@fee_token_index, fee_token)
-          |> List.replace_at(@fee_payer_sig_index, fp_sig_tuple)
-          |> Kernel.++([sender_sig_raw])
-
-        signed_raw = <<@tempo_tx_type>> <> rlp_encode(signed_fields)
-        new_hex = "0x" <> Base.encode16(signed_raw, case: :lower)
-
-        {:ok, %{tx | raw: new_hex, fields: signed_fields}}
-      end
+    with {:ok, sender_address} <- sender(tx),
+         {:ok, hash} <- Codec.run("fee_hash", %{"transaction" => transaction, "sender" => Codec.hex(sender_address)}),
+         {:ok, sig} <- Secp256k1Signer.sign_payload(Codec.bytes(hash), fee_payer_key),
+         transaction =
+           Map.put(transaction, "feePayerSignature", %{
+             "r" => Codec.quantity(sig.r),
+             "s" => Codec.quantity(sig.s),
+             "yParity" => Codec.quantity(sig.recid)
+           }),
+         {:ok, raw} <- Codec.run("serialize", %{"transaction" => transaction, "signature" => fields["signature"]}) do
+      deserialize(raw)
     end
   end
-
-  # --- Simulation support ---
-
-  # 0x76 RLP field indices used to reconstruct an `eth_simulateV1` call request.
-  @chain_id_index 0
-  @max_priority_fee_index 1
-  @max_fee_index 2
-  @gas_limit_index 3
-  @nonce_key_index 6
-  @nonce_index 7
-  @valid_before_index 8
-
-  # Field count of a full transaction without the optional key_authorization
-  # field (14 = 13 base fields + sender_signature).
-  @min_field_count_without_key_auth 14
 
   @doc """
   Recover the sender's 20-byte address from a parsed transaction.
@@ -295,14 +217,9 @@ defmodule Onchain.Tempo.Transaction do
 
   Returns `{:ok, address_binary}` or `{:error, reason}`.
   """
-  @dialyzer {:nowarn_function, sender: 1}
   @spec sender(t()) :: {:ok, binary()} | {:error, String.t()}
-  def sender(%__MODULE__{fields: fields}) when is_list(fields) and length(fields) >= @min_field_count_without_key_auth do
-    # One traversal splits off the trailing sender signature; the guard already
-    # proved the list is non-empty, so the `[sig]` tail always matches.
-    {base_fields, [sender_sig_raw]} = Enum.split(fields, -1)
-    signing_payload = <<@tempo_tx_type>> <> rlp_encode(reset_fee_payer_placeholders(base_fields))
-    recover_sender(signing_payload, sender_sig_raw)
+  def sender(%__MODULE__{fields: %{"transaction" => _, "signature" => _} = fields}) do
+    with {:ok, address} <- Codec.run("sender", fields), do: {:ok, Codec.bytes(address)}
   end
 
   def sender(_), do: {:error, "Transaction missing fields required to recover sender"}
@@ -332,55 +249,36 @@ defmodule Onchain.Tempo.Transaction do
 
   # --- Private: simulation helpers ---
 
-  # Resets the fee-token and fee-payer-signature positions to the placeholders
-  # the sender signed over, but only for a co-signed transaction (fee-payer
-  # signature is the decoded `[recid, r, s]` list). Self-signed transactions
-  # (fee-payer signature is `<<>>`) are left untouched.
-  defp reset_fee_payer_placeholders(base_fields) do
-    if is_list(Enum.at(base_fields, @fee_payer_sig_index)) do
-      base_fields
-      |> List.replace_at(@fee_token_index, <<>>)
-      |> List.replace_at(@fee_payer_sig_index, <<0x00>>)
-    else
-      base_fields
-    end
-  end
-
   defp pop_tail_call([]), do: {:error, "Cannot simulate a transaction with no calls"}
   defp pop_tail_call(calls), do: {:ok, {Enum.take(calls, length(calls) - 1), List.last(calls)}}
 
   defp build_simulate_request(sender_addr, head_calls, tail, fields) do
+    transaction = fields["transaction"]
+
     %{
       "from" => to_hex_data(sender_addr),
       "to" => to_hex_data(tail.to),
       "value" => to_hex_quantity(tail.value),
       "input" => to_hex_data(tail.input),
       "calls" => Enum.map(head_calls, &call_to_request/1),
-      "gas" => field_quantity(fields, @gas_limit_index),
-      "nonce" => field_quantity(fields, @nonce_index),
-      "maxFeePerGas" => field_quantity(fields, @max_fee_index),
-      "maxPriorityFeePerGas" => field_quantity(fields, @max_priority_fee_index),
-      "chainId" => field_quantity(fields, @chain_id_index),
+      "gas" => transaction["gas"],
+      "nonce" => transaction["nonce"],
+      "maxFeePerGas" => transaction["maxFeePerGas"],
+      "maxPriorityFeePerGas" => transaction["maxPriorityFeePerGas"],
+      "chainId" => transaction["chainId"],
       "type" => "0x76",
-      "feeToken" => to_hex_data(field_bytes(fields, @fee_token_index))
+      "feeToken" => transaction["feeToken"] || "0x"
     }
-    |> maybe_put_quantity("nonceKey", field_int(fields, @nonce_key_index))
-    |> maybe_put_quantity("validBefore", field_int(fields, @valid_before_index))
+    |> maybe_put_quantity("nonceKey", Codec.integer(transaction["nonceKey"]))
+    |> maybe_put_quantity("validBefore", optional_integer(transaction["validBefore"]))
   end
 
   defp call_to_request(%{to: to, value: value, input: input}) do
     %{"to" => to_hex_data(to), "value" => to_hex_quantity(value), "input" => to_hex_data(input)}
   end
 
-  defp field_bytes(fields, idx) do
-    case Enum.at(fields, idx) do
-      bin when is_binary(bin) -> bin
-      _ -> <<>>
-    end
-  end
-
-  defp field_int(fields, idx), do: decode_unsigned(field_bytes(fields, idx))
-  defp field_quantity(fields, idx), do: to_hex_quantity(field_int(fields, idx))
+  defp optional_integer(nil), do: 0
+  defp optional_integer(value), do: Codec.integer(value)
 
   defp maybe_put_quantity(map, _key, 0), do: map
   defp maybe_put_quantity(map, key, value), do: Map.put(map, key, to_hex_quantity(value))
@@ -389,39 +287,6 @@ defmodule Onchain.Tempo.Transaction do
 
   defp to_hex_quantity(0), do: "0x0"
   defp to_hex_quantity(n) when is_integer(n) and n > 0, do: "0x" <> String.downcase(Integer.to_string(n, 16))
-
-  # --- Private: fee payer helpers ---
-
-  # Splits the fields list into base fields (everything before sender_signature)
-  # and a flag indicating if key_authorization is present.
-  defp split_base_fields(fields) do
-    total = length(fields)
-    base = Enum.take(fields, total - 1)
-    has_key_auth = total > @min_field_count_without_key_auth
-    {base, has_key_auth}
-  end
-
-  # Builds the RLP field list for the fee payer signing preimage (0x78 domain).
-  defp build_fee_payer_preimage_fields(base_fields, fee_token, sender_address, _has_key_auth) do
-    base_fields
-    |> List.replace_at(@fee_token_index, fee_token)
-    |> List.replace_at(@fee_payer_sig_index, sender_address)
-  end
-
-  # Recovers the sender's 20-byte Ethereum address from the signing payload and raw signature bytes.
-  @dialyzer {:nowarn_function, recover_sender: 2}
-  defp recover_sender(signing_payload, <<r::unsigned-big-size(256), s::unsigned-big-size(256), v::8>>) do
-    recid = if v >= 27, do: v - 27, else: v
-    sig = Signature.normalize(%Signature{r: r, s: s, recid: recid})
-    {:ok, Recover.recover_eth(signing_payload, sig)}
-  rescue
-    e in [RuntimeError, FunctionClauseError, ArgumentError, ErlangError, MatchError] ->
-      {:error, "Failed to recover sender: #{Exception.message(e)}"}
-  end
-
-  defp recover_sender(_signing_payload, _sig_bytes) do
-    {:error, "Invalid sender signature format: expected 65 bytes (r, s, v)"}
-  end
 
   # --- Private: call scope validation ---
 
@@ -477,75 +342,15 @@ defmodule Onchain.Tempo.Transaction do
     end
   end
 
-  # --- Private: type prefix ---
-
-  defp strip_type_prefix(<<@tempo_tx_type, rlp_body::binary>>), do: {:ok, rlp_body}
-
-  defp strip_type_prefix(<<prefix, _::binary>>) do
-    {:error, "Not a Tempo transaction: expected 0x76 type prefix, got 0x#{Integer.to_string(prefix, 16)}"}
+  defp native_calls(calls) do
+    Enum.map(calls, fn call ->
+      %{
+        to: if(call["to"], do: Codec.bytes(call["to"]), else: <<>>),
+        value: Codec.integer(call["value"]),
+        input: Codec.bytes(call["input"])
+      }
+    end)
   end
-
-  defp strip_type_prefix(<<>>), do: {:error, "Empty transaction data"}
-
-  # --- Private: RLP ---
-
-  @dialyzer {:nowarn_function, [rlp_decode: 1, rlp_encode: 1]}
-  defp rlp_decode(binary) do
-    {:ok, ExRLP.decode(binary)}
-  rescue
-    # ExRLP raises DecodeError for most malformed input and MatchError for
-    # truncated multi-byte length prefixes; ArgumentError / FunctionClauseError
-    # cover the remaining binary-primitive failures. Narrowed deliberately so a
-    # bug in our own decode path surfaces instead of being reported as
-    # untrusted-input corruption.
-    _ in [ExRLP.DecodeError, MatchError, ArgumentError, FunctionClauseError] ->
-      {:error, "Failed to RLP-decode transaction"}
-  end
-
-  defp rlp_encode(data), do: ExRLP.encode(data)
-
-  # --- Private: field extraction ---
-
-  defp extract_chain_id([chain_id_bin | _]) when is_binary(chain_id_bin) do
-    {:ok, decode_unsigned(chain_id_bin)}
-  end
-
-  defp extract_chain_id(_), do: {:error, "Missing or invalid chain_id field"}
-
-  defp extract_calls(fields) when is_list(fields) and length(fields) > @calls_index do
-    raw_calls = Enum.at(fields, @calls_index)
-
-    if is_list(raw_calls) do
-      if raw_calls == [] do
-        {:error, "Calls list cannot be empty"}
-      else
-        parse_all_calls(raw_calls, [], 0)
-      end
-    else
-      {:error, "Invalid calls field: expected a list"}
-    end
-  end
-
-  defp extract_calls(_), do: {:error, "Transaction too short: missing calls field"}
-
-  defp parse_all_calls([], acc, _idx), do: {:ok, Enum.reverse(acc)}
-
-  defp parse_all_calls([raw | rest], acc, idx) do
-    case parse_call(raw) do
-      {:ok, call} -> parse_all_calls(rest, [call | acc], idx + 1)
-      :error -> {:error, "Malformed call at index #{idx}: expected [to, value, input]"}
-    end
-  end
-
-  defp parse_call([to, value, input]) when is_binary(to) and is_binary(value) and is_binary(input) do
-    {:ok, %{to: to, value: decode_unsigned(value), input: input}}
-  end
-
-  defp parse_call([to, value]) when is_binary(to) and is_binary(value) do
-    {:ok, %{to: to, value: decode_unsigned(value), input: <<>>}}
-  end
-
-  defp parse_call(_), do: :error
 
   # --- Private: call matching ---
 
@@ -629,9 +434,6 @@ defmodule Onchain.Tempo.Transaction do
   defp memo_matches?(_, _), do: false
 
   # --- Private: numeric utilities ---
-
-  defp decode_unsigned(<<>>), do: 0
-  defp decode_unsigned(bin) when is_binary(bin), do: :binary.decode_unsigned(bin)
 
   defp parse_amount(amount) when is_binary(amount) do
     case Integer.parse(amount) do

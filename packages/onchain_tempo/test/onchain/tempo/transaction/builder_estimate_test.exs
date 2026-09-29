@@ -16,7 +16,6 @@ defmodule Onchain.Tempo.Transaction.BuilderEstimateTest do
   @rpc_url "https://rpc.example.test"
 
   # RLP field index for gas_limit in the 0x76 envelope.
-  @gas_limit_index 3
 
   # Fixed eth_estimateGas result so the headroom math is deterministic.
   @estimate_gas 50_000
@@ -58,7 +57,7 @@ defmodule Onchain.Tempo.Transaction.BuilderEstimateTest do
 
   defp gas_limit_of(tx_hex) do
     {:ok, tx} = Transaction.deserialize(tx_hex)
-    :binary.decode_unsigned(Enum.at(tx.fields, @gas_limit_index))
+    Onchain.Tempo.Codec.integer(tx.fields["transaction"]["gas"])
   end
 
   describe "gas estimation when :gas_limit is omitted" do

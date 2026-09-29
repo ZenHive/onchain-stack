@@ -4,6 +4,7 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
 
   import Onchain.Tempo.TestHelpers
 
+  alias Onchain.Tempo.Codec
   alias Onchain.Tempo.TIP20
   alias Onchain.Tempo.Transaction
   alias Onchain.Tempo.Transaction.Builder
@@ -38,8 +39,12 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
       dummy = SpecEncoder.secp256k1_sig(1, 2, 0)
       hex = SpecEncoder.to_hex(SpecEncoder.signed_envelope(fields, dummy))
 
-      assert {:ok, tx} = Transaction.deserialize(hex)
-      assert_round_tripped(tx, fields, dummy)
+      if fields.valid_before > 0 and fields.valid_before <= fields.valid_after do
+        assert {:error, "valid_before must be greater than valid_after"} = Transaction.deserialize(hex)
+      else
+        assert {:ok, tx} = Transaction.deserialize(hex)
+        assert_round_tripped(tx, fields, dummy)
+      end
     end
   end
 
@@ -139,9 +144,9 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
 
       assert sender == expected
       assert tx.chain_id == 42_431
-      assert Enum.at(tx.fields, 3) == quantity_bin(gas)
-      assert Enum.at(tx.fields, 6) == quantity_bin(nonce_key)
-      assert Enum.at(tx.fields, 7) == quantity_bin(nonce)
+      assert Enum.at(wire_fields(tx), 3) == quantity_bin(gas)
+      assert Enum.at(wire_fields(tx), 6) == quantity_bin(nonce_key)
+      assert Enum.at(wire_fields(tx), 7) == quantity_bin(nonce)
     end
   end
 
@@ -208,12 +213,12 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
 
     assert {:ok, tx} = Transaction.deserialize(hex)
     assert tx.chain_id == 1
-    assert :binary.decode_unsigned(Enum.at(tx.fields, 2)) == fields.max_fee_per_gas
-    assert :binary.decode_unsigned(Enum.at(tx.fields, 3)) == fields.gas_limit
-    assert :binary.decode_unsigned(Enum.at(tx.fields, 6)) == fields.nonce_key
-    assert :binary.decode_unsigned(Enum.at(tx.fields, 7)) == fields.nonce
-    assert :binary.decode_unsigned(Enum.at(tx.fields, 8)) == fields.valid_before
-    assert Enum.at(tx.fields, 10) == fields.fee_token
+    assert :binary.decode_unsigned(Enum.at(wire_fields(tx), 2)) == fields.max_fee_per_gas
+    assert :binary.decode_unsigned(Enum.at(wire_fields(tx), 3)) == fields.gas_limit
+    assert :binary.decode_unsigned(Enum.at(wire_fields(tx), 6)) == fields.nonce_key
+    assert :binary.decode_unsigned(Enum.at(wire_fields(tx), 7)) == fields.nonce
+    assert :binary.decode_unsigned(Enum.at(wire_fields(tx), 8)) == fields.valid_before
+    assert Enum.at(wire_fields(tx), 10) == fields.fee_token
   end
 
   test "empty vs 20-byte fee_token and 0x00 vs empty fee-payer marker are distinct encodings" do
@@ -285,7 +290,7 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
   defp aa_list_gen do
     StreamData.one_of([
       StreamData.constant([]),
-      StreamData.constant([[<<0xAA, 0xBB>>]])
+      StreamData.constant([[<<1>>, @token, <<>>, SpecEncoder.secp256k1_sig(1, 2, 0)]])
     ])
   end
 
@@ -333,25 +338,30 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
   defp assert_round_tripped(tx, fields, dummy) do
     q = &quantity_bin/1
     assert tx.chain_id == fields.chain_id
-    assert Enum.at(tx.fields, 0) == q.(fields.chain_id)
-    assert Enum.at(tx.fields, 1) == q.(fields.max_priority_fee_per_gas)
-    assert Enum.at(tx.fields, 2) == q.(fields.max_fee_per_gas)
-    assert Enum.at(tx.fields, 3) == q.(fields.gas_limit)
+    assert Enum.at(wire_fields(tx), 0) == q.(fields.chain_id)
+    assert Enum.at(wire_fields(tx), 1) == q.(fields.max_priority_fee_per_gas)
+    assert Enum.at(wire_fields(tx), 2) == q.(fields.max_fee_per_gas)
+    assert Enum.at(wire_fields(tx), 3) == q.(fields.gas_limit)
     assert length(tx.calls) == length(fields.calls)
     assert hd(tx.calls).to == hd(fields.calls).to
     assert hd(tx.calls).value == hd(fields.calls).value
     assert hd(tx.calls).input == hd(fields.calls).input
-    assert Enum.at(tx.fields, 5) == fields.access_list
-    assert Enum.at(tx.fields, 6) == q.(fields.nonce_key)
-    assert Enum.at(tx.fields, 7) == q.(fields.nonce)
-    assert Enum.at(tx.fields, 8) == q.(fields.valid_before)
-    assert Enum.at(tx.fields, 9) == q.(fields.valid_after)
+    assert Enum.at(wire_fields(tx), 5) == fields.access_list
+    assert Enum.at(wire_fields(tx), 6) == q.(fields.nonce_key)
+    assert Enum.at(wire_fields(tx), 7) == q.(fields.nonce)
+    assert Enum.at(wire_fields(tx), 8) == q.(fields.valid_before)
+    assert Enum.at(wire_fields(tx), 9) == q.(fields.valid_after)
     expected_token = if fields.fee_payer?, do: <<>>, else: fields.fee_token
-    assert Enum.at(tx.fields, 10) == expected_token
+    assert Enum.at(wire_fields(tx), 10) == expected_token
     expected_fp = if fields.fee_payer?, do: <<0x00>>, else: <<>>
-    assert Enum.at(tx.fields, 11) == expected_fp
-    assert Enum.at(tx.fields, 12) == fields.aa_authorization_list
-    assert List.last(tx.fields) == dummy
+    assert Enum.at(wire_fields(tx), 11) == expected_fp
+    assert Enum.at(wire_fields(tx), 12) == fields.aa_authorization_list
+    assert List.last(wire_fields(tx)) == dummy
+  end
+
+  defp wire_fields(tx) do
+    <<0x76, body::binary>> = Codec.bytes(tx.raw)
+    ExRLP.decode(body)
   end
 
   defp quantity_bin(0), do: <<>>

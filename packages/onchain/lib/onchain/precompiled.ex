@@ -1,6 +1,6 @@
 defmodule Onchain.Precompiled do
   @moduledoc """
-  Shared `RustlerPrecompiled` options for the core ABI and EVM NIF crates.
+  Shared `RustlerPrecompiled` options for the core ABI, EVM and Tempo NIF crates.
 
   The `:targets` list is the set `scripts/build-precompiled.sh` actually
   produces. Windows is omitted on purpose — `cargo-zigbuild` cannot produce
@@ -50,7 +50,7 @@ defmodule Onchain.Precompiled do
   @spec opts(String.t()) :: keyword()
   def opts(crate) when is_binary(crate) do
     version = Mix.Project.config()[:version]
-    app = if crate == "onchain_abi", do: :onchain, else: :onchain_evm
+    app = crate_app(crate)
 
     maybe_force_build(
       otp_app: app,
@@ -113,7 +113,7 @@ defmodule Onchain.Precompiled do
 
     if force_build?(
          current_target(),
-         System.get_env(if(crate == "onchain_abi", do: "ONCHAIN_BUILD", else: "ONCHAIN_EVM_BUILD")),
+         System.get_env(build_env(crate)),
          checksum_presence(crate),
          install_source(),
          crate
@@ -130,7 +130,18 @@ defmodule Onchain.Precompiled do
     if File.exists?(path), do: :present, else: :missing
   end
 
+  @spec crate_app(String.t()) :: atom()
+  defp crate_app("onchain_abi"), do: :onchain
+  defp crate_app("onchain_tempo"), do: :onchain_tempo
+  defp crate_app(_), do: :onchain_evm
+
+  @spec build_env(String.t()) :: String.t()
+  defp build_env("onchain_abi"), do: "ONCHAIN_BUILD"
+  defp build_env("onchain_tempo"), do: "ONCHAIN_TEMPO_BUILD"
+  defp build_env(_), do: "ONCHAIN_EVM_BUILD"
+
   @spec crate_module(String.t()) :: module()
+  defp crate_module("onchain_tempo"), do: Onchain.Tempo.Native
   defp crate_module("onchain_abi"), do: ABI.Native
   defp crate_module("onchain_evm"), do: Onchain.EVM
   defp crate_module("onchain_solidity"), do: Onchain.Solidity

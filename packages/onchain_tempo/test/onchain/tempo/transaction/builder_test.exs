@@ -21,7 +21,7 @@ defmodule Onchain.Tempo.Transaction.BuilderTest do
       assert tx.chain_id == @chain_id
 
       # Explicit :gas_limit is honored verbatim (gas_limit is field index 3).
-      assert :binary.decode_unsigned(Enum.at(tx.fields, 3)) == 500_000
+      assert Onchain.Tempo.Codec.integer(tx.fields["transaction"]["gas"]) == 500_000
 
       assert {:ok, match} =
                Transaction.find_payment_call(tx, @token,

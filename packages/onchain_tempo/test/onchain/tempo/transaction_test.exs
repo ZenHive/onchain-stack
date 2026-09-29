@@ -4,16 +4,16 @@ defmodule Onchain.Tempo.TransactionTest do
   import Onchain.Tempo.TestHelpers
 
   alias Cartouche.Signer.Secp256k1
+  alias Onchain.Tempo.Codec
   alias Onchain.Tempo.Transaction
   alias Onchain.Tempo.Transaction.Builder
 
+  # --- deserialize/1 tests ---
   # Test addresses (Hardhat default accounts — testnet only, no security concern)
   @recipient_hex "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
   @token_hex "0x20c0000000000000000000000000000000000000"
   @other_token_hex "0x1111111111111111111111111111111111111111"
   @moderato_chain_id 42_431
-
-  # --- deserialize/1 tests ---
 
   describe "deserialize/1" do
     test "deserializes a valid transfer transaction" do
@@ -63,7 +63,7 @@ defmodule Onchain.Tempo.TransactionTest do
 
       assert {:error, msg} = Transaction.deserialize(hex)
       assert msg =~ "Not a Tempo transaction"
-      assert msg =~ "0x2"
+      assert msg =~ "0x76"
     end
 
     test "rejects invalid hex encoding" do
@@ -71,13 +71,13 @@ defmodule Onchain.Tempo.TransactionTest do
     end
 
     test "rejects empty transaction data" do
-      assert {:error, "Empty transaction data"} = Transaction.deserialize("0x")
+      assert {:error, "Not a Tempo transaction: expected 0x76 type prefix"} = Transaction.deserialize("0x")
     end
 
     test "rejects malformed RLP" do
       hex = "0x76" <> Base.encode16(<<0xFF, 0xFF, 0xFF>>, case: :lower)
       assert {:error, msg} = Transaction.deserialize(hex)
-      assert msg =~ "Failed to RLP-decode"
+      assert msg == "input too short"
     end
 
     test "rejects malformed call entries" do
@@ -104,7 +104,7 @@ defmodule Onchain.Tempo.TransactionTest do
       hex = "0x" <> Base.encode16(raw, case: :lower)
 
       assert {:error, msg} = Transaction.deserialize(hex)
-      assert msg =~ "Malformed call at index 0"
+      assert msg == "unexpected length"
     end
 
     test "rejects non-string input" do
@@ -141,7 +141,7 @@ defmodule Onchain.Tempo.TransactionTest do
       raw = <<0x76>> <> ExRLP.encode(body)
       hex = "0x" <> Base.encode16(raw, case: :lower)
 
-      assert {:error, "Missing or invalid chain_id field"} = Transaction.deserialize(hex)
+      assert {:error, "unexpected list"} = Transaction.deserialize(hex)
     end
 
     test "rejects transaction too short for calls field" do
@@ -154,15 +154,15 @@ defmodule Onchain.Tempo.TransactionTest do
       raw = <<0x76>> <> ExRLP.encode(body)
       hex = "0x" <> Base.encode16(raw, case: :lower)
 
-      assert {:error, "Transaction too short: missing calls field"} = Transaction.deserialize(hex)
+      assert {:error, "input too short"} = Transaction.deserialize(hex)
     end
 
     test "rejects empty calls list" do
       hex = build_tempo_tx(calls: [])
-      assert {:error, "Calls list cannot be empty"} = Transaction.deserialize(hex)
+      assert {:error, "calls list cannot be empty"} = Transaction.deserialize(hex)
     end
 
-    test "handles call with two elements (to, value, no input)" do
+    test "rejects a call missing its required input field" do
       to = decode_address(@token_hex)
       value = :binary.encode_unsigned(100)
 
@@ -183,16 +183,14 @@ defmodule Onchain.Tempo.TransactionTest do
         <<1::512>>
       ]
 
+      # --- find_payment_call/3 tests ---
+
       raw = <<0x76>> <> ExRLP.encode(body)
       hex = "0x" <> Base.encode16(raw, case: :lower)
 
-      assert {:ok, %Transaction{calls: [call]}} = Transaction.deserialize(hex)
-      assert call.value == 100
-      assert call.input == <<>>
+      assert {:error, "input too short"} = Transaction.deserialize(hex)
     end
   end
-
-  # --- find_payment_call/3 tests ---
 
   describe "find_payment_call/3" do
     setup do
@@ -401,6 +399,7 @@ defmodule Onchain.Tempo.TransactionTest do
 
       assert {:ok, match} =
                Transaction.find_payment_call(tx, @token_hex,
+                 # --- validate_call_scope/1 tests ---
                  amount: "1000000",
                  recipient: @recipient_hex
                )
@@ -408,8 +407,6 @@ defmodule Onchain.Tempo.TransactionTest do
       assert match.amount == 1_000_000
     end
   end
-
-  # --- validate_call_scope/1 tests ---
 
   describe "validate_call_scope/1" do
     @dex_hex dex_address()
@@ -458,7 +455,7 @@ defmodule Onchain.Tempo.TransactionTest do
 
     test "rejects empty calls" do
       hex = build_tempo_tx(calls: [], fee_payer: true)
-      assert {:error, "Calls list cannot be empty"} = Transaction.deserialize(hex)
+      assert {:error, "calls list cannot be empty"} = Transaction.deserialize(hex)
     end
 
     test "rejects unknown selector" do
@@ -531,14 +528,13 @@ defmodule Onchain.Tempo.TransactionTest do
       tx =
         build_scoped_tx([
           {@token_hex, approve_calldata(@dex_hex, 1_000_000)},
+          # --- sender/1 and simulate_request/1 tests ---
           {@dex_hex, swap_calldata()}
         ])
 
       assert {:error, "disallowed call pattern" <> _} = Transaction.validate_call_scope(tx)
     end
   end
-
-  # --- sender/1 and simulate_request/1 tests ---
 
   describe "sender/1 and simulate_request/1" do
     # Hardhat default accounts (testnet only, no security concern).
@@ -574,7 +570,7 @@ defmodule Onchain.Tempo.TransactionTest do
       {:ok, expected} = Secp256k1.get_address(@client_key)
       assert {:ok, ^expected} = Transaction.sender(tx)
 
-      <<r::256, s::256, v::8>> = List.last(tx.fields)
+      <<r::256, s::256, v::8>> = Codec.bytes(tx.fields["signature"])
       n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
       assert s <= div(n, 2)
       high_s = n - s
@@ -583,7 +579,8 @@ defmodule Onchain.Tempo.TransactionTest do
       complement_recid = Bitwise.bxor(orig_recid, 1)
 
       for recovery_byte <- [complement_recid, complement_recid + 27] do
-        fields = List.replace_at(tx.fields, -1, <<r::256, high_s::256, recovery_byte::8>>)
+        fields = tx.raw |> Codec.bytes() |> binary_part(1, byte_size(Codec.bytes(tx.raw)) - 1) |> ExRLP.decode()
+        fields = List.replace_at(fields, -1, <<r::256, high_s::256, recovery_byte::8>>)
         raw = "0x76" <> Base.encode16(ExRLP.encode(fields), case: :lower)
         refute raw == tx.raw
         assert {:ok, complement} = Transaction.deserialize(raw)
@@ -597,9 +594,10 @@ defmodule Onchain.Tempo.TransactionTest do
     end
 
     test "sender/1 errors on an invalid sender signature" do
-      # build_tempo_tx uses a fake 64-byte sender signature, not a real 65-byte one.
+      # Reject malformed signatures at the native boundary.
       hex = build_tempo_tx(calls: [build_call(@token_hex, transfer_calldata(@recipient_hex, 1))], fee_payer: true)
       {:ok, tx} = Transaction.deserialize(hex)
+      tx = %{tx | fields: Map.put(tx.fields, "signature", Codec.hex(<<1::512>>))}
       assert {:error, msg} = Transaction.sender(tx)
       assert msg =~ "Invalid sender signature format"
     end
@@ -658,19 +656,19 @@ defmodule Onchain.Tempo.TransactionTest do
       assert {:error, "Cannot simulate a transaction with no calls"} = Transaction.simulate_request(tx)
     end
 
-    test "simulate_request/1 treats a non-binary gas field as zero" do
+    test "simulate_request/1 rejects an invalid native gas field" do
       tx = cosigned_transfer([])
-      fields = List.replace_at(tx.fields, 3, [])
-      {:ok, req} = Transaction.simulate_request(%{tx | fields: fields})
-      assert req["gas"] == "0x0"
+      fields = put_in(tx.fields, ["transaction", "gas"], [])
+      assert {:error, reason} = Transaction.simulate_request(%{tx | fields: fields})
+      assert reason =~ "invalid type"
     end
 
     test "sender/1 reports recovery failure for a 65-byte signature off the curve" do
       tx = cosigned_transfer([])
       bad_sig = <<0::unsigned-big-size(256), 0::unsigned-big-size(256), 27>>
-      tx = %{tx | fields: Enum.drop(tx.fields, -1) ++ [bad_sig]}
+      tx = %{tx | fields: Map.put(tx.fields, "signature", Codec.hex(bad_sig))}
       assert {:error, msg} = Transaction.sender(tx)
-      assert msg =~ "Failed to recover sender"
+      assert msg =~ "signature"
     end
   end
 

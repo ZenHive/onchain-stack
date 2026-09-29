@@ -23,6 +23,7 @@ end
 defmodule Onchain.Tempo.Verification.Campaign do
   @moduledoc false
 
+  alias Onchain.Tempo.Codec
   alias Onchain.Tempo.Transaction
   alias Onchain.Tempo.Transaction.Builder
   alias Onchain.Tempo.Verification.Campaign.Mutant
@@ -303,19 +304,14 @@ defmodule Onchain.Tempo.Verification.Campaign do
 
   @spec lanes_from_tx(term()) :: [term()]
   defp lanes_from_tx(tx) do
-    nonce_key = field_int(Enum.at(tx.fields, 6))
-    nonce = field_int(Enum.at(tx.fields, 7))
+    nonce_key = Codec.integer(tx.fields["transaction"]["nonceKey"])
+    nonce = Codec.integer(tx.fields["transaction"]["nonce"])
 
     case {nonce_key, nonce} do
       {2, 5} -> []
       pair -> [{:nonce_lanes, pair}]
     end
   end
-
-  @spec field_int(term()) :: non_neg_integer() | :not_int
-  defp field_int(<<>>), do: 0
-  defp field_int(bin) when is_binary(bin), do: :binary.decode_unsigned(bin)
-  defp field_int(_), do: :not_int
 
   @spec transaction_mismatches(module()) :: [term()]
   defp transaction_mismatches(txmod) do

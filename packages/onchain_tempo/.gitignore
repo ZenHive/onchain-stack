@@ -31,3 +31,8 @@ onchain_tempo-*.tar
 
 # Test failure tracking
 .mix_test_failures
+
+# Native build and release artifacts
+/native/*/target/
+/priv/native/
+/artifacts/

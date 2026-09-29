@@ -14,7 +14,7 @@ end
 defmodule OnchainTempo.MixProject do
   use Mix.Project
 
-  @version "0.11.0"
+  @version "0.12.0"
   @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
@@ -77,14 +77,8 @@ defmodule OnchainTempo.MixProject do
 
   defp deps do
     [
-      # Floor raised 0.11 -> 0.12: onchain 0.12.0 is the release that raises
-      # `zen_websocket` to `~> 0.6.0`, which *requires* the gun version carrying
-      # the GHSA-w4f7-4cxr-rv3c fix rather than merely permitting it. `~> 0.11`
-      # admits 0.12.0 but does not require it, so this lock would keep resolving
-      # onchain 0.11.0 -> zen_websocket 0.4.2, whose looser gun bound only
-      # happens to have landed on a fixed 2.5.0. Two-segment, so onchain 0.13.0
-      # resolves here without a bound edit.
-      sibling(:onchain, "~> 0.12"),
+      # Core owns the shared precompiled-NIF infrastructure introduced in 0.15.
+      sibling(:onchain, "~> 0.15"),
       # Direct dep: lib/onchain/tempo/transaction{,/builder}.ex call Cartouche
       # (Signer, Transaction, RPC) themselves rather than only through onchain.
       # 0.10 provides the Cartouche-owned signature type and Secp256k1 backend.
@@ -92,6 +86,8 @@ defmodule OnchainTempo.MixProject do
       # stale floor understated what actually resolves here.
       {:req, "~> 0.6 or ~> 0.7"},
       {:jason, "~> 1.4"},
+      {:rustler_precompiled, "~> 0.9"},
+      {:rustler, "~> 0.38", optional: true, runtime: false},
       # Two-segment on purpose: the three-segment cap turned every descripex
       # minor into a forced nine-repo release cascade, while the committed
       # `mix.lock` already blocks a silent in-family upgrade — a new descripex
@@ -146,7 +142,8 @@ defmodule OnchainTempo.MixProject do
         "GitHub" => "https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_tempo",
         "Changelog" => "https://github.com/ZenHive/onchain-stack/blob/main/packages/onchain_tempo/CHANGELOG.md"
       },
-      files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
+      files:
+        ~w(lib native/onchain_tempo/src native/onchain_tempo/Cargo.toml native/onchain_tempo/Cargo.lock checksum-*.exs .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
     ]
   end
 

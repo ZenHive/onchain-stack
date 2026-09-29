@@ -29,7 +29,7 @@ defmodule Onchain.Tempo.TestHelpers do
       <<>>,
       fee_payer_sig,
       [],
-      <<1::512>>
+      <<1::256, 2::256, 27>>
     ]
 
     raw = <<0x76>> <> ExRLP.encode(body)
