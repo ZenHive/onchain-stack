@@ -7,37 +7,35 @@ defmodule ABI.Alloy do
 
   @spec signature(FunctionSelector.t(), :function | :event) :: binary()
   def signature(selector, kind) do
-    key = {kind, selector}
-    cache = :persistent_term.get(__MODULE__, %{})
-
-    case Map.fetch(cache, key) do
-      {:ok, bytes} ->
-        bytes
-
-      :error ->
-        text = FunctionSelector.encode(selector)
-        bytes = unwrap(Native.abi(:signature, text, kind))
-        if map_size(cache) < 1024, do: :persistent_term.put(__MODULE__, Map.put(cache, key, bytes))
-        bytes
-    end
+    cached(:signature, {kind, selector}, fn ->
+      unwrap(Native.abi(:signature, FunctionSelector.encode(selector), kind))
+    end)
   end
 
   @spec schema([arg_type()], binary()) :: reference()
   def schema(types, topic0 \\ <<>>) do
-    key = {types, topic0}
-    cache = :persistent_term.get(__MODULE__, %{})
+    cached(:schema, {types, topic0}, fn ->
+      text = FunctionSelector.encode(%FunctionSelector{types: wire_types(types)})
+      unwrap(Native.compile(text, topic0))
+    end)
+  end
+
+  # One persistent_term per cache, so a miss in one never rewrites the other.
+  # A miss may still race with another miss in the same cache; losing that entry
+  # only means a recompile. The cap bounds retained NIF resources for
+  # applications accepting arbitrary schemas.
+  defp cached(name, key, compute) do
+    term_key = {__MODULE__, name}
+    cache = :persistent_term.get(term_key, %{})
 
     case Map.fetch(cache, key) do
-      {:ok, resource} ->
-        resource
+      {:ok, value} ->
+        value
 
       :error ->
-        text = FunctionSelector.encode(%FunctionSelector{types: wire_types(types)})
-        resource = unwrap(Native.compile(text, topic0))
-        # A miss may race with another compile; losing that cache entry is harmless.
-        # Bound the retained resources for applications accepting arbitrary schemas.
-        if map_size(cache) < 1024, do: :persistent_term.put(__MODULE__, Map.put(cache, key, resource))
-        resource
+        value = compute.()
+        if map_size(cache) < 1024, do: :persistent_term.put(term_key, Map.put(cache, key, value))
+        value
     end
   end
 
