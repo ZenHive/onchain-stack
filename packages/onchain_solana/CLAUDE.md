@@ -11,4 +11,4 @@ options) are preserved; module keys use the Onchain.Solana namespace.
 Run mix check.dispatch for formatting and compilation, then mix test for the migrated
 Solana tests (including mocked KMS requests). No live credentials are needed.
 Full post-merge QA uses mix ci, with 95% coverage and the shared gate helpers.
-Publish builds must set ONCHAIN_PUBLISH=1. Publishing remains human-gated.
+Publish builds must set ONCHAIN_PUBLISH=1 (DIST-10, docs/specs/onchain-distribution.md). Publishing remains human-gated.

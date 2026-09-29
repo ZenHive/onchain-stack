@@ -83,7 +83,7 @@ org-settings story; it is anecdote now, not a live concern).
 
 ## The sibling/3 mechanism — dual-mode in-family dependencies
 
-In-family deps are declared in each package's `mix.exs` as a call to a local
+In-family deps are declared in each package's `mix.exs` through a local
 `sibling/2,3` helper, e.g. in `packages/onchain_aave/mix.exs`:
 
 ```elixir
@@ -91,49 +91,28 @@ sibling(:onchain, "~> 0.15")
 sibling(:onchain_evm, "~> 0.6", only: [:dev, :test])
 ```
 
-`sibling/3` resolves to one of two shapes depending on context:
+It resolves to `{name, path: "../<name>", override: true, ...opts}` inside this
+checkout and to `{name, req, opts}` everywhere else. The rules are in
+`docs/specs/onchain-distribution.md`. They stay here as one-liners because
+breaking them fails silently:
 
-- **Path branch** (day-to-day dev, no Hex round-trips): when the marker file
-  `.onchain-monorepo-root` is found walking up from the package — i.e. inside
-  this checkout — it resolves to
-  `{name, path: "../<name>", override: true, ...opts}`.
-- **Hex branch** (a consumer's `deps/` layout, or `ONCHAIN_PUBLISH=1` set):
-  resolves to `{name, req, opts}` — the literal Hex requirement string.
+- **DIST-9:** the path branch is chosen by the `.onchain-monorepo-root` marker
+  (and `ONCHAIN_PUBLISH` not `1`), never by whether the sibling directory
+  exists. In a consumer's `deps/` every package sits side by side, so an
+  existence check would fire for exactly the stranger it must exclude.
+- **DIST-10 (publish trap):** every publish runs with `ONCHAIN_PUBLISH=1` and
+  aborts on "excluded from the package" in `mix hex.build` output. Hex ≥2.5
+  silently drops a path dep from the tarball instead of failing; onchain_aave
+  0.3.0 shipped unbuildable that way (`only:` does not help).
+- **DIST-11:** every `sibling(:name, "req")` requirement admits that sibling's
+  in-repo `@version`. Locally the path branch always wins, so a rotted
+  requirement is otherwise invisible until publish or a consumer's `deps.get`.
 
-The predicate is the **root marker file**, never "does the sibling directory
-exist" — in a consumer's unpacked `deps/`, every Hex package sits side by side,
-so `../onchain/mix.exs` exists there too, and an existence check would fire
-exactly at the stranger it's meant to exclude.
-
-**The publish trap, and why every publish sets `ONCHAIN_PUBLISH=1`:** Hex
-≥2.5 does **not** abort `mix hex.build`/`mix hex.publish` on a path
-dependency — it silently drops it from the tarball, printing only
-"Dependencies excluded from the package" in the build output. A tarball built
-without `ONCHAIN_PUBLISH=1` looks like it built fine and is missing a runtime
-dependency. Every publish step:
-
-1. Sets `ONCHAIN_PUBLISH=1` (forces the Hex branch for every `sibling/3` call).
-2. Runs `mix deps.get` in that mode (re-resolves to the Hex requirement).
-3. Greps `mix hex.build` output for the phrase `"excluded from the package"` —
-   any hit means a sibling requirement is still resolving to a path dep, abort.
-4. Restores the dev lock afterward: `git checkout -- mix.lock`.
-
-`bin/publish-prep.sh` does steps 1–3 for you. This is the direct descendant of
-a real incident: onchain_aave 0.3.0 shipped with
-`{:onchain_evm, path: "../onchain_evm", only: [:dev, :test]}` and was
-unbuildable for anyone without the sibling checkout — `only:` does not save
-you, `mix hex.build` still packages the declaration as written. Fixed in 0.3.1
-by moving to a real Hex dependency; the sibling/3 mechanism exists precisely so
-that fix can never regress silently.
-
-`mix onchain.bounds` (the root gate's first step) is the other half of this
-contract: it AST-parses every `sibling(:name, "req")` literal across all seven
-`mix.exs` files and checks the requirement still admits that sibling's
-in-repo `@version`. Inside the monorepo the path branch always wins locally,
-so a Hex requirement that has quietly rotted (a sibling moved to a new major,
-say) is invisible until `mix hex.publish` or a consumer's `mix deps.get` — this
-task catches it in seconds instead. Usage: `mix onchain.bounds` (all packages)
-or `mix onchain.bounds <pkg>...` (scoped).
+Publish steps: set `ONCHAIN_PUBLISH=1`, run `mix deps.get`, grep `mix hex.build`
+output for "excluded from the package", then restore the dev lock with
+`git checkout -- mix.lock`. `bin/publish-prep.sh` does the first three.
+`mix onchain.bounds` (the root gate's first step) checks DIST-11, either for
+all packages or scoped with `mix onchain.bounds <pkg>...`.
 
 ---
 
@@ -500,6 +479,19 @@ catches an unused-function or a `nil`-into-`String.upcase/1` seed at compile
 time, so a `reach` `(none)` on those seeds was never evidence of anything).
 The override is `only: [:dev, :test], runtime: false` everywhere, so it never
 reaches a published tarball or a consumer's graph regardless.
+
+---
+
+## Capability specs
+
+Normative rules for the native code live in `docs/specs/` and are registered in
+`roadmap/tasks.toml` (`[specs.*]`). Tasks declare `spec_changes`, and tests tag
+the rules they cover with `# spec-tags: ID`. List them with `rmap specs`.
+
+- `onchain-native.md` (NIF-*, active): the core ABI NIF boundary
+- `onchain-distribution.md` (DIST-*, draft): precompiled distribution,
+  sibling/3, publishing, Rust supply-chain gates
+- `onchain-tempo-native.md` (TEMPO-*, draft): Tempo 0x76 encoding (task 9033)
 
 ---
 
