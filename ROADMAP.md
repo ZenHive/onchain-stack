@@ -46,7 +46,7 @@
 - **target_version:** none
 - **status:** ⬜ pending
 - **hypothesis:** Tests whether one core package whose deterministic encoding (ABI, typed transactions, EIP-712, Tempo 0x76) comes from alloy/tempo crates through a NIF can replace hieroglyph + cartouche + onchain byte-identically — so a new EIP or transaction type arrives by a crate bump, and the Elixir surface shrinks to network I/O and glue.
-- **pinned tasks:** 2/8 done
+- **pinned tasks:** 3/8 done
 
 ### onchain_aerodrome_v0_4 — [onchain_aerodrome] Prices and analytics
 
