@@ -10,8 +10,8 @@ defmodule Onchain.Aerodrome.Types.Lp do
 
   `type` is the load-bearing field that splits quoting and analytics:
 
-  - `-1` — v2 stable pool
-  - `0` — v2 volatile pool
+  - `0` — v2 stable pool
+  - `-1` — v2 volatile pool
   - any positive value — Slipstream concentrated-liquidity tick spacing
 
   Money fields (`liquidity`, `reserve0`/`reserve1`, `staked0`/`staked1`,

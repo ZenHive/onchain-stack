@@ -7,7 +7,7 @@ defmodule Onchain.Aerodrome.Types.Swap do
   reorders those components; the ABI drift test is what fails when that
   happens.
 
-  `type` is the same discriminator as `Types.Lp`: `-1` is v2 stable, `0`
+  `type` is the same discriminator as `Types.Lp`: `0` is v2 stable, `-1`
   is v2 volatile, any positive value is a Slipstream tick spacing. `pool_fee`
   is an integer. Addresses are EIP-55 checksummed.
   """

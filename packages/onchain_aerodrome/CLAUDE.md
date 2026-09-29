@@ -89,7 +89,7 @@ This is the part of the domain most likely to be silently wrong, because a wrong
 ## Domain facts worth not re-deriving
 
 - **Epoch = 1 week, flipping Thursday 00:00 UTC.** `floor(ts / 604_800) * 604_800` lands on Thursday midnight because Unix epoch 0 was a Thursday.
-- **`Lp.type` is the pool-type discriminator**: `-1` = v2 stable, `0` = v2 volatile, `> 0` = CL tick spacing. The whole quoting/analytics split hinges on this field.
+- **`Lp.type` is the pool-type discriminator**: `0` = v2 stable, `-1` = v2 volatile, `> 0` = CL tick spacing (LpSugar.vy: `type` defaults to `-1`, becomes `0` when `pool.stable()`, and feeds `getFee(pool, type == 0)`). The whole quoting/analytics split hinges on this field.
 - **`CLFactory.tickSpacings()`** returns `[1, 50, 100, 200, 2000, 10]` (that raw order, verified live).
 - **There are three CL factories on Base**, not one — `base.env`'s `CL_FACTORIES_8453`. `Contracts.cl_factories/1` returns all three. Which are in scope for a given enumeration is an explicit decision, never an assumption.
 - **`RewardsSugar.rewardsByAddress(uint256 _venft_id, address _pool)`** is a **veNFT-scoped** lookup, not an account lookup. `epochsByAddress` is `(limit, offset, address)`.

@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `Types.Lp` and `Types.Swap` docs had the v2 pool-type discriminator inverted: Sugar returns `0` for stable and `-1` for volatile pools (`LpSugar.vy` sets `type = -1`, then `0` when `pool.stable()`, and passes `type == 0` to `getFee`). Decoding was unaffected; only the documentation was wrong.
+
 ## [0.2.0] - 2026-09-16
 
 ### Fixed
