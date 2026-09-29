@@ -10009,10 +10009,11 @@ phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain"
 milestone = "onchain_core_consolidation"
-status = "pending"
+status = "in_progress"
 title = "Core alloy NIF with a generic boundary, and ABI encode/decode on alloy-dyn-abi"
 scores = { d = 8, b = 8, u = 8 }
 markers = ["security"]
+depends_on = ["9030"]
 acceptance_criteria = ["Before deleting anything, capture the current implementation's output over the existing ABI test corpus (including the ethers.js testcases vectors) as a fixture; the alloy-backed ABI.* reproduces it byte-for-byte and all existing ABI tests pass unchanged", "ABI.TypeEncoder, ABI.TypeDecoder and the src/ yecc/leex parser are deleted; no ABI.* public function signature changed", "A property or fuzz test feeds malformed types, values and payloads and always gets an error tuple — no NIF panic, no VM crash", "onchain_evm uses the moved precompiled infrastructure; precompiled NIFs build for all five targets; ONCHAIN_PUBLISH=1 mix hex.build of onchain includes the checksum file; a fresh project without cargo on PATH can compile onchain", "packages/onchain CHANGELOG and CLAUDE.md (native build notes) updated", "Before deleting the old implementation, a Benchee script (dev-only dep, committed under packages/onchain/bench/) measures old vs alloy on: one ERC-20 transfer calldata encode, a Multicall3 aggregate3 decode of 500 results, a 10,000-log Transfer event decode, and a nested tuple/array encode. The task outcome records the old and new numbers (ips, memory). No workload may be more than 2x slower than the old implementation; if one is, stop and report instead of landing"]
 out_of_scope = ["Typed transactions and EIP-712 — separate task", "Tempo 0x76 — separate task", "Codegen and the Solidity parser move — separate task", "Changing the ABI.* public API"]
 touches = ["packages/onchain/native/", "packages/onchain/lib/abi/", "packages/onchain/lib/abi.ex", "packages/onchain/src/", "packages/onchain/lib/onchain/precompiled.ex", "packages/onchain/mix.exs", "packages/onchain/mix.lock", "packages/onchain/test/", "packages/onchain_evm/lib/onchain/precompiled.ex", "packages/onchain_evm/lib/onchain/evm.ex", "packages/onchain_evm/mix.exs", "packages/onchain_evm/scripts/"]
@@ -10027,8 +10028,8 @@ The boundary is generic, not one NIF function per Elixir function: type strings 
 
 Safety: a panic must never reach the BEAM (catch_unwind → error tuple); malformed input returns an error tuple; large payloads run on a dirty scheduler or are bounded so a normal scheduler is never blocked for long."""
 created_at = "2026-09-29"
+started_at = "2026-09-29"
 scored_at = "2026-09-29"
-depends_on = ["9030"]
 
 [[task]]
 id = "9032"
