@@ -5,6 +5,7 @@ defmodule Onchain.PrecompiledTest do
 
   @script "../onchain/scripts/build-precompiled.sh"
 
+  # spec-tags: DIST-1
   describe "shipped targets" do
     test "match the build script TARGETS array exactly" do
       script = File.read!(@script)
@@ -92,6 +93,7 @@ defmodule Onchain.PrecompiledTest do
     end
   end
 
+  # spec-tags: DIST-3, DIST-4
   describe "force_build?/4" do
     test "falls back to source for every unsupported target" do
       assert Precompiled.force_build?("x86_64-pc-windows-msvc", nil, :present, :hex)
@@ -115,6 +117,7 @@ defmodule Onchain.PrecompiledTest do
     end
   end
 
+  # spec-tags: DIST-2
   describe "checksum integrity" do
     test "a missing checksum entry fails rather than building" do
       assert {:error, msg} =
