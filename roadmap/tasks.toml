@@ -9977,9 +9977,10 @@ phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain"
 milestone = "onchain_core_consolidation"
-status = "pending"
+status = "in_progress"
 title = "Fold hieroglyph and cartouche into onchain — move only, namespaces unchanged"
 scores = { d = 6, b = 8, u = 8 }
+depends_on = ["9029"]
 acceptance_criteria = ["packages/hieroglyph and packages/cartouche no longer exist; every module they contained is under packages/onchain with its original module name", "The moved test suites pass unchanged in packages/onchain: test count equals the sum of the three packages' counts before the move (record both numbers in the task outcome)", "No package's mix.exs references sibling(:cartouche) or sibling(:hieroglyph); mix onchain.bounds passes; ONCHAIN_PUBLISH=1 mix hex.build in packages/onchain prints no 'excluded from the package' line", "cd packages/<name> && mix check.dispatch passes for onchain and every in-repo dependent", "No coverage threshold was lowered; root CLAUDE.md (Layout, dependency graph, cascade order), packages/onchain/CLAUDE.md, AGENTS.md, bin/publish-prep.sh and fleet-health.sh reflect the new layout", "rmap validate passes and no pending task's touches reference packages/cartouche or packages/hieroglyph"]
 out_of_scope = ["Renaming ABI.* / Cartouche.* to Onchain.* — the rename task in this bundle", "Removing duplicate modules — the dedupe task and the stack_read_surface_boundary milestone", "hex.retire of hieroglyph/cartouche and any publish — human-gated, after the rename"]
 touches = ["packages/hieroglyph/", "packages/cartouche/", "packages/onchain/", "packages/onchain_aave/mix.exs", "packages/onchain_aerodrome/mix.exs", "packages/onchain_evm/mix.exs", "packages/onchain_js/mix.exs", "packages/onchain_tempo/mix.exs", "packages/onchain_solana/mix.exs", "mix.exs", "lib/mix/tasks/onchain_bounds.ex", "bin/", "CLAUDE.md", "AGENTS.md", "roadmap/tasks.toml"]
@@ -9992,8 +9993,8 @@ Includes: lib, src (yecc/leex), priv, test and test/support of both packages; me
 
 Gate configuration: keep the stricter coverage threshold per moved module (cartouche signer modules stay at their 95%). hieroglyph's .reach.exs excludes generated Erlang under src/ — keep that exclusion. cartouche could not run reach --dead-code (timeout at 67 files); if the merged package hits the same timeout, document it the same way in packages/onchain/CLAUDE.md rather than narrowing scope."""
 created_at = "2026-09-29"
+started_at = "2026-09-29"
 scored_at = "2026-09-29"
-depends_on = ["9029"]
 
 [[task]]
 id = "9031"
