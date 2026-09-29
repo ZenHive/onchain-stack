@@ -87,6 +87,7 @@
 | Task 9023 | ⬜ | 🎁 **monorepo_root_gates** · mix ci in onchain_aave and onchain_aerodrome exits 139 after every gate is already green [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 | Task 9024 | ⬜ | 🎁 **monorepo_root_gates** · Wire elixir test/alias_separation_test.exs into the root mix ci alias [D:2/B:5/U:5 → Eff:2.5] 🎯 |
 | Task 9027 | ⬜ | 🎁 **monorepo_root_gates** · Make AGENTS freshness reproducible on harness nodes without stale workspace imports [D:3/B:5/U:6 → Eff:1.83] 🚀 |
+| Task 9037 | ✅ | 🎁 **monorepo_root_gates** · Declare onchain_solana's direct public_key application dependency [D:1/B:4/U:5 → Eff:4.5] 🎯 |
 <!-- TASKS:END -->
 
 ---

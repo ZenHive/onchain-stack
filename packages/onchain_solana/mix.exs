@@ -49,7 +49,7 @@ defmodule OnchainSolana.MixProject do
     ]
   end
 
-  def application, do: [mod: {Onchain.Solana.Application, []}, extra_applications: [:logger, :crypto]]
+  def application, do: [mod: {Onchain.Solana.Application, []}, extra_applications: [:logger, :crypto, :public_key]]
 
   def cli,
     do: [

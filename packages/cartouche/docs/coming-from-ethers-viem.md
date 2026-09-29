@@ -50,7 +50,7 @@ precision — there is no `BigNumber`/`bigint` distinction anywhere.
 | `zeroPadValue(v, 32)` | `pad(v, { size: 32 })` | `Cartouche.Hex.pad/2` | binaries only; raises if the input is already longer |
 | `zeroPadBytes(v, 32)` | `pad(v, { dir: "right" })` | `Cartouche.Hex.pad_right/2` | — |
 | `dataSlice`, `concat` | `slice`, `concat` | binary pattern matching, `<>` | no helpers — the language does it |
-| `encodeBase58` / `decodeBase58` | — | `Cartouche.Base58.encode/1`, `decode/1`, `decode!/1` | `decode/1` returns `{:ok, bytes}` |
+| `encodeBase58` / `decodeBase58` | — | `Onchain.Solana.Base58.encode/1`, `decode/1`, `decode!/1` in `onchain_solana` | `decode/1` returns `{:ok, bytes}` |
 
 ## Units
 
@@ -202,7 +202,8 @@ key and signs.
 `Cartouche.OpenChain.lookup/3` (selector → signature lookup),
 `Cartouche.Sleuth` (bytecode queries), `Cartouche.VM` (in-process EVM subset
 for pure functions), `Cartouche.RPC.eth_config/1` and `eth_capabilities/1`,
-the Cloud KMS backends, and the whole `Cartouche.Solana.*` tree.
+and the Cloud KMS backend. Solana support lives in the separate
+`onchain_solana` package under `Onchain.Solana.*`.
 
 ## Not in Cartouche — and where it is instead
 

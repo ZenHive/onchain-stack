@@ -9466,6 +9466,8 @@ body = """
 Discovered during the cc35c2a post-merge audit: mix deps.get in packages/onchain_aave resolved the unchanged mint 1.9.3 lock and reported EEF-CVE-2026-82728 (HIGH, unbounded HTTP/1 status-line and chunk-extension buffering) and EEF-CVE-2026-82729 (MEDIUM, quadratic chunk-size parsing). These are separate from the gun/cowlib findings adjudicated in root CLAUDE.md. The audited feature did not introduce this dependency; handle currency and advisory verification as a bounded follow-up rather than expanding the position-manager test fix. Check other package locks for the same version, verify upstream fixes, and run both advisory sources because their coverage differs.
 
 Audit update 2026-09-29 (integrated 1c0b4f9): current locks have moved beyond 1.9.3, but the Mint advisory repair remains open. Root and six affected package locks resolve Mint 1.10.0; Aave resolves 1.10.1. mix hex.audit at root and in Aave each exited 1. Current public Mint reports are EEF-CVE-2026-82672 (1.10.0 only), EEF-CVE-2026-91043, EEF-CVE-2026-92103 and EEF-CVE-2026-94194 (both versions). Reverify all current affected/fixed ranges upstream and include the root mix.lock in the repair. Every package deps.audit.gated reported no vulnerabilities at mirror 935abf7, so the mirror-only green does not resolve these Hex findings. Existing gun/cowlib adjudication was not reopened. No exploit details or undisclosed findings are recorded here. Evidence: .audit/1c0b4f9.md.
+
+Audit update 2026-09-29 (4990119): root mix hex.audit still exits 1 with the previously recorded public Mint findings; root lock remains on Mint 1.10.0 despite package lock bumps. No new advisory details or suppressions added. See .audit/4990119.md.
 """
 created_at = "2026-09-15"
 scored_at = "2026-09-15"
@@ -9763,6 +9765,8 @@ The other six packages' `mix ci` returned 0, including packages/onchain_evm itse
 Do not swallow the 139. The gates were green; the process still failed, and root `packages_ci/1` raises on any non-zero, so the family `mix ci` cannot pass while this stands.
 
 Audit update 2026-09-29 (integrated 1c0b4f9): reproduced exit 139 independently in both packages on OTP 29.1 / Elixir 1.20.4, with unchanged locks. Aave: 408 passed, 85 excluded, coverage 100%; Aerodrome: 172 passed, 2 excluded, coverage 82.25%. Both completed all analyzers with Dialyzer zero errors before VM halt. EVM itself returned 0 with 298 passing tests, 28+7 Rust tests and clean Clippy. A separate Aave Base Sepolia read-only test invocation passed 4 tests and exited 0. Root QA first stopped earlier on Cartouche private specs (repaired in audit task 9028); serial continuation reproduced this existing failure. Full evidence: .audit/1c0b4f9.md. No crash workaround or NIF change was made.
+
+Audit update 2026-09-29 (4990119): reproduced exit 139 in Aave and Aerodrome again after successful suite/coverage/analyzer output (408 and 172 tests respectively). EVM exited 0 with 298 Elixir tests, 28+7 Rust tests and both Clippy checks. Root mix ci stopped at Aave; remaining packages were run serially. See .audit/4990119.md. No crash workaround was attempted.
 """
 created_at = "2026-09-21"
 scored_at = "2026-09-21"
@@ -9910,6 +9914,8 @@ assignee = "codex"
 model = "gpt-6-astra"
 body = """
 Audit of 1c0b4f9 found every package agents.check skipped because shared/mix_helpers.exs only looks for ~/_DATA/code/claude-marketplace/scripts/sync-agents-md.sh. The renderer actually exists at /data/postgresql/code/claude-marketplace/scripts/sync-agents-md.sh. Direct --check passed at root but failed for all eight packages. Inspection of --dry-run revealed a dangerous host-source mismatch: ~/.claude/includes/onchain-workspace.md renders retired standalone checkout paths and the development branch over the committed monorepo/main instructions. The trial regeneration was discarded; no stale host instructions were committed. The other shared harness include has also changed. Establish a reproducible source and configurable renderer instead of trusting host drift or hand-editing generated files. Tempo additionally imports verification-policy twice, once inside an HTML comment. See .audit/1c0b4f9.md for the check evidence. This is distinct from task 9003, which fixed the tracked advisory script path and explicitly excluded agents.check.
+
+Audit update 2026-09-29 (4990119): configured renderer is still absent. Direct checks with /data/postgresql/code/claude-marketplace/scripts/sync-agents-md.sh --check pass at root and the new onchain_solana package but fail in all eight older packages. Include the ninth package in the repaired freshness gate. No host imports were edited; see .audit/4990119.md.
 """
 created_at = "2026-09-29"
 scored_at = "2026-09-29"
@@ -10127,6 +10133,25 @@ Apply the module mapping from the dedupe task: every ABI.* and Cartouche.* modul
 created_at = "2026-09-29"
 scored_at = "2026-09-29"
 depends_on = ["9032", "9033", "9034", "9035"]
+
+[[task]]
+id = "9037"
+phase = 0
+bundle = "monorepo_root_gates"
+target_repo = "onchain_stack"
+status = "done"
+title = "Declare onchain_solana's direct public_key application dependency"
+scores = { d = 1, b = 4, u = 5 }
+acceptance_criteria = ["Onchain Solana declares the OTP public_key application used by its KMS PEM decoder.", "Test-environment Dialyzer resolves public_key.pem_decode/1 without adding a warning suppression; focused KMS and application startup tests pass."]
+touches = ["packages/onchain_solana/mix.exs"]
+assignee = "codex"
+model = "gpt-6-astra"
+body = "Audit of integrated revision 4990119: the full onchain_solana gate passed 300 tests at 98.12% coverage, then failed Dialyzer with unknown_function for public_key.pem_decode/1 at lib/onchain/solana/signer/cloud_kms.ex:98. The direct OTP application was absent from extra_applications and therefore from the apps_direct PLT. Fixed forward in the audit by declaring :public_key. Focused verification passed: formatting, warnings-as-errors compile, 12 KMS/startup tests, and test-environment Dialyzer with zero errors or skips. See .audit/4990119.md. This records audit-owned work, not independent reviewer approval."
+implemented = "Declared :public_key as a direct OTP application. Formatting, warnings-as-errors compile, 12 KMS/startup tests and test-environment Dialyzer passed; see .audit/4990119.md. Audit-owned repair, no independent verification claimed."
+delivered_by = "codex"
+created_at = "2026-09-29"
+scored_at = "2026-09-29"
+done_at = "2026-09-29"
 
 [bundles.onchain_tempo_faucet_ex]
 phase = 8003

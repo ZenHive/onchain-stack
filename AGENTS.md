@@ -81,7 +81,7 @@ gotchas. Everything family-wide lives here, once.
 The monorepo root itself (`mix.exs` at the top level) is **not a Hex package
 and ships no runtime code**. It exists to hold `mix onchain.bounds`
 (`lib/mix/tasks/onchain_bounds.ex`) and the serial `ci` alias that drives all
-eight packages.
+nine packages.
 
 ---
 
@@ -151,7 +151,7 @@ by moving to a real Hex dependency; the sibling/3 mechanism exists precisely so
 that fix can never regress silently.
 
 `mix onchain.bounds` (the root gate's first step) is the other half of this
-contract: it AST-parses every `sibling(:name, "req")` literal across all eight
+contract: it AST-parses every `sibling(:name, "req")` literal across all nine
 `mix.exs` files and checks the requirement still admits that sibling's
 in-repo `@version`. Inside the monorepo the path branch always wins locally,
 so a Hex requirement that has quietly rotted (a sibling moved to a new major,
@@ -314,7 +314,7 @@ cd ~/_DATA/code/onchain-stack && mix ci
 runs, in order:
 
 1. **`mix onchain.bounds`** — seconds of AST parsing; catches the one failure
-   class the monorepo introduces (see sibling/3 above) before spending eight
+   class the monorepo introduces (see sibling/3 above) before spending nine
    package gates discovering it downstream.
 2. Each package's own `mix ci`, **strictly serial** — `packages_ci/1` in the
    root `mix.exs` shells into `packages/<name>` with `MIX_ENV`/`MIX_TARGET`
@@ -365,7 +365,7 @@ existed and should be migrated to load `shared/mix_helpers.exs` instead.
 (one shared entry, six per-package symlinks — see the adjudication below),
 and the ExSlop/`.credo.exs` base policy now live once at the repo root instead
 of eight near-identical copies. There is no per-package override left: all
-eight `packages/<name>/.credo.exs` are symlinks to the root `.credo.exs`, so
+nine `packages/<name>/.credo.exs` are symlinks to the root `.credo.exs`, so
 editing the root policy is the only way to change any package's credo rules.
 
 ### The gates are real — do not re-decorate them
@@ -477,7 +477,7 @@ remains:
   `.reach.exs` key, so there was nothing to exclude). Restored 2026-09-16 under
   reach 2.8.4, verified green by running it.
 
-**`--dead-code` is on in seven of eight packages; cartouche is the exception.**
+**`--dead-code` is on in eight of nine packages; cartouche is the exception.**
 The gate flag is `reach.check --dead-code --arch --smells` everywhere except
 cartouche, which runs `--arch --smells`.
 
@@ -521,7 +521,7 @@ override — never in `deps/`.
 **`ex_ast`'s override is measured, not assumed.** `reach 2.8.2` declares
 `ex_ast ~> 0.12.0`, which would hold a package at 0.12.10 unless it declares
 `{:ex_ast, "~> 0.13", override: true, only: [:dev, :test], runtime: false}`.
-All eight packages carry that override today. It was withheld for five of them
+All nine packages carry that override today. It was withheld for five of them
 for a while on the theory that `ex_ast` 0.13's subset-pattern matching "could"
 make `reach`'s smell checks report fewer findings; running
 `mix reach.check --dead-code --arch --smells` under both 0.12.10 and 0.13.1 in
@@ -714,7 +714,7 @@ analyzer; a green publish-parity report says nothing about that.
 
 ## After every task
 
-Applies uniformly across all eight packages now that the roadmap is
+Applies uniformly across all nine packages now that the roadmap is
 root-owned — update all affected docs as part of the task, not as a
 follow-up:
 
@@ -737,7 +737,7 @@ change warrants it.
   `mix.exs` *and* `mix hex.info <pkg>` / `mix hex.outdated` before any cascade
   decision — never trust a dated snapshot in this file or anywhere else.
 - **Stage path-scoped.** Never `git add -A` / `git commit -a` — with one
-  shared `.git` across all eight packages plus the root, this matters even
+  shared `.git` across all nine packages plus the root, this matters even
   more than it did in the standalone era. Stage explicit paths; verify
   `git diff --cached --name-only` before committing.
 - **Another session may be working in the same package (or a different one)
