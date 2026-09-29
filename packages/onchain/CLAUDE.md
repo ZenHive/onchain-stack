@@ -291,10 +291,15 @@ logs and share an output-node budget. Payload preflight bounds alloy allocation
 before decoding, including repeated/overlapping offsets.
 
 `Onchain.Precompiled` and `scripts/build-precompiled.sh` now live here;
-`onchain_evm` consumes the module and delegates its build script here. Source
-builds in a checkout use `ONCHAIN_BUILD=1`; `ONCHAIN_EVM_BUILD=1` still controls
-EVM crates. Hex installs with absent/mismatched checksums fail rather than
-silently source-building. Core rejects platforms outside the five shipped targets.
+`onchain_evm` consumes the module and delegates its build script here. With the
+`.onchain-monorepo-root` marker present and `ONCHAIN_PUBLISH` not `1`, core
+source-builds automatically (even with committed checksums) and declares Rustler
+non-optional so root and sibling builds have the compiler. Rust/Cargo is required
+for checkout development. `ONCHAIN_PUBLISH=1` and Hex installs retain optional
+Rustler and download verified artifacts; absent/mismatched checksums fail rather
+than silently source-building. `ONCHAIN_BUILD=1` explicitly source-builds core;
+`ONCHAIN_EVM_BUILD=1` controls EVM crates, which otherwise keep downloading when
+checksums exist. Core rejects platforms outside the five shipped targets.
 
 Publish-time commands (run from this package; artifacts must be built from the
 exact release revision):

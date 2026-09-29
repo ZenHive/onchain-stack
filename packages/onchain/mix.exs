@@ -56,10 +56,17 @@ defmodule Onchain.MixProject do
     ]
   end
 
+  # Optional path dependencies do not reach callers: checkout builds need
+  # Rustler in the root and sibling dependency graphs too.
+  defp monorepo? do
+    File.exists?(Path.expand("../../.onchain-monorepo-root", __DIR__)) and
+      System.get_env("ONCHAIN_PUBLISH") != "1"
+  end
+
   defp deps do
     [
       {:rustler_precompiled, "~> 0.9"},
-      {:rustler, "~> 0.38", optional: true, runtime: false},
+      {:rustler, "~> 0.38", optional: not monorepo?(), runtime: false},
       {:ex_keccak, "~> 0.7.8"},
       {:ex_secp256k1, "~> 0.8.0"},
       {:ex_rlp, "~> 0.6.0"},

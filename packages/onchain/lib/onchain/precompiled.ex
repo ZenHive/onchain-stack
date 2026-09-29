@@ -7,10 +7,12 @@ defmodule Onchain.Precompiled do
   `x86_64-pc-windows-msvc`. Core rejects unsupported hosts explicitly; the
   existing EVM source-build policy is unchanged.
 
-  A missing `checksum-*.exs` source-builds in this repo's checkout so `mix ci`
-  is green before the first GitHub Release. The same missing file fails the
-  load for a Hex-installed package, where `files:` guarantees the checksum
-  ships. A checksum mismatch always fails; it never falls back to source.
+  Core source-builds in the monorepo even when checksums exist, so release
+  assets are not a prerequisite for development. EVM source-builds only when
+  its checksum file is missing or a build override applies. A missing file
+  fails the load for a Hex-installed package, where `files:` guarantees the
+  checksum ships. Downloaded artifacts must match; failure never falls back
+  to source.
   """
 
   @targets ~w(
@@ -26,8 +28,8 @@ defmodule Onchain.Precompiled do
   @typedoc "Whether `checksum-Elixir.<Module>.exs` exists on disk."
   @type checksum_presence :: :missing | :present
 
-  @typedoc "Hex tarball vs this repo (or a git/path dep)."
-  @type install_source :: :hex | :checkout
+  @typedoc "Hex install, marked monorepo, or another git/path checkout."
+  @type install_source :: :hex | :checkout | :monorepo
 
   @doc "Shipped Rust target triples. Must match `scripts/build-precompiled.sh`."
   @spec targets() :: [String.t()]
@@ -41,18 +43,14 @@ defmodule Onchain.Precompiled do
   Keyword options for `use RustlerPrecompiled`.
 
   Omits `:force_build` when the host should download, so the library's
-  application-env `put_new` still applies. Sets it to `true` for an
-  unsupported host, `ONCHAIN_EVM_BUILD=1`, or a missing checksum in this
-  checkout.
+  application-env `put_new` still applies. Sets it to `true` for a
+  build override, a core monorepo build, or a missing checkout checksum.
+  Unsupported hosts source-build EVM but are rejected for core.
   """
   @spec opts(String.t()) :: keyword()
   def opts(crate) when is_binary(crate) do
     version = Mix.Project.config()[:version]
     app = if crate == "onchain_abi", do: :onchain, else: :onchain_evm
-
-    if app == :onchain and current_target() not in @targets do
-      raise "onchain ABI NIF has no precompiled artifact for this platform; supported targets: #{Enum.join(@targets, ", ")}"
-    end
 
     maybe_force_build(
       otp_app: app,
@@ -70,14 +68,21 @@ defmodule Onchain.Precompiled do
   @doc """
   True when the NIF should compile from source instead of downloading.
 
-  `checksum` `:missing` source-builds only for `:checkout`. A Hex install
-  with a missing checksum must not source-build — rustler_precompiled then
+  Core always source-builds in `:monorepo`. Otherwise a missing checksum
+  source-builds only outside Hex. A Hex install with a missing checksum
+  must not source-build — rustler_precompiled then
   fails the load. A mismatch is never a reason to force-build.
   """
-  @spec force_build?(String.t() | nil, String.t() | nil, checksum_presence(), install_source()) ::
+  @spec force_build?(String.t() | nil, String.t() | nil, checksum_presence(), install_source()) :: boolean()
+  @spec force_build?(String.t() | nil, String.t() | nil, checksum_presence(), install_source(), String.t()) ::
           boolean()
-  def force_build?(target, env, checksum, source) do
-    env in ["1", "true"] or target not in @targets or
+  def force_build?(target, env, checksum, source, crate \\ "onchain_evm") do
+    if crate == "onchain_abi" and target not in @targets do
+      raise "onchain ABI NIF has no precompiled artifact for this platform; supported targets: #{Enum.join(@targets, ", ")}"
+    end
+
+    (crate == "onchain_abi" and source == :monorepo) or
+      env in ["1", "true"] or target not in @targets or
       (checksum == :missing and source != :hex)
   end
 
@@ -110,7 +115,8 @@ defmodule Onchain.Precompiled do
          current_target(),
          System.get_env(if(crate == "onchain_abi", do: "ONCHAIN_BUILD", else: "ONCHAIN_EVM_BUILD")),
          checksum_presence(crate),
-         install_source()
+         install_source(),
+         crate
        ) do
       Keyword.put(opts, :force_build, true)
     else
@@ -134,6 +140,16 @@ defmodule Onchain.Precompiled do
   # `Mix.SCM.Path` / `Mix.SCM.Git`.
   @spec install_source() :: install_source()
   defp install_source do
-    if inspect(Mix.Project.config()[:build_scm]) == "Hex.SCM", do: :hex, else: :checkout
+    cond do
+      inspect(Mix.Project.config()[:build_scm]) == "Hex.SCM" or
+          System.get_env("ONCHAIN_PUBLISH") == "1" ->
+        :hex
+
+      File.exists?(Path.expand("../../.onchain-monorepo-root", File.cwd!())) ->
+        :monorepo
+
+      true ->
+        :checkout
+    end
   end
 end
