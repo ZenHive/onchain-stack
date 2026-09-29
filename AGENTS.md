@@ -72,6 +72,7 @@ gotchas. Everything family-wide lives here, once.
 | onchain_aerodrome | `onchain_aerodrome` | Aerodrome Finance (Base) bindings, Sugar-backed reads + analytics | — |
 | onchain_evm | `onchain_evm` | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
 | onchain_js | `onchain_js` | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
+| onchain_solana | `onchain_solana` | Solana RPC, transactions, token programs, Ed25519 signing | — |
 | onchain_tempo | `onchain_tempo` | Tempo chain primitives (0x76 tx, TIP-20) | — |
 
 **Standalone siblings** (not in `packages/`): `descripex`, `zen_websocket`
@@ -172,6 +173,10 @@ descripex ─┐                         (standalone, shared upstream)
                                                 └──→ onchain_tempo ──→ mpp
                                                                      (standalone, leaf)
 ```
+
+Solana was extracted into `onchain_solana`; it depends on `cartouche` for shared
+HTTP, KMS, and signer backend helpers. Publish cartouche before onchain_solana.
+Migrating the standalone mpp consumer is separate work.
 
 Edges (verify in each `packages/<pkg>/mix.exs` — this is a hint, not ground
 truth; sibling/3 calls are the source):

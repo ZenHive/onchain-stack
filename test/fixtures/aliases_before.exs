@@ -264,6 +264,26 @@
     ],
     "tidewave" => ["\"run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4028) end)'\""]
   },
+  "packages/onchain_solana/mix.exs" => %{
+    "agents.check" => ["&agents_check/1"],
+    "check.dispatch" => ["\"format --check-formatted\"", "\"compile --warnings-as-errors\""],
+    "ci" => ["\"precommit.full\""],
+    "deps.audit.gated" => ["&advisory_freshness/1", "\"deps.audit\""],
+    "precommit" => ["\"check.dispatch\"", "\"test.json\""],
+    "precommit.full" => [
+      "\"compile --warnings-as-errors\"",
+      "\"format --check-formatted\"",
+      "\"credo --strict --ignore Credo.Check.Design.TagTODO,Credo.Check.Design.TagFIXME\"",
+      "\"doctor --raise\"",
+      "\"ex_dna --max-clones 0\"",
+      "\"reach.check --dead-code --arch --smells\"",
+      "\"sobelow --config\"",
+      "\"deps.audit.gated\"",
+      "\"test.json --cover --cover-threshold 95\"",
+      "\"dialyzer\"",
+      "\"agents.check\""
+    ]
+  },
   "packages/onchain_tempo/mix.exs" => %{
     "agents.check" => ["&agents_check/1"],
     "check.dispatch" => [

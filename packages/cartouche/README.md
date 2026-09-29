@@ -2,13 +2,13 @@
 
 [![Hex.pm](https://img.shields.io/hexpm/v/cartouche.svg)](https://hex.pm/packages/cartouche)
 
-Lightweight Ethereum and Solana RPC client for Elixir. Cartouche is an **attributed fork** of [hayesgm/signet](https://github.com/hayesgm/signet) maintained by [ZenHive](https://github.com/ZenHive).
+Lightweight Ethereum RPC client for Elixir. Cartouche is an **attributed fork** of [hayesgm/signet](https://github.com/hayesgm/signet) maintained by [ZenHive](https://github.com/ZenHive).
 
 It bundles four capabilities into one library:
 
-- **JSON-RPC clients** for Ethereum and Solana (`Cartouche.RPC`, `Cartouche.Solana.RPC`).
-- **Signers** as supervised GenServers — local secp256k1 / Ed25519 seeds, or GCP Cloud KMS — exposing a uniform `sign/3` API.
-- **Transaction builders** for every Ethereum envelope — legacy (V1), EIP-2930 (V_2930), EIP-1559 (V2), EIP-4844 blob (V3) and EIP-7702 set-code (V4) — plus Solana legacy transactions.
+- **JSON-RPC client** for Ethereum (`Cartouche.RPC`).
+- **Signers** as supervised GenServers — local secp256k1 keys, or GCP Cloud KMS — exposing a uniform `sign/3` API.
+- **Transaction builders** for every Ethereum envelope — legacy (V1), EIP-2930 (V_2930), EIP-1559 (V2), EIP-4844 blob (V3) and EIP-7702 set-code (V4).
 - **Contract codegen** — `mix cartouche.gen` turns Foundry / Hardhat artifacts into typed Elixir modules with `encode_*` / `call_*` / `execute_*` helpers backed by the RPC client.
 
 ## Release
@@ -43,7 +43,7 @@ config :cartouche,
   ]
 ```
 
-Each entry under `:signer` becomes a supervised `Cartouche.Signer` GenServer; the `:default` name is special — it's registered as `Cartouche.Signer.Default` and used when a caller doesn't pass `:signer` explicitly. Solana mirrors this with `:solana_node` and `:solana_signer`.
+Each entry under `:signer` becomes a supervised `Cartouche.Signer` GenServer; the `:default` name is special — it's registered as `Cartouche.Signer.Default` and used when a caller doesn't pass `:signer` explicitly.
 
 > **Production tip — direct cartouche use:** if you're embedding cartouche directly to operate a server-side hot wallet (relayer, fee payer, treasury, oracle), prefer the `:cloud_kms` signer spec over `:priv_key` in production — `Cartouche.Signer.Secp256k1` keeps the key in BEAM memory, while Cloud KMS keeps it in GCP HSM and gives you per-call audit logs. Consumers reaching cartouche through the `onchain` wrapper inherit whatever signer that layer configures.
 
@@ -52,12 +52,9 @@ Each entry under `:signer` becomes a supervised `Cartouche.Signer` GenServer; th
 | `:chain_id` | `1` | Default Ethereum chain ID for signers and transactions |
 | `:ethereum_node` | `"https://mainnet.infura.io"` | Ethereum JSON-RPC endpoint |
 | `:signer` | `[]` | List of `{name, signer_spec}` for Ethereum signers |
-| `:solana_node` | `nil` | Solana JSON-RPC endpoint (required for any Solana RPC call) |
-| `:solana_signer` | `[]` | List of `{name, signer_spec}` for Solana signers |
 | `:contracts` | `[]` | Named contract address registry — see `Cartouche.get_contract_address/1` |
 | `:req_options` | `[]` | Global [Req](https://hex.pm/packages/req) options merged into every HTTP request (see HTTP transport below) |
 | `:timeout` | `30_000` | Ethereum RPC request timeout (ms) — compile-time |
-| `:solana_timeout` | `30_000` | Solana RPC request timeout (ms) — compile-time |
 | `:open_chain_base_url` | `"https://api.4byte.sourcify.dev"` | OpenChain base URL |
 
 ### HTTP transport
@@ -65,7 +62,7 @@ Each entry under `:signer` becomes a supervised `Cartouche.Signer` GenServer; th
 Cartouche issues all JSON-RPC and OpenChain requests through [Req](https://hex.pm/packages/req); it does **not** start an HTTP connection pool of its own. Three layers of [Req options](https://hexdocs.pm/req/Req.html#new/1) are merged into every request, lowest to highest precedence:
 
 1. **Global** — `config :cartouche, :req_options, [...]`
-2. **Per-transport** — `config :cartouche, Cartouche.RPC | Cartouche.Solana.RPC | Cartouche.OpenChain.API, <req options>`
+2. **Per-transport** — `config :cartouche, Cartouche.RPC | Cartouche.OpenChain.API, <req options>`
 3. **Per-call** — `req_options: [...]` in the opts keyword passed to any RPC function
 
 ```elixir
@@ -73,7 +70,7 @@ Cartouche issues all JSON-RPC and OpenChain requests through [Req](https://hex.p
 config :cartouche, :req_options, finch: MyFinch
 
 # Or scope it to one transport:
-config :cartouche, Cartouche.Solana.RPC, finch: MyFinch
+config :cartouche, Cartouche.RPC, finch: MyFinch
 ```
 
 A connection-level failure is returned as `{:error, "[Cartouche] HTTP client error: #{inspect(reason)}"}` (mapped from `%Req.TransportError{}`).
@@ -103,11 +100,6 @@ Signer specs:
 # GCP Cloud KMS (Ethereum)
 {:cloud_kms, kms_credentials, "projects/P/locations/L/keyRings/R/cryptoKeys/K", "1"}
 
-# Local Ed25519 seed (Solana) — accepts raw 32-byte binary, hex, or Base58
-{:ed25519, "0x..."}
-
-# GCP Cloud KMS (Solana, Ed25519)
-{:cloud_kms, kms_credentials, "projects/P/locations/L/keyRings/R/cryptoKeys/K", "1"}
 ```
 
 ## Node compatibility
@@ -219,8 +211,6 @@ The `Cartouche.Signer` GenServer is for **keys you operate** — relayers, fee p
 - **`personal_sign` / raw signature recovery** — `Cartouche.Recover.recover_personal_sign/2` for MetaMask / WalletConnect payloads (applies the EIP-191 envelope internally). Use `recover_eth/2` directly when you already have the envelope, or apply `prefix_eth/1` first to build it manually. Use `find_recid/3` when only `(r, s)` arrived.
 - **Recovery-bit normalisation** — `Cartouche.RecoveryBit` between `:base` / `:ethereum` / `:eip155` representations.
 
-Solana mirrors this with `Cartouche.Solana.Keys` for Phantom-signed payload verification on the user side and `Cartouche.Solana.Signer` (Ed25519 / Cloud KMS) for the operator side.
-
 ### Transactions
 
 Build, sign, and encode a **V1 (legacy)** transaction:
@@ -295,29 +285,11 @@ Once generated, callsites read like any other Elixir module:
   MyApp.Contracts.SomeContract.execute_some_function(addr, 55, priority_fee: {55, :gwei})
 ```
 
-## Solana
+## Solana migration
 
-Solana support mirrors the Ethereum surface. With `:solana_node` and a `:solana_signer` configured:
-
-```elixir
-fee_payer  = Cartouche.Solana.Signer.address()  # 32-byte pubkey from configured signer
-recipient  = Cartouche.Base58.decode!("RecipientPublicKeyInBase58...")
-{:ok, %{blockhash: blockhash}} = Cartouche.Solana.RPC.get_latest_blockhash()
-
-instruction = Cartouche.Solana.SystemProgram.transfer(fee_payer, recipient, 1_000_000_000)
-message     = Cartouche.Solana.Transaction.build_message(fee_payer, [instruction], blockhash)
-
-# Sign via the configured GenServer signer (no raw seed handling in app code)
-msg_bytes  = Cartouche.Solana.Transaction.serialize_message(message)
-{:ok, sig} = Cartouche.Solana.Signer.sign(msg_bytes)
-signed     = %Cartouche.Solana.Transaction{signatures: [sig], message: message}
-
-{:ok, signature} = Cartouche.Solana.RPC.send_and_confirm(signed, commitment: :confirmed)
-```
-
-For offline signing (no GenServer), pass raw 32-byte Ed25519 seeds directly: `Cartouche.Solana.Transaction.sign(message, [fee_payer_seed])`. For sponsored transactions (one party pays fees for another), see `Cartouche.Solana.Transaction.sign_partial/2` and `add_signature/3`.
-
-`Cartouche.Solana.RPC` covers the standard JSON-RPC surface (`get_balance/2`, `get_account_info/2`, `simulate_transaction/2`, `request_airdrop/3`, plus the SPL token and fee queries). `Cartouche.Solana.Keys` handles keypair generation, seed loading, and Base58 conversion; `Cartouche.Solana.Signer` is the GenServer parallel to `Cartouche.Signer` for both Ed25519 and Cloud KMS backends.
+Solana support moved to [onchain_solana](../onchain_solana/README.md). Replace
+`Cartouche.Solana.*` with `Onchain.Solana.*` and `Cartouche.Base58` with
+`Onchain.Solana.Base58`.
 
 ## Hex utilities
 
@@ -361,10 +333,6 @@ Cartouche.Wei.to_wei({2, :gwei})               # 2_000_000_000
 | `Cartouche.RecoveryBit` | Convert `v` between `:base` (`0/1`), `:ethereum` (`27/28`), `:eip155` |
 | `Cartouche.Hex` / `Cartouche.Hash` | `~h` sigil, encode/decode helpers, keccak digests |
 | `Cartouche.Wei` | `to_wei/1` — accepts integers or `{n, :gwei}` |
-| `Cartouche.Solana.RPC` | Solana JSON-RPC client |
-| `Cartouche.Solana.Transaction` | Build / sign / serialize Solana legacy transactions |
-| `Cartouche.Solana.Token` / `TokenProgram` / `ATA` / `PDA` | SPL-token instructions, associated-token and program-derived addresses |
-| `Cartouche.Solana.Signer` | GenServer Ed25519 signer (local seed, Cloud KMS) |
 | `Mix.Tasks.Cartouche.Gen` | Codegen from Solidity artifacts — `mix cartouche.gen` |
 
 ## API discovery

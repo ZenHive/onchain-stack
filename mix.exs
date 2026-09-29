@@ -3,7 +3,7 @@ defmodule OnchainStack.MixProject do
 
   # The monorepo root is NOT a Hex package and ships no runtime code. It exists
   # for two things: to hold `mix onchain.bounds` (lib/mix/tasks/), and to own the
-  # `ci` alias that drives the eight packages under `packages/`.
+  # `ci` alias that drives the nine packages under `packages/`.
   def project do
     [
       app: :onchain_stack,

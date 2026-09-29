@@ -8,7 +8,6 @@ import Config
 # per call via `req_options: [plug: ...]`.
 config :cartouche, Cartouche.OpenChain.API, plug: &Cartouche.OpenChainTest.TestClient.call/1
 config :cartouche, Cartouche.RPC, plug: &Cartouche.Test.Client.call/1
-config :cartouche, Cartouche.Solana.RPC, plug: &Cartouche.Solana.Test.Client.call/1
 config :cartouche, :chain_id, :goerli
 config :cartouche, :open_chain_base_url, "https://example.com/open-chain"
 config :cartouche, :signer, default: {:priv_key, <<1::256>>}

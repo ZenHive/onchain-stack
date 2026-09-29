@@ -1,10 +1,10 @@
 defmodule Cartouche.CloudKMS do
   @moduledoc """
   Shared helpers for the Google Cloud KMS signer backends
-  (`Cartouche.Signer.CloudKMS` and `Cartouche.Solana.Signer.CloudKMS`).
+  (`Cartouche.Signer.CloudKMS` and an Ed25519 KMS backend).
 
   The HTTP transport (`get_public_key/3`, `asymmetric_sign/4`) is identical for
-  both the secp256k1 (Ethereum) and Ed25519 (Solana) signers — only the request
+  both the secp256k1 (Ethereum) and Ed25519 signers — only the request
   body and the public-key parsing differ, and those stay in the signer modules.
   Goth credential resolution stays in the signers too, since `Goth` is an
   optional dependency and this module is always loaded.

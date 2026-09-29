@@ -1,0 +1,10 @@
+/_build/
+/deps/
+/cover/
+/doc/
+/priv/plts/
+/.elixir_ls/
+/.lexical/
+*.ez
+*.tar
+erl_crash.dump

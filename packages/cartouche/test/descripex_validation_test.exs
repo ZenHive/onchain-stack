@@ -1,17 +1,11 @@
 defmodule Cartouche.DescripexValidationTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.Solana.Transaction
-
   describe "Cartouche.__descripex_modules__/0" do
     test "registers transaction modules for Phase 12 discovery" do
       assert Cartouche.Transaction in Cartouche.__descripex_modules__()
       assert Cartouche.Transaction.V1 in Cartouche.__descripex_modules__()
       assert Cartouche.Transaction.V2 in Cartouche.__descripex_modules__()
-    end
-
-    test "registers Solana RPC for Phase 12 discovery" do
-      assert Cartouche.Solana.RPC in Cartouche.__descripex_modules__()
     end
 
     test "every public function in a registered module carries descripex :hints metadata" do
@@ -121,28 +115,6 @@ defmodule Cartouche.DescripexValidationTest do
       assert is_list(Cartouche.__descripex_modules__())
     end
 
-    test "describe/0 lists registered modules" do
-      assert Enum.any?(Cartouche.describe(), &(&1.module == Transaction))
-    end
-
-    test "Solana modules resolve through explicit discovery aliases" do
-      aliases = %{
-        solana_signer: Cartouche.Solana.Signer,
-        solana_transaction: Transaction,
-        solana_keys: Cartouche.Solana.Keys,
-        solana_pda: Cartouche.Solana.PDA,
-        solana_ata: Cartouche.Solana.ATA,
-        solana_programs: Cartouche.Solana.Programs,
-        solana_system_program: Cartouche.Solana.SystemProgram,
-        solana_token_program: Cartouche.Solana.TokenProgram,
-        solana_token: Cartouche.Solana.Token
-      }
-
-      for {short_name, module} <- aliases do
-        assert Cartouche.describe(short_name) == Cartouche.describe(module)
-      end
-    end
-
     test "Cartouche discovery functions carry descripex hints" do
       {:docs_v1, _, _, _, _, _, docs} = Code.fetch_docs(Cartouche)
 
@@ -155,17 +127,6 @@ defmodule Cartouche.DescripexValidationTest do
 
         assert description =~ "registered API surface"
       end
-    end
-
-    test "Solana discovery accepts full module atoms" do
-      assert Cartouche.describe(Transaction) == Cartouche.describe(:solana_transaction)
-    end
-
-    test "Solana sign_partial metadata documents unsigned placeholder signatures" do
-      detail = Cartouche.describe(:solana_transaction, :sign_partial)
-
-      assert detail.returns.description =~ "placeholder signatures"
-      assert detail.returns.description =~ "empty signer map"
     end
 
     test "Cartouche contract address helper handles binary and configured atom inputs" do
@@ -228,22 +189,6 @@ defmodule Cartouche.DescripexValidationTest do
 
       assert %{description: build_description} = fetch_hints(Cartouche.Transaction, :build_trx, 7)
       assert build_description =~ "Build a legacy transaction"
-    end
-  end
-
-  describe "Cartouche.describe/1 Solana RPC alias" do
-    test "exposes Solana RPC through a stable short alias" do
-      assert Enum.any?(Cartouche.describe(:solana_rpc), &match?(%{name: :get_balance}, &1))
-    end
-
-    test "exposes Solana RPC function detail through a stable short alias" do
-      assert %{
-               description: description,
-               params: %{pubkey: %{kind: :value}},
-               returns: %{type: :ok_error_tuple}
-             } = Cartouche.describe(:solana_rpc, :get_balance)
-
-      assert description == "Get the SOL balance for an account."
     end
   end
 

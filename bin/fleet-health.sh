@@ -96,12 +96,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # pin and the GitHub state for all eight packages actually live.
 ROOT_ROW="onchain-stack"
 
-# The eight packages that live under $STACK_DIR/packages/.
-PACKAGES=(hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_tempo)
+# The nine packages that live under $STACK_DIR/packages/.
+PACKAGES=(hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo)
 
 # Cascade order (upstream → downstream), same order publish-prep.sh uses, with
 # the monorepo root inserted ahead of the packages it contains.
-ALL_REPOS=(descripex zen_websocket "$ROOT_ROW" hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_tempo mpp)
+ALL_REPOS=(descripex zen_websocket "$ROOT_ROW" hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo mpp)
 
 # The one toolchain the whole family builds on. In the monorepo there is now
 # exactly ONE `.tool-versions` for the eight packages — the root's — which is

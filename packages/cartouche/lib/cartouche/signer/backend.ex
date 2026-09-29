@@ -5,8 +5,8 @@ defmodule Cartouche.Signer.Backend do
 
   This is the **custody axis** only (local key, GCP/AWS/Azure KMS, Vault, MPC).
   It is deliberately decoupled from the **message axis** (Ethereum tx, EIP-712
-  typed data, Hyperliquid action hash, Solana tx). Message hashing/serialization
-  lives in the *caller* (`Cartouche.Signer` / `Cartouche.Solana.Signer`), never
+  typed data, Hyperliquid action hash, raw Ed25519 message). Message hashing/serialization
+  lives in the *caller* (`Cartouche.Signer` / an Ed25519 caller), never
   in a backend, so one backend set serves every message format.
 
   ## The pure-payload contract
@@ -22,7 +22,7 @@ defmodule Cartouche.Signer.Backend do
       internally, SHA-512) and return a 64-byte signature.
 
   Because the backend never hashes, plain Eth-tx signing, EIP-712, Hyperliquid,
-  and Solana all reuse the same backend with no per-venue backend change — the
+  and Ed25519 all reuse the same backend with no per-venue backend change — the
   caller computes the digest/payload and hands it over.
 
   ## Signature normalization & recovery — caller-side, not here
@@ -45,7 +45,7 @@ defmodule Cartouche.Signer.Backend do
   authenticate and address a key — a raw private-key binary for
   `Cartouche.Signer.Secp256k1`, a Cloud-KMS key-coordinate tuple for
   `Cartouche.Signer.CloudKMS`, an Ed25519 seed for
-  `Cartouche.Solana.Signer.Ed25519`. The runtime carries a backend as a
+  an Ed25519 backend. The runtime carries a backend as a
   `{module, config}` pair.
   """
 
@@ -62,7 +62,7 @@ defmodule Cartouche.Signer.Backend do
   digest; `:ed25519` ⇒ hand the raw message bytes.
 
   Callers must check this before dispatching: `Cartouche.Signer` requires
-  `:secp256k1` and `Cartouche.Solana.Signer` requires `:ed25519`. Use
+  `:secp256k1` and an Ed25519 caller requires `:ed25519`. Use
   `expect_algorithm/3`.
   """
   @callback algorithm(config()) :: :secp256k1 | :ed25519
@@ -71,8 +71,7 @@ defmodule Cartouche.Signer.Backend do
   The curve-native public key for the backend's key.
 
   Returns the *public key*, not a chain address — the caller derives the address
-  (secp256k1 ⇒ `Cartouche.Address.from_public_key/1`; ed25519 ⇒ the 32-byte key
-  *is* the Solana address). Returns the uncompressed SEC1 secp256k1 point (65
+  (e.g. secp256k1 ⇒ `Cartouche.Address.from_public_key/1`). Returns the uncompressed SEC1 secp256k1 point (65
   bytes *including* the leading `0x04` prefix, which `Cartouche.Address.from_public_key/1`
   strips) or the 32-byte Ed25519 public key.
   """

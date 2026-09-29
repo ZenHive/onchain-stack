@@ -130,16 +130,6 @@ defmodule Cartouche.SignerTest do
     end
   end
 
-  describe "algorithm mismatch" do
-    @seed Base.decode16!("9D61B19DEFFD5A60BA844AF492EC2CC44449C5697B326919703BAC031CAE7F60")
-
-    test "rejects an ed25519 backend under the Eth signer" do
-      {:ok, pid} = Signer.start_link(mfa: {Cartouche.Solana.Signer.Ed25519, @seed}, name: nil)
-
-      assert {:error, {:algorithm_mismatch, :secp256k1, :ed25519}} = Signer.sign("test", pid)
-    end
-  end
-
   @spec high_s_signature(binary()) :: Cartouche.Signature.t()
   defp high_s_signature(message) do
     {:ok, sig} = Secp256k1.sign(message, @priv_key)

@@ -1,0 +1,1 @@
+[smells: [strict: true]]

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Remove Cartouche.Solana.* and Cartouche.Base58. Migrate to the onchain_solana package and Onchain.Solana.* / Onchain.Solana.Base58; see ../onchain_solana/README.md for configuration and discovery migration.
+
+
 All notable changes to this project will be documented in this file.
 
 <!-- Phase anchors for ROADMAP.md cross-references — rmap renders `CHANGELOG.md#phase-N-...` links from collapsed (status="done") phase summaries; these anchors land the click at the top of the changelog so the link isn't dead. -->

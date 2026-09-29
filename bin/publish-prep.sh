@@ -6,9 +6,9 @@
 # command for you to run.
 #
 # Layout since the monorepo migration:
-#   ~/_DATA/code/onchain-stack/packages/<pkg>   the eight in-repo packages
+#   ~/_DATA/code/onchain-stack/packages/<pkg>   the nine in-repo packages
 #     hieroglyph cartouche onchain onchain_aave onchain_aerodrome
-#     onchain_evm onchain_js onchain_tempo
+#     onchain_evm onchain_js onchain_solana onchain_tempo
 #   ~/_DATA/code/<repo>                          the three standalone repos
 #     descripex zen_websocket mpp
 # Each package is still its own Hex package with its own mix.exs, mix.lock and
@@ -51,15 +51,15 @@ set -uo pipefail
 STACK_DIR="${ONCHAIN_STACK_DIR:-$HOME/_DATA/code/onchain-stack}"
 CODE_DIR="${ONCHAIN_CODE_DIR:-$HOME/_DATA/code}"
 
-# The eight packages that live inside the monorepo. Order matters only within
+# The nine packages that live inside the monorepo. Order matters only within
 # REPOS below; this list is membership, not sequence.
-PACKAGES=(hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_tempo)
+PACKAGES=(hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo)
 
 # Cascade order (upstream → downstream). status prints in this order.
 # descripex + zen_websocket are shared upstreams (used beyond this family) — they
 # head the cascade but a release there has a wider blast radius. zen_websocket
 # feeds onchain directly, not hieroglyph. mpp is always last.
-REPOS=(descripex zen_websocket hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_tempo mpp)
+REPOS=(descripex zen_websocket hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo mpp)
 
 c_red=$'\033[31m'; c_grn=$'\033[32m'; c_yel=$'\033[33m'; c_dim=$'\033[2m'; c_rst=$'\033[0m'
 # Colour only on a tty: the status table is routinely piped into a file or a

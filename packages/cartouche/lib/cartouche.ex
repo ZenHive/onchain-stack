@@ -10,7 +10,6 @@ defmodule Cartouche do
       Cartouche.describe()                  # registered modules + namespaces
       Cartouche.describe(:signer)            # function list for one module
       Cartouche.describe(:signer, :sign_direct)   # full param/return detail
-      Cartouche.describe(:solana_rpc)        # Solana RPC helpers
       Cartouche.describe(:transaction_v1)    # nested Transaction.V1 helpers
       Cartouche.describe(:transaction_v2)    # nested Transaction.V2 helpers
 
@@ -22,16 +21,6 @@ defmodule Cartouche do
 
   alias Cartouche.Erc20.Call
   alias Cartouche.Erc20.CallData
-  alias Cartouche.Solana.ATA
-  alias Cartouche.Solana.Keys
-  alias Cartouche.Solana.PDA
-  alias Cartouche.Solana.Programs
-  alias Cartouche.Solana.RPC
-  alias Cartouche.Solana.Signer
-  alias Cartouche.Solana.SystemProgram
-  alias Cartouche.Solana.Token
-  alias Cartouche.Solana.TokenProgram
-  alias Cartouche.Solana.Transaction
   alias Cartouche.Transaction.V1
   alias Cartouche.Transaction.V2
 
@@ -48,18 +37,7 @@ defmodule Cartouche do
     Cartouche.Address,
     Cartouche.Wei,
     Cartouche.Chain,
-    Cartouche.Base58,
     Cartouche.RecoveryBit,
-    Signer,
-    Transaction,
-    Keys,
-    PDA,
-    ATA,
-    Programs,
-    SystemProgram,
-    TokenProgram,
-    Token,
-    RPC,
     Cartouche.Transaction,
     V1,
     V2,
@@ -84,17 +62,7 @@ defmodule Cartouche do
     transaction_v1: V1,
     transaction_v2: V2,
     erc20_call_data: CallData,
-    erc20_call: Call,
-    solana_signer: Signer,
-    solana_transaction: Transaction,
-    solana_keys: Keys,
-    solana_pda: PDA,
-    solana_ata: ATA,
-    solana_programs: Programs,
-    solana_system_program: SystemProgram,
-    solana_token_program: TokenProgram,
-    solana_token: Token,
-    solana_rpc: RPC
+    erc20_call: Call
   }
 
   @descripex_summary_names Map.new(@descripex_aliases, fn {short_name, module} -> {module, short_name} end)

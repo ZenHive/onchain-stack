@@ -30,7 +30,7 @@ defmodule Cartouche.MixProject do
       deps: deps(),
       aliases: aliases(),
       name: "Cartouche",
-      description: "Lightweight Ethereum and Solana RPC client for Elixir",
+      description: "Lightweight Ethereum RPC client for Elixir",
       source_url: @source_url,
       docs: [
         main: "readme",

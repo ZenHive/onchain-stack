@@ -33,7 +33,7 @@ defmodule Mix.Tasks.Onchain.Bounds do
 
   use Mix.Task
 
-  @packages ~w(hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_tempo)
+  @packages ~w(hieroglyph cartouche onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo)
 
   @doc "The package roster, in cascade order (upstream first)."
   @spec packages() :: [String.t()]

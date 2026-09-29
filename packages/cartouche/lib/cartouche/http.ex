@@ -11,7 +11,7 @@ defmodule Cartouche.HTTP do
     1. `base` — the transport-built options (`:method`, `:url`, `:headers`, `:body`,
        `:receive_timeout`, plus `decode_body: false` and `retry: false`).
     2. `config :cartouche, <owner>, [...]` — per-transport options keyed by the calling
-       module (`Cartouche.RPC`, `Cartouche.Solana.RPC`, or the hidden OpenChain API
+       module (`Cartouche.RPC`, or the hidden OpenChain API
        transport). This
        is where test/consumer code injects a stub `:plug`; production leaves it unset.
     3. `config :cartouche, :req_options, [...]` — the global production seam (a custom
