@@ -22,10 +22,8 @@ defmodule Cartouche.Signer do
   (EIP-2). Low-s canonicalization is applied at the emission funnel, not by
   the configured backend: both the `{backend, config}` path and the legacy
   MFA path pass through `Cartouche.Recover.normalize_low_s/1` before the
-  recovery-bit search and EIP-155 packing. The MFA carrier is kept because
-  `sign_direct/4` is the production signing route in the downstream `onchain`
-  repo; migrating that call site is a separate task. It cannot bypass the
-  invariant.
+  recovery-bit search and EIP-155 packing. The MFA carrier remains available
+  for existing callers and cannot bypass the invariant.
 
   Note: we also enforce that a given signer process knows its public key,
   such that we can verify signatures recovery bits. That is, since CloudKMS
@@ -314,13 +312,14 @@ defmodule Cartouche.Signer do
     {:reply, chain_id, state}
   end
 
-  api(:sign_direct, "Sign a message directly with a signing MFA and known signer address.",
+  api(:sign_direct, "Sign a message directly with a backend carrier or MFA and known signer address.",
     params: [
       message: [kind: :value, description: "Message bytes or string to sign."],
       address: [kind: :value, description: "20-byte Ethereum address expected to recover from the signature."],
       signer_mfa: [
         kind: :value,
-        description: "`{module, function, args}` tuple that performs the raw secp256k1 signature."
+        description:
+          "`{backend_module, config}` implementing `Cartouche.Signer.Backend`, or a legacy `{module, function, args}` MFA."
       ],
       chain_id_or_name: [
         kind: :value,
@@ -340,11 +339,18 @@ defmodule Cartouche.Signer do
 
   This is mostly used internally, but can be used safely externally as well.
   The returned packed `r || s || v` signature is always low-s (EIP-2), regardless of
-  whether the MFA backend normalized. Width follows `Cartouche.signature()`:
+  whether the backend normalized. Width follows `Cartouche.signature()`:
   65 bytes when EIP-155 `v` fits in one byte, longer when it does not.
+
+  Backend carriers must use `:secp256k1` and receive the message's keccak digest
+  through `sign_payload/2`. Legacy MFAs receive the original message.
   """
-  @spec sign_direct(String.t(), binary(), {module(), atom(), [any()]}, integer() | atom() | nil) ::
-          {:ok, Cartouche.signature()} | {:error, String.t()}
+  @spec sign_direct(binary(), binary(), Backend.t() | {module(), atom(), [any()]}, integer() | atom() | nil) ::
+          {:ok, Cartouche.signature()} | {:error, term()}
+  def sign_direct(message, address, {backend, _config} = carrier, chain_id_or_name) when is_atom(backend) do
+    backend_sign(carrier, message, address, chain_id_or_name)
+  end
+
   def sign_direct(message, address, {mod, fun, args}, chain_id_or_name) do
     with {:ok, %Cartouche.Signature{} = signature} <-
            apply(mod, fun, [message] ++ args) do

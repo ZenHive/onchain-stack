@@ -4,6 +4,7 @@ defmodule Cartouche.SignerTest do
 
   alias Cartouche.Signer
   alias Cartouche.Signer.Secp256k1
+  alias Cartouche.SignerTest.Ed25519Backend
   alias Cartouche.SignerTest.FixedSignature
   alias Cartouche.SignerTest.HighSBackend
 
@@ -29,6 +30,24 @@ defmodule Cartouche.SignerTest do
   end
 
   describe "sign_direct/4" do
+    test "backend carrier preserves the MFA digest and signature" do
+      message = <<0, 255, 1, 128>>
+      mfa = {Secp256k1, :sign, [@priv_key]}
+
+      for chain_id <- [0, 1, 8453] do
+        assert {:ok, signature} = Signer.sign_direct(message, @address, {Secp256k1, @priv_key}, chain_id)
+        assert {:ok, ^signature} = Signer.sign_direct(message, @address, mfa, chain_id)
+        assert Cartouche.Recover.recover_eth(message, signature) == @address
+      end
+    end
+
+    test "rejects an ed25519 backend before dispatching a signature" do
+      assert {:error, {:algorithm_mismatch, :secp256k1, :ed25519}} =
+               Signer.sign_direct("test", @address, {Ed25519Backend, self()}, 1)
+
+      refute_received {:sign_payload, _}
+    end
+
     test "produces a 65-byte EIP-155 signature recoverable to the address" do
       mfa = {Secp256k1, :sign, [@priv_key]}
 

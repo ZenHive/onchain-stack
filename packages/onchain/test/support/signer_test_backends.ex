@@ -53,3 +53,23 @@ defmodule Cartouche.Test.HighSSignerBackend do
     end
   end
 end
+
+defmodule Cartouche.SignerTest.Ed25519Backend do
+  @moduledoc false
+  @behaviour Cartouche.Signer.Backend
+
+  @impl true
+  @spec algorithm(pid()) :: :ed25519
+  def algorithm(_owner), do: :ed25519
+
+  @impl true
+  @spec public_key(pid()) :: {:ok, binary()}
+  def public_key(_owner), do: {:ok, <<0::256>>}
+
+  @impl true
+  @spec sign_payload(binary(), pid()) :: {:ok, <<_::512>>}
+  def sign_payload(payload, owner) do
+    send(owner, {:sign_payload, payload})
+    {:ok, <<0::512>>}
+  end
+end

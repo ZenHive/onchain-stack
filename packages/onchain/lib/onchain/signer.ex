@@ -206,9 +206,8 @@ defmodule Onchain.Signer do
     with {:ok, key_bin} <- decode_private_key(private_key),
          {:ok, addr_bin} <- safe_get_address(key_bin, private_key) do
       encoded = V2.encode(unsigned_trx)
-      mfa = {Secp256k1, :sign, [key_bin]}
 
-      case Cartouche.Signer.sign_direct(encoded, addr_bin, mfa, chain_id) do
+      case Cartouche.Signer.sign_direct(encoded, addr_bin, {Secp256k1, key_bin}, chain_id) do
         {:ok, signature} ->
           {:ok, V2.add_signature(unsigned_trx, signature)}
 
