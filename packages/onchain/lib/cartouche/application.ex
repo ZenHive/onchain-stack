@@ -11,10 +11,6 @@ defmodule Cartouche.Application do
   @spec chain_id() :: integer()
   def chain_id, do: Cartouche.Chain.parse_id(Application.get_env(:cartouche, :chain_id, 1))
 
-  @doc false
-  @spec ethereum_node() :: String.t()
-  def ethereum_node, do: Application.get_env(:cartouche, :ethereum_node, "https://mainnet.infura.io")
-
   @impl true
   def start(_type, _args) do
     eth_signers = Application.get_env(:cartouche, :signer, [])
