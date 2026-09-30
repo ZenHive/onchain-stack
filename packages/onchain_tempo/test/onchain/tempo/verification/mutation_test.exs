@@ -66,6 +66,9 @@ defmodule Onchain.Tempo.Verification.MutationTest do
 
     assert length(results) == length(Campaign.mutants())
 
+    recorded = Map.new(ledger["mutations"], &{&1["id"], &1["status"]})
+    assert recorded == Map.new(results, &{&1.id, Atom.to_string(&1.status)})
+
     assert Enum.all?(
              results,
              &(&1.class in [

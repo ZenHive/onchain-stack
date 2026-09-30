@@ -1,6 +1,10 @@
 defmodule Onchain.Tempo.Verification.Campaign.Mutant do
   @moduledoc false
 
+  # One planted mutation: which file to patch, the exact literal to swap, and
+  # how to classify the result. A bare map with the same seven keys at every
+  # call site trips reach's "repeated map shapes" check; it is a contract.
+
   @enforce_keys [:id, :canary?, :surface, :file, :replace, :with, :class]
   defstruct [:id, :canary?, :surface, :file, :replace, :with, :class]
 
@@ -59,12 +63,21 @@ defmodule Onchain.Tempo.Verification.Campaign do
       %Mutant{
         id: "canary_key_authorization_fee_hash",
         canary?: true,
-        surface: :codec,
-        file: @codec_rel,
-        replace:
-          "  def run(operation, request) do\n    with {:ok, json} <- Jason.encode(Map.put(request, \"operation\", operation)),",
+        surface: :native,
+        file: @native_rel,
+        replace: "Ok(json!(tx.fee_payer_signature_hash(sender)))",
         with:
-          ~s|  def run(operation, request) do\n    request =\n      if operation == "fee_hash" do\n        Map.update!(request, "transaction", fn tx -> Map.put(tx, "keyAuthorization", nil) end)\n      else\n        request\n      end\n\n    with {:ok, json} <- Jason.encode(Map.put(request, "operation", operation)),|,
+          "let mut tx = tx;\n            tx.key_authorization = None;\n            Ok(json!(tx.fee_payer_signature_hash(sender)))",
+        class: :key_authorization
+      },
+      %Mutant{
+        id: "key_authorization_sender_prepare",
+        canary?: false,
+        surface: :native,
+        file: @native_rel,
+        replace: "let mut payload = Vec::new();\n            tx.encode_for_signing(&mut payload);",
+        with:
+          "let mut tx = tx;\n            tx.key_authorization = None;\n            let mut payload = Vec::new();\n            tx.encode_for_signing(&mut payload);",
         class: :key_authorization
       },
       %Mutant{
@@ -170,8 +183,10 @@ defmodule Onchain.Tempo.Verification.Campaign do
       {:error, {:pattern_missing, _} = reason} ->
         Map.merge(mutant_meta(mutant), %{status: :invalid, evidence: reason})
 
+      # A source mutant that no longer builds tested nothing; the patterns are
+      # chosen to compile, so a build failure breaks the campaign.
       {:error, reason} ->
-        Map.merge(mutant_meta(mutant), %{status: :killed, evidence: {:compile_error, reason}})
+        Map.merge(mutant_meta(mutant), %{status: :invalid, evidence: {:build_failed, reason}})
 
       result when is_map(result) ->
         result
@@ -297,6 +312,10 @@ defmodule Onchain.Tempo.Verification.Campaign do
         nil -> {:error, {:module_missing, Enum.map(compiled, &elem(&1, 0))}}
       end
     catch
+      # Deliberately `catch`, not `rescue`: this compiles attacker-shaped
+      # source, and a mutated module can exit or throw as well as raise — a
+      # `rescue` would let those escape and abort the campaign instead of
+      # recording the mutant as uncompilable.
       kind, reason -> {:error, Exception.format_banner(kind, reason)}
     after
       Code.put_compiler_option(:ignore_module_conflict, previous)
@@ -428,21 +447,33 @@ defmodule Onchain.Tempo.Verification.Campaign do
 
     case Transaction.deserialize(vector["serialized"]) do
       {:ok, tx} ->
-        with {:ok, sender} <- txmod_sender(Transaction, tx),
-             transaction = Map.put(tx.fields["transaction"], "feeToken", Codec.hex(fee_token)),
-             {:ok, hash} <-
-               Codec.run("fee_hash", %{"transaction" => transaction, "sender" => Codec.hex(sender)}) do
-          if hash == vector["fee_payer_hash"] do
-            []
-          else
-            [{:key_auth_fee_hash, hash, vector["fee_payer_hash"]}]
-          end
-        else
-          other -> [{:key_auth_fee_hash_error, other}]
-        end
+        key_auth_signing_mismatches(tx, vector) ++ key_auth_fee_hash_mismatches(tx, vector, fee_token)
 
       other ->
         [{:key_auth_deserialize, other}]
+    end
+  end
+
+  @spec key_auth_signing_mismatches(term(), map()) :: [term()]
+  defp key_auth_signing_mismatches(tx, vector) do
+    expected = vector["signing_hash"]
+
+    case Codec.run("prepare", %{"transaction" => tx.fields["transaction"]}) do
+      {:ok, %{"hash" => ^expected}} -> []
+      {:ok, %{"hash" => hash}} -> [{:key_auth_signing_hash, hash, expected}]
+      other -> [{:key_auth_signing_hash_error, other}]
+    end
+  end
+
+  @spec key_auth_fee_hash_mismatches(term(), map(), binary()) :: [term()]
+  defp key_auth_fee_hash_mismatches(tx, vector, fee_token) do
+    transaction = Map.put(tx.fields["transaction"], "feeToken", Codec.hex(fee_token))
+
+    with {:ok, sender} <- Transaction.sender(tx),
+         {:ok, hash} <- Codec.run("fee_hash", %{"transaction" => transaction, "sender" => Codec.hex(sender)}) do
+      if hash == vector["fee_payer_hash"], do: [], else: [{:key_auth_fee_hash, hash, vector["fee_payer_hash"]}]
+    else
+      other -> [{:key_auth_fee_hash_error, other}]
     end
   end
 
@@ -453,9 +484,6 @@ defmodule Onchain.Tempo.Verification.Campaign do
     |> File.read!()
     |> Jason.decode!()
   end
-
-  @spec txmod_sender(module(), term()) :: {:ok, binary()} | {:error, term()}
-  defp txmod_sender(txmod, tx), do: txmod.sender(tx)
 
   @spec check_self_paid_identity(module()) :: [term()]
   defp check_self_paid_identity(txmod) do
@@ -469,7 +497,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
 
   @spec identity_mismatches(module(), term(), map()) :: [term()]
   defp identity_mismatches(txmod, tx, paid) do
-    sender_ok = sender_matches?(txmod_sender(txmod, tx), paid["sender"])
+    sender_ok = sender_matches?(txmod.sender(tx), paid["sender"])
 
     case {tx.chain_id, sender_ok, tx.calls} do
       {42_431, true, [_]} -> []
@@ -501,7 +529,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
   @spec cosign_result(module(), term(), map()) :: [term()]
   defp cosign_result(txmod, cosigned, fp) do
     bytes = same_hex(cosigned.raw, fp["cosigned"], :cosign)
-    sender_ok = sender_matches?(txmod_sender(txmod, cosigned), fp["sender"])
+    sender_ok = sender_matches?(txmod.sender(cosigned), fp["sender"])
 
     case {bytes, sender_ok} do
       {[], true} -> []

@@ -62,7 +62,10 @@
     },
     "spec": {
       "url": "https://docs.tempo.xyz/protocol/transactions/spec-tempo-transaction",
-      "rules": ["TEMPO-2", "TEMPO-3"]
+      "rules": [
+        "TEMPO-2",
+        "TEMPO-3"
+      ]
     },
     "live": {
       "evidence": "priv/verification/0x76/native_live_evidence.json",
@@ -100,10 +103,18 @@
     {
       "id": "canary_key_authorization_fee_hash",
       "class": "key_authorization",
-      "surface": "codec",
+      "surface": "native",
       "canary": true,
       "status": "killed",
-      "evidence": "fee_hash strips keyAuthorization; tempo_primitives_key_authorization fee_payer_hash mismatch"
+      "evidence": "native fee_hash arm sets key_authorization = None before fee_payer_signature_hash; 0x78 hash 0x9ccab5df\u2026 != tempo_primitives_key_authorization fee_payer_hash 0x2f3c4819\u2026"
+    },
+    {
+      "id": "key_authorization_sender_prepare",
+      "class": "key_authorization",
+      "surface": "native",
+      "canary": false,
+      "status": "killed",
+      "evidence": "native prepare arm drops key_authorization from the 0x76 sender preimage; signing hash diverges from tempo_primitives_key_authorization signing_hash"
     },
     {
       "id": "type_byte_decode",
@@ -179,7 +190,7 @@
     }
   ],
   "survivors": [],
-  "survivor_review": "Twelve mutants (three canaries) target native/onchain_tempo glue, Codec signing, Transaction co-sign mapping, and Builder field order. All were killed by the ox vector, key_authorization, and recovery oracle; no equivalent or unreachable survivors.",
+  "survivor_review": "Thirteen mutants (three canaries) target native/onchain_tempo glue, Codec signing, Transaction co-sign mapping, and Builder field order. All were killed by the ox vector, key_authorization (0x76 signing hash and 0x78 fee-payer hash), and recovery oracles; a native mutant that fails to build is recorded invalid, never killed. No equivalent, unreachable, redundant or genuine-gap survivors.",
   "negative_control": {
     "canaries": [
       "canary_field_rlp_skip",
