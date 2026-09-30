@@ -16265,7 +16265,7 @@
       "phase": 9100,
       "bundle": "onchain_core_consolidation",
       "target_repo": "onchain",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Replace the transaction and EIP-712 JSON NIF boundary",
       "scores": {
         "d": 6,
@@ -16298,6 +16298,7 @@
       ],
       "body": "9032 routes every typed-transaction and EIP-712 call through the NIF as JSON. packages/onchain/bench/transactions-outcome.json (before revision 2b2eb421) records median ips falling about 6.2x for EIP-1559 encode, 5.8x for EIP-7702, 19.1x for raw decode and 2.4x for an EIP-712 permit hash. The reviewer attributes the gap to the JSON crossing; Benchee cannot see NIF allocations, so BEAM memory does not explain it.\n\nCut the crossing cost — a BEAM term codec at the NIF boundary, or whatever the measurements point to. Performance stays reporting-only (operator decision 2026-09-29): no threshold, no gate.\n",
       "created_at": "2026-09-30",
+      "started_at": "2026-09-30",
       "scored_at": "2026-09-30",
       "cross_repo": []
     },
