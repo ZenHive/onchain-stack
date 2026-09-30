@@ -112,8 +112,8 @@ USDC.balance_of(contract_addr, holder, rpc_url: url)   # => {:ok, [balance]}
 USDC.symbol!(contract_addr, rpc_url: url)              # bang variant
 ```
 
-**Inputs (precedence order — first present wins):** `:abi_json`, `:abi_file`,
-`:sol`, `:sol_file`. Solidity sources also take `:remappings` and `:root_contract`
+**Inputs (first match wins):** `:sol`, `:sol_file`, `:abi_json`, `:abi_file`.
+ABI JSON needs only `onchain`. Solidity inputs resolve in this package. Solidity sources also take `:remappings` and `:root_contract`
 for import resolution. Generated modules expose one function per ABI entry (snake_cased,
 overloads disambiguated), bang twins, enum-constant functions (`status_pending/0`),
 `from_raw/1` for struct/array decoding, and a nested `Multicall` with typed

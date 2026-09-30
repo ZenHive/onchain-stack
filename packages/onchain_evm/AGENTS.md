@@ -608,12 +608,11 @@ than failing the gate). Coverage floor is **85%**.
   `test_coverage: [ignore_modules: …]` in `mix.exs`. A residual cosmetic
   "coverage data may be incomplete" warning about those two modules can
   surface inside the full pipeline; it does not affect the threshold (the
-  report set is the 6 non-NIF modules, deterministically).
-- **Sobelow baseline (`.sobelow-skips`, tracked, 5 lines).** The skip set is
-  the codegen's `String.to_atom` calls in `lib/onchain/contract/generator.ex`
-  (it creates not-yet-defined identifiers — `to_existing_atom` is impossible)
-  plus operator-supplied `File.read` paths in `solidity.ex` /
+  report set is the 5 non-NIF modules, deterministically).
+- **Sobelow baseline (`.sobelow-skips`, tracked, 4 lines).** The skip set is
+  operator-supplied `File.read` paths in `solidity.ex` /
   `solidity/resolver.ex` (caller-derived `.sol` paths, not web input).
+  Compile-time `String.to_atom` lives with `Onchain.Contract.Generator` in onchain.
   Regenerate from live state with `mix sobelow --mark-skip-all` after fixing
   a finding or when line shifts invalidate the hashes; never hand-edit.
 - `deps.audit.gated` runs against `.mix_audit_ignore` (symlinked from the
@@ -658,15 +657,13 @@ lib/onchain/
   evm.ex                      # Rustler NIF: revm local EVM execution
   evm/
     params.ex                 # cover-able sibling: pure-Elixir input validation + NIF-param assembly
-  solidity.ex                 # Rustler NIF: Alloy-powered Solidity ABI parser
+  solidity.ex                 # Rustler NIF: solar-parse frontend; ABI JSON delegates to onchain
   solidity/
     resolver.ex               # cover-able sibling: import/remapping resolution
   trace.ex                    # debug/trace APIs (trace_transaction, trace_call, storage_at)
-  contract/
-    generator.ex              # macro: .sol → typed Elixir module at compile time
 native/
   onchain_evm/                # Rust crate (revm, alloy)
-  onchain_solidity/            # Rust crate (alloy-json-abi, solar-parse)
+  onchain_solidity/            # Rust crate (solar-parse). ABI JSON parsing lives in onchain.
 priv/
   abis/
     chainlink_aggregator.json

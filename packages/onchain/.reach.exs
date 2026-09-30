@@ -9,6 +9,12 @@
 # Reach's global and per-check ignores accept `paths:`/`modules:`. Global
 # exclusions below hide only shapes inherent to metaprogramming:
 #
+#   * "unsafe atom creation" in lib/onchain/contract/generator.ex —
+#     `String.to_atom/1` creates the identifiers the generator emits.
+#     `String.to_existing_atom/1` is impossible for a not-yet-defined function.
+#   * Generated bindings under lib/cartouche/contract/** and the hand-written
+#     test contracts that mimic that old surface.
+#
 [
   # Keep all hand-written sources; exclude only generated yecc/leex Erlang.
   checks: [source_paths: ["lib", "dev", "sol/src", "test/support"]],
@@ -18,15 +24,24 @@
     strict: true,
     ignore: [
       paths: [
+        "lib/onchain/contract/generator.ex",
         "lib/cartouche/contract/**",
         "test/support/cartouche/contract/**"
       ]
     ],
-    # `Cartouche.Filter` contains one provider-owned ABI argument map. It only
-    # crosses the repetition threshold when grouped with generated IERC20 maps;
-    # this exception applies solely to that check, not other Filter smells.
+    # The `{indexed, name, type}` map is the public ABI argument shape
+    # (`ABI.FunctionSelector` types and event filters), not an anonymous
+    # literal. Generated `IConsole` used to be the grouped site and was
+    # excluded with the other contract bindings. These two hand-written
+    # producers are the same contract. This exception applies solely to
+    # that check.
     fixed_shape_map: [
-      ignore: [paths: ["lib/cartouche/filter.ex"]]
+      ignore: [
+        paths: [
+          "lib/abi/function_selector.ex",
+          "lib/cartouche/filter.ex"
+        ]
+      ]
     ]
   ]
 ]

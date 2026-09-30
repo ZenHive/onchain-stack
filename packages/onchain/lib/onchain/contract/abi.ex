@@ -19,6 +19,8 @@ defmodule Onchain.Contract.ABI do
   @doc "Reads and parses an ABI JSON file."
   @spec parse_abi_file(String.t()) :: {:ok, parsed_abi()} | {:error, term()}
   def parse_abi_file(path) do
+    # Caller-supplied ABI path, same class as other library file readers. Not web input.
+    # sobelow_skip ["Traversal.FileModule"]
     case File.read(path) do
       {:ok, json} -> parse_abi_json(json)
       {:error, reason} -> {:error, {:file_error, "#{path}: #{reason}"}}

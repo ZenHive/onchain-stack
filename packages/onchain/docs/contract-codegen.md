@@ -86,7 +86,7 @@ cargo test --manifest-path native/onchain_solidity/Cargo.toml
 ```
 
 The scoped coverage script enforces 80% for `Onchain.Contract.Generator`;
-measured coverage is 92.65% (252/272 executable lines). It includes constructors,
+measured coverage is 92.67% (253/273 executable lines). It includes constructors,
 events, errors, tuple arguments and overloaded functions through the ABI tests,
 and source structs, enums, NatSpec and import resolution through the EVM tests.
 

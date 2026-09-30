@@ -77,7 +77,7 @@ pipeline.
 | `Onchain.EVM` | Local EVM execution — fork chain state, simulate calls/transactions/batches |
 | `Onchain.Solidity` | Alloy-powered Solidity ABI parser (JSON ABI, `.sol` source, import resolution) |
 | `Onchain.Trace` | Debug/trace APIs — `trace_transaction`, `trace_call`, `storage_at` |
-| `Onchain.Contract.Generator` | `.sol` file → typed Elixir module at compile time |
+| `Onchain.Contract.Generator` | Typed modules from ABI JSON (lives in `onchain`). `.sol` inputs resolve here and call that generator |
 
 ## EVM Simulation
 
@@ -113,7 +113,7 @@ Every public function has a bang (`!`) variant that raises on error.
 
 ## Contract Codegen
 
-Generate a typed module from a `.sol` file or JSON ABI at compile time:
+Generate a typed module at compile time. ABI JSON needs only `onchain`. `.sol` and `:sol_file` resolve in this package, then call the core generator:
 
 ```elixir
 defmodule USDC do
@@ -123,7 +123,7 @@ end
 USDC.balance_of(contract, holder, rpc_url: url)   # => {:ok, [balance]}
 ```
 
-Generator inputs (in precedence order): `:abi_json`, `:abi_file`, `:sol`, `:sol_file`. Solidity sources support `:remappings` (Foundry-style) and `:root_contract` for import resolution. Each generated module also emits a nested `Multicall` with typed call builders and result decoders for `Onchain.Multicall.aggregate3/2`.
+Generator inputs (first match wins): `:sol`, `:sol_file`, `:abi_json`, `:abi_file`. Solidity sources support `:remappings` (Foundry-style) and `:root_contract` for import resolution. Each generated module also emits a nested `Multicall` with typed call builders and result decoders for `Onchain.Multicall.aggregate3/2`.
 
 ## Discovery
 

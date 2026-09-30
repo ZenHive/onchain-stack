@@ -140,6 +140,7 @@ balance = Onchain.ERC20.balance_of!(usdc, "0xYourAddress")
 | `Onchain.RPC.Helpers` | Shared RPC helpers (hex normalization, block tags, tx hash validation; `parse_block_response/1`, `parse_transaction_map/1`; execution-revert maps get `:data` hex for `decode_error/2`) |
 | `Onchain.Block` | Block fetching with parsed fields, timestamp-based binary search |
 | `Onchain.Contract` | Generic contract call (encode -> eth_call -> decode in one function) |
+| `Onchain.Contract.Generator` | Compile-time codegen from ABI JSON (`use` with `:abi_json` or `:abi_file`). `.sol` inputs need `onchain_evm` |
 | `Onchain.Multicall` | Batch multiple eth_call via Multicall3 |
 | `Cartouche.Sleuth.deploy_query/5` | Deploy-as-call: ship creation bytecode in one eth_call, decode returned bytes |
 | `Onchain.Log` | Event log parsing against ABI signatures |

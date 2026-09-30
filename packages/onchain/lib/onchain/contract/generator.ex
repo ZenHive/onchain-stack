@@ -157,10 +157,12 @@ defmodule Onchain.Contract.Generator do
         frontend = Onchain.Solidity
 
         if not Code.ensure_loaded?(frontend) do
-          raise ArgumentError, ".sol codegen requires the onchain_evm package; use :abi_json or :abi_file in core"
+          raise ArgumentError,
+                ".sol codegen requires the onchain_evm package; use :abi_json or :abi_file in core"
         end
 
-        # --- Name Conversion ---
+        # Direct call warns: onchain_evm is optional and not a compile-time dependency.
+        # credo:disable-for-next-line Credo.Check.Refactor.Apply
         apply(frontend, :resolve_generator_input, [opts, env])
 
       json = Keyword.get(opts, :abi_json) ->
@@ -173,9 +175,9 @@ defmodule Onchain.Contract.Generator do
         raise ArgumentError,
               "use Onchain.Contract.Generator requires :sol, :sol_file, :abi_json, or :abi_file option"
     end
-
-    # --- Overload Disambiguation ---
   end
+
+  # --- Name Conversion ---
 
   @doc false
   @spec to_snake_case(String.t()) :: String.t()
@@ -185,6 +187,8 @@ defmodule Onchain.Contract.Generator do
     |> String.replace(~r/([a-z0-9])([A-Z])/, "\\1_\\2")
     |> String.downcase()
   end
+
+  # --- Overload Disambiguation ---
 
   @doc false
   @spec disambiguate([map()]) :: [map()]
@@ -198,23 +202,25 @@ defmodule Onchain.Contract.Generator do
   @spec disambiguate_collisions([map()]) :: [map()]
   defp disambiguate_collisions(functions) do
     Enum.map(functions, fn f ->
-      collisions = Enum.filter(functions, &(&1.elixir_name == f.elixir_name and arities_overlap?(f, &1)))
+      collisions =
+        Enum.filter(functions, &(&1.elixir_name == f.elixir_name and arities_overlap?(f, &1)))
 
-      case collisions do
-        [_single] ->
-          f
-
-        _ ->
-          suffix =
-            if Enum.any?(collisions, &(length(&1.inputs) != length(f.inputs))) do
-              Integer.to_string(length(f.inputs))
-            else
-              disambiguation_suffix(f, collisions)
-            end
-
-          %{f | elixir_name: f.elixir_name <> "_" <> suffix}
-      end
+      rename_collision(f, collisions)
     end)
+  end
+
+  @spec rename_collision(map(), [map()]) :: map()
+  defp rename_collision(function, [_single]), do: function
+
+  defp rename_collision(function, collisions) do
+    suffix =
+      if Enum.any?(collisions, &(length(&1.inputs) != length(function.inputs))) do
+        Integer.to_string(length(function.inputs))
+      else
+        disambiguation_suffix(function, collisions)
+      end
+
+    %{function | elixir_name: function.elixir_name <> "_" <> suffix}
   end
 
   @spec arities_overlap?(map(), map()) :: boolean()
@@ -241,17 +247,15 @@ defmodule Onchain.Contract.Generator do
     my_types = Enum.map(func.inputs, & &1.ty)
 
     # Find first type position unique to this overload
+    # All types match (shouldn't happen with same arity), use full input count
     my_types
     |> Enum.with_index()
-    # --- Mutability Split ---
-    # All types match (shouldn't happen with same arity), use full input count
     |> Enum.find_value(&unique_type_suffix(&1, other_input_sets))
     |> Kernel.||("#{length(func.inputs)}")
   end
 
   @doc false
   @spec solidity_type_to_suffix(String.t()) :: String.t()
-  # --- Code Generation ---
   defp solidity_type_to_suffix("address"), do: "address"
   defp solidity_type_to_suffix("bool"), do: "bool"
   defp solidity_type_to_suffix("string"), do: "string"
@@ -267,6 +271,8 @@ defmodule Onchain.Contract.Generator do
       solidity_type_to_suffix(my_type)
     end
   end
+
+  # --- Mutability Split ---
 
   @doc false
   @spec split_by_mutability([map()]) :: {[map()], [map()]}
@@ -324,9 +330,8 @@ defmodule Onchain.Contract.Generator do
   # names, param/local variable names, struct field keys — must be an atom, and the
   # atom does not exist until the macro creates it, so `String.to_existing_atom/1`
   # cannot be used. Input is a developer-supplied .sol/ABI at compile time (never
-  # runtime user input) and atom growth is bounded by the contract, so Sobelow's
-  # DOS.StringToAtom finding is a confirmed false positive, centralized to this one
-  # documented, skip-anchored call site.
+  # runtime user input) and atom growth is bounded by the contract.
+  # sobelow_skip ["DOS.StringToAtom"]
   @spec to_identifier_atom(String.t()) :: atom()
   defp to_identifier_atom(name), do: String.to_atom(name)
 
@@ -442,6 +447,8 @@ defmodule Onchain.Contract.Generator do
     end
   end
 
+  # --- Code Generation ---
+
   @doc false
   @spec generate_read_function(atom(), atom(), map(), [{atom(), String.t()}], [{atom(), atom()}], String.t()) ::
           [Macro.t()]
@@ -545,8 +552,6 @@ defmodule Onchain.Contract.Generator do
 
     validated_map = Map.new(address_validations)
 
-    # --- Multicall Generation ---
-
     call_params =
       Enum.map(input_vars, fn {vname, _ty} ->
         case Map.get(validated_map, vname) do
@@ -610,6 +615,8 @@ defmodule Onchain.Contract.Generator do
     {:with, [], validation_clauses ++ [encode_clause] ++ [[do: body]]}
   end
 
+  # --- Multicall Generation ---
+
   @doc false
   @spec generate_multicall_module([map()]) :: Macro.t()
   defp generate_multicall_module(functions) do
@@ -654,7 +661,6 @@ defmodule Onchain.Contract.Generator do
       Enum.map(input_vars, fn {vname, _ty} ->
         case Map.get(validated_map, vname) do
           nil -> Macro.var(vname, nil)
-          # --- Type Mapping ---
           validated -> Macro.var(validated, nil)
         end
       end)
@@ -726,8 +732,9 @@ defmodule Onchain.Contract.Generator do
     {:with, [], [contract_clause] ++ validation_clauses ++ [encode_clause] ++ [[do: body]]}
   end
 
+  # --- Type Mapping ---
+
   @doc false
-  # --- Struct Generation (.sol only) ---
   @spec input_spec_types([{atom(), String.t()}]) :: [Macro.t()]
   defp input_spec_types(input_vars) do
     Enum.map(input_vars, fn {_name, ty} -> solidity_to_elixir_spec(ty) end)
@@ -802,14 +809,15 @@ defmodule Onchain.Contract.Generator do
     end
   end
 
+  # --- Struct Generation (.sol only) ---
+
   @doc false
-  @spec generate_struct_modules(ABI.parsed_abi(), module()) :: [Macro.t()]
+  @spec generate_struct_modules(map(), module()) :: [Macro.t()]
   defp generate_struct_modules(abi, parent_module) do
     structs = Map.get(abi, :structs, [])
     struct_names = MapSet.new(structs, & &1.name)
 
     Enum.map(structs, fn struct_info ->
-      # --- Enum Generation (.sol only) ---
       mod_name = Module.concat(parent_module, struct_info.name)
       field_atoms = Enum.map(struct_info.fields, fn f -> to_identifier_atom(to_snake_case(f.name)) end)
 
@@ -915,8 +923,10 @@ defmodule Onchain.Contract.Generator do
   defp solidity_to_struct_type("uint" <> _), do: quote(do: non_neg_integer())
   defp solidity_to_struct_type(_), do: quote(do: term())
 
+  # --- Enum Generation (.sol only) ---
+
   @doc false
-  @spec generate_enum_fns(ABI.parsed_abi()) :: [Macro.t()]
+  @spec generate_enum_fns(map()) :: [Macro.t()]
   defp generate_enum_fns(abi) do
     enums = Map.get(abi, :enums, [])
 

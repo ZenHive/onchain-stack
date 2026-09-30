@@ -609,10 +609,12 @@ lib/onchain/
     formatter.ex    # display-rule engine: path resolution + field formatters
   block.ex          # block queries
   contract.ex       # generic call/4 (encode → eth_call → decode)
+  contract/
+    abi.ex          # alloy-json-abi JSON parser (core NIF)
+    generator.ex    # compile-time ABI JSON codegen; .sol inputs delegate to onchain_evm
   log.ex            # event log queries
   wallet.ex         # classify (EOA/contract), native ETH balance
   multicall.ex      # batched calls via Multicall3
-  sleuth.ex         # Compound-style deploy-as-call: ship bytecode in eth_call, decode returned bytes
   ens.ex            # ENS resolution: namehash, resolve, reverse, records; address/3 multi-coin (ENSIP-9/10 wildcard + EIP-3668 CCIP-Read); normalize/1, dns_encode/1, evm_coin_type/1
   ens/
     normalize.ex    # UTS-46/ENSIP-15 name normalization (deterministic subset: case-fold + NFC + ignored/disallowed code points)
@@ -630,7 +632,7 @@ lib/onchain/
 ```
 
 **Lives in onchain_aave:** `aave/` (math, contracts, pool, oracle, faucet, ui_pool_data_provider, types/)
-**Lives in onchain_evm:** `evm.ex`, `solidity.ex`, `trace.ex`, `contract/generator.ex`, `native/`
+**Lives in onchain_evm:** `evm.ex`, `solidity.ex`, `trace.ex`, `native/`
 
 ## Testing
 
@@ -702,8 +704,8 @@ the keys are still read by the unchanged modules. Namespace/config migration
 belongs to the subsequent rename task.
 
 Full QA runs `mix onchain.coverage`: ABI retains 95%, Cartouche retains 85%,
-and the Cartouche signer modules retain a separate 95% floor; Onchain retains 70%. Generated
-`Cartouche.Contract.IConsole` keeps its pre-existing coverage exclusion.
+and the Cartouche signer modules retain a separate 95% floor; Onchain retains 70%.
+`Cartouche.Contract.IConsole` and its coverage exclusion are gone; `Cartouche.Contract.Sleuth` is a thin `use` of `Onchain.Contract.Generator`.
 The original strict Doctor policies are retained in `.doctor-hieroglyph.exs`
 and `.doctor-cartouche.exs`. The ABI manifest check remains in full QA.
 

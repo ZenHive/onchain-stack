@@ -279,6 +279,14 @@ defmodule Onchain.Contract.GeneratorTest do
       result = Generator.resolve_abi(abi_json: "[]")
       assert result.functions == []
     end
+
+    if !Code.ensure_loaded?(Onchain.Solidity) do
+      test "sol input without the Solidity frontend names the missing package" do
+        assert_raise ArgumentError, ~r/onchain_evm/, fn ->
+          Generator.resolve_abi(sol: "contract C {}")
+        end
+      end
+    end
   end
 
   defp raw_result(type, values) do

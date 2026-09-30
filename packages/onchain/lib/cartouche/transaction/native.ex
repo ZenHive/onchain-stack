@@ -86,7 +86,10 @@ defmodule Cartouche.Transaction.Native do
     ]
 
     Enum.each(widths, fn {field, width} ->
-      if Map.has_key?(transaction, field), do: validate_uint!(Map.fetch!(transaction, field), field, width)
+      case Map.fetch(transaction, field) do
+        {:ok, value} -> validate_uint!(value, field, width)
+        :error -> :ok
+      end
     end)
 
     :ok

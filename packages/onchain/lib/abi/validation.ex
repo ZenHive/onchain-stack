@@ -182,7 +182,7 @@ defmodule ABI.Validation do
   end
 
   defp rewrite({:array, type}, <<count::256, rest::binary>>) do
-    <<count::256>> <> rewrite({:array, type, count}, rest)
+    IO.iodata_to_binary([<<count::256>>, rewrite({:array, type, count}, rest)])
   end
 
   defp rewrite({:array, type, count}, data) do
