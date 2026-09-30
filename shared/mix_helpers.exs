@@ -19,12 +19,15 @@ Code.require_file("cargo.exs", __DIR__)
 defmodule OnchainMonorepo.MixHelpers do
   @moduledoc false
 
+  @doc "Run native crate tests."
   @spec cargo_test([String.t()]) :: :ok
   def cargo_test(_args), do: OnchainMonorepo.Cargo.run(:test)
 
+  @doc "Lint all native crate targets with warnings denied."
   @spec cargo_clippy([String.t()]) :: :ok
   def cargo_clippy(_args), do: OnchainMonorepo.Cargo.run(:clippy)
 
+  @doc "Audit native crate dependency advisories."
   @spec cargo_audit([String.t()]) :: :ok
   def cargo_audit(_args), do: OnchainMonorepo.Cargo.run(:audit)
 

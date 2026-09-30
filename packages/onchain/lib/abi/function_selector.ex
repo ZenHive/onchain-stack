@@ -22,7 +22,7 @@ defmodule ABI.FunctionSelector do
           {:uint, integer()}
           | :bool
           | :bytes
-          | {:bytes, pos_integer()}
+          | {:bytes, non_neg_integer()}
           | :string
           | :address
           | :function

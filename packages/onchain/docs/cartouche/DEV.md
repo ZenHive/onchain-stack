@@ -1,12 +1,22 @@
+# Cartouche contract development
 
-# Cartouche Development Doc
+Run commands from `packages/onchain`. Contract bindings now use the shared
+`Onchain.Contract.Generator` at compile time; `mix cartouche.gen` and
+`Cartouche.Contract.IConsole` were removed.
 
-## Generating Cartouche contracts
+For a raw ABI JSON file:
 
-* `i_console.ex`
-  * `mix cartouche.gen --prefix cartouche/contract ./sol/out/IConsole.sol/IConsole.json`
-* `sleuth.ex`
-  * `mix cartouche.gen --prefix cartouche/contract ./priv/Sleuth.json`
-  * (The ABI is vendored at `priv/Sleuth.json`. The original source lives at [compound-finance/sleuth](https://github.com/compound-finance/sleuth).)
-* `test/support/{block_number,ierc20,rock}.ex`
-  * `mix cartouche.gen --prefix cartouche/contract --out ./test/support/ ./test/abi/*.json`
+```elixir
+defmodule MyApp.Contract do
+  use Onchain.Contract.Generator, abi_file: "priv/abis/contract.json"
+end
+```
+
+For a Foundry artifact with init and runtime bytecode, use `artifact_file:`
+with a path relative to the module source file. See the generator's module docs
+for the generated read/write functions and Sleuth helpers.
+
+`Cartouche.Contract.Sleuth` reads the vendored `priv/Sleuth.json` artifact and
+marks its query functions as view calls, since they run inside `eth_call`.
+Its source is [compound-finance/sleuth](https://github.com/compound-finance/sleuth).
+Recompile after changing the artifact; its module declares it as an external resource.

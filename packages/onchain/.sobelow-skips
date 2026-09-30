@@ -1,5 +1,6 @@
 Config.HTTPS: HTTPS Not Enabled,config/prod.exs:0,2B5C077
-DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:336,41A63E2
+DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/contract/generator.ex:379,2B8B699
 DOS.StringToAtom: Unsafe `String.to_atom`,lib/onchain/log.ex:289,5EAA1D3
+Traversal.FileModule: Directory Traversal in `File.read!`,lib/onchain/contract/generator.ex:113,3643002
 Traversal.FileModule: Directory Traversal in `File.read`,lib/onchain/contract/abi.ex:24,A14F90
 Traversal.FileModule: Directory Traversal in `File.read`,lib/onchain/erc7730.ex:166,6451FB2

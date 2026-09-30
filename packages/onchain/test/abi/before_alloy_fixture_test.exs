@@ -6,7 +6,7 @@ defmodule ABI.BeforeAlloyFixtureTest do
   # spec-tags: NIF-4
   test "the pre-migration ABI corpus retains exact return values and exception reasons" do
     records = @fixture |> File.read!() |> :erlang.binary_to_term()
-    assert length(records) == 17_352
+    assert Enum.count_until(records, 17_353) == 17_352
 
     Enum.each(records, fn {mod, fun, args, kind, expected} ->
       actual =

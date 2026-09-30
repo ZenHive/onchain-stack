@@ -184,7 +184,7 @@ defmodule Onchain.RPC do
   use Descripex, namespace: "/rpc"
 
   import Onchain.RPC.Codegen
-  import Onchain.RPC.Helpers, except: [do_rpc: 3]
+  import Onchain.RPC.Helpers
 
   alias Onchain.RPC.Helpers
 
@@ -1188,9 +1188,6 @@ defmodule Onchain.RPC do
   defrpc_bang(:blob_base_fee)
 
   # --- Private helpers ---
-
-  @spec do_rpc(String.t(), list(), keyword()) :: {:ok, term()} | {:error, term()}
-  defp do_rpc(method, params, opts), do: Helpers.do_rpc(method, params, opts)
 
   @doc false
   # Builds the eth_estimateGas call object from an atom-keyed tx-params map.

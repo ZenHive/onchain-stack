@@ -11,6 +11,16 @@ defmodule Cartouche.Transaction.Signature do
   across the typed-transaction modules without coupling them to one another.
   """
 
+  @doc "Signs a typed transaction after clearing its existing signature fields."
+  @spec sign(struct(), GenServer.server()) :: {:ok, struct()} | {:error, term()}
+  def sign(transaction, signer) do
+    unsigned = %{transaction | signature_y_parity: nil, signature_r: nil, signature_s: nil}
+
+    with {:ok, signature} <- Cartouche.Transaction.Native.sign(unsigned, signer, chain_id: transaction.chain_id) do
+      {:ok, add_packed(transaction, signature)}
+    end
+  end
+
   @doc """
   Attaches explicit signature fields (`y_parity`, `r`, `s`) to a transaction
   struct. `r` and `s` must be exactly 32 bytes and `v` a boolean y-parity.

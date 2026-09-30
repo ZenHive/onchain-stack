@@ -16,6 +16,9 @@ defmodule OnchainStack.MixProject do
     ]
   end
 
+  @spec cli() :: keyword()
+  def cli, do: [preferred_envs: [ci: :test]]
+
   def application, do: [extra_applications: [:logger]]
 
   # The root project ships no runtime code, so the Hex entries here are
@@ -42,7 +45,7 @@ defmodule OnchainStack.MixProject do
       ]
   end
 
-  # Derived from the directory listing rather than written out, so a ninth
+  # Derived from the directory listing rather than written out, so a new
   # package is picked up by existing here, not by being remembered.
   #
   # `only: :dev` keeps this off `MIX_ENV=test`, which is what the root `ci`

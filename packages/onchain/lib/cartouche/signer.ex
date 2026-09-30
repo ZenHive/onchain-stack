@@ -551,6 +551,7 @@ defmodule Cartouche.Signer do
   defp normalize_calldata(calldata), do: {:error, {:invalid_calldata, calldata}}
 
   # Builds the transaction after calldata shape has been validated and normalized.
+  @spec build_transaction_validated(binary(), binary(), keyword()) :: {:ok, V2.t()} | {:error, term()}
   defp build_transaction_validated(to, calldata, opts) do
     with {:ok, nonce} <- fetch_required(opts, :nonce),
          {:ok, chain_id} <- fetch_required(opts, :chain_id),
@@ -806,8 +807,10 @@ defmodule Cartouche.Signer do
 
   # Normalizes a private key input to a 32-byte binary.
   # Accepts: 32-byte binary, hex string (64 chars, with/without 0x).
+  @spec decode_private_key(term()) :: {:ok, binary()} | {:error, term()}
   defp decode_private_key(input), do: Onchain.PrivateKey.decode(input)
 
+  @spec safe_get_address(binary(), term()) :: {:ok, binary()} | {:error, term()}
   defp safe_get_address(key_bin, original_input) do
     case Secp256k1.get_address(key_bin) do
       {:ok, address} -> {:ok, address}
@@ -817,6 +820,7 @@ defmodule Cartouche.Signer do
 
   # Returns {:ok, value} for present keys, {:error, {:missing_option, key}} for absent ones.
   # Used instead of Keyword.fetch!/2 so non-bang functions return error tuples.
+  @spec fetch_required(keyword(), atom()) :: {:ok, term()} | {:error, {:missing_option, atom()}}
   defp fetch_required(opts, key) do
     case Keyword.fetch(opts, key) do
       {:ok, value} -> {:ok, value}

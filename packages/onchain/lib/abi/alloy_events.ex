@@ -55,6 +55,10 @@ defmodule ABI.AlloyEvents do
     end)
   end
 
+  defp wire_indexed(param) do
+    if reference?(param.type), do: %{param | type: {:bytes, 32}}, else: param
+  end
+
   defp schema(selector, opts) do
     check =
       Keyword.get(opts, :check_event_signature, true) and
@@ -72,7 +76,7 @@ defmodule ABI.AlloyEvents do
         {indexed, body} = Enum.split_with(types, &Map.get(&1, :indexed, false))
         signature = if check, do: ABI.Event.event_signature(selector), else: <<>>
         indexed = if check, do: [%{type: {:bytes, 32}, name: "__abi__topic"} | indexed], else: indexed
-        wire_indexed = Enum.map(indexed, fn p -> if reference?(p.type), do: %{p | type: {:bytes, 32}}, else: p end)
+        wire_indexed = Enum.map(indexed, &wire_indexed/1)
         wire_body = Enum.map(body, &Map.delete(&1, :name))
         # Alloy.schema handles binary strings and zero-width aggregate compatibility.
         types = [%{type: {:tuple, wire_indexed}}, %{type: {:tuple, wire_body}}]

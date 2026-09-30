@@ -1,4 +1,10 @@
-# Cartouche
+# Cartouche (historical standalone guide)
+
+This guide records the retired standalone package. For current installation,
+configuration and APIs, use the [onchain README](../../README.md) and
+[signer migration guide](../signer-consolidation.md). The `cartouche` dependency,
+`mix cartouche.gen`, `Cartouche.VM` and generated `exec_vm_*` examples below
+belong to the old release; current bindings use `Onchain.Contract.Generator`.
 
 [![Hex.pm](https://img.shields.io/hexpm/v/cartouche.svg)](https://hex.pm/packages/cartouche)
 

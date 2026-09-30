@@ -148,11 +148,7 @@ defmodule Cartouche.Transaction.V3 do
   """
   @spec sign(t(), GenServer.server()) :: {:ok, t()} | {:error, String.t()}
   def sign(%__MODULE__{} = transaction, signer \\ Default) do
-    unsigned = %{transaction | signature_y_parity: nil, signature_r: nil, signature_s: nil}
-
-    with {:ok, signature} <- Native.sign(unsigned, signer, chain_id: transaction.chain_id) do
-      {:ok, add_signature(transaction, signature)}
-    end
+    Signature.sign(transaction, signer)
   end
 
   @doc """

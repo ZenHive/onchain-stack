@@ -56,7 +56,7 @@ defmodule Onchain.Tempo.Verification.NativeTest do
 
     <<0x76, body::binary>> = Codec.bytes(raw)
     fields = body |> ExRLP.decode() |> Enum.drop(-1)
-    assert length(fields) == 14
+    assert Enum.count_until(fields, 15) == 14
     assert is_list(List.last(fields))
     assert Codec.hex(<<0x76>> <> ExRLP.encode(fields)) == vector["unsigned"]
     fp_fields = fields |> List.replace_at(10, Codec.bytes(@token)) |> List.replace_at(11, sender)

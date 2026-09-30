@@ -1,6 +1,6 @@
 defmodule Cartouche.Contract.Sleuth do
   @moduledoc false
-  @abi_path Path.expand("../../../priv/Sleuth.json", __DIR__)
+  @abi_path Application.app_dir(:onchain, "priv/Sleuth.json")
 
   # Sleuth deploys query bytecode inside eth_call. Its ABI says nonpayable,
   # but these bindings intentionally simulate it without sending a transaction.

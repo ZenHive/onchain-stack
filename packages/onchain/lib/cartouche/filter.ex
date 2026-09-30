@@ -264,24 +264,28 @@ defmodule Cartouche.Filter do
             []
 
           selector ->
-            inputs = Enum.map(entries, fn {log, _} -> {log.data, log.topics} end)
+            inputs = Enum.map(entries, &event_input/1)
 
             inputs
             |> ABI.Event.decode_events(selector)
             |> Enum.zip(entries)
-            |> Enum.flat_map(fn
-              {{:ok, name, params}, {log, index}} ->
-                [{index, {{name, params}, log}}]
-
-              {{:error, error}, _} ->
-                Logger.error("Error decoding log: #{inspect(error)}")
-                []
-            end)
+            |> Enum.flat_map(&decoded_event/1)
         end
       end)
       |> Enum.sort_by(&elem(&1, 0))
       |> Enum.map(&elem(&1, 1))
 
     {logs, events}
+  end
+
+  @spec event_input({Log.t(), non_neg_integer()}) :: {binary(), [binary()]}
+  defp event_input({log, _index}), do: {log.data, log.topics}
+
+  @spec decoded_event({tuple(), {Log.t(), non_neg_integer()}}) :: list()
+  defp decoded_event({{:ok, name, params}, {log, index}}), do: [{index, {{name, params}, log}}]
+
+  defp decoded_event({{:error, error}, _}) do
+    Logger.error("Error decoding log: #{inspect(error)}")
+    []
   end
 end

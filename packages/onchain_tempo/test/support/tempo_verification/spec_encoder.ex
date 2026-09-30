@@ -25,11 +25,13 @@ defmodule Onchain.Tempo.Verification.SpecEncoder do
 
   @type field_map :: %{optional(atom()) => term()}
 
+  @doc "Encode the independent sender signing preimage."
   @spec sender_payload(field_map()) :: binary()
   def sender_payload(fields) when is_map(fields) do
     <<@sender_type>> <> ExRLP.encode(rlp_items(fields, :sender))
   end
 
+  @doc "Encode the independent fee-payer signing preimage."
   @spec fee_payer_payload(field_map(), binary()) :: binary()
   def fee_payer_payload(fields, sender) when is_map(fields) and byte_size(sender) == 20 do
     items =
@@ -40,30 +42,37 @@ defmodule Onchain.Tempo.Verification.SpecEncoder do
     <<@fee_payer_type>> <> ExRLP.encode(items)
   end
 
+  @doc "Append the signature to the independent transaction encoding."
   @spec signed_envelope(field_map(), binary()) :: binary()
   def signed_envelope(fields, signature) when is_binary(signature) do
     <<@sender_type>> <> ExRLP.encode(rlp_items(fields, :sender) ++ [signature])
   end
 
+  @doc "Render oracle bytes as lowercase prefixed hex."
   @spec to_hex(binary()) :: String.t()
   def to_hex(bin) when is_binary(bin), do: "0x" <> Base.encode16(bin, case: :lower)
 
+  @doc "Pack secp256k1 scalars and recovery parity."
   @spec secp256k1_sig(non_neg_integer(), non_neg_integer(), 0 | 1) :: binary()
   def secp256k1_sig(r, s, y_parity) when y_parity in [0, 1] do
     <<r::unsigned-big-size(256), s::unsigned-big-size(256), y_parity + 27::8>>
   end
 
+  @doc "Encode the fee-payer signature fields in RLP order."
   @spec fee_payer_tuple(0 | 1, non_neg_integer(), non_neg_integer()) :: [binary()]
   def fee_payer_tuple(y_parity, r, s) when y_parity in [0, 1] do
     [if(y_parity == 1, do: <<1>>, else: <<>>), quantity(r), quantity(s)]
   end
 
+  @doc "Return the protocol field order used by the oracle."
   @spec spec_order() :: [atom()]
   def spec_order, do: @spec_order
 
+  @doc "Return the sender transaction type byte."
   @spec sender_type() :: 0x76
   def sender_type, do: @sender_type
 
+  @doc "Return the fee-payer signing domain byte."
   @spec fee_payer_type() :: 0x78
   def fee_payer_type, do: @fee_payer_type
 

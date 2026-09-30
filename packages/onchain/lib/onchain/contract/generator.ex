@@ -98,6 +98,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  # Artifact paths are developer-supplied compile-time inputs, like :abi_file.
   @spec expand_artifact_file!(keyword(), String.t() | nil) :: keyword()
   defp expand_artifact_file!(opts, caller_file) do
     case Keyword.pop(opts, :artifact_file) do
@@ -977,7 +978,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
-  @spec sleuth_bytecode(keyword()) :: {binary(), binary()} | nil
+  @spec sleuth_bytecode(keyword()) :: {binary(), binary() | nil} | nil
   defp sleuth_bytecode(opts) do
     case Keyword.get(opts, :bytecode) do
       nil ->

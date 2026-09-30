@@ -89,6 +89,22 @@ defmodule AliasSeparationTest do
     end
   end
 
+  test "root CI excludes the dev-only aggregate runtime dependencies" do
+    source = File.read!(Path.join(@root, "mix.exs"))
+
+    {_ast, cli} =
+      source
+      |> Code.string_to_quoted!()
+      |> Macro.prewalk(nil, fn
+        {:def, _, [{:cli, _, _}, [do: body]]} = node, _ -> {node, body}
+        node, acc -> {node, acc}
+      end)
+
+    assert cli != nil
+    {config, _} = Code.eval_quoted(cli)
+    assert config[:preferred_envs][:ci] == :test
+  end
+
   test "root dispatch still fails and full QA still delegates to all packages serially" do
     source = File.read!(Path.join(@root, "mix.exs"))
     aliases = AliasGraph.read!(source)

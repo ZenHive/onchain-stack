@@ -560,6 +560,7 @@ defmodule Cartouche.RPC do
     end)
   end
 
+  @spec do_send_rpc(String.t(), [term()], keyword()) :: {:ok, term()} | {:error, term()} | :invalid_hex
   defp do_send_rpc(method, params, opts) do
     id = Keyword.get_lazy(opts, :id, fn -> System.unique_integer([:positive]) end)
     body = get_body(method, params, id)
@@ -600,6 +601,7 @@ defmodule Cartouche.RPC do
     end)
   end
 
+  @spec request(binary(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
   defp request(encoded_body, opts) do
     url = opts[:rpc_url] || opts[:ethereum_node] || Application.get_env(:cartouche, :ethereum_node)
 
@@ -623,6 +625,8 @@ defmodule Cartouche.RPC do
     end
   end
 
+  @spec retry_request(keyword(), %{max_retries: non_neg_integer(), backoff_ms: non_neg_integer()}) ::
+          {:ok, Req.Response.t()} | {:error, term()}
   defp retry_request(opts, %{max_retries: remaining, backoff_ms: backoff} = policy) do
     result = Req.request(opts)
 
@@ -634,23 +638,21 @@ defmodule Cartouche.RPC do
     end
   end
 
+  @spec retryable_response?({:ok, Req.Response.t()} | {:error, term()}) :: boolean()
   defp retryable_response?({:error, _}), do: true
 
   defp retryable_response?({:ok, %Req.Response{status: status, body: body}}) when status < 200 or status >= 300 do
     # A gateway failure can be retried, but a JSON-RPC application error is final,
     # including providers that deliver it under HTTP 400 or 503.
-    case Jason.decode(body) do
-      {:ok, %{"error" => %{"code" => _}}} -> false
-      _ -> true
-    end
+    not match?({:ok, %{"error" => %{"code" => _}}}, Jason.decode(body))
   end
 
   defp retryable_response?({:ok, _}), do: false
 
+  @spec rpc_request_stop_metadata(String.t(), {:ok, term()} | {:error, term()} | :invalid_hex) :: map()
   defp rpc_request_stop_metadata(method, {:ok, _}), do: %{method: method, status: :ok}
 
-  defp rpc_request_stop_metadata(@batch_method, {:error, reason}),
-    do: %{method: @batch_method, status: :error, error: reason}
+  defp rpc_request_stop_metadata(@batch_method, {:error, reason}), do: rpc_error_metadata(@batch_method, reason)
 
   defp rpc_request_stop_metadata(method, {:error, reason}) do
     error =
@@ -673,10 +675,13 @@ defmodule Cartouche.RPC do
           {:rpc_error, %{message: inspect(other)}}
       end
 
-    %{method: method, status: :error, error: error}
+    rpc_error_metadata(method, error)
   end
 
-  defp rpc_request_stop_metadata(method, :invalid_hex), do: %{method: method, status: :error, error: :invalid_hex}
+  defp rpc_request_stop_metadata(method, :invalid_hex), do: rpc_error_metadata(method, :invalid_hex)
+
+  @spec rpc_error_metadata(String.t(), term()) :: map()
+  defp rpc_error_metadata(method, error), do: %{method: method, status: :error, error: error}
 
   @spec normalize_retry_policy(term()) ::
           {:ok, %{max_retries: non_neg_integer(), backoff_ms: non_neg_integer()}}
@@ -708,7 +713,8 @@ defmodule Cartouche.RPC do
   # through byte-identical. Alchemy answers method-not-found as HTTP 400 with a
   # JSON-RPC body (cartouche surfaces that as `%Req.Response{}` rather than
   # decoding it), so the body is unwrapped only when the result is classified.
-  @spec classify_node_refusal({:ok, term()} | {:error, term()}) :: {:ok, term()} | {:error, term()}
+  @spec classify_node_refusal({:ok, term()} | {:error, term()} | :invalid_hex) ::
+          {:ok, term()} | {:error, term()} | :invalid_hex
   defp classify_node_refusal({:ok, _} = ok), do: ok
 
   defp classify_node_refusal({:error, {:rpc_error, map}} = err) when is_map(map) do
@@ -721,6 +727,7 @@ defmodule Cartouche.RPC do
 
   defp classify_node_refusal(other), do: other
 
+  @spec classify_error_map(map(), {:error, term()}) :: {:error, term()}
   defp classify_error_map(map, err) do
     case jsonrpc_error_fields(map) do
       {:ok, code, message, fields} ->
@@ -940,7 +947,7 @@ defmodule Cartouche.RPC do
   end
 
   @spec decode_result(nil | :hex | :hex_unsigned | (term() -> term()), term(), String.t(), boolean()) ::
-          {:ok, term()} | {:error, String.t()}
+          {:ok, term()} | {:error, String.t()} | :invalid_hex
   defp decode_result(nil, result, _method, _verbose), do: {:ok, result}
 
   defp decode_result(:hex, result, _method, _verbose), do: Hex.decode_hex(result)

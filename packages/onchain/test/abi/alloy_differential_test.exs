@@ -103,7 +103,10 @@ defmodule ABI.AlloyDifferentialTest do
   defp outcome(fun) do
     {:ok, fun.()}
   rescue
-    e in [ABI.TypeDecoder.StrictViolation, Legacy.TypeDecoder.StrictViolation] -> {:error, {:strict_violation, e.detail}}
-    e -> {:error, e.__struct__}
+    e in [ABI.TypeDecoder.StrictViolation, Legacy.TypeDecoder.StrictViolation] ->
+      {:error, {:strict_violation, e.detail}}
+
+    e ->
+      {:error, e.__struct__}
   end
 end

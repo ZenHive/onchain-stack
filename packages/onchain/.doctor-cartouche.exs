@@ -1,6 +1,6 @@
 %Doctor.Config{
-  # Both excluded modules build AST literals via `def unquote(name)(args)` inside
-  # `quote do ... end` blocks (Cartouche.Gen emits contract modules; Cartouche.RPC.DSL's
+  # The excluded module builds AST literals via `def unquote(name)(args)` inside
+  # `quote do ... end` blocks (Cartouche.RPC.DSL's
   # `defrpc` macro emits the uniform RPC wrappers). Doctor's source-level AST walker
   # counts those literals as if they were real defs of the host module (BEAM introspection
   # confirms otherwise) and does not associate the `@doc`/`@spec` attached to the enclosing
