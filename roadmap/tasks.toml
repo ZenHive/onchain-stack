@@ -10436,7 +10436,7 @@ id = "9046"
 phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain_tempo"
-status = "in_progress"
+status = "done"
 title = "Run Tempo native mutants against a scratch copy instead of the tracked tree"
 scores = { d = 4, b = 5, u = 3 }
 markers = ["parallel"]
@@ -10451,9 +10451,16 @@ Since 9045, the Tempo 0x76 mutation campaign (test/support/tempo_verification/ca
 
 Make an interrupted campaign unable to leave mutated tracked sources behind — for example by mutating a scratch copy of the package, or by a guarded backup plus a startup check that refuses to run on a dirty tree. The campaign's kill/survive results must not change.
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1790728452202-8b66121e, ee372b4133f9a27ade11ed29277e63feeb7f26a7)."
+delivered_by = "cursor"
+verified = true
+verified_by = "claude"
+verification_ref = "harness-run:run-1790728452202-8b66121e"
 created_at = "2026-09-30"
 started_at = "2026-09-30"
 scored_at = "2026-09-30"
+done_at = "2026-09-30"
+shipped_in = "ee372b4133f9a27ade11ed29277e63feeb7f26a7"
 
 [[task]]
 id = "9047"
