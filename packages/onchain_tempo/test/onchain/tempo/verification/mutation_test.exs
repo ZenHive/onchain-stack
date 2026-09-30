@@ -8,7 +8,15 @@ defmodule Onchain.Tempo.Verification.MutationTest do
 
   # spec-tags: TEMPO-2, TEMPO-3
   setup_all do
-    {:ok, results: Campaign.run()}
+    nif_before = nif_digest()
+    results = Campaign.run()
+    {:ok, results: results, nif_before: nif_before, nif_after: nif_digest()}
+  end
+
+  # A mutant NIF left in priv/native survives a hard kill and is loaded by
+  # every later test run, so the campaign must never write it.
+  test "campaign leaves the loaded priv/native NIF untouched", %{nif_before: before, nif_after: after_run} do
+    assert before == after_run
   end
 
   test "campaign never writes tracked patch targets on disk", %{results: _results} do
@@ -129,4 +137,9 @@ defmodule Onchain.Tempo.Verification.MutationTest do
   end
 
   defp ledger_path, do: Application.app_dir(:onchain_tempo, @ledger_rel)
+
+  defp nif_digest do
+    path = Path.join(:code.priv_dir(:onchain_tempo), "native/onchain_tempo.so")
+    :crypto.hash(:sha256, File.read!(path))
+  end
 end

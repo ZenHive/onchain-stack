@@ -35,6 +35,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
   @native_rel "native/onchain_tempo/src/lib.rs"
   @key_auth_fixture "priv/verification/0x76/tempo_primitives_key_authorization.json"
   @scratch_dir "_build/tempo_verification_scratch"
+  @scratch_crate "onchain_tempo_mutant"
   @tracked_patch_files [@native_rel, @codec_rel]
 
   @type mutant :: Mutant.t()
@@ -233,66 +234,49 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
+  # Mutants never touch tracked files, `priv/native`, or the tracked crate's
+  # build outputs: a hard kill mid-mutant can leave debris only under
+  # `_build/tempo_verification_scratch`. Codec mutants live in memory; native
+  # mutants build a renamed copy of the crate (so its cdylib cannot collide
+  # with `libonchain_tempo.so` in the shared, warm target dir) and load it into
+  # an in-memory `Native` stub. Restoring reloads the on-disk beams.
   @spec with_patched_source(mutant(), (-> term())) :: term() | {:error, term()}
-  defp with_patched_source(%Mutant{surface: :native} = mutant, continue) do
-    with_patched_native_scratch(mutant, continue)
-  end
-
-  defp with_patched_source(%Mutant{surface: :codec} = mutant, continue) do
-    with_patched_codec(mutant, continue)
-  end
-
-  @spec with_patched_codec(mutant(), (-> term())) :: term() | {:error, term()}
-  defp with_patched_codec(mutant, continue) do
-    path = source_path(mutant.file)
-    source = File.read!(path)
+  defp with_patched_source(mutant, continue) do
+    source = File.read!(source_path(mutant.file))
 
     if String.contains?(source, mutant.replace) do
       patched = String.replace(source, mutant.replace, mutant.with, global: false)
 
       try do
-        with :ok <- compile_codec_source!(patched, path),
-             :ok <- reload_native_nif!(),
-             do: continue.()
+        with :ok <- load_patched(mutant, patched), do: continue.()
       after
-        _ = compile_codec_source!(source, path)
-        _ = reload_native_nif!()
+        restore_from_disk!(if mutant.surface == :native, do: Native, else: Codec)
       end
     else
       {:error, {:pattern_missing, mutant.replace}}
     end
   end
 
-  @spec with_patched_native_scratch(mutant(), (-> term())) :: term() | {:error, term()}
-  defp with_patched_native_scratch(mutant, continue) do
-    path = source_path(mutant.file)
-    source = File.read!(path)
+  @spec load_patched(mutant(), String.t()) :: :ok | {:error, term()}
+  defp load_patched(%Mutant{surface: :codec, file: file}, patched) do
+    compile_in_memory(Codec, patched, source_path(file))
+  end
 
-    if String.contains?(source, mutant.replace) do
-      scratch_rs = scratch_source_path(mutant.file)
-      ensure_scratch_native_tree!()
-      File.write!(scratch_rs, String.replace(source, mutant.replace, mutant.with, global: false))
-
-      try do
-        with :ok <- recompile_native_scratch!(), do: continue.()
-      after
-        _ = recompile_native!()
-      end
-    else
-      {:error, {:pattern_missing, mutant.replace}}
+  defp load_patched(%Mutant{surface: :native} = mutant, patched) do
+    with {:ok, so_path} <- build_native_scratch(mutant.id, patched) do
+      compile_in_memory(Native, native_stub(so_path), "native_stub")
     end
   end
 
-  @spec assert_tracked_patch_targets_clean!() :: :ok
-  defp assert_tracked_patch_targets_clean! do
-    repo_root = monorepo_root()
+  @doc false
+  @spec assert_tracked_patch_targets_clean!(String.t()) :: :ok
+  def assert_tracked_patch_targets_clean!(repo_root \\ monorepo_root()) do
+    paths = Enum.map(@tracked_patch_files, &Path.join("packages/onchain_tempo", &1))
 
     for {args, label} <- [
           {["diff", "--quiet", "--"], "unstaged"},
           {["diff", "--cached", "--quiet", "--"], "staged"}
         ] do
-      paths = Enum.map(@tracked_patch_files, &Path.join("packages/onchain_tempo", &1))
-
       case System.cmd("git", args ++ paths, cd: repo_root, stderr_to_stdout: true) do
         {"", 0} ->
           :ok
@@ -309,45 +293,75 @@ defmodule Onchain.Tempo.Verification.Campaign do
   end
 
   @spec monorepo_root() :: String.t()
-  defp monorepo_root do
-    package_root()
-    |> Path.join("../..")
-    |> Path.expand()
-  end
+  defp monorepo_root, do: Path.expand("../..", package_root())
 
   @spec scratch_root() :: String.t()
   defp scratch_root, do: Path.join(package_root(), @scratch_dir)
 
-  @spec scratch_source_path(String.t()) :: String.t()
-  defp scratch_source_path(rel), do: Path.join(scratch_root(), rel)
+  # Returns the path (without extension, as `:erlang.load_nif/2` expects) of a
+  # per-mutant copy of the built cdylib; a fresh path per mutant sidesteps the
+  # dynamic loader handing back an already-open library for a reused name.
+  @spec build_native_scratch(String.t(), String.t()) :: {:ok, String.t()} | {:error, term()}
+  defp build_native_scratch(id, patched_rs) do
+    crate = Path.join(scratch_root(), "crate")
+    tracked = Path.join(package_root(), "native/onchain_tempo")
+    target = Path.join(tracked, "target")
 
-  @spec ensure_scratch_native_tree!() :: :ok
-  defp ensure_scratch_native_tree! do
-    tracked_native = Path.join(package_root(), "native/onchain_tempo")
-    scratch_native = Path.join(scratch_root(), "native/onchain_tempo")
+    File.rm_rf!(crate)
+    File.mkdir_p!(Path.join(crate, "src"))
+    File.cp!(Path.join(tracked, "Cargo.lock"), Path.join(crate, "Cargo.lock"))
 
-    if not File.exists?(scratch_native) do
-      File.mkdir_p!(Path.dirname(scratch_native))
-      File.cp_r!(tracked_native, scratch_native)
+    manifest = File.read!(Path.join(tracked, "Cargo.toml"))
+    renamed = String.replace(manifest, ~s(name = "onchain_tempo"), ~s(name = "#{@scratch_crate}"), global: false)
+    # An unrenamed copy would overwrite the tracked crate's cdylib in the shared target dir.
+    if renamed == manifest, do: raise("scratch crate rename failed: Cargo.toml has no name = \"onchain_tempo\"")
+    File.write!(Path.join(crate, "Cargo.toml"), renamed)
+
+    File.write!(Path.join(crate, "src/lib.rs"), patched_rs)
+
+    case System.cmd("cargo", ["build", "--release", "--quiet"],
+           cd: crate,
+           env: [{"CARGO_TARGET_DIR", target}],
+           stderr_to_stdout: true
+         ) do
+      {_, 0} ->
+        nif = Path.join([scratch_root(), "nif", id])
+        File.mkdir_p!(Path.dirname(nif))
+        # `:erlang.load_nif/2` appends `.so` on every unix, macOS included.
+        File.cp!(Path.join(target, "release/lib#{@scratch_crate}.#{dylib_ext()}"), nif <> ".so")
+        {:ok, nif}
+
+      {output, _} ->
+        {:error, String.trim(output)}
     end
-
-    :ok
   end
 
-  @spec compile_codec_source!(String.t(), String.t()) :: :ok | {:error, term()}
-  defp compile_codec_source!(source, file) do
+  @spec dylib_ext() :: String.t()
+  defp dylib_ext, do: if(match?({:unix, :darwin}, :os.type()), do: "dylib", else: "so")
+
+  @spec native_stub(String.t()) :: String.t()
+  defp native_stub(so_path) do
+    """
+    defmodule Onchain.Tempo.Native do
+      @moduledoc false
+      @on_load :load_mutant_nif
+      def load_mutant_nif, do: :erlang.load_nif(#{inspect(String.to_charlist(so_path))}, 0)
+      def transaction_json(_input), do: :erlang.nif_error(:nif_not_loaded)
+    end
+    """
+  end
+
+  @spec compile_in_memory(module(), String.t(), String.t()) :: :ok | {:error, term()}
+  defp compile_in_memory(module, source, file) do
     previous = Code.get_compiler_option(:ignore_module_conflict)
 
     try do
       Code.put_compiler_option(:ignore_module_conflict, true)
-      purge(Codec)
+      purge(module)
 
       case Code.compile_string(source, file) do
-        [{Codec, _}] ->
-          :ok
-
-        compiled ->
-          {:error, {:codec_module_missing, Enum.map(compiled, &elem(&1, 0))}}
+        [{^module, _}] -> :ok
+        compiled -> {:error, {:module_missing, Enum.map(compiled, &elem(&1, 0))}}
       end
     catch
       kind, reason -> {:error, Exception.format_banner(kind, reason)}
@@ -356,67 +370,10 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
-  @spec recompile_native_scratch!() :: :ok | {:error, term()}
-  defp recompile_native_scratch! do
-    scratch_native = Path.join(scratch_root(), "native/onchain_tempo")
-    shared_target = Path.join(package_root(), "native/onchain_tempo/target")
-
-    try do
-      Rustler.Compiler.compile_crate(
-        :onchain_tempo,
-        [crate: "onchain_tempo"],
-        otp_app: :onchain_tempo,
-        crate: "onchain_tempo",
-        path: scratch_native,
-        env: [{"CARGO_TARGET_DIR", shared_target}]
-      )
-
-      reload_native_nif!()
-    catch
-      kind, reason -> {:error, Exception.format_banner(kind, reason)}
-    end
-  end
-
-  @spec recompile_native!() :: :ok | {:error, term()}
-  defp recompile_native! do
-    env = [
-      {"ONCHAIN_TEMPO_BUILD", "1"},
-      {"ONCHAIN_BUILD", "1"},
-      {"MIX_ENV", "test"}
-    ]
-
-    case System.cmd("mix", ["compile", "--force"],
-           cd: package_root(),
-           env: env,
-           stderr_to_stdout: true
-         ) do
-      {_, 0} ->
-        reload_native_nif!()
-        :ok
-
-      {output, _} ->
-        {:error, String.trim(output)}
-    end
-  end
-
-  @spec reload_native_nif!() :: :ok
-  defp reload_native_nif! do
-    modules = [
-      Builder,
-      Transaction,
-      Codec,
-      Native
-    ]
-
-    for mod <- modules do
-      :code.purge(mod)
-      :code.delete(mod)
-    end
-
-    {:module, _} = Code.ensure_compiled(Native)
-    {:module, _} = Code.ensure_compiled(Codec)
-    {:module, _} = Code.ensure_compiled(Transaction)
-    {:module, _} = Code.ensure_compiled(Builder)
+  @spec restore_from_disk!(module()) :: :ok
+  defp restore_from_disk!(module) do
+    purge(module)
+    {:module, ^module} = :code.load_file(module)
     :ok
   end
 
@@ -479,9 +436,12 @@ defmodule Onchain.Tempo.Verification.Campaign do
   end
 
   @spec purge(module()) :: boolean()
+  # Purge again after delete so no old version is left holding a NIF library:
+  # rustler NIFs refuse the `upgrade` path a lingering old version triggers.
   defp purge(module) do
     :code.purge(module)
     :code.delete(module)
+    :code.purge(module)
   end
 
   @spec oracle_verdict(mutant(), module() | nil) :: %{status: atom(), evidence: term()}
