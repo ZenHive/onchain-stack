@@ -24,7 +24,7 @@ defmodule Onchain.SignerCase do
   @doc false
   @spec signer_address!() :: String.t()
   def signer_address! do
-    Onchain.Signer.address_from_key!(signer_key!())
+    Cartouche.Signer.address_from_key!(signer_key!())
   end
 
   @doc false

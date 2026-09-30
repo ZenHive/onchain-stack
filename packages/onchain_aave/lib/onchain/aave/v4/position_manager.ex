@@ -31,7 +31,7 @@ defmodule Onchain.Aave.V4.PositionManager do
   | Taker allowance reverts | `{:error, {:insufficient_borrow_allowance, allowance, required}}`, `{:error, {:insufficient_withdraw_allowance, allowance, required}}` |
   | `Onchain.ABI.encode_call/2` | `{:error, {:encode_error, reason}}` |
   | `Onchain.Contract.call/5` | `{:error, {:rpc_error, map}}`, `{:error, {:decode_error, reason}}` |
-  | `Onchain.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
+  | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
 
   ## Functions
 
@@ -60,13 +60,13 @@ defmodule Onchain.Aave.V4.PositionManager do
 
   use Descripex, namespace: "/aave/v4/position_manager"
 
+  alias Cartouche.Signer
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.Opts
   alias Onchain.ABI
   alias Onchain.Address
   alias Onchain.Contract
   alias Onchain.Hex
-  alias Onchain.Signer
 
   @type address :: String.t() | binary()
   @type result(value) :: {:ok, value} | {:error, term()}

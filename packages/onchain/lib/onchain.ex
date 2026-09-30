@@ -28,7 +28,7 @@ defmodule Onchain do
       Onchain.ENS,
       Onchain.Log,
       Onchain.Multicall,
-      Onchain.Signer,
+      Cartouche.Signer,
       Onchain.Subscription,
       Onchain.Transfer,
       Onchain.Wallet,

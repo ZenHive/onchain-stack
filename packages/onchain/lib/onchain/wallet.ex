@@ -10,7 +10,7 @@ defmodule Onchain.Wallet do
   ## Does Not
 
   - Track token balances (see `Onchain.ERC20`)
-  - Manage keys or signing (see `Onchain.Signer`)
+  - Manage keys or signing (see `Cartouche.Signer`)
   - Parse transactions or receipts (see `Onchain.RPC`)
 
   ## Functions

@@ -1,8 +1,8 @@
-defmodule Onchain.SignerIntegrationTest do
+defmodule Cartouche.Signer.TransactionIntegrationTest do
   use ExUnit.Case, async: false
 
+  alias Cartouche.Signer
   alias Onchain.RPC
-  alias Onchain.Signer
 
   @moduletag :integration
 

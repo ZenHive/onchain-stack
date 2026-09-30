@@ -2,20 +2,19 @@
   "modules": [
     {
       "module": "Elixir.Cartouche.Signer",
-      "covered": 45,
-      "missed": 2,
+      "covered": 108,
+      "missed": 3,
       "uncovered_lines": [
         1,
-        298
+        305,
+        631
       ]
     },
     {
       "module": "Elixir.Cartouche.Signer.Backend",
-      "covered": 2,
-      "missed": 1,
-      "uncovered_lines": [
-        102
-      ]
+      "covered": 3,
+      "missed": 0,
+      "uncovered_lines": []
     },
     {
       "module": "Elixir.Cartouche.Signer.CloudKMS",
@@ -30,5 +29,5 @@
       "uncovered_lines": []
     }
   ],
-  "percentage": 96.0
+  "percentage": 97.84172661870504
 }

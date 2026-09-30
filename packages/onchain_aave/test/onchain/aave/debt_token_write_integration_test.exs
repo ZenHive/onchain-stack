@@ -86,7 +86,7 @@ defmodule Onchain.Aave.DebtToken.WriteIntegrationTest do
         |> Keyword.put(:value, amount)
 
       {:ok, tx_hash} =
-        Onchain.Signer.send_transaction(
+        Cartouche.Signer.send_transaction(
           @aave_sepolia_weth,
           {:raw, Onchain.Hex.decode!("0xd0e30db0")},
           opts

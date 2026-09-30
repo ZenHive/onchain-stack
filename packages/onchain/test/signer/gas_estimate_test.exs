@@ -1,9 +1,9 @@
-defmodule Onchain.Signer.GasEstimateTest do
+defmodule Cartouche.Signer.GasEstimateTest do
   # Mutates global cartouche client config; cannot run async with other RPC tests.
   use ExUnit.Case, async: false
 
+  alias Cartouche.Signer
   alias Cartouche.Transaction.V2
-  alias Onchain.Signer
 
   # Deterministic test key (also used in signer_test.exs).
   @test_key_hex "0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf"

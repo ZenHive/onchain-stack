@@ -23,7 +23,7 @@ defmodule Onchain.Aave.DebtToken do
   | `Onchain.ABI.encode_call/2` | `{:error, {:encode_error, reason}}` |
   | `Onchain.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
   | `Onchain.ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
-  | `Onchain.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
+  | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
   | Interest rate mode validation | `{:error, {:invalid_interest_rate_mode, value}}`, `{:error, {:unsupported_interest_rate_mode, :stable}}` |
 
   ## Functions
@@ -37,12 +37,12 @@ defmodule Onchain.Aave.DebtToken do
 
   use Descripex, namespace: "/aave/debt_token"
 
+  alias Cartouche.Signer
   alias Onchain.Aave.Pool
   alias Onchain.ABI
   alias Onchain.Address
   alias Onchain.Contract
   alias Onchain.Hex
-  alias Onchain.Signer
 
   # --- debt_token_address ---
 

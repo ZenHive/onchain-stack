@@ -32,7 +32,7 @@ defmodule Onchain.Contract.Generator do
     delegates to `Onchain.Contract.call/5`
   - **Write functions** (`nonpayable`/`payable`): `fn_name(contract, ...params, opts)`
     encodes calldata via `Onchain.ABI.encode_call/2` and delegates to
-    `Onchain.Signer.send_transaction/3`
+    `Cartouche.Signer.send_transaction/3`
   - **Bang variants**: `fn_name!` that raises on error
   - **`Multicall` helpers**: typed call builders and result decoders for
     `Onchain.Multicall.aggregate3/2`
@@ -647,7 +647,7 @@ defmodule Onchain.Contract.Generator do
 
     body =
       quote do
-        Onchain.Signer.send_transaction(
+        Cartouche.Signer.send_transaction(
           contract,
           Onchain.Hex.decode!(unquote(calldata_var)),
           opts

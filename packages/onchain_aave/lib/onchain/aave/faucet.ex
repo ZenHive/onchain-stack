@@ -15,7 +15,7 @@ defmodule Onchain.Aave.Faucet do
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
   | `Onchain.Aave.Contracts.address/2` | `{:error, {:unknown_contract, :faucet}}` |
   | `Onchain.ABI.encode_call/2` | `{:error, {:encode_error, ...}}` |
-  | `Onchain.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
+  | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
 
   ## Functions
 
@@ -27,11 +27,11 @@ defmodule Onchain.Aave.Faucet do
 
   use Descripex, namespace: "/aave/faucet"
 
+  alias Cartouche.Signer
   alias Onchain.Aave.Contracts
   alias Onchain.ABI
   alias Onchain.Address
   alias Onchain.Hex
-  alias Onchain.Signer
 
   @default_gas_limit 200_000
 

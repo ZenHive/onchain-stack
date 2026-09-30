@@ -1,11 +1,11 @@
 defmodule Onchain.Aave.V4.PositionManagerTest do
   use ExUnit.Case, async: false
 
+  alias Cartouche.Signer
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.V4.PositionManager
   alias Onchain.Address
   alias Onchain.RPCStub
-  alias Onchain.Signer
 
   @spoke "0x94e7A5dCbE816e498b89aB752661904E2F56c485"
   @owner "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"

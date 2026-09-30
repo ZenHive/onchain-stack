@@ -26,8 +26,6 @@ Mix.Task.run("test", [
   "test/recover_test.exs",
   "test/recovery_bit_test.exs",
   "test/keys_test.exs",
-  "test/onchain/signer_test.exs",
-  "test/onchain/signer_gas_estimate_test.exs",
   "test/abi/native_boundary_test.exs",
   "bench/teardown_test.exs"
 ])

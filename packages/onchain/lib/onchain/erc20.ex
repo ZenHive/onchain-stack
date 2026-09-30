@@ -3,7 +3,7 @@ defmodule Onchain.ERC20 do
   ERC-20 token operations.
 
   Read operations are thin wrappers around `Onchain.Contract.call/5`.
-  Write operations delegate to `Onchain.Signer.send_transaction/3`.
+  Write operations delegate to `Cartouche.Signer.send_transaction/3`.
   Returns raw integer values for balances — consumers use
   `Onchain.Decimal.to_decimal/2` with the result of `decimals/2` to normalize.
 
@@ -16,7 +16,7 @@ defmodule Onchain.ERC20 do
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
   | `Onchain.Contract.call/5` | `{:error, {:encode_error, ...}}`, `{:error, {:rpc_error, ...}}`, `{:error, {:decode_error, ...}}` |
   | `Onchain.ABI.encode_call/2` | `{:error, {:encode_error, ...}}` |
-  | `Onchain.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
+  | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
 
   ## Functions
 
@@ -38,12 +38,12 @@ defmodule Onchain.ERC20 do
 
   use Descripex, namespace: "/erc20"
 
+  alias Cartouche.Signer
   alias Onchain.ABI
   alias Onchain.Address
   alias Onchain.Contract
   alias Onchain.ERC.Helpers
   alias Onchain.Hex
-  alias Onchain.Signer
 
   # --- balance_of ---
 

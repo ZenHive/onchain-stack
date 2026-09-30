@@ -2,7 +2,7 @@ defmodule Onchain.PrivateKey do
   @moduledoc false
 
   # Shared private-key normalization for `Onchain.AA` (ERC-4337 UserOperation
-  # signing) and `Onchain.Signer` (raw transaction signing) — both accept the
+  # signing) and `Cartouche.Signer` (raw transaction signing) — both accept the
   # same private-key input shapes (32-byte binary, or "0x"-optional 64-char hex
   # string) and must reject malformed ones identically before handing off to
   # signing. Extracted to satisfy `mix ex_dna --max-clones 0`.

@@ -100,7 +100,7 @@ defmodule Onchain.Tempo.Faucet do
   def fresh_funded_wallet(opts \\ []) do
     with :ok <- validate_wait_opts(opts) do
       priv = :crypto.strong_rand_bytes(32)
-      {:ok, addr_hex} = Onchain.Signer.address_from_key(priv)
+      {:ok, addr_hex} = Cartouche.Signer.address_from_key(priv)
       addr_bin = addr_hex |> String.trim_leading("0x") |> Base.decode16!(case: :mixed)
 
       with {:ok, _hashes} <- fund_address(addr_hex, opts),

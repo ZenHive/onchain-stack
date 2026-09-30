@@ -21,7 +21,7 @@ defmodule Onchain.Aave.Pool do
   | `Onchain.ABI.encode_call/2` | `{:error, {:encode_error, reason}}` |
   | `Onchain.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
   | `Onchain.ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
-  | `Onchain.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
+  | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
   | Interest rate mode validation | `{:error, {:invalid_interest_rate_mode, value}}`, `{:error, {:unsupported_interest_rate_mode, :stable}}` |
 
   ## Functions
@@ -46,6 +46,7 @@ defmodule Onchain.Aave.Pool do
 
   use Descripex, namespace: "/aave/pool"
 
+  alias Cartouche.Signer
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.Opts
   alias Onchain.Aave.Types.UserAccountData
@@ -54,7 +55,6 @@ defmodule Onchain.Aave.Pool do
   alias Onchain.Hex
   alias Onchain.Multicall
   alias Onchain.RPC
-  alias Onchain.Signer
 
   @referral_code 0
   @variable_rate 2

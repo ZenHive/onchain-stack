@@ -31,6 +31,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
 
   use ExUnit.Case, async: false
 
+  alias Cartouche.Signer
   alias Cartouche.Transaction
   alias Cartouche.Transaction.V2
   alias Onchain.Aave.V4.Hub
@@ -43,7 +44,6 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
   alias Onchain.Hex
   alias Onchain.RPCCase
   alias Onchain.RPCStub
-  alias Onchain.Signer
 
   @moduletag :integration
 
