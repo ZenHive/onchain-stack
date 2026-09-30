@@ -30,8 +30,8 @@ returns `{:ok, hex}`, broadcasting returns `{:ok, transaction_hash}`, and
 existing tagged errors and bang behavior are preserved. The existing
 Cartouche message-signing APIs continue to return packed signatures.
 
-Harness owns changelog updates and resets direct edits before committing;
-this entry is staged here for the reviewer/release owner to incorporate.
+The same breaking entry is recorded under `Unreleased — v0.16.0` in
+`packages/onchain/CHANGELOG.md`.
 
 ## Frozen byte evidence
 

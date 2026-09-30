@@ -142,4 +142,4 @@ references use `:onchain_evm` (not `:onchain`).
 
 `Onchain.Address` (validation), `Onchain.Hex` (hex encode/decode),
 `Onchain.RPC.Helpers` (`ensure_hex_address`, `ensure_hex_data`, `normalize_block`),
-and at Generator *runtime*: `Onchain.Contract`, `Onchain.ABI`, `Onchain.Signer`.
+and at Generator *runtime*: `Onchain.Contract`, `Onchain.ABI`, `Cartouche.Signer`.

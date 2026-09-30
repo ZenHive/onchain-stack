@@ -649,7 +649,7 @@ lib/onchain/aave/
 |--------|----------|
 | `Onchain.ABI` | ABI encoding/decoding |
 | `Onchain.RPC` | eth_call |
-| `Onchain.Signer` | Transaction signing (pool writes, faucet) |
+| `Cartouche.Signer` | Transaction signing (pool writes, faucet) |
 | `Onchain.Address` | Validation, checksumming |
 | `Onchain.Hex` | Hex encoding/decoding |
 | `Onchain.Contract` | Generic contract call (oracle) |

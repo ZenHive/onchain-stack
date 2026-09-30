@@ -754,7 +754,7 @@ before those modules land.
 | `Onchain.RPC` | `eth_call`, `batch/2`, per-call retry |
 | `Onchain.Multicall` | `aggregate3/2`, `call_many/2` — per-pool enrichment |
 | `Onchain.Contract` | Generic contract call |
-| `Onchain.Signer` | Transaction signing (opt-in write path only) |
+| `Cartouche.Signer` | Transaction signing (opt-in write path only) |
 | `Onchain.Address` | Validation, checksumming |
 | `Onchain.Hex` | Hex encoding/decoding |
 | `Onchain.Decimal` | Decimal math (ratios) |

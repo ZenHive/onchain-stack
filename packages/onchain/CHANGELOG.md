@@ -24,6 +24,17 @@ Completed roadmap tasks.
   `:unavailable`. Other single-call error shapes are unchanged. Opt-in
   `retry: [max_retries: n, backoff_ms: ms]` covers typed, raw, and batch calls:
   transport failures retry, and a JSON-RPC error that carries a code does not.
+- Remove `Onchain.Signer`. Replace it with `Cartouche.Signer` for
+  `address_from_key/1`, `build_transaction/3`, `sign_transaction/3`,
+  `encode_transaction/1`, `send_transaction/3`, and the bang variants
+  `address_from_key!/1`, `build_transaction!/3`, `sign_transaction!/3`,
+  `encode_transaction!/1`, and `send_transaction!/3`. Descripex discovery for
+  those functions is the surviving `/ethereum/signer` namespace instead of
+  `/signer`. Return shapes are unchanged: `sign_transaction/3` still returns
+  the complete signed `%Cartouche.Transaction.V2{}` inside
+  `{:ok, signed_transaction}`, encoding returns `{:ok, hex}`, broadcasting
+  returns `{:ok, transaction_hash}`, and the existing tagged errors and bang
+  behaviour are preserved.
 - Transaction encoding and decoding now use alloy-consensus through the core NIF;
   EIP-712 value encoding and hashing use alloy-dyn-abi. Transaction structs and
   JSON entry points retain their shape, and signing stays on ex_secp256k1.
@@ -38,7 +49,7 @@ Completed roadmap tasks.
   invalid inputs remain negative cases in the captured differential suite.
 - Remove `mix cartouche.gen`; replace it with `use Onchain.Contract.Generator`.
   Generated read functions return `{:ok, [values]}` and have bang forms.
-  Write functions require explicit options and use `Onchain.Signer`.
+  Write functions require explicit options and use `Cartouche.Signer`.
 - Remove `Cartouche.VM`, `Cartouche.Assembly`, generated `exec_vm_*` wrappers,
   and `Cartouche.Contract.IConsole`. Use `Onchain.EVM` in `onchain_evm` for
   local execution.

@@ -599,7 +599,7 @@ exception to its rule 2** — and the exception has to be stated, not assumed:
 
 ### Key Design Decisions
 
-- **Signing uses the local secp256k1 backend directly** — `tempo-primitives` supplies the digest; `Cartouche.Signer.Secp256k1.sign_payload/2` returns the signature and recovery bit. Sender recovery is native, with high-s normalization. `Onchain.Signer` handles EIP-1559 only.
+- **Signing uses the local secp256k1 backend directly** — `tempo-primitives` supplies the digest; `Cartouche.Signer.Secp256k1.sign_payload/2` returns the signature and recovery bit. Sender recovery is native, with high-s normalization. `Cartouche.Signer` handles EIP-1559 only.
 - **TIP20 owns all selectors** — Single source of truth, eliminates duplication.
 - **RPC uses plain errors** — `{:error, "message"}` not wrapped error structs.
 - **Encoding belongs to tempo-primitives** — The separate `onchain_tempo` NIF owns transaction decoding, signing payloads, fee-payer hashes, and serialization. `Transaction.fields` is an internal named map, not a positional RLP list. ExRLP remains only in independent verification tests.
