@@ -1023,7 +1023,7 @@ defmodule Onchain.Contract.Generator do
       end
     ] ++
       per_function ++
-      [decode_call, generate_decode_event_fn(), generate_decode_error_fn()]
+      [decode_call]
   end
 
   @doc false
@@ -1107,27 +1107,6 @@ defmodule Onchain.Contract.Generator do
       unquote_splicing(clauses)
 
       def decode_call(_), do: :not_found
-    end
-  end
-
-  @doc false
-  @spec generate_decode_event_fn() :: Macro.t()
-  defp generate_decode_event_fn do
-    quote do
-      @doc "Decodes ABI event topics and data with the matching generated event decoder."
-      @spec decode_event([binary()], binary()) ::
-              {:ok, String.t() | nil, map()} | {:error, term()} | :not_found
-      def decode_event(_, _), do: :not_found
-    end
-  end
-
-  @doc false
-  @spec generate_decode_error_fn() :: Macro.t()
-  defp generate_decode_error_fn do
-    quote do
-      @doc "Decodes ABI revert data and dispatches to the matching generated error decoder."
-      @spec decode_error(binary()) :: {:ok, String.t() | nil, term()} | :not_found
-      def decode_error(_), do: :not_found
     end
   end
 
