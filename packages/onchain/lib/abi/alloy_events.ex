@@ -6,6 +6,7 @@ defmodule ABI.AlloyEvents do
   alias ABI.TypeDecoder
   alias ABI.Validation
 
+  @doc false
   @spec decode(binary(), [binary()], FunctionSelector.t(), keyword()) :: term()
   def decode(data, topics, selector, opts) do
     schema = schema(selector, opts)
@@ -24,6 +25,7 @@ defmodule ABI.AlloyEvents do
     e in TypeDecoder.StrictViolation -> {:error, {:strict_violation, e.detail}}
   end
 
+  @doc false
   @spec decode_batch([{binary(), [binary()]}], FunctionSelector.t(), keyword()) :: [term()]
   def decode_batch(logs, selector, opts) do
     schema = schema(selector, opts)

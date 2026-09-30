@@ -5,6 +5,7 @@ defmodule ABI.Alloy do
 
   @typep arg_type :: FunctionSelector.argument_type()
 
+  @doc false
   @spec signature(FunctionSelector.t(), :function | :event) :: binary()
   def signature(selector, kind) do
     cached(:signature, {kind, selector}, fn ->
@@ -12,6 +13,7 @@ defmodule ABI.Alloy do
     end)
   end
 
+  @doc false
   @spec schema([arg_type()], binary()) :: reference()
   def schema(types, topic0 \\ <<>>) do
     cached(:schema, {types, topic0}, fn ->
@@ -39,12 +41,14 @@ defmodule ABI.Alloy do
     end
   end
 
+  @doc false
   @spec encode_raw([term()], [arg_type()]) :: binary()
   def encode_raw(values, types) do
     normalized = normalize(types, values)
     unwrap(Native.abi(:raw_encode, schema(types), List.to_tuple(normalized)))
   end
 
+  @doc false
   @spec encode_packed([term()], [arg_type()]) :: binary()
   def encode_packed(values, types) do
     Enum.zip_with(types, values, fn %{type: type}, value -> validate_packed(type, value) end)
@@ -52,6 +56,7 @@ defmodule ABI.Alloy do
     unwrap(Native.abi(:packed, schema(types), List.to_tuple(normalized)))
   end
 
+  @doc false
   @spec decode_raw(binary(), [arg_type()], keyword()) :: [term()]
   def decode_raw(data, types, opts) do
     chunks = ABI.Validation.chunks(data, types, opts)
@@ -59,6 +64,7 @@ defmodule ABI.Alloy do
     Enum.zip_with(types, values, fn %{type: type}, value -> render(type, value, opts) end)
   end
 
+  @doc false
   @spec render(FunctionSelector.type(), term(), keyword()) :: term()
   def render({:tuple, types}, values, opts) do
     rendered = Enum.zip_with(types, Tuple.to_list(values), fn %{type: t}, v -> render(t, v, opts) end)

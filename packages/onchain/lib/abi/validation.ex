@@ -7,6 +7,7 @@ defmodule ABI.Validation do
   @word_size_bytes 32
   @word_size_bits 256
 
+  @doc false
   @spec chunks(binary(), [FunctionSelector.argument_type()], keyword()) :: [binary()]
   def chunks(data, types, opts) do
     {chunks, rest} =
