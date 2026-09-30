@@ -20,6 +20,26 @@ Completed roadmap tasks.
 - Decoding rejects noncanonical RLP integers (including leading-zero signature
   scalars). EIP-4844 encoding rejects an empty destination. Previously accepted
   invalid inputs remain negative cases in the captured differential suite.
+- Remove `mix cartouche.gen`; replace it with `use Onchain.Contract.Generator`.
+  Generated read functions return `{:ok, [values]}` and have bang forms.
+  Write functions require explicit options and use `Onchain.Signer`.
+- Remove `Cartouche.VM`, `Cartouche.Assembly`, generated `exec_vm_*` wrappers,
+  and `Cartouche.Contract.IConsole`. Use `Onchain.EVM` in `onchain_evm` for
+  local execution.
+- Remove `Onchain.Sleuth`. Its constructor-only `query/5` and `query!/5` become
+  `Cartouche.Sleuth.deploy_query/5` and `deploy_query!/5`, retaining list results.
+  The two old modules implemented different execution patterns; both patterns
+  remain available in the better-tested `Cartouche.Sleuth` module.
+- Regenerate `Cartouche.Contract.Sleuth` from `priv/Sleuth.json` through the core
+  generator. Its `query_1` and `query_2` bindings simulate the nonpayable helper
+  functions with `eth_call` and return `{:ok, [result_bytes]}`. Their input-count
+  suffixes prevent collisions between overloads with default options.
+  Use the generated `Multicall` builders instead of old `build_trx_*` helpers.
+- `Cartouche.Sleuth.query`, `query_annotated`, `query_by`, and `query_v2` keep
+  their decoded success shapes. RPC errors now use `{:error, {:rpc_error, map}}`
+  and outer bytes decoding errors use `{:error, {:decode_error, reason}}`.
+  Implicit `trace_reverts` / `debug_trace` calls are no longer performed; use
+  `Onchain.Trace` in onchain_evm explicitly. Use `:rpc_url` for endpoint options.
 
 ## Unreleased — v0.15.0
 
