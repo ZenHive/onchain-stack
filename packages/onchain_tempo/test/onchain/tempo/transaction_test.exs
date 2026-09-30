@@ -15,6 +15,7 @@ defmodule Onchain.Tempo.TransactionTest do
   @other_token_hex "0x1111111111111111111111111111111111111111"
   @moderato_chain_id 42_431
 
+  # spec-tags: TEMPO-4
   describe "deserialize/1" do
     test "deserializes a valid transfer transaction" do
       calldata = transfer_calldata(@recipient_hex, 1_000_000)
@@ -536,6 +537,7 @@ defmodule Onchain.Tempo.TransactionTest do
     end
   end
 
+  # spec-tags: TEMPO-4
   describe "sender/1 and simulate_request/1" do
     # Hardhat default accounts (testnet only, no security concern).
     @client_key Base.decode16!("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", case: :lower)

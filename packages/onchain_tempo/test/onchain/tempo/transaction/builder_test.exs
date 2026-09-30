@@ -12,6 +12,7 @@ defmodule Onchain.Tempo.Transaction.BuilderTest do
   @amount 1_000_000
   @rpc_url "https://rpc.example.test"
 
+  # spec-tags: TEMPO-4
   describe "build_signed_transfer/1" do
     test "builds a signed 0x76 transaction that deserializes and matches the payment call" do
       assert {:ok, tx_hex} = Builder.build_signed_transfer(valid_opts())
@@ -75,6 +76,7 @@ defmodule Onchain.Tempo.Transaction.BuilderTest do
     end
   end
 
+  # spec-tags: TEMPO-4
   describe "build_fee_payer_transfer/1" do
     test "builds a transaction with fee payer placeholder" do
       assert {:ok, tx_hex} = Builder.build_fee_payer_transfer(valid_opts())
@@ -161,6 +163,7 @@ defmodule Onchain.Tempo.Transaction.BuilderTest do
     end
   end
 
+  # spec-tags: TEMPO-4
   describe "input normalization and error branches" do
     test "accepts raw-binary private key and addresses" do
       opts = [
