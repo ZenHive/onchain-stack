@@ -10454,3 +10454,47 @@ Make an interrupted campaign unable to leave mutated tracked sources behind — 
 created_at = "2026-09-30"
 started_at = "2026-09-30"
 scored_at = "2026-09-30"
+
+[[task]]
+id = "9047"
+phase = 9100
+bundle = "onchain_core_consolidation"
+target_repo = "onchain"
+status = "pending"
+title = "Hash finite recursive EIP-712 values through the alloy NIF"
+scores = { d = 7, b = 5, u = 5 }
+depends_on = [9034]
+acceptance_criteria = ["Before changing anything, capture the pre-9032 digest for a finite recursive value (build it from the commit before 4159bf3) as a committed fixture; the alloy path reproduces it byte-for-byte", "The EIP-712 Mail example and the existing bytesN, intN and array-of-struct hashes and signatures stay identical", "A value whose recursion exceeds the depth budget still returns an error tuple and leaves the BEAM alive (NIF-* rules in docs/specs/onchain-native.md)", "packages/onchain CHANGELOG notes the fix"]
+out_of_scope = ["Changing the JSON NIF boundary (separate task)"]
+touches = ["packages/onchain/native/onchain_abi/src/", "packages/onchain/lib/cartouche/typed", "packages/onchain/test/cartouche/"]
+assignee = "codex"
+model = "gpt-6-astra"
+body = """
+Regression from 9032 (4159bf3), found by its reviewer (run run-1790723364472-a4602968): a finite self-referential EIP-712 value such as `Node(uint256 value, Node[] children)` no longer hashes. The NIF preflight walks type cycles to a depth limit and returns `type_depth_limit`, surfacing as an ArgumentError, and alloy's `TypedData::resolve` rejects self-referential types too. `encode_type/2` still formats cyclic schemas; only hashing of recursive values broke. Existing tests cover encode_type strings, not recursive value hashes, which is why nothing caught it. Premise from the review — confirm before building on it.
+
+Restore hashing of finite recursive values on the alloy/NIF path. Do not put acyclic hashing back on a handwritten Elixir encoder. If alloy genuinely cannot resolve recursive types, a Rust-side encoder for the recursive case inside the NIF is acceptable; state what alloy lacks.
+"""
+created_at = "2026-09-30"
+scored_at = "2026-09-30"
+
+[[task]]
+id = "9048"
+phase = 9100
+bundle = "onchain_core_consolidation"
+target_repo = "onchain"
+status = "pending"
+title = "Replace the transaction and EIP-712 JSON NIF boundary"
+scores = { d = 6, b = 6, u = 3 }
+depends_on = [9034]
+acceptance_criteria = ["The frozen transactions_before_alloy.etf fixture still matches byte-for-byte on in-range transactions, and the out-of-range negative cases keep their error contract", "The four workloads are re-measured on one machine and before/after numbers are recorded in the bench outcome file and the task outcome", "Malformed input still returns an error tuple with the BEAM alive (NIF-* rules)"]
+out_of_scope = ["Making performance a gate", "Recursive EIP-712 hashing (separate task)"]
+touches = ["packages/onchain/native/onchain_abi/src/", "packages/onchain/lib/cartouche/transaction", "packages/onchain/lib/cartouche/typed", "packages/onchain/bench/"]
+assignee = "codex"
+model = "gpt-6-astra"
+body = """
+9032 routes every typed-transaction and EIP-712 call through the NIF as JSON. packages/onchain/bench/transactions-outcome.json (before revision 2b2eb421) records median ips falling about 6.2x for EIP-1559 encode, 5.8x for EIP-7702, 19.1x for raw decode and 2.4x for an EIP-712 permit hash. The reviewer attributes the gap to the JSON crossing; Benchee cannot see NIF allocations, so BEAM memory does not explain it.
+
+Cut the crossing cost — a BEAM term codec at the NIF boundary, or whatever the measurements point to. Performance stays reporting-only (operator decision 2026-09-29): no threshold, no gate.
+"""
+created_at = "2026-09-30"
+scored_at = "2026-09-30"
