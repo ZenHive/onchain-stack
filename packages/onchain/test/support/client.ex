@@ -829,7 +829,8 @@ defmodule Cartouche.Test.Client do
 
   # Sleuth call
   # Sleuth call - Facts Query
-  def eth_call(%{"to" => "0xFD946BF25C47A1BFF567B28BA78A961BF78FF9D2", "data" => _data} = trx, block) do
+  def eth_call(%{"to" => address, "data" => _data} = trx, block)
+      when address in ["0xFD946BF25C47A1BFF567B28BA78A961BF78FF9D2", "0xfd946bf25c47a1bff567b28ba78a961bf78ff9d2"] do
     Cartouche.Test.SleuthHandler.eth_call(trx, block)
   end
 

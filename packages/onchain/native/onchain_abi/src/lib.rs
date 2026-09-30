@@ -4,6 +4,7 @@ use alloy_primitives::{Address, FixedBytes, I256, U256};
 use rustler::{types::tuple, BigInt, Binary, Encoder, Env, NewBinary, ResourceArc, Term};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
+mod contract;
 mod transaction;
 
 mod atoms {

@@ -3,7 +3,8 @@ defmodule Onchain.Contract.Generator do
   Compile-time contract codegen macro.
 
   Reads a Solidity ABI (from `.sol` source, ABI JSON string, or ABI JSON file)
-  at compile time via `Onchain.Solidity`, then generates typed Elixir functions
+  at compile time via `Onchain.Contract.ABI` (JSON) or the optional
+  `onchain_evm` package (Solidity), then generates typed Elixir functions
   for every contract function found in the ABI.
 
   ## Usage
@@ -44,11 +45,10 @@ defmodule Onchain.Contract.Generator do
 
   ## Overload Disambiguation
 
-  When multiple Solidity functions share the same name but differ in parameter
-  count, generated Elixir function names are suffixed with input type names
-  to avoid arity collisions. For example, `transfer(address,uint256)` and
-  `transfer(address,address,uint256)` become `transfer/3` and
-  `transfer_address/4` (suffixed with the disambiguating extra param type).
+  Same-arity overloads receive distinguishing input-type suffixes. Read overloads
+  whose default options would overlap another arity receive input-count suffixes,
+  for example `query_1` and `query_2`. Write overloads with distinct arities keep
+  their original names.
 
   ## Options
 
@@ -79,7 +79,10 @@ defmodule Onchain.Contract.Generator do
   - **NatSpec docs**: `@doc` pulled from `/// @notice` comments
   """
 
+  alias Onchain.Contract.ABI
+
   @doc false
+  @spec __using__(keyword()) :: Macro.t()
   defmacro __using__(opts) do
     quote do
       @before_compile {Onchain.Contract.Generator, :__before_compile__}
@@ -88,6 +91,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec __before_compile__(Macro.Env.t()) :: Macro.t()
   defmacro __before_compile__(env) do
     opts = Module.get_attribute(env.module, :__contract_opts__)
     %{abi: abi, is_sol: is_sol, external_files: external_files} = resolve_contract_input(opts, env)
@@ -132,14 +136,14 @@ defmodule Onchain.Contract.Generator do
     defstruct [:abi, :is_sol, :external_files]
 
     @type t :: %__MODULE__{
-            abi: Onchain.Solidity.parsed_abi() | Onchain.Solidity.parsed_sol(),
+            abi: map(),
             is_sol: boolean(),
             external_files: [String.t()]
           }
   end
 
   @doc false
-  @spec resolve_abi(keyword()) :: Onchain.Solidity.parsed_abi()
+  @spec resolve_abi(keyword()) :: ABI.parsed_abi()
   def resolve_abi(opts) do
     resolve_contract_input(opts, nil).abi
   end
@@ -149,52 +153,29 @@ defmodule Onchain.Contract.Generator do
   @spec resolve_contract_input(keyword(), Macro.Env.t() | nil) :: ResolvedInput.t()
   def resolve_contract_input(opts, env) do
     cond do
-      sol = Keyword.get(opts, :sol) ->
-        %ResolvedInput{abi: Onchain.Solidity.parse_sol!(sol), is_sol: true, external_files: []}
+      Keyword.has_key?(opts, :sol) or Keyword.has_key?(opts, :sol_file) ->
+        frontend = Onchain.Solidity
 
-      file = Keyword.get(opts, :sol_file) ->
-        resolve_sol_file_input(file, opts, env)
+        if not Code.ensure_loaded?(frontend) do
+          raise ArgumentError, ".sol codegen requires the onchain_evm package; use :abi_json or :abi_file in core"
+        end
+
+        # --- Name Conversion ---
+        apply(frontend, :resolve_generator_input, [opts, env])
 
       json = Keyword.get(opts, :abi_json) ->
-        %ResolvedInput{abi: Onchain.Solidity.parse_abi_json!(json), is_sol: false, external_files: []}
+        %ResolvedInput{abi: ABI.parse_abi_json!(json), is_sol: false, external_files: []}
 
       file = Keyword.get(opts, :abi_file) ->
-        %ResolvedInput{abi: Onchain.Solidity.parse_abi_file!(file), is_sol: false, external_files: []}
+        %ResolvedInput{abi: ABI.parse_abi_file!(file), is_sol: false, external_files: [Path.expand(file)]}
 
       true ->
         raise ArgumentError,
               "use Onchain.Contract.Generator requires :sol, :sol_file, :abi_json, or :abi_file option"
     end
+
+    # --- Overload Disambiguation ---
   end
-
-  @doc false
-  # Resolves a root Solidity file relative to the caller module and parses the selected contract.
-  @spec resolve_sol_file_input(String.t(), keyword(), Macro.Env.t() | nil) :: ResolvedInput.t()
-  defp resolve_sol_file_input(file, opts, env) do
-    sol_path = expand_sol_file_path(file, env)
-    sol_opts = Keyword.take(opts, [:remappings, :root_contract])
-    resolution = Onchain.Solidity.resolve_sol_file!(sol_path, sol_opts)
-
-    abi =
-      case Onchain.Solidity.__parse_sol_root__(resolution.source, resolution.root_contract) do
-        {:ok, parsed} -> parsed
-        {:error, {:parse_error, reason}} -> raise "Solidity parse failed: #{reason}"
-        {:error, reason} -> raise "Solidity parse failed: #{inspect(reason)}"
-      end
-
-    %ResolvedInput{abi: abi, is_sol: true, external_files: resolution.files}
-  end
-
-  @doc false
-  # Expands sol_file paths relative to the caller file when available.
-  @spec expand_sol_file_path(String.t(), Macro.Env.t() | nil) :: String.t()
-  defp expand_sol_file_path(file, nil), do: Path.expand(file)
-
-  defp expand_sol_file_path(file, env) do
-    Path.expand(file, Path.dirname(env.file))
-  end
-
-  # --- Name Conversion ---
 
   @doc false
   @spec to_snake_case(String.t()) :: String.t()
@@ -204,8 +185,6 @@ defmodule Onchain.Contract.Generator do
     |> String.replace(~r/([a-z0-9])([A-Z])/, "\\1_\\2")
     |> String.downcase()
   end
-
-  # --- Overload Disambiguation ---
 
   @doc false
   @spec disambiguate([map()]) :: [map()]
@@ -218,27 +197,33 @@ defmodule Onchain.Contract.Generator do
   @doc false
   @spec disambiguate_collisions([map()]) :: [map()]
   defp disambiguate_collisions(functions) do
-    # Group by {snake_name, input_count + 2} (contract + opts params)
-    groups =
-      Enum.group_by(functions, fn f ->
-        {f.elixir_name, length(f.inputs) + 2}
-      end)
-
     Enum.map(functions, fn f ->
-      key = {f.elixir_name, length(f.inputs) + 2}
+      collisions = Enum.filter(functions, &(&1.elixir_name == f.elixir_name and arities_overlap?(f, &1)))
 
-      case Map.get(groups, key) do
+      case collisions do
         [_single] ->
           f
 
-        collisions ->
-          # Find the input types that distinguish this overload
-          # (guaranteed 2+ elements here: `f` is always a member of its own
-          # group, so the only other case after `[_single]` is a collision)
-          suffix = disambiguation_suffix(f, collisions)
+        _ ->
+          suffix =
+            if Enum.any?(collisions, &(length(&1.inputs) != length(f.inputs))) do
+              Integer.to_string(length(f.inputs))
+            else
+              disambiguation_suffix(f, collisions)
+            end
+
           %{f | elixir_name: f.elixir_name <> "_" <> suffix}
       end
     end)
+  end
+
+  @spec arities_overlap?(map(), map()) :: boolean()
+  defp arities_overlap?(left, right) do
+    left_max = length(left.inputs) + 2
+    right_max = length(right.inputs) + 2
+    left_min = if left.state_mutability in ["view", "pure"], do: left_max - 1, else: left_max
+    right_min = if right.state_mutability in ["view", "pure"], do: right_max - 1, else: right_max
+    left_min <= right_max and right_min <= left_max
   end
 
   @doc false
@@ -258,13 +243,15 @@ defmodule Onchain.Contract.Generator do
     # Find first type position unique to this overload
     my_types
     |> Enum.with_index()
-    |> Enum.find_value(&unique_type_suffix(&1, other_input_sets))
+    # --- Mutability Split ---
     # All types match (shouldn't happen with same arity), use full input count
+    |> Enum.find_value(&unique_type_suffix(&1, other_input_sets))
     |> Kernel.||("#{length(func.inputs)}")
   end
 
   @doc false
   @spec solidity_type_to_suffix(String.t()) :: String.t()
+  # --- Code Generation ---
   defp solidity_type_to_suffix("address"), do: "address"
   defp solidity_type_to_suffix("bool"), do: "bool"
   defp solidity_type_to_suffix("string"), do: "string"
@@ -281,8 +268,6 @@ defmodule Onchain.Contract.Generator do
     end
   end
 
-  # --- Mutability Split ---
-
   @doc false
   @spec split_by_mutability([map()]) :: {[map()], [map()]}
   defp split_by_mutability(functions) do
@@ -290,8 +275,6 @@ defmodule Onchain.Contract.Generator do
       f.state_mutability in ["view", "pure"]
     end)
   end
-
-  # --- Code Generation ---
 
   @doc false
   @spec generate_moduledoc([map()], [map()], [map()]) :: String.t()
@@ -327,7 +310,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
-  @spec generate_abi_fn(Onchain.Solidity.parsed_abi()) :: Macro.t()
+  @spec generate_abi_fn(ABI.parsed_abi()) :: Macro.t()
   defp generate_abi_fn(abi) do
     quote do
       @doc "Returns the full parsed ABI map for this contract."
@@ -562,6 +545,8 @@ defmodule Onchain.Contract.Generator do
 
     validated_map = Map.new(address_validations)
 
+    # --- Multicall Generation ---
+
     call_params =
       Enum.map(input_vars, fn {vname, _ty} ->
         case Map.get(validated_map, vname) do
@@ -625,8 +610,6 @@ defmodule Onchain.Contract.Generator do
     {:with, [], validation_clauses ++ [encode_clause] ++ [[do: body]]}
   end
 
-  # --- Multicall Generation ---
-
   @doc false
   @spec generate_multicall_module([map()]) :: Macro.t()
   defp generate_multicall_module(functions) do
@@ -671,6 +654,7 @@ defmodule Onchain.Contract.Generator do
       Enum.map(input_vars, fn {vname, _ty} ->
         case Map.get(validated_map, vname) do
           nil -> Macro.var(vname, nil)
+          # --- Type Mapping ---
           validated -> Macro.var(validated, nil)
         end
       end)
@@ -742,9 +726,8 @@ defmodule Onchain.Contract.Generator do
     {:with, [], [contract_clause] ++ validation_clauses ++ [encode_clause] ++ [[do: body]]}
   end
 
-  # --- Type Mapping ---
-
   @doc false
+  # --- Struct Generation (.sol only) ---
   @spec input_spec_types([{atom(), String.t()}]) :: [Macro.t()]
   defp input_spec_types(input_vars) do
     Enum.map(input_vars, fn {_name, ty} -> solidity_to_elixir_spec(ty) end)
@@ -819,15 +802,14 @@ defmodule Onchain.Contract.Generator do
     end
   end
 
-  # --- Struct Generation (.sol only) ---
-
   @doc false
-  @spec generate_struct_modules(Onchain.Solidity.parsed_abi(), module()) :: [Macro.t()]
+  @spec generate_struct_modules(ABI.parsed_abi(), module()) :: [Macro.t()]
   defp generate_struct_modules(abi, parent_module) do
     structs = Map.get(abi, :structs, [])
     struct_names = MapSet.new(structs, & &1.name)
 
     Enum.map(structs, fn struct_info ->
+      # --- Enum Generation (.sol only) ---
       mod_name = Module.concat(parent_module, struct_info.name)
       field_atoms = Enum.map(struct_info.fields, fn f -> to_identifier_atom(to_snake_case(f.name)) end)
 
@@ -933,10 +915,8 @@ defmodule Onchain.Contract.Generator do
   defp solidity_to_struct_type("uint" <> _), do: quote(do: non_neg_integer())
   defp solidity_to_struct_type(_), do: quote(do: term())
 
-  # --- Enum Generation (.sol only) ---
-
   @doc false
-  @spec generate_enum_fns(Onchain.Solidity.parsed_abi()) :: [Macro.t()]
+  @spec generate_enum_fns(ABI.parsed_abi()) :: [Macro.t()]
   defp generate_enum_fns(abi) do
     enums = Map.get(abi, :enums, [])
 

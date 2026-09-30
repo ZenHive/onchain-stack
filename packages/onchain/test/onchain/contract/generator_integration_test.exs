@@ -10,7 +10,7 @@ defmodule Onchain.Contract.GeneratorIntegrationTest do
   defmodule ChainlinkModule do
     @moduledoc false
     use Generator,
-      abi_json: File.read!(Path.join(:code.priv_dir(:onchain_evm), "abis/chainlink_aggregator.json"))
+      abi_json: File.read!(Path.join(:code.priv_dir(:onchain), "abis/chainlink_aggregator.json"))
   end
 
   # Generated module from ERC-20 ABI JSON

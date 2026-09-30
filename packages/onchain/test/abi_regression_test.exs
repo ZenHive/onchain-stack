@@ -1,8 +1,6 @@
 defmodule Cartouche.ABIRegressionTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Contract.IConsole
-
   describe "hieroglyph 1.4 adoption regressions" do
     test "indexed reference-type event params surface the topic hash" do
       selector = ABI.FunctionSelector.decode("Message(string indexed tag, uint256 value)")
@@ -15,9 +13,10 @@ defmodule Cartouche.ABIRegressionTest do
 
     test "generated call decoding preserves embedded NUL bytes in strings" do
       message = "alpha" <> <<0>> <> "omega"
-      encoded = IConsole.encode_log(<<1::160>>, <<2::160>>, message)
+      encoded = ABI.encode("log(address,address,string)", [<<1::160>>, <<2::160>>, message])
 
-      assert [<<1::160>>, <<2::160>>, ^message] = IConsole.decode_log_call(encoded)
+      assert [<<1::160>>, <<2::160>>, ^message] =
+               ABI.decode("log(address,address,string)", binary_part(encoded, 4, byte_size(encoded) - 4))
     end
 
     test "small signed-int overflow raises at the Cartouche ABI call layer" do

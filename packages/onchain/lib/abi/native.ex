@@ -3,6 +3,10 @@ defmodule ABI.Native do
   use RustlerPrecompiled, Onchain.Precompiled.opts("onchain_abi")
 
   @doc false
+  @spec parse_abi_json(String.t()) :: {:ok, map()} | {:error, term()}
+  def parse_abi_json(_json), do: :erlang.nif_error(:nif_not_loaded)
+
+  @doc false
   @spec consensus(String.t(), String.t(), binary()) :: {:ok, binary()} | {:error, term()}
   def consensus(_family, _operation, _input), do: :erlang.nif_error(:nif_not_loaded)
 

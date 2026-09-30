@@ -1,8 +1,8 @@
-defmodule Onchain.Sleuth.IntegrationTest do
+defmodule Cartouche.Sleuth.IntegrationTest do
   use ExUnit.Case, async: false
 
+  alias Cartouche.Sleuth
   alias Onchain.Contract
-  alias Onchain.Sleuth
 
   @moduletag :integration
 
@@ -28,7 +28,7 @@ defmodule Onchain.Sleuth.IntegrationTest do
       opts = rpc_opts()
 
       assert {:ok, [sleuth_balance]} =
-               Sleuth.query(
+               Sleuth.deploy_query(
                  @balance_query_bytecode,
                  "(address,address)",
                  {address_bin(@usdc), address_bin(@vitalik)},
@@ -49,7 +49,7 @@ defmodule Onchain.Sleuth.IntegrationTest do
       opts = rpc_opts()
 
       assert [balance] =
-               Sleuth.query!(
+               Sleuth.deploy_query!(
                  @balance_query_bytecode,
                  "(address,address)",
                  {address_bin(@usdc), address_bin(@vitalik)},
@@ -68,7 +68,7 @@ defmodule Onchain.Sleuth.IntegrationTest do
       historic_block = latest - 10
 
       assert {:ok, [balance]} =
-               Sleuth.query(
+               Sleuth.deploy_query(
                  @balance_query_bytecode,
                  "(address,address)",
                  {address_bin(@usdc), address_bin(@vitalik)},

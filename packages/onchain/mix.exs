@@ -26,7 +26,6 @@ defmodule Onchain.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
-      test_coverage: [ignore_modules: [Cartouche.Contract.IConsole]],
       aliases: aliases(),
       deps: deps(),
       dialyzer: dialyzer(),

@@ -1,0 +1,7 @@
+[
+    {"type":"constructor","stateMutability":"payable","inputs":[{"name":"owner","type":"address"}]},
+    {"type":"event","name":"Changed","anonymous":false,"inputs":[{"name":"owner","type":"address","indexed":true},{"name":"value","type":"uint256","indexed":false}]},
+    {"type":"error","name":"Denied","inputs":[{"name":"owner","type":"address"}]},
+    {"type":"function","name":"echo","stateMutability":"pure","inputs":[{"name":"value","type":"tuple","components":[{"name":"amount","type":"uint256"},{"name":"label","type":"string"}]}],"outputs":[{"name":"","type":"tuple","components":[{"name":"amount","type":"uint256"},{"name":"label","type":"string"}]}]},
+    {"type":"function","name":"echo","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"uint256"}]}
+  ]

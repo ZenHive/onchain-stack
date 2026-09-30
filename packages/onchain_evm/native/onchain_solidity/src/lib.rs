@@ -1,45 +1,13 @@
-//! Solidity and ABI parsing for Elixir, backed by [alloy-json-abi] and [solar-parse].
-//!
-//! This crate is the native half of `Onchain.Solidity` and the compile-time
-//! engine behind `Onchain.Contract.Generator`. It turns either a JSON ABI or
-//! Solidity source into an Erlang-term description of a contract: functions
-//! with canonical signatures and 4-byte selectors, events with topic hashes,
-//! custom errors, structs, enums and constants, plus any NatSpec attached to
-//! them.
-//!
-//! # Exposed NIFs
-//!
-//! | NIF | Input | Purpose |
-//! |-----|-------|---------|
-//! | `parse_abi_json` | JSON ABI | Parse a compiled ABI via `alloy-json-abi` |
-//! | `parse_sol` | Solidity source | Parse source via `solar-parse`, no compiler needed |
-//!
-//! Selectors and topic hashes are computed here with `tiny-keccak` over the
-//! canonical signature, so the Elixir side never has to re-derive them.
-//!
-//! # Source parsing is a parser, not a compiler
-//!
-//! `parse_sol` reads a parse tree; it does not type-check, resolve inheritance,
-//! or evaluate constant expressions. Type and expression rendering falls back to
-//! a stable placeholder for shapes that are not modelled (see `type_to_string`
-//! and the expression helpers), and syntax `solar-parse` does not know is
-//! returned as a `:parse_error`. Recursion in type rendering is bounded by
-//! `MAX_TYPE_RECURSION_DEPTH`; NatSpec is attached by proximity, bounded by
-//! `MAX_NATSPEC_DISTANCE_BYTES`.
-//!
-//! Prefer `parse_abi_json` when a compiled ABI is available: it is the exact
-//! contract surface, whereas source parsing is a best-effort read of what the
-//! source declares.
-//!
-//! [alloy-json-abi]: https://docs.rs/alloy-json-abi
-//! [solar-parse]: https://docs.rs/solar-parse
+//! Solidity source parsing for Elixir, backed by solar-parse.
+//! ABI JSON parsing lives in onchain_abi; this crate owns only the optional
+//! compiler frontend. Source parsing extracts syntax, not type checking or
+//! evaluation. Compiled ABI fixtures remain as test-only signature oracles.
 
 // `cargo clippy --all-targets` lints #[cfg(test)] modules too.
 #![cfg_attr(test, allow(clippy::unwrap_used))]
 
-use alloy_json_abi::{
-    Constructor, Error as AbiError, Event, EventParam, Function, JsonAbi, Param, StateMutability,
-};
+#[cfg(test)]
+use alloy_json_abi::{JsonAbi, Param};
 use rustler::{Encoder, Env, NifResult, Term};
 use solar_parse::{
     ast::{self, Arena},
@@ -163,20 +131,6 @@ struct ParsedError {
 }
 
 // --- NIF functions ---
-
-#[rustler::nif]
-fn parse_abi_json<'a>(env: Env<'a>, json: &str) -> NifResult<Term<'a>> {
-    match serde_json::from_str::<JsonAbi>(json) {
-        Ok(abi) => {
-            let result = encode_abi(env, &abi);
-            Ok((atoms::ok(), result).encode(env))
-        }
-        Err(e) => {
-            let reason = format!("{}", e);
-            Ok((atoms::error(), (atoms::parse_error(), reason)).encode(env))
-        }
-    }
-}
 
 #[rustler::nif]
 fn parse_sol<'a>(env: Env<'a>, source: &str) -> NifResult<Term<'a>> {
@@ -1464,152 +1418,7 @@ fn take_natspec_for_offset(
     }
 }
 
-// --- ABI JSON encoding helpers (unchanged) ---
-
-fn encode_abi<'a>(env: Env<'a>, abi: &JsonAbi) -> Term<'a> {
-    let funcs: Vec<Term<'a>> = abi.functions().map(|f| encode_function(env, f)).collect();
-    let evts: Vec<Term<'a>> = abi.events().map(|e| encode_event(env, e)).collect();
-    let errs: Vec<Term<'a>> = abi.errors().map(|e| encode_error(env, e)).collect();
-
-    let ctor: Term<'a> = match &abi.constructor {
-        Some(c) => encode_constructor(env, c),
-        None => rustler::types::atom::nil().encode(env),
-    };
-
-    let mut map = Term::map_new(env);
-    map = map_put(map, atoms::functions().encode(env), funcs.encode(env));
-    map = map_put(map, atoms::events().encode(env), evts.encode(env));
-    map = map_put(map, atoms::errors().encode(env), errs.encode(env));
-    map = map_put(map, atoms::constructor().encode(env), ctor);
-    map
-}
-
-fn encode_function<'a>(env: Env<'a>, f: &Function) -> Term<'a> {
-    let sig = f.signature();
-    let sel = format!("0x{}", hex::encode(f.selector().as_ref() as &[u8]));
-    let ret = build_return_type(&f.outputs);
-    let mutability = mutability_str(&f.state_mutability);
-
-    let ins: Vec<Term<'a>> = f.inputs.iter().map(|p| encode_param(env, p)).collect();
-    let outs: Vec<Term<'a>> = f.outputs.iter().map(|p| encode_param(env, p)).collect();
-
-    let mut map = Term::map_new(env);
-    map = map_put(map, atoms::name().encode(env), f.name.as_str().encode(env));
-    map = map_put(
-        map,
-        atoms::signature().encode(env),
-        sig.as_str().encode(env),
-    );
-    map = map_put(map, atoms::selector().encode(env), sel.as_str().encode(env));
-    map = map_put(
-        map,
-        atoms::return_type().encode(env),
-        ret.as_str().encode(env),
-    );
-    map = map_put(
-        map,
-        atoms::state_mutability().encode(env),
-        mutability.encode(env),
-    );
-    map = map_put(map, atoms::inputs().encode(env), ins.encode(env));
-    map = map_put(map, atoms::outputs().encode(env), outs.encode(env));
-    map
-}
-
-fn encode_event<'a>(env: Env<'a>, e: &Event) -> Term<'a> {
-    let sig = e.signature();
-    let topic_hash = format!("0x{}", hex::encode(e.selector().as_ref() as &[u8]));
-
-    let ins: Vec<Term<'a>> = e
-        .inputs
-        .iter()
-        .map(|p| encode_event_param(env, p))
-        .collect();
-
-    let mut map = Term::map_new(env);
-    map = map_put(map, atoms::name().encode(env), e.name.as_str().encode(env));
-    map = map_put(
-        map,
-        atoms::signature().encode(env),
-        sig.as_str().encode(env),
-    );
-    map = map_put(
-        map,
-        atoms::topic().encode(env),
-        topic_hash.as_str().encode(env),
-    );
-    map = map_put(map, atoms::anonymous().encode(env), e.anonymous.encode(env));
-    map = map_put(map, atoms::inputs().encode(env), ins.encode(env));
-    map
-}
-
-fn encode_error<'a>(env: Env<'a>, e: &AbiError) -> Term<'a> {
-    let sig = e.signature();
-    let sel = format!("0x{}", hex::encode(e.selector().as_ref() as &[u8]));
-
-    let ins: Vec<Term<'a>> = e.inputs.iter().map(|p| encode_param(env, p)).collect();
-
-    let mut map = Term::map_new(env);
-    map = map_put(map, atoms::name().encode(env), e.name.as_str().encode(env));
-    map = map_put(
-        map,
-        atoms::signature().encode(env),
-        sig.as_str().encode(env),
-    );
-    map = map_put(map, atoms::selector().encode(env), sel.as_str().encode(env));
-    map = map_put(map, atoms::inputs().encode(env), ins.encode(env));
-    map
-}
-
-fn encode_constructor<'a>(env: Env<'a>, c: &Constructor) -> Term<'a> {
-    let mutability = mutability_str(&c.state_mutability);
-    let ins: Vec<Term<'a>> = c.inputs.iter().map(|p| encode_param(env, p)).collect();
-
-    let mut map = Term::map_new(env);
-    map = map_put(map, atoms::inputs().encode(env), ins.encode(env));
-    map = map_put(
-        map,
-        atoms::state_mutability().encode(env),
-        mutability.encode(env),
-    );
-    map
-}
-
-fn encode_param<'a>(env: Env<'a>, p: &Param) -> Term<'a> {
-    let comps: Vec<Term<'a>> = p.components.iter().map(|c| encode_param(env, c)).collect();
-
-    let mut map = Term::map_new(env);
-    map = map_put(map, atoms::name().encode(env), p.name.as_str().encode(env));
-    map = map_put(map, atoms::ty().encode(env), p.ty.as_str().encode(env));
-    map = map_put(map, atoms::components().encode(env), comps.encode(env));
-    map
-}
-
-fn encode_event_param<'a>(env: Env<'a>, p: &EventParam) -> Term<'a> {
-    let comps: Vec<Term<'a>> = p.components.iter().map(|c| encode_param(env, c)).collect();
-
-    let mut map = Term::map_new(env);
-    map = map_put(map, atoms::name().encode(env), p.name.as_str().encode(env));
-    map = map_put(map, atoms::ty().encode(env), p.ty.as_str().encode(env));
-    map = map_put(map, atoms::indexed().encode(env), p.indexed.encode(env));
-    map = map_put(map, atoms::components().encode(env), comps.encode(env));
-    map
-}
-
-// --- Helpers ---
-
-/// Build the return type string compatible with Onchain.ABI.decode_response/2.
-/// E.g., "(uint256,uint256,bool)" or "(uint256)" for single returns.
-fn build_return_type(outputs: &[Param]) -> String {
-    if outputs.is_empty() {
-        return String::from("()");
-    }
-
-    let types: Vec<String> = outputs.iter().map(canonical_type).collect();
-    format!("({})", types.join(","))
-}
-
-/// Get the canonical type string for a param, handling tuple/struct types recursively.
+#[cfg(test)]
 fn canonical_type(p: &Param) -> String {
     if p.components.is_empty() {
         // Simple type — use the ty field directly
@@ -1627,17 +1436,6 @@ fn canonical_type(p: &Param) -> String {
     }
 }
 
-/// Convert StateMutability enum to its Solidity string representation.
-fn mutability_str(m: &StateMutability) -> &'static str {
-    match m {
-        StateMutability::Pure => "pure",
-        StateMutability::View => "view",
-        StateMutability::NonPayable => "nonpayable",
-        StateMutability::Payable => "payable",
-    }
-}
-
-/// Helper to put a key-value pair into a map term.
 fn map_put<'a>(map: Term<'a>, key: Term<'a>, value: Term<'a>) -> Term<'a> {
     map.map_put(key, value).expect("failed to put map entry")
 }

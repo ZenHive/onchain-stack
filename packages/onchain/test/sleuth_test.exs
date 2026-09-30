@@ -264,11 +264,19 @@ defmodule SleuthTest do
   end
 
   describe "generated Sleuth call shape" do
-    test "build_trx_query/3 returns an eth_call struct instead of a partial V2 transaction" do
-      call = Cartouche.Contract.Sleuth.build_trx_query(<<1::160>>, <<2, 3>>, <<4, 5>>)
+    test "generated binding builds eth_call calldata and decodes a bytes result" do
+      address = "0x" <> String.duplicate("11", 20)
 
-      assert %Cartouche.Transaction.Call{destination: <<1::160>>, data: data} = call
-      assert data == Cartouche.Contract.Sleuth.encode_query(<<2, 3>>, <<4, 5>>)
+      assert {:ok, {^address, true, data}} =
+               Cartouche.Contract.Sleuth.Multicall.query_2(address, <<2, 3>>, <<4, 5>>)
+
+      assert {:ok, ^data} = Onchain.ABI.encode_call("query(bytes,bytes)", [<<2, 3>>, <<4, 5>>])
+      set_sleuth_result(<<7, 8>>)
+
+      assert {:ok, [<<7, 8>>]} =
+               Cartouche.Contract.Sleuth.query_2(address, <<2, 3>>, <<4, 5>>,
+                 req_options: [plug: &StaticEthCallClient.call/1]
+               )
     end
   end
 
@@ -298,13 +306,8 @@ defmodule SleuthTest do
       assert {:ok, [block_number: 2]} == v2_case.(named_returns: true)
     end
 
-    test "query() failure with trace" do
-      assert {:error,
-              %{
-                code: 3,
-                message: "execution reverted",
-                trace: _
-              }} =
+    test "query() preserves RPC errors with legacy trace options" do
+      assert {:error, {:rpc_error, %{code: 3, message: "execution reverted"}}} =
                Sleuth.query(
                  ~h[],
                  ~h[0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF00000001],
@@ -313,13 +316,8 @@ defmodule SleuthTest do
                )
     end
 
-    test "query() failure with debug trace" do
-      assert {:error,
-              %{
-                code: 3,
-                message: "execution reverted",
-                trace: _
-              }} =
+    test "query() preserves RPC errors with legacy debug options" do
+      assert {:error, {:rpc_error, %{code: 3, message: "execution reverted"}}} =
                Sleuth.query(
                  ~h[],
                  ~h[0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF00000001],
@@ -683,7 +681,7 @@ defmodule SleuthTest do
     test "returns a decode-bytes error when the eth_call result is not ABI bytes" do
       Process.put(:sleuth_eth_call_result, "0x1234")
 
-      assert {:error, "error decoding bytes: " <> _} =
+      assert {:error, {:decode_error, _}} =
                Sleuth.query(
                  BlockNumber.bytecode(),
                  BlockNumber.encode_query(),
@@ -940,5 +938,50 @@ defmodule SleuthTest do
     true
   rescue
     ArgumentError -> false
+  end
+
+  describe "query/5 — input validation" do
+    test "returns {:invalid_hex, _} for bad bytecode" do
+      assert {:error, {:invalid_hex, "not_hex!!"}} =
+               Sleuth.deploy_query("not_hex!!", "()", {}, "(uint256)")
+    end
+
+    test "returns {:encode_error, _} when ctor args don't match types" do
+      # uint8 overflow is a deterministic ABI.encode failure — no RPC hit.
+      assert {:error, {:encode_error, _msg}} =
+               Sleuth.deploy_query("0x6080", "(uint8)", {9999}, "(uint256)")
+    end
+  end
+
+  describe "query!/5" do
+    test "raises on invalid bytecode" do
+      assert_raise RuntimeError, ~r/Sleuth query failed/, fn ->
+        Sleuth.deploy_query!("not_hex!!", "()", {}, "(uint256)")
+      end
+    end
+
+    test "raises on ctor encode failure" do
+      assert_raise RuntimeError, ~r/Sleuth query failed/, fn ->
+        Sleuth.deploy_query!("0x6080", "(uint8)", {9999}, "(uint256)")
+      end
+    end
+  end
+
+  describe "descripex annotations" do
+    test "exposes query/5 via __api__/0" do
+      api = Sleuth.__api__()
+      assert is_list(api)
+      assert Enum.any?(api, fn fun -> fun.name == :deploy_query and fun.arity == 5 end)
+      assert Enum.any?(api, fn fun -> fun.name == :deploy_query! and fun.arity == 5 end)
+    end
+
+    test "query/5 hints include all params" do
+      fun = Enum.find(Sleuth.__api__(), fn f -> f.name == :deploy_query and f.arity == 5 end)
+      param_names = Map.keys(fun.hints.params)
+
+      for name <- [:bytecode, :constructor_types, :constructor_args, :return_type, :opts] do
+        assert name in param_names
+      end
+    end
   end
 end

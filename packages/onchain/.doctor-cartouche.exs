@@ -10,7 +10,7 @@
   # inside `quote do ... end` blocks. Intentionally untracked in ROADMAP — this is an
   # upstream Doctor limitation we can't fix locally.
   ignore_paths: [~r"^(?!lib/(cartouche(?:/|\.ex)|mix/cartouche\.)|test/support/)"],
-  ignore_modules: [Mix.Tasks.Cartouche.Gen, Cartouche.RPC.DSL],
+  ignore_modules: [Cartouche.RPC.DSL],
   min_module_doc_coverage: 100,
   min_module_spec_coverage: 100,
   min_overall_doc_coverage: 100,

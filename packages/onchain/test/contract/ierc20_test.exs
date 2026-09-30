@@ -1,13 +1,4 @@
 defmodule Cartouche.Contract.IERC20Test do
-  @moduledoc ~S"""
-  # This test is for the IERC20 generated contract
-
-  To regenerate the ierc20 contract, run:
-
-  ```sh
-  mix compile && mix cartouche.gen --out test/support --prefix cartouche/contract ./test/abi/IERC20.json
-  ```
-  """
   use ExUnit.Case, async: true
   use Cartouche.Hex
 

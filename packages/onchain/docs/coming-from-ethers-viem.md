@@ -200,8 +200,7 @@ key and signs.
 ## Cartouche extras with no ethers/viem counterpart
 
 `Cartouche.OpenChain.lookup/3` (selector → signature lookup),
-`Cartouche.Sleuth` (bytecode queries), `Cartouche.VM` (in-process EVM subset
-for pure functions), `Cartouche.RPC.eth_config/1` and `eth_capabilities/1`,
+`Cartouche.Sleuth` (bytecode queries), `Onchain.EVM` (local execution via revm in onchain_evm), `Cartouche.RPC.eth_config/1` and `eth_capabilities/1`,
 and the Cloud KMS backend. Solana support lives in the separate
 `onchain_solana` package under `Onchain.Solana.*`.
 

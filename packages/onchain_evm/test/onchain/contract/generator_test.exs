@@ -1,4 +1,4 @@
-defmodule Onchain.Contract.GeneratorTest do
+defmodule Onchain.Contract.SolidityGeneratorTest do
   use ExUnit.Case, async: true
 
   alias Onchain.Contract.Generator

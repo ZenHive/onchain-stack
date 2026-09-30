@@ -141,7 +141,7 @@ balance = Onchain.ERC20.balance_of!(usdc, "0xYourAddress")
 | `Onchain.Block` | Block fetching with parsed fields, timestamp-based binary search |
 | `Onchain.Contract` | Generic contract call (encode -> eth_call -> decode in one function) |
 | `Onchain.Multicall` | Batch multiple eth_call via Multicall3 |
-| `Onchain.Sleuth` | Deploy-as-call: ship creation bytecode in one eth_call, decode returned bytes |
+| `Cartouche.Sleuth.deploy_query/5` | Deploy-as-call: ship creation bytecode in one eth_call, decode returned bytes |
 | `Onchain.Log` | Event log parsing against ABI signatures |
 | `Onchain.Signer` | Key management and transaction signing |
 | `Onchain.ERC20` | ERC-20 read (balanceOf, allowance, decimals, symbol, totalSupply) and write (transfer, approve) |

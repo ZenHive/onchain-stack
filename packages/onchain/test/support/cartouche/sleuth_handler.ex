@@ -56,7 +56,7 @@ defmodule Cartouche.Test.SleuthHandler do
          }}
 
       true ->
-        [query, calldata] = Cartouche.Contract.Sleuth.decode_query_call(data)
+        [query, calldata] = ABI.decode("query(bytes,bytes)", binary_part(data, 4, byte_size(data) - 4))
 
         Base.encode16(handle_call(query, calldata))
     end

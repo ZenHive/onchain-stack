@@ -9,14 +9,6 @@
 # Reach's global and per-check ignores accept `paths:`/`modules:`. Global
 # exclusions below hide only shapes inherent to metaprogramming:
 #
-#   * 24x "unsafe atom creation" in lib/mix/cartouche.gen.ex — `String.to_atom/1`
-#     CREATES the identifiers of the code the generator emits;
-#     `String.to_existing_atom/1` is impossible for a not-yet-defined function.
-#   * 1x "Repeated map shapes" (383 sites) in lib/cartouche/contract/i_console.ex
-#     — generated contract bindings (the generator's output).
-#
-# Every other smell in hand-written `lib/cartouche/**` and in the generator
-# itself is fixed for real, not excluded.
 [
   # Keep all hand-written sources; exclude only generated yecc/leex Erlang.
   checks: [source_paths: ["lib", "dev", "sol/src", "test/support"]],
@@ -26,7 +18,6 @@
     strict: true,
     ignore: [
       paths: [
-        "lib/mix/cartouche.gen.ex",
         "lib/cartouche/contract/**",
         "test/support/cartouche/contract/**"
       ]

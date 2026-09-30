@@ -61,6 +61,7 @@ defmodule Onchain.Solidity do
 
   import Onchain.BangHelper, only: [defbang: 2]
 
+  alias Onchain.Contract.Generator.ResolvedInput
   alias Onchain.Solidity.Resolver
 
   # --- Types ---
@@ -183,7 +184,7 @@ defmodule Onchain.Solidity do
   )
 
   @spec parse_abi_json(String.t()) :: {:ok, parsed_abi()} | {:error, {:parse_error, String.t()}}
-  def parse_abi_json(_json), do: :erlang.nif_error(:nif_not_loaded)
+  defdelegate parse_abi_json(json), to: Onchain.Contract.ABI
 
   # --- parse_abi_json! ---
 
@@ -410,4 +411,41 @@ defmodule Onchain.Solidity do
   @spec __extract_sol_imports__(String.t()) ::
           {:ok, [String.t()]} | {:error, {:parse_error, String.t()}}
   def __extract_sol_imports__(_source), do: :erlang.nif_error(:nif_not_loaded)
+
+  @doc false
+  @spec resolve_generator_input(keyword(), Macro.Env.t() | nil) :: ResolvedInput.t()
+  def resolve_generator_input(opts, env) do
+    if sol = Keyword.get(opts, :sol) do
+      %ResolvedInput{abi: parse_sol!(sol), is_sol: true, external_files: []}
+    else
+      resolve_sol_file_input(Keyword.fetch!(opts, :sol_file), opts, env)
+    end
+  end
+
+  @doc false
+  # Resolves a root Solidity file relative to the caller module and parses the selected contract.
+  @spec resolve_sol_file_input(String.t(), keyword(), Macro.Env.t() | nil) :: ResolvedInput.t()
+  defp resolve_sol_file_input(file, opts, env) do
+    sol_path = expand_sol_file_path(file, env)
+    sol_opts = Keyword.take(opts, [:remappings, :root_contract])
+    resolution = Onchain.Solidity.resolve_sol_file!(sol_path, sol_opts)
+
+    abi =
+      case Onchain.Solidity.__parse_sol_root__(resolution.source, resolution.root_contract) do
+        {:ok, parsed} -> parsed
+        {:error, {:parse_error, reason}} -> raise "Solidity parse failed: #{reason}"
+        {:error, reason} -> raise "Solidity parse failed: #{inspect(reason)}"
+      end
+
+    %ResolvedInput{abi: abi, is_sol: true, external_files: resolution.files}
+  end
+
+  @doc false
+  # Expands sol_file paths relative to the caller file when available.
+  @spec expand_sol_file_path(String.t(), Macro.Env.t() | nil) :: String.t()
+  defp expand_sol_file_path(file, nil), do: Path.expand(file)
+
+  defp expand_sol_file_path(file, env) do
+    Path.expand(file, Path.dirname(env.file))
+  end
 end

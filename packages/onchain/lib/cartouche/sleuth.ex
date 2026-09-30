@@ -3,7 +3,8 @@ defmodule Cartouche.Sleuth do
   Sleuth allows you to run a contract call as a single
   `eth_call` call.
 
-  Note: Cartouche.Contract.Sleuth generated from `mix cartouche.gen --prefix cartouche/contract ./priv/Sleuth.json`
+  The helper binding is generated from `priv/Sleuth.json` by `Onchain.Contract.Generator`.
+  `deploy_query/5` also supports constructor-only deploy-as-call without a helper contract.
   """
   use Descripex, namespace: "/ethereum/sleuth"
   use Cartouche.Hex
@@ -43,7 +44,7 @@ defmodule Cartouche.Sleuth do
   the decoded values without struct annotations.
   """
   @spec query(binary(), binary(), ABI.FunctionSelector.t(), Keyword.t()) ::
-          {:ok, term()} | {:error, String.t()}
+          {:ok, term()} | {:error, term()}
   def query(bytecode, query, selector, opts \\ []), do: query_internal(bytecode, query, selector, false, opts)
 
   api(:query_annotated, "Run a Sleuth query and tag each decoded return value with its ABI type.",
@@ -78,7 +79,7 @@ defmodule Cartouche.Sleuth do
   callers that need both type and value (e.g. when re-encoding).
   """
   @spec query_annotated(binary(), binary(), ABI.FunctionSelector.t(), Keyword.t()) ::
-          {:ok, term()} | {:error, String.t()}
+          {:ok, term()} | {:error, term()}
   def query_annotated(bytecode, query, selector, opts \\ []), do: query_internal(bytecode, query, selector, true, opts)
 
   api(:query_by, "Run a Sleuth query using a generated contract module's bytecode, calldata encoder, and selector.",
@@ -107,7 +108,7 @@ defmodule Cartouche.Sleuth do
   `mod.encode_<fun>/0`, and `mod.<fun>_selector/0` and forwards the rest
   to `query/4`.
   """
-  @spec query_by(module(), atom() | Keyword.t()) :: {:ok, term()} | {:error, String.t()}
+  @spec query_by(module(), atom() | Keyword.t()) :: {:ok, term()} | {:error, term()}
   def query_by(mod, fun) when is_atom(mod) and is_atom(fun), do: query_by(mod, fun, [])
   def query_by(mod, opts) when is_atom(mod) and is_list(opts), do: query_by(mod, :query, opts)
 
@@ -115,13 +116,13 @@ defmodule Cartouche.Sleuth do
   Single-argument form of `query_by/2`: defaults `fun` to `:query` and
   `opts` to `[]`.
   """
-  @spec query_by(module()) :: {:ok, term()} | {:error, String.t()}
+  @spec query_by(module()) :: {:ok, term()} | {:error, term()}
   def query_by(mod), do: query_by(mod, :query, [])
 
   @doc """
   Three-argument form of `query_by/2`: explicit `fun` and `opts`.
   """
-  @spec query_by(module(), atom(), Keyword.t()) :: {:ok, term()} | {:error, String.t()}
+  @spec query_by(module(), atom(), Keyword.t()) :: {:ok, term()} | {:error, term()}
   def query_by(mod, fun, opts) when is_atom(mod) and is_atom(fun) and is_list(opts) do
     bytecode = try_apply(mod, :bytecode, [])
     # `fun` is a developer-supplied atom (already in the atom table); the derived
@@ -146,14 +147,12 @@ defmodule Cartouche.Sleuth do
   end
 
   @spec query_internal(binary(), binary(), ABI.FunctionSelector.t(), boolean(), Keyword.t()) ::
-          {:ok, term()} | {:error, String.t()}
+          {:ok, term()} | {:error, term()}
   defp query_internal(bytecode, query, selector, annotated, opts) when is_binary(bytecode) and is_list(opts) do
     {sleuth_address, opts} = Keyword.pop(opts, :sleuth_address, @sleuth_address)
     {decode_binaries, rpc_opts} = Keyword.pop(opts, :decode_binaries, true)
 
-    with {:ok, query_res_bytes} <-
-           Sleuth.call_query(sleuth_address, bytecode, query, rpc_opts),
-         {:ok, query_res} <- try_decode_bytes(query_res_bytes),
+    with {:ok, [query_res]} <- Sleuth.query_2(sleuth_address, bytecode, query, rpc_opts),
          {:ok, res} <- try_decode(query_res, selector, false) do
       {:ok,
        postprocess(res, selector.returns,
@@ -208,7 +207,7 @@ defmodule Cartouche.Sleuth do
   annotations when configured.
   """
   @spec query_v2(binary(), binary(), ABI.FunctionSelector.t(), Keyword.t()) ::
-          {:ok, term()} | {:error, String.t()}
+          {:ok, term()} | {:error, term()}
   def query_v2(bytecode, query, selector, opts \\ []) do
     {annotated, opts} = Keyword.pop(opts, :annotated, false)
     {sleuth_address, opts} = Keyword.pop(opts, :sleuth_address, @sleuth_address)
@@ -216,9 +215,7 @@ defmodule Cartouche.Sleuth do
     {decode_structs, opts} = Keyword.pop(opts, :decode_structs, true)
     {named_returns, rpc_opts} = Keyword.pop(opts, :named_returns, false)
 
-    with {:ok, query_res_bytes} <-
-           Sleuth.call_query(sleuth_address, bytecode, query, rpc_opts),
-         {:ok, query_res} <- try_decode_bytes(query_res_bytes),
+    with {:ok, [query_res]} <- Sleuth.query_2(sleuth_address, bytecode, query, rpc_opts),
          {:ok, res} <- try_decode(query_res, selector, decode_structs, named_returns) do
       {:ok,
        postprocess(res, selector.returns,
@@ -228,18 +225,6 @@ defmodule Cartouche.Sleuth do
          be_obvious: true
        )}
     end
-  end
-
-  @spec try_decode_bytes(binary()) :: {:ok, binary()} | {:error, String.t()}
-  defp try_decode_bytes(bytes) do
-    [decoded] = ABI.decode("(bytes)", bytes)
-    {:ok, decoded}
-  rescue
-    # `ABI.decode/2` raises on malformed wire bytes and the `[decoded] =`
-    # match raises `MatchError` when the outer tuple arity differs; both
-    # become an `{:error, _}` rather than crashing the query.
-    e in [ArgumentError, MatchError, FunctionClauseError, RuntimeError, KeyError, Protocol.UndefinedError] ->
-      {:error, "error decoding bytes: #{inspect(e)}"}
   end
 
   @spec try_decode(binary(), ABI.FunctionSelector.t(), boolean(), boolean()) ::
@@ -481,4 +466,93 @@ defmodule Cartouche.Sleuth do
   @spec obvious_results([{String.t() | nil, term()}], boolean()) :: [term()] | [{atom(), term()}]
   defp obvious_results(processed_results, true), do: Enum.map(processed_results, &to_named_pair/1)
   defp obvious_results(processed_results, false), do: Enum.map(processed_results, fn {_, v} -> v end)
+  # --- query ---
+
+  api(:deploy_query, "Execute a Sleuth deploy-as-call: encode ctor args, append to bytecode, eth_call, decode.",
+    params: [
+      bytecode: [
+        kind: :value,
+        description: "Creation bytecode as 0x-prefixed hex string (output of `solc --bin` or `OnchainJs.Solc.compile/2`)"
+      ],
+      constructor_types: [
+        kind: :value,
+        description: ~s|Tuple type signature for constructor args, e.g. "(uint256,address)" or "()" for none|
+      ],
+      constructor_args: [
+        kind: :value,
+        description: "Tuple of constructor argument values matching constructor_types, e.g. {42, addr_bin} or {}"
+      ],
+      return_type: [
+        kind: :value,
+        description: ~s|Tuple type signature for decoding the returned bytes, e.g. "(uint256)" or "(uint256[])"|
+      ],
+      opts: [
+        kind: :value,
+        default: [],
+        description: ~s{Options: :rpc_url, :timeout, :block (integer, "latest", "finalized", ...)}
+      ]
+    ],
+    returns: %{
+      type: "{:ok, [decoded]} | {:error, term()}",
+      description: "List of decoded return values from the constructor's returned bytes"
+    }
+  )
+
+  @spec deploy_query(String.t(), String.t(), tuple(), String.t(), keyword()) ::
+          {:ok, list()} | {:error, term()}
+  def deploy_query(bytecode, constructor_types, constructor_args, return_type, opts \\ []) do
+    with {:ok, bytecode_bin} <- Onchain.Hex.decode(bytecode),
+         {:ok, ctor_bin} <- encode_ctor(constructor_types, constructor_args),
+         data_hex = Onchain.Hex.encode(bytecode_bin <> ctor_bin),
+         {:ok, response_hex} <- eth_call_no_to(data_hex, opts) do
+      Onchain.ABI.decode_response(return_type, response_hex)
+    end
+  end
+
+  # --- query! ---
+
+  api(:deploy_query!, "Execute a Sleuth deploy-as-call. Raises on error.",
+    params: [
+      bytecode: [kind: :value, description: "Creation bytecode as 0x-prefixed hex"],
+      constructor_types: [kind: :value, description: ~s|Tuple type signature, e.g. "(uint256,address)" or "()"|],
+      constructor_args: [kind: :value, description: "Tuple of ctor values, e.g. {42, addr_bin} or {}"],
+      return_type: [kind: :value, description: ~s|Return tuple type, e.g. "(uint256[])"|],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
+    ],
+    returns: %{type: "[decoded]", description: "List of decoded return values"}
+  )
+
+  @spec deploy_query!(String.t(), String.t(), tuple(), String.t(), keyword()) :: list()
+  def deploy_query!(bytecode, constructor_types, constructor_args, return_type, opts \\ []) do
+    case deploy_query(bytecode, constructor_types, constructor_args, return_type, opts) do
+      {:ok, values} -> values
+      {:error, reason} -> raise "Sleuth query failed: #{inspect(reason)}"
+    end
+  end
+
+  # --- private ---
+
+  # Encode constructor args as a raw ABI tuple (no 4-byte selector).
+  # Onchain.ABI.encode_call/2 wraps abi's Onchain.ABI.encode/2 which, when given a type-only
+  # signature like "(uint,address)", produces a bare encoded tuple — see
+  # deps/abi/lib/abi.ex doctest (Onchain.ABI.encode("(uint,address)", [{50, <<1::160>>}])).
+  @spec encode_ctor(String.t(), tuple()) :: {:ok, binary()} | {:error, term()}
+  defp encode_ctor("()", {}), do: {:ok, <<>>}
+
+  defp encode_ctor(types, args) do
+    with {:ok, hex} <- Onchain.ABI.encode_call(types, [args]) do
+      Onchain.Hex.decode(hex)
+    end
+  end
+
+  # eth_call with no `to` field — the Compound deploy-as-call pattern.
+  # Onchain.RPC.eth_call/3 requires an address, so drop to the generic
+  # passthrough (Task 59) and build the call object directly.
+  @spec eth_call_no_to(String.t(), keyword()) :: {:ok, String.t()} | {:error, term()}
+  defp eth_call_no_to(data_hex, opts) do
+    with {:ok, block} <- Onchain.RPC.Helpers.normalize_block(Keyword.get(opts, :block, "latest")) do
+      call_obj = %{"data" => data_hex}
+      Onchain.RPC.call("eth_call", [call_obj, block], opts)
+    end
+  end
 end
