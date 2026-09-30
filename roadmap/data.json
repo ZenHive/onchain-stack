@@ -14586,7 +14586,7 @@
       "phase": 0,
       "bundle": "monorepo_root_gates",
       "target_repo": "onchain_stack",
-      "status": "pending",
+      "status": "superseded",
       "title": "mix ci in onchain_aave and onchain_aerodrome exits 139 after every gate is already green",
       "scores": {
         "d": 4,
@@ -14887,7 +14887,7 @@
       "phase": 0,
       "bundle": "monorepo_root_gates",
       "target_repo": "onchain_stack",
-      "status": "pending",
+      "status": "superseded",
       "title": "Make AGENTS freshness reproducible on harness nodes without stale workspace imports",
       "scores": {
         "d": 3,
