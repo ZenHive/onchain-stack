@@ -1,18 +1,13 @@
 defmodule Onchain.Tempo.Verification.Campaign.Mutant do
   @moduledoc false
 
-  # One planted mutation: which file to patch, the exact literal to swap, and
-  # how to classify the result. Eleven call sites built this as a bare map with
-  # the same seven keys; reach's "repeated map shapes" check is right that it
-  # is a contract, so it is one here.
-
   @enforce_keys [:id, :canary?, :surface, :file, :replace, :with, :class]
   defstruct [:id, :canary?, :surface, :file, :replace, :with, :class]
 
   @type t :: %__MODULE__{
           id: String.t(),
           canary?: boolean(),
-          surface: :transaction | :builder,
+          surface: :transaction | :builder | :codec | :native,
           file: String.t(),
           replace: String.t(),
           with: String.t(),
@@ -24,13 +19,17 @@ defmodule Onchain.Tempo.Verification.Campaign do
   @moduledoc false
 
   alias Onchain.Tempo.Codec
+  alias Onchain.Tempo.Native
   alias Onchain.Tempo.Transaction
   alias Onchain.Tempo.Transaction.Builder
   alias Onchain.Tempo.Verification.Campaign.Mutant
   alias Onchain.Tempo.Verification.Vectors
 
-  @tx_path "lib/onchain/tempo/transaction.ex"
-  @builder_path "lib/onchain/tempo/transaction/builder.ex"
+  @tx_rel "lib/onchain/tempo/transaction.ex"
+  @builder_rel "lib/onchain/tempo/transaction/builder.ex"
+  @codec_rel "lib/onchain/tempo/codec.ex"
+  @native_rel "native/onchain_tempo/src/lib.rs"
+  @key_auth_fixture "priv/verification/0x76/tempo_primitives_key_authorization.json"
 
   @type mutant :: Mutant.t()
 
@@ -38,102 +37,118 @@ defmodule Onchain.Tempo.Verification.Campaign do
   def mutants do
     [
       %Mutant{
-        id: "canary_calls_index",
+        id: "canary_field_rlp_skip",
         canary?: true,
         surface: :transaction,
-        file: @tx_path,
-        replace: "@calls_index 4",
-        with: "@calls_index 3",
+        file: @tx_rel,
+        replace: "chain_id: Codec.integer(transaction[\"chainId\"]), calls: calls, fields: fields",
+        with: "chain_id: Codec.integer(transaction[\"gas\"]), calls: calls, fields: fields",
         class: :field_index
       },
       %Mutant{
         id: "canary_fee_payer_domain",
         canary?: true,
         surface: :transaction,
-        file: @tx_path,
-        replace: "@fee_payer_domain 0x78",
-        with: "@fee_payer_domain 0x76",
+        file: @tx_rel,
+        replace:
+          ~s|transaction = Map.put(fields["transaction"], "feeToken", Codec.hex(fee_token))\n\n    with {:ok, sender_address} <- sender(tx),\n         {:ok, hash} <- Codec.run("fee_hash", %{"transaction" => transaction, "sender" => Codec.hex(sender_address)}),|,
+        with:
+          ~s|transaction = Map.put(fields["transaction"], "feeToken", Codec.hex(fee_token))\n\n    with {:ok, sender_address} <- sender(tx),\n         {:ok, hash} <- Codec.run("fee_hash", %{"transaction" => fields["transaction"], "sender" => Codec.hex(sender_address)}),|,
         class: :signing_domain
       },
       %Mutant{
-        id: "type_byte_builder",
+        id: "canary_key_authorization_fee_hash",
+        canary?: true,
+        surface: :codec,
+        file: @codec_rel,
+        replace:
+          "  def run(operation, request) do\n    with {:ok, json} <- Jason.encode(Map.put(request, \"operation\", operation)),",
+        with:
+          ~s|  def run(operation, request) do\n    request =\n      if operation == "fee_hash" do\n        Map.update!(request, "transaction", fn tx -> Map.put(tx, "keyAuthorization", nil) end)\n      else\n        request\n      end\n\n    with {:ok, json} <- Jason.encode(Map.put(request, "operation", operation)),|,
+        class: :key_authorization
+      },
+      %Mutant{
+        id: "type_byte_decode",
         canary?: false,
-        surface: :builder,
-        file: @builder_path,
-        replace: "@tempo_tx_type 0x76",
-        with: "@tempo_tx_type 0x77",
+        surface: :native,
+        file: @native_rel,
+        replace: "if bytes.first() != Some(&0x76) {",
+        with: "if bytes.first() != Some(&0x75) {",
         class: :type_byte
       },
       %Mutant{
-        id: "type_byte_deserialize",
+        id: "type_byte_placeholder_encode",
         canary?: false,
-        surface: :transaction,
-        file: @tx_path,
-        replace: "@tempo_tx_type 0x76",
-        with: "@tempo_tx_type 0x75",
+        surface: :native,
+        file: @native_rel,
+        replace:
+          "if request[\"placeholder\"].as_bool() == Some(true) {\n                signed.encode_for_fee_payer_service(&mut bytes);\n            } else {\n                signed.eip2718_encode(&mut bytes);\n            }",
+        with:
+          "if request[\"placeholder\"].as_bool() == Some(true) {\n                signed.eip2718_encode(&mut bytes);\n            } else {\n                signed.encode_for_fee_payer_service(&mut bytes);\n            }",
         class: :type_byte
       },
       %Mutant{
-        id: "fee_token_index",
+        id: "fee_token_cosign_field",
         canary?: false,
         surface: :transaction,
-        file: @tx_path,
-        replace: "@fee_token_index 10",
-        with: "@fee_token_index 11",
+        file: @tx_rel,
+        replace: ~s{Map.put(fields["transaction"], "feeToken", Codec.hex(fee_token))},
+        with: ~s{Map.put(fields["transaction"], "feePayerSignature", Codec.hex(fee_token))},
         class: :field_index
       },
       %Mutant{
-        id: "fee_payer_sig_index",
+        id: "fee_payer_sig_cosign_field",
         canary?: false,
         surface: :transaction,
-        file: @tx_path,
-        replace: "@fee_payer_sig_index 11",
-        with: "@fee_payer_sig_index 10",
+        file: @tx_rel,
+        replace: "\"yParity\" => Codec.quantity(sig.recid)",
+        with: "\"yParity\" => Codec.quantity(sig.r)",
         class: :field_index
       },
       %Mutant{
         id: "swap_nonce_fields",
         canary?: false,
         surface: :builder,
-        file: @builder_path,
-        replace: "encode_uint(nonce_key),\n        encode_uint(nonce),",
-        with: "encode_uint(nonce),\n        encode_uint(nonce_key),",
+        file: @builder_rel,
+        replace: ~s{"nonceKey" => Codec.quantity(nonce_key),\n        "nonce" => Codec.quantity(nonce),},
+        with: ~s{"nonceKey" => Codec.quantity(nonce),\n        "nonce" => Codec.quantity(nonce_key),},
         class: :field_order
       },
       %Mutant{
-        id: "numeric_zero_byte",
+        id: "numeric_placeholder_rlp",
         canary?: false,
-        surface: :builder,
-        file: @builder_path,
-        replace: "defp encode_uint(0), do: <<>>",
-        with: "defp encode_uint(0), do: <<0>>",
+        surface: :native,
+        file: @native_rel,
+        replace: "normalized[offset] = 0x80;",
+        with: "normalized[offset] = 0x00;",
         class: :numeric_encoding
       },
       %Mutant{
         id: "signature_v_raw_recid",
         canary?: false,
-        surface: :builder,
-        file: @builder_path,
-        replace: "v = recid + 27",
-        with: "v = recid",
+        surface: :codec,
+        file: @codec_rel,
+        replace: "hex(<<sig.r::256, sig.s::256, sig.recid + 27>>)",
+        with: "hex(<<sig.s::256, sig.r::256, sig.recid + 27>>)",
         class: :signature_recovery
       },
       %Mutant{
-        id: "skip_placeholder_reset",
+        id: "skip_placeholder_adapt",
         canary?: false,
-        surface: :transaction,
-        file: @tx_path,
-        replace: "|> List.replace_at(@fee_payer_sig_index, <<0x00>>)",
-        with: "|> List.replace_at(@fee_payer_sig_index, <<>>)",
+        surface: :native,
+        file: @native_rel,
+        replace:
+          "if placeholder {\n        let offset = normalized.len() - cursor.len();\n        normalized[offset] = 0x80;\n    }",
+        with: "if placeholder {\n    }",
         class: :fee_payer_data
       },
       %Mutant{
-        id: "recover_ignore_legacy_v",
+        id: "sender_wrong_recovery_preimage",
         canary?: false,
-        surface: :transaction,
-        file: @tx_path,
-        replace: "recid = if v >= 27, do: v - 27, else: v",
-        with: "recid = v",
+        surface: :native,
+        file: @native_rel,
+        replace: ".recover_address_from_prehash(&tx.signature_hash())",
+        with: ".recover_address_from_prehash(&alloy_primitives::B256::ZERO)",
         class: :signature_recovery
       }
     ]
@@ -148,14 +163,27 @@ defmodule Onchain.Tempo.Verification.Campaign do
   end
 
   @spec evaluate(mutant()) :: map()
+  defp evaluate(%Mutant{surface: surface} = mutant) when surface in [:native, :codec] do
+    case with_patched_source(mutant, fn ->
+           Map.merge(mutant_meta(mutant), oracle_verdict(mutant, nil))
+         end) do
+      {:error, {:pattern_missing, _} = reason} ->
+        Map.merge(mutant_meta(mutant), %{status: :invalid, evidence: reason})
+
+      {:error, reason} ->
+        Map.merge(mutant_meta(mutant), %{status: :killed, evidence: {:compile_error, reason}})
+
+      result when is_map(result) ->
+        result
+    end
+  end
+
   defp evaluate(mutant) do
     case compile_mutant(mutant) do
-      {:ok, module} ->
-        verdict = oracle_verdict(mutant, module)
-        Map.merge(mutant_meta(mutant), verdict)
+      {:ok, compiled} ->
+        Map.merge(mutant_meta(mutant), oracle_verdict(mutant, compiled))
 
       {:error, {:pattern_missing, _} = reason} ->
-        # The mutant never applied — that is a broken campaign, not a kill.
         Map.merge(mutant_meta(mutant), %{status: :invalid, evidence: reason})
 
       {:error, reason} ->
@@ -170,17 +198,90 @@ defmodule Onchain.Tempo.Verification.Campaign do
 
   @spec compile_mutant(mutant()) :: {:ok, module()} | {:error, term()}
   defp compile_mutant(mutant) do
-    source = File.read!(mutant.file)
+    path = source_path(mutant.file)
+    source = File.read!(path)
 
     if String.contains?(source, mutant.replace) do
       patched = String.replace(source, mutant.replace, mutant.with)
       module = module_name(mutant)
       renamed = rename_defmodule(patched, mutant.surface, module)
-      compile_renamed(renamed, mutant.file, module)
+      compile_renamed(renamed, path, module)
     else
       {:error, {:pattern_missing, mutant.replace}}
     end
   end
+
+  @spec with_patched_source(mutant(), (-> term())) :: term() | {:error, term()}
+  defp with_patched_source(mutant, continue) do
+    path = source_path(mutant.file)
+    original = File.read!(path)
+
+    if String.contains?(original, mutant.replace) do
+      File.write!(path, String.replace(original, mutant.replace, mutant.with, global: false))
+
+      try do
+        with :ok <- recompile_native!(), do: continue.()
+      after
+        File.write!(path, original)
+        _ = recompile_native!()
+      end
+    else
+      {:error, {:pattern_missing, mutant.replace}}
+    end
+  end
+
+  @spec recompile_native!() :: :ok | {:error, term()}
+  defp recompile_native! do
+    env = [
+      {"ONCHAIN_TEMPO_BUILD", "1"},
+      {"ONCHAIN_BUILD", "1"},
+      {"MIX_ENV", "test"}
+    ]
+
+    case System.cmd("mix", ["compile", "--force"],
+           cd: package_root(),
+           env: env,
+           stderr_to_stdout: true
+         ) do
+      {_, 0} ->
+        reload_native_nif!()
+        :ok
+
+      {output, _} ->
+        {:error, String.trim(output)}
+    end
+  end
+
+  @spec reload_native_nif!() :: :ok
+  defp reload_native_nif! do
+    modules = [
+      Builder,
+      Transaction,
+      Codec,
+      Native
+    ]
+
+    for mod <- modules do
+      :code.purge(mod)
+      :code.delete(mod)
+    end
+
+    {:module, _} = Code.ensure_compiled(Native)
+    {:module, _} = Code.ensure_compiled(Codec)
+    {:module, _} = Code.ensure_compiled(Transaction)
+    {:module, _} = Code.ensure_compiled(Builder)
+    :ok
+  end
+
+  @spec package_root() :: String.t()
+  defp package_root do
+    __DIR__
+    |> Path.join("../../..")
+    |> Path.expand()
+  end
+
+  @spec source_path(String.t()) :: String.t()
+  defp source_path(rel), do: Path.join(package_root(), rel)
 
   @spec compile_renamed(String.t(), String.t(), module()) :: {:ok, module()} | {:error, term()}
   defp compile_renamed(renamed, file, module) do
@@ -196,10 +297,6 @@ defmodule Onchain.Tempo.Verification.Campaign do
         nil -> {:error, {:module_missing, Enum.map(compiled, &elem(&1, 0))}}
       end
     catch
-      # Deliberately `catch`, not `rescue`: this compiles attacker-shaped
-      # source, and a mutated module can exit or throw as well as raise — a
-      # `rescue` would let those escape and abort the campaign instead of
-      # recording the mutant as uncompilable.
       kind, reason -> {:error, Exception.format_banner(kind, reason)}
     after
       Code.put_compiler_option(:ignore_module_conflict, previous)
@@ -236,15 +333,16 @@ defmodule Onchain.Tempo.Verification.Campaign do
     :code.delete(module)
   end
 
-  @spec oracle_verdict(mutant(), module()) :: %{status: atom(), evidence: term()}
-  defp oracle_verdict(mutant, module) do
-    builder = if mutant.surface == :builder, do: module, else: Builder
-    txmod = if mutant.surface == :transaction, do: module, else: Transaction
+  @spec oracle_verdict(mutant(), module() | nil) :: %{status: atom(), evidence: term()}
+  defp oracle_verdict(mutant, compiled) do
+    builder = pick_module(compiled, mutant, :builder, Builder)
+    txmod = pick_module(compiled, mutant, :transaction, Transaction)
 
     mismatches =
       []
       |> Kernel.++(builder_mismatches(builder))
       |> Kernel.++(transaction_mismatches(txmod))
+      |> Kernel.++(key_authorization_mismatches())
 
     if mismatches == [] do
       %{status: :survived, evidence: :oracle_still_green}
@@ -252,6 +350,11 @@ defmodule Onchain.Tempo.Verification.Campaign do
       %{status: :killed, evidence: mismatches}
     end
   end
+
+  @spec pick_module(module() | nil, mutant(), :builder | :transaction, module()) :: module()
+  defp pick_module(compiled, %{surface: :builder}, :builder, _default) when is_atom(compiled), do: compiled
+  defp pick_module(compiled, %{surface: :transaction}, :transaction, _default) when is_atom(compiled), do: compiled
+  defp pick_module(_, _, _, default), do: default
 
   @spec builder_mismatches(module()) :: [term()]
   defp builder_mismatches(builder) do
@@ -318,6 +421,42 @@ defmodule Onchain.Tempo.Verification.Campaign do
     check_self_paid_identity(txmod) ++ check_fee_payer_cosign(txmod)
   end
 
+  @spec key_authorization_mismatches() :: [term()]
+  defp key_authorization_mismatches do
+    vector = key_authorization_vector()
+    fee_token = Base.decode16!("20c0000000000000000000000000000000000000", case: :lower)
+
+    case Transaction.deserialize(vector["serialized"]) do
+      {:ok, tx} ->
+        with {:ok, sender} <- txmod_sender(Transaction, tx),
+             transaction = Map.put(tx.fields["transaction"], "feeToken", Codec.hex(fee_token)),
+             {:ok, hash} <-
+               Codec.run("fee_hash", %{"transaction" => transaction, "sender" => Codec.hex(sender)}) do
+          if hash == vector["fee_payer_hash"] do
+            []
+          else
+            [{:key_auth_fee_hash, hash, vector["fee_payer_hash"]}]
+          end
+        else
+          other -> [{:key_auth_fee_hash_error, other}]
+        end
+
+      other ->
+        [{:key_auth_deserialize, other}]
+    end
+  end
+
+  @spec key_authorization_vector() :: map()
+  defp key_authorization_vector do
+    :onchain_tempo
+    |> Application.app_dir(@key_auth_fixture)
+    |> File.read!()
+    |> Jason.decode!()
+  end
+
+  @spec txmod_sender(module(), term()) :: {:ok, binary()} | {:error, term()}
+  defp txmod_sender(txmod, tx), do: txmod.sender(tx)
+
   @spec check_self_paid_identity(module()) :: [term()]
   defp check_self_paid_identity(txmod) do
     paid = Vectors.case!("self_paid_transfer")
@@ -330,7 +469,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
 
   @spec identity_mismatches(module(), term(), map()) :: [term()]
   defp identity_mismatches(txmod, tx, paid) do
-    sender_ok = sender_matches?(txmod.sender(tx), paid["sender"])
+    sender_ok = sender_matches?(txmod_sender(txmod, tx), paid["sender"])
 
     case {tx.chain_id, sender_ok, tx.calls} do
       {42_431, true, [_]} -> []
@@ -362,7 +501,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
   @spec cosign_result(module(), term(), map()) :: [term()]
   defp cosign_result(txmod, cosigned, fp) do
     bytes = same_hex(cosigned.raw, fp["cosigned"], :cosign)
-    sender_ok = sender_matches?(txmod.sender(cosigned), fp["sender"])
+    sender_ok = sender_matches?(txmod_sender(txmod, cosigned), fp["sender"])
 
     case {bytes, sender_ok} do
       {[], true} -> []
@@ -371,7 +510,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
     end
   end
 
-  @spec sender_matches?(term(), term()) :: boolean()
+  @spec sender_matches?({:ok, binary()} | term(), term()) :: boolean()
   defp sender_matches?({:ok, addr}, expected) do
     "0x" <> Base.encode16(addr, case: :lower) == String.downcase(expected)
   end

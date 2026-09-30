@@ -1,18 +1,19 @@
 {
   "artifact": "0x76",
-  "commit": "cacc20177be48211d43a7e88933867b1f7632e2c",
-  "observed_at": "2026-08-26T14:37:57Z",
+  "commit": "fca9c40f75368697d2ba7008747a069377f98a27",
+  "observed_at": "2026-09-30T00:15:00Z",
   "independent_reproduction": {
     "ox_version": "1.7.2",
     "self_paid_and_fee_payer_byte_match": true,
     "all_five_cases_ox_deserialize_roundtrip": true,
     "live_moderato_tx": "0x63f75666ebc54a44a442534c0d86c3687607c5a2dfdd9ea95f860e3a458bbee5",
     "live_moderato_tx_type": "0x76",
-    "live_moderato_from": "0x582f32e8696e90ca66c0e2f24cfc9bbc721adbc4",
     "live_malformed_0x76ff": {
       "code": -32602,
       "message": "failed to decode signed transaction"
-    }
+    },
+    "tempo_primitives": "1.11.0",
+    "native_live_evidence": "priv/verification/0x76/native_live_evidence.json"
   },
   "invariants": [
     {
@@ -32,8 +33,12 @@
       "claim": "The fee payer signs keccak256(0x78 || rlp(base fields with fee_token set and sender address in the fee_payer_signature slot))."
     },
     {
+      "id": "INV-KEY-AUTHORIZATION",
+      "claim": "When present, key_authorization is included in both sender and fee-payer signing preimages (TEMPO-2)."
+    },
+    {
       "id": "INV-SECP256K1-SIG",
-      "claim": "Sender secp256k1 signatures are 65 bytes r||s||v with v in {27,28}; fee-payer signatures are RLP tuples [yParity, r, s]."
+      "claim": "Sender secp256k1 signatures are 65 bytes r||s||v; fee-payer signatures are RLP tuples [yParity, r, s]."
     },
     {
       "id": "INV-QUANTITY",
@@ -50,43 +55,137 @@
       "import": "ox/tempo TxEnvelopeTempo",
       "vectors": "priv/verification/0x76/ox_vectors.json"
     },
+    "native": {
+      "package": "tempo-primitives",
+      "version": "1.11.0",
+      "key_authorization_vector": "priv/verification/0x76/tempo_primitives_key_authorization.json"
+    },
     "spec": {
-      "url": "https://tempo.xyz/developers/docs/protocol/transactions/spec-tempo-transaction",
-      "http_status": 200,
-      "observed_at": "2026-08-26T14:32:00Z",
-      "protocol_repo_head": "fa4ad68dd3f4c7c1a70f6e97dc6d69a62bee99f9"
+      "url": "https://docs.tempo.xyz/protocol/transactions/spec-tempo-transaction",
+      "rules": ["TEMPO-2", "TEMPO-3"]
     },
     "live": {
-      "evidence": "priv/verification/0x76/live_evidence.json",
+      "evidence": "priv/verification/0x76/native_live_evidence.json",
       "network": "Moderato",
       "chain_id": 42431,
       "rpc_url": "https://rpc.moderato.tempo.xyz"
     }
   },
   "tools": {
-    "elixir": "1.20.3-otp-29",
-    "otp": "29.0.5",
+    "elixir": "1.20.4-otp-29",
+    "otp": "29.1",
     "node": "v26.7.0",
     "ox": "1.7.2",
-    "stream_data": "1.4.0"
+    "stream_data": "1.4.0",
+    "tempo_primitives": "1.11.0",
+    "rust": "1.98.0"
   },
   "mutations": [
-    {"id": "canary_calls_index", "class": "field_index", "surface": "transaction", "canary": true, "status": "killed", "evidence": "deserialize of ox vector fails: calls field is no longer a list"},
-    {"id": "canary_fee_payer_domain", "class": "signing_domain", "surface": "transaction", "canary": true, "status": "killed", "evidence": "fee-payer co-sign bytes diverge from ox (0x76 used instead of 0x78)"},
-    {"id": "type_byte_builder", "class": "type_byte", "surface": "builder", "canary": false, "status": "killed", "evidence": "serialized prefix becomes 0x77; ox vector mismatch"},
-    {"id": "type_byte_deserialize", "class": "type_byte", "surface": "transaction", "canary": false, "status": "killed", "evidence": "ox 0x76 envelope rejected by mutated type match"},
-    {"id": "fee_token_index", "class": "field_index", "surface": "transaction", "canary": false, "status": "killed", "evidence": "cosign writes fee_token into the fee-payer-sig slot; ox mismatch"},
-    {"id": "fee_payer_sig_index", "class": "field_index", "surface": "transaction", "canary": false, "status": "killed", "evidence": "cosign writes fee-payer sig into the fee_token slot; ox mismatch"},
-    {"id": "swap_nonce_fields", "class": "field_order", "surface": "builder", "canary": false, "status": "killed", "evidence": "nonce_key=2/nonce=5 round-trip as 5/2"},
-    {"id": "numeric_zero_byte", "class": "numeric_encoding", "surface": "builder", "canary": false, "status": "killed", "evidence": "zero quantities encoded as 0x00 instead of empty RLP string; ox mismatch"},
-    {"id": "signature_v_raw_recid", "class": "signature_recovery", "surface": "builder", "canary": false, "status": "killed", "evidence": "v byte is 0/1 instead of 27/28; ox serialized mismatch"},
-    {"id": "skip_placeholder_reset", "class": "fee_payer_data", "surface": "transaction", "canary": false, "status": "killed", "evidence": "sender recovery on a co-signed envelope fails after skipping 0x00 placeholder reset"},
-    {"id": "recover_ignore_legacy_v", "class": "signature_recovery", "surface": "transaction", "canary": false, "status": "killed", "evidence": "v=28 treated as recid 28 (out of range); sender recovery fails"}
+    {
+      "id": "canary_field_rlp_skip",
+      "class": "field_index",
+      "surface": "transaction",
+      "canary": true,
+      "status": "killed",
+      "evidence": "chain_id mapped from gas field; ox identity oracle fails"
+    },
+    {
+      "id": "canary_fee_payer_domain",
+      "class": "signing_domain",
+      "surface": "transaction",
+      "canary": true,
+      "status": "killed",
+      "evidence": "fee_hash uses placeholder transaction without injected fee_token; co-sign bytes diverge from ox"
+    },
+    {
+      "id": "canary_key_authorization_fee_hash",
+      "class": "key_authorization",
+      "surface": "codec",
+      "canary": true,
+      "status": "killed",
+      "evidence": "fee_hash strips keyAuthorization; tempo_primitives_key_authorization fee_payer_hash mismatch"
+    },
+    {
+      "id": "type_byte_decode",
+      "class": "type_byte",
+      "surface": "native",
+      "canary": false,
+      "status": "killed",
+      "evidence": "valid 0x76 envelopes rejected by wrong type-byte guard"
+    },
+    {
+      "id": "type_byte_placeholder_encode",
+      "class": "type_byte",
+      "surface": "native",
+      "canary": false,
+      "status": "killed",
+      "evidence": "fee-payer-service vs self-paid encode branches swapped; cosign oracle fails"
+    },
+    {
+      "id": "fee_token_cosign_field",
+      "class": "field_index",
+      "surface": "transaction",
+      "canary": false,
+      "status": "killed",
+      "evidence": "fee token written into feePayerSignature JSON slot; cosign bytes diverge"
+    },
+    {
+      "id": "fee_payer_sig_cosign_field",
+      "class": "field_index",
+      "surface": "transaction",
+      "canary": false,
+      "status": "killed",
+      "evidence": "yParity populated from r; cosign bytes diverge"
+    },
+    {
+      "id": "swap_nonce_fields",
+      "class": "field_order",
+      "surface": "builder",
+      "canary": false,
+      "status": "killed",
+      "evidence": "nonce_key=2/nonce=5 round-trip as 5/2"
+    },
+    {
+      "id": "numeric_placeholder_rlp",
+      "class": "numeric_encoding",
+      "surface": "native",
+      "canary": false,
+      "status": "killed",
+      "evidence": "fee-payer placeholder marker normalized to 0x00 instead of RLP null; decode/cosign oracle fails"
+    },
+    {
+      "id": "signature_v_raw_recid",
+      "class": "signature_recovery",
+      "surface": "codec",
+      "canary": false,
+      "status": "killed",
+      "evidence": "r and s swapped in 65-byte sender signature; ox serialized mismatch"
+    },
+    {
+      "id": "skip_placeholder_adapt",
+      "class": "fee_payer_data",
+      "surface": "native",
+      "canary": false,
+      "status": "killed",
+      "evidence": "0x00 service marker not adapted before upstream decode; fee-payer placeholder oracle fails"
+    },
+    {
+      "id": "sender_wrong_recovery_preimage",
+      "class": "signature_recovery",
+      "surface": "native",
+      "canary": false,
+      "status": "killed",
+      "evidence": "sender recovery uses zero prehash; identity and cosign sender checks fail"
+    }
   ],
   "survivors": [],
-  "survivor_review": "All 11 mutants (including both canaries) were killed by the ox/spec/recovery oracle. No equivalent or unreachable survivors in this campaign.",
+  "survivor_review": "Twelve mutants (three canaries) target native/onchain_tempo glue, Codec signing, Transaction co-sign mapping, and Builder field order. All were killed by the ox vector, key_authorization, and recovery oracle; no equivalent or unreachable survivors.",
   "negative_control": {
-    "canaries": ["canary_calls_index", "canary_fee_payer_domain"],
+    "canaries": [
+      "canary_field_rlp_skip",
+      "canary_fee_payer_domain",
+      "canary_key_authorization_fee_hash"
+    ],
     "required_status": "killed",
     "observed_status": "killed"
   }

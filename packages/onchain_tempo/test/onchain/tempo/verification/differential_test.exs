@@ -22,6 +22,7 @@ defmodule Onchain.Tempo.Verification.DifferentialTest do
     assert meta["import"] =~ "TxEnvelopeTempo"
   end
 
+  # spec-tags: TEMPO-3
   test "self-paid bytes, keccak hash and recovered sender match ox" do
     vec = Vectors.case!("self_paid_transfer")
     keys = Vectors.keys()
@@ -51,6 +52,7 @@ defmodule Onchain.Tempo.Verification.DifferentialTest do
     assert tx_hash(vec["serialized"]) == vec["tx_hash"]
   end
 
+  # spec-tags: TEMPO-2, TEMPO-3
   test "fee-payer placeholder, 0x78 preimage and co-sign match ox" do
     vec = Vectors.case!("fee_payer_placeholder")
     keys = Vectors.keys()

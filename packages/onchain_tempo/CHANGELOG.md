@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **Retargeted the 0x76 mutation campaign at the tempo-primitives native encoder** (task 9045). Mutants and canaries now patch `native/onchain_tempo` glue, `Onchain.Tempo.Codec`, `Transaction`, and `Builder` instead of the removed Elixir RLP encoder; the ledger records twelve killed mutants including fee-payer domain and key_authorization negative controls.
+
 - **Requires cartouche `~> 0.10`; fee-payer signing and sender recovery run on `Cartouche.Signer.Secp256k1` (RustCrypto k256) instead of curvy.** `recover_sender/2` builds a `%Cartouche.Signature{}`; the curvy#8 pre-normalization workaround is subsumed by `Cartouche.Signature.normalize/1`. curvy is no longer in onchain_tempo's dependency tree.
 
 ## v0.10.1 — low-s signature recovery (2026-09-16)

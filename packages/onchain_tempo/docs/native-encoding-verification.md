@@ -69,12 +69,15 @@ and enforced at 95% by `scripts/check-transaction-coverage.exs`:
 ONCHAIN_BUILD=1 MIX_ENV=test mix run scripts/check-transaction-coverage.exs
 ```
 
-The existing Elixir source-mutation campaign is **not green**: three assertions
-in `verification/mutation_test.exs` fail because its eleven replacement patterns
-target the removed encoder internals. Porting that campaign to the native encoder
-is the explicitly excluded mutation/canary work. No tests, flags or assertions
-were disabled. This is a required follow-up, not evidence of a passing full suite.
-Full `mix ci`, coverage of the entire package, and analyzers were not run.
+The source-mutation campaign in `verification/mutation_test.exs` targets the
+native encoder glue (`native/onchain_tempo`), `Codec`, `Transaction`, and
+`Builder`. Run it with:
+
+```sh
+ONCHAIN_BUILD=1 MIX_ENV=test mix test.json test/onchain/tempo/verification/mutation_test.exs
+```
+
+Evidence and per-mutant disposition live in `priv/verification/0x76/ledger.json`.
 
 Core's ABI release URL currently returns 404, so local verification uses
 `ONCHAIN_BUILD=1`. Tempo precompiled artifacts and checksums must be released

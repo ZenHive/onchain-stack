@@ -6,22 +6,26 @@ defmodule Onchain.Tempo.Verification.MutationTest do
   @moduletag :verification
   @ledger_rel "priv/verification/0x76/ledger.json"
 
+  # spec-tags: TEMPO-2, TEMPO-3
   setup_all do
     {:ok, results: Campaign.run()}
   end
 
   test "every mutant replace pattern is present in the live source" do
+    root = Path.expand("../../../../", __DIR__)
+
     Enum.each(Campaign.mutants(), fn mutant ->
-      source = File.read!(mutant.file)
+      path = Path.join(root, mutant.file)
+      source = File.read!(path)
 
       assert String.contains?(source, mutant.replace),
              "mutant #{mutant.id} replace pattern missing from #{mutant.file}"
     end)
   end
 
-  test "canaries for a wrong field index and signing domain are killed", %{results: results} do
+  test "canaries for wrong field index, signing domain and key authorization are killed", %{results: results} do
     canaries = Enum.filter(results, & &1.canary?)
-    assert match?([_, _ | _], canaries)
+    assert match?([_, _, _ | _], canaries)
 
     Enum.each(canaries, fn canary ->
       assert canary.status == :killed,
@@ -31,8 +35,10 @@ defmodule Onchain.Tempo.Verification.MutationTest do
              "canary #{canary.id} was not killed by the oracle (#{inspect(canary.evidence)})"
     end)
 
-    assert "canary_calls_index" in Enum.map(canaries, & &1.id)
-    assert "canary_fee_payer_domain" in Enum.map(canaries, & &1.id)
+    ids = Enum.map(canaries, & &1.id)
+    assert "canary_field_rlp_skip" in ids
+    assert "canary_fee_payer_domain" in ids
+    assert "canary_key_authorization_fee_hash" in ids
   end
 
   test "every mutant is classified and unclassified survivors fail the run", %{results: results} do
@@ -69,7 +75,8 @@ defmodule Onchain.Tempo.Verification.MutationTest do
                  :field_order,
                  :numeric_encoding,
                  :signature_recovery,
-                 :fee_payer_data
+                 :fee_payer_data,
+                 :key_authorization
                ])
            )
   end
@@ -84,7 +91,8 @@ defmodule Onchain.Tempo.Verification.MutationTest do
           :field_order,
           :numeric_encoding,
           :signature_recovery,
-          :fee_payer_data
+          :fee_payer_data,
+          :key_authorization
         ] do
       assert required in classes, "mutation campaign missing class #{required}"
     end

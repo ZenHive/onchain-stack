@@ -28,6 +28,7 @@ defmodule Onchain.Tempo.Verification.NativeTest do
     end
   end
 
+  # spec-tags: TEMPO-2, TEMPO-3
   test "key authorization matches pinned primitives bytes and the spec's signing domains" do
     vector = load(@fixture)
     keys = Vectors.keys()
