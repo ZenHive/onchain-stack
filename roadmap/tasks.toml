@@ -10393,3 +10393,25 @@ Behaviour when the tool is absent: DIST-14 (docs/specs/onchain-distribution.md).
 """
 created_at = "2026-09-29"
 scored_at = "2026-09-29"
+
+[[task]]
+id = "9045"
+phase = 9100
+bundle = "onchain_core_consolidation"
+milestone = "onchain_core_consolidation"
+status = "pending"
+title = "Retarget the Tempo 0x76 mutation campaign at the native encoder"
+scores = { d = 6, b = 7, u = 7 }
+depends_on = [9033]
+acceptance_criteria = ["`cd packages/onchain_tempo && ONCHAIN_BUILD=1 MIX_ENV=test mix test.json test/onchain/tempo/verification/mutation_test.exs` passes with no pattern skipped and `:verification` not excluded", "Every mutant applies to current code (a missing pattern fails the run, as today); mutants cover field order/mapping into tempo-primitives, the 0x76 vs 0x78 domain choice, fee-payer data, key_authorization presence in sender and fee-payer paths, and signature/recid conversion", "The wrong-field-index and wrong-signing-domain canaries are killed, and a dropped key_authorization in the 0x78 preimage is a killed canary; the run is invalid if a canary survives", "Every surviving mutant is classified (equivalent, unreachable, redundant or genuine gap) with evidence in priv/verification/0x76/ledger.json, together with tool versions and the artifact commit", "Tests that check TEMPO-2/TEMPO-3 carry `# spec-tags:` comments", "onchain_tempo CHANGELOG notes the retargeted campaign"]
+out_of_scope = ["Mutating tempo-primitives or other upstream crates", "Changing the 0x76 encoding behaviour itself — a genuine gap found here gets fixed only if small, otherwise filed"]
+touches = ["packages/onchain_tempo/test/onchain/tempo/verification", "packages/onchain_tempo/test/support/tempo_verification", "packages/onchain_tempo/native/onchain_tempo/src/lib.rs", "packages/onchain_tempo/priv/verification/0x76", "packages/onchain_tempo/CHANGELOG.md"]
+assignee = "cursor"
+model = "composer-2.5"
+body = """
+9033 (21ed60e) moved 0x76 encoding into an onchain_tempo NIF on tempo-primitives. The mutation campaign from task 12 still mutates the deleted Elixir encoder: `Campaign.mutants/0` replaces literals such as `@calls_index 4`, `@fee_payer_domain 0x78`, `@tempo_tx_type 0x76`, the fee-token/fee-payer indexes, `encode_uint`, `List.replace_at` and `recid + 27`. The 9033 reviewer reproduced it: `ONCHAIN_BUILD=1 MIX_ENV=test mix test.json test/onchain/tempo/verification/mutation_test.exs` fails 3 tests, first `{:pattern_missing, "@calls_index 4"}`. `:verification` is not excluded by default, so onchain_tempo's `mix ci` is red on main until this lands. 8013 is superseded and 9033's out_of_scope deferred this to a new task.
+
+Point the campaign, canaries and lanes at what now carries the semantics: the Rust glue in native/onchain_tempo (field mapping into tempo-primitives, fee-payer/0x78 preimage choice, key_authorization handling, signature/recid conversion) and the thin Elixir protocol around it. Mutating tempo-primitives itself is not the goal — the target is our code that could still get it wrong. Graded per the onchain-verification rules; relevant spec rules are TEMPO-2 and TEMPO-3 in docs/specs/onchain-tempo-native.md.
+"""
+created_at = "2026-09-29"
+scored_at = "2026-09-29"
