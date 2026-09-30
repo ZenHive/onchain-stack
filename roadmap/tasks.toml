@@ -10529,7 +10529,7 @@ id = "9049"
 phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain"
-status = "in_progress"
+status = "done"
 title = "Retarget Cartouche.Sleuth.query_by at the core contract generator"
 scores = { d = 4, b = 5, u = 3 }
 markers = ["parallel"]
@@ -10542,6 +10542,13 @@ Raised by the 9034 reviewer (run run-1790729610123-b1386909). `Cartouche.Sleuth.
 
 Make `query_by` work with modules produced by `use Onchain.Contract.Generator` — either by emitting the three helpers from the core generator or by rewriting `query_by` to use the generated functions — and drop the hand-faked surface from the test support.
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1790733445819-67a3444b, 145a2d7ec5fa6fb6a1b877bf99976a3f74f6b5de)."
+delivered_by = "cursor"
+verified = true
+verified_by = "claude"
+verification_ref = "harness-run:run-1790733445819-67a3444b"
 created_at = "2026-09-30"
 started_at = "2026-09-30"
 scored_at = "2026-09-30"
+done_at = "2026-09-30"
+shipped_in = "145a2d7ec5fa6fb6a1b877bf99976a3f74f6b5de"

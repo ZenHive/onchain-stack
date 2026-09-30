@@ -16276,7 +16276,7 @@
       "phase": 9100,
       "bundle": "onchain_core_consolidation",
       "target_repo": "onchain",
-      "status": "in_progress",
+      "status": "done",
       "title": "Retarget Cartouche.Sleuth.query_by at the core contract generator",
       "scores": {
         "d": 4,
@@ -16302,10 +16302,17 @@
         "packages/onchain/test/cartouche/sleuth_test.exs",
         "packages/onchain/test/support/"
       ],
+      "shipped_in": "145a2d7ec5fa6fb6a1b877bf99976a3f74f6b5de",
       "body": "Raised by the 9034 reviewer (run run-1790729610123-b1386909). `Cartouche.Sleuth.query_by/1-3` still requires a module defining `bytecode/0`, `encode_<fun>/0` and `<fun>_selector/0` — the surface the deleted `mix cartouche.gen` emitted (sleuth.ex calls `existing_function_atom(\"encode_\" <> fun)`). `Onchain.Contract.Generator` does not emit those helpers, so `query_by` only works with hand-written modules that fake the old surface, such as the BlockNumber test support.\n\nMake `query_by` work with modules produced by `use Onchain.Contract.Generator` — either by emitting the three helpers from the core generator or by rewriting `query_by` to use the generated functions — and drop the hand-faked surface from the test support.\n",
       "created_at": "2026-09-30",
       "started_at": "2026-09-30",
+      "done_at": "2026-09-30",
       "scored_at": "2026-09-30",
+      "implemented": "Landed by cursor via merge-train; reviewer-approved (run run-1790733445819-67a3444b, 145a2d7ec5fa6fb6a1b877bf99976a3f74f6b5de).",
+      "delivered_by": "cursor",
+      "verified": true,
+      "verified_by": "claude",
+      "verification_ref": "harness-run:run-1790733445819-67a3444b",
       "cross_repo": []
     }
   ]
