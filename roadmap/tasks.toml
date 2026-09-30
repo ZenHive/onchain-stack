@@ -10507,7 +10507,7 @@ id = "9047"
 phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain"
-status = "in_progress"
+status = "done"
 title = "Hash finite recursive EIP-712 values through the alloy NIF"
 scores = { d = 7, b = 5, u = 5 }
 depends_on = [9034]
@@ -10521,9 +10521,16 @@ Regression from 9032 (4159bf3), found by its reviewer (run run-1790723364472-a46
 
 Restore hashing of finite recursive values on the alloy/NIF path. Do not put acyclic hashing back on a handwritten Elixir encoder. If alloy genuinely cannot resolve recursive types, a Rust-side encoder for the recursive case inside the NIF is acceptable; state what alloy lacks.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1790735363920-a8102c9a, 8e76a0a47e76b227b08447e320a9c6bb99171aee)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1790735363920-a8102c9a"
 created_at = "2026-09-30"
 started_at = "2026-09-30"
 scored_at = "2026-09-30"
+done_at = "2026-09-30"
+shipped_in = "8e76a0a47e76b227b08447e320a9c6bb99171aee"
 
 [[task]]
 id = "9048"

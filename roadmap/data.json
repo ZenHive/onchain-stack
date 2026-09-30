@@ -16217,7 +16217,7 @@
       "phase": 9100,
       "bundle": "onchain_core_consolidation",
       "target_repo": "onchain",
-      "status": "in_progress",
+      "status": "done",
       "title": "Hash finite recursive EIP-712 values through the alloy NIF",
       "scores": {
         "d": 7,
@@ -16247,10 +16247,17 @@
         "packages/onchain/lib/cartouche/typed",
         "packages/onchain/test/cartouche/"
       ],
+      "shipped_in": "8e76a0a47e76b227b08447e320a9c6bb99171aee",
       "body": "Regression from 9032 (4159bf3), found by its reviewer (run run-1790723364472-a4602968): a finite self-referential EIP-712 value such as `Node(uint256 value, Node[] children)` no longer hashes. The NIF preflight walks type cycles to a depth limit and returns `type_depth_limit`, surfacing as an ArgumentError, and alloy's `TypedData::resolve` rejects self-referential types too. `encode_type/2` still formats cyclic schemas; only hashing of recursive values broke. Existing tests cover encode_type strings, not recursive value hashes, which is why nothing caught it. Premise from the review — confirm before building on it.\n\nRestore hashing of finite recursive values on the alloy/NIF path. Do not put acyclic hashing back on a handwritten Elixir encoder. If alloy genuinely cannot resolve recursive types, a Rust-side encoder for the recursive case inside the NIF is acceptable; state what alloy lacks.\n",
       "created_at": "2026-09-30",
       "started_at": "2026-09-30",
+      "done_at": "2026-09-30",
       "scored_at": "2026-09-30",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1790735363920-a8102c9a, 8e76a0a47e76b227b08447e320a9c6bb99171aee).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1790735363920-a8102c9a",
       "cross_repo": []
     },
     {
