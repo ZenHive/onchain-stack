@@ -4,15 +4,17 @@ use alloy_consensus::{
     EthereumTxEnvelope, EthereumTypedTransaction, SignableTransaction, TxEip1559, TxEip2930,
     TxEip4844, TxEip7702, TxLegacy,
 };
-use alloy_dyn_abi::TypedData;
+use alloy_dyn_abi::{DynSolValue, TypeDef, TypedData};
 use alloy_eips::{
     eip2718::{Decodable2718, Encodable2718},
     eip7702::Authorization,
 };
-use alloy_primitives::{Signature, U256};
+use alloy_primitives::{keccak256, Signature, B256, U256};
 use alloy_rlp::Encodable;
+use alloy_sol_type_parser::TypeSpecifier;
 use rustler::{Encoder, Env, Term};
 use serde_json::Value;
+use std::collections::{BTreeMap, BTreeSet};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 type Transaction = EthereumTypedTransaction<TxEip4844>;
@@ -196,37 +198,220 @@ fn transaction(operation: &str, input: Term<'_>) -> Result<Vec<u8>> {
     }
 }
 
-// Resolving a DAG can expand shared subtypes exponentially. Bound the expanded
-// schema before alloy allocates it; cycles terminate at the same depth limit.
-fn check_type(types: &Value, name: &str, depth: usize, nodes: &mut usize) -> Result<()> {
-    if depth > 64 || name.len() > 4096 || name.matches('[').count() > 64 {
+// Resolving a DAG can expand shared subtypes exponentially. Bound expansion,
+// but stop at back-edges: recursive schemas are converted along finite values.
+fn check_type<'a>(
+    types: &'a Value,
+    name: &'a str,
+    path: &mut Vec<&'a str>,
+    nodes: &mut usize,
+) -> Result<bool> {
+    if path.len() > 64 || name.len() > 4096 || name.matches('[').count() > 64 {
         return Err("type_depth_limit".into());
     }
     crate::spend(nodes)?;
     let root = name.split('[').next().ok_or("invalid_type")?;
+    if path.contains(&root) {
+        return Ok(true);
+    }
+    let mut recursive = false;
     if let Some(fields) = types[root].as_array() {
+        path.push(root);
         for field in fields {
-            check_type(
+            recursive |= check_type(
                 types,
                 field["type"].as_str().ok_or("invalid_type")?,
-                depth + 1,
+                path,
                 nodes,
             )?;
         }
+        path.pop();
     }
-    Ok(())
+    Ok(recursive)
+}
+
+// Alloy 1.6.1's resolve() builds a DynSolType, which cannot represent cycles.
+// DynSolValue can represent the finite value tree; keep primitive coercion
+// in alloy while bounding conversion of recursive structs and arrays.
+fn coerce_recursive(
+    data: &TypedData,
+    types: &Value,
+    name: &str,
+    value: &Value,
+    depth: usize,
+    nodes: &mut usize,
+) -> Result<DynSolValue> {
+    if depth > 64 {
+        return Err("depth_limit".into());
+    }
+    crate::spend(nodes)?;
+    let spec = TypeSpecifier::parse_eip712(name).map_err(|e| e.to_string())?;
+    if let Some(size) = spec.sizes.last() {
+        let values = value.as_array().ok_or("expected_array")?;
+        if size.is_some_and(|size| size.get() != values.len()) {
+            return Err("array_length_mismatch".into());
+        }
+        let (inner, _) = name.rsplit_once('[').ok_or("invalid_type")?;
+        let values = values
+            .iter()
+            .map(|value| coerce_recursive(data, types, inner, value, depth + 1, nodes))
+            .collect::<Result<Vec<_>>>()?;
+        return Ok(if size.is_some() {
+            DynSolValue::FixedArray(values)
+        } else {
+            DynSolValue::Array(values)
+        });
+    }
+    if let Some(fields) = types[name].as_array() {
+        let object = value.as_object().ok_or("expected_struct")?;
+        let mut tuple = Vec::new();
+        let mut prop_names = Vec::new();
+        for field in fields {
+            let property = field["name"].as_str().ok_or("invalid_field")?;
+            tuple.push(coerce_recursive(
+                data,
+                types,
+                field["type"].as_str().ok_or("invalid_type")?,
+                object.get(property).ok_or("missing_field")?,
+                depth + 1,
+                nodes,
+            )?);
+            prop_names.push(property.to_owned());
+        }
+        return Ok(DynSolValue::CustomStruct {
+            name: name.to_owned(),
+            prop_names,
+            tuple,
+        });
+    }
+    data.resolver
+        .resolve(name)
+        .and_then(|ty| ty.coerce_json(value))
+        .map_err(|e| e.to_string())
+}
+
+// Alloy's encode_type permits self-edges but rejects mutual cycles. Collect
+// each reachable definition once, then use alloy's individual type formatter.
+fn recursive_encode_type(data: &TypedData, types: &Value, name: &str) -> Result<String> {
+    let mut pending = vec![name];
+    let mut definitions = BTreeMap::new();
+    let mut seen = BTreeSet::new();
+    while let Some(name) = pending.pop() {
+        if !seen.insert(name) {
+            continue;
+        }
+        if let Some(fields) = types[name].as_array() {
+            for field in fields {
+                let ty = field["type"].as_str().ok_or("invalid_type")?;
+                pending.push(ty.split('[').next().ok_or("invalid_type")?);
+            }
+            let props = serde_json::from_value(types[name].clone()).map_err(|e| e.to_string())?;
+            let definition = TypeDef::new(name, props).map_err(|e| e.to_string())?;
+            definitions.insert(name, definition.eip712_encode_type());
+        } else {
+            data.resolver.resolve(name).map_err(|e| e.to_string())?;
+        }
+    }
+    let mut encoded = definitions.remove(name).ok_or("expected_struct")?;
+    for definition in definitions.values() {
+        encoded.push_str(definition);
+    }
+    Ok(encoded)
+}
+
+fn recursive_encode_data(
+    data: &TypedData,
+    types: &Value,
+    values: &[DynSolValue],
+    hashes: &mut BTreeMap<String, B256>,
+) -> Result<Vec<u8>> {
+    let mut encoded = Vec::new();
+    for value in values {
+        encoded.extend_from_slice(recursive_data_word(data, types, value, hashes)?.as_slice());
+    }
+    Ok(encoded)
+}
+
+fn recursive_data_word(
+    data: &TypedData,
+    types: &Value,
+    value: &DynSolValue,
+    hashes: &mut BTreeMap<String, B256>,
+) -> Result<B256> {
+    match value {
+        DynSolValue::CustomStruct { name, tuple, .. } => {
+            let hash = match hashes.get(name) {
+                Some(hash) => *hash,
+                None => {
+                    let hash = keccak256(recursive_encode_type(data, types, name)?);
+                    hashes.insert(name.clone(), hash);
+                    hash
+                }
+            };
+            let mut encoded = hash.to_vec();
+            encoded.extend(recursive_encode_data(data, types, tuple, hashes)?);
+            Ok(keccak256(encoded))
+        }
+        DynSolValue::Array(values) | DynSolValue::FixedArray(values) => Ok(keccak256(
+            recursive_encode_data(data, types, values, hashes)?,
+        )),
+        _ => data
+            .resolver
+            .eip712_data_word(value)
+            .map_err(|e| e.to_string()),
+    }
 }
 
 fn typed(operation: &str, input: Term<'_>) -> Result<Vec<u8>> {
-    let value = json(input)?;
-    let mut nodes = 100_000;
-    check_type(
+    typed_value(operation, json(input)?)
+}
+
+fn typed_value(operation: &str, value: Value) -> Result<Vec<u8>> {
+    let recursive = check_type(
         &value["types"],
         value["primaryType"].as_str().ok_or("primary_type")?,
-        0,
-        &mut nodes,
+        &mut Vec::new(),
+        &mut 100_000,
     )?;
-    let data: TypedData = serde_json::from_value(value).map_err(|e| e.to_string())?;
+    let data: TypedData = serde_json::from_value(value.clone()).map_err(|e| e.to_string())?;
+    if recursive {
+        let types = &value["types"];
+        if operation == "encode_type" {
+            return recursive_encode_type(&data, types, &data.primary_type).map(String::into_bytes);
+        }
+        let message = coerce_recursive(
+            &data,
+            &value["types"],
+            &data.primary_type,
+            &data.message,
+            0,
+            &mut 100_000,
+        )?;
+        let mut hashes = BTreeMap::new();
+        return match operation {
+            "encode_data" => match &message {
+                DynSolValue::CustomStruct { tuple, .. } => {
+                    recursive_encode_data(&data, types, tuple, &mut hashes)
+                }
+                _ => Err("expected_struct".into()),
+            },
+            "hash_struct" | "hash" | "encode" => {
+                let hash = recursive_data_word(&data, types, &message, &mut hashes)?;
+                if operation == "hash_struct" {
+                    return Ok(hash.to_vec());
+                }
+                let mut out = vec![0x19, 0x01];
+                out.extend_from_slice(data.domain.separator().as_slice());
+                out.extend_from_slice(hash.as_slice());
+                Ok(if operation == "hash" {
+                    keccak256(out).to_vec()
+                } else {
+                    out
+                })
+            }
+            _ => Err("unknown_operation".into()),
+        };
+    }
     match operation {
         "hash" => data
             .eip712_signing_hash()
@@ -262,5 +447,53 @@ fn consensus<'a>(env: Env<'a>, family: &str, operation: &str, input: Term<'a>) -
         Ok(Ok(value)) => (atoms::ok(), binary(env, &value)).encode(env),
         Ok(Err(error)) => (atoms::error(), error).encode(env),
         Err(_) => (atoms::error(), "native_panic").encode(env),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn alloy_resolves_values_but_not_recursive_types() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../../test/support/fixtures/recursive_typed_before_alloy.json"
+        ))
+        .expect("oracle JSON");
+        let mut document = fixture["input"].clone();
+        document["primaryType"] = "Node".into();
+        document["message"] = document["value"].take();
+        let data: TypedData = serde_json::from_value(document.clone()).expect("typed data");
+        assert!(matches!(
+            data.coerce(),
+            Err(alloy_dyn_abi::Error::CircularDependency(_))
+        ));
+        assert_eq!(
+            typed_value("hash", document).expect("finite recursive hash"),
+            alloy_primitives::hex::decode(fixture["hash"].as_str().expect("digest"))
+                .expect("hex digest")
+        );
+        assert_eq!(
+            coerce_recursive(
+                &data,
+                &fixture["input"]["types"],
+                "Node",
+                &data.message,
+                65,
+                &mut 100_000
+            ),
+            Err("depth_limit".into())
+        );
+        assert_eq!(
+            coerce_recursive(
+                &data,
+                &fixture["input"]["types"],
+                "Node",
+                &data.message,
+                0,
+                &mut 1
+            ),
+            Err("value_limit".into())
+        );
     }
 }

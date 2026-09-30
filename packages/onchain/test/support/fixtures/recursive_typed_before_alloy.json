@@ -1,0 +1,44 @@
+{
+  "encode": "0x190110c6b3e342654d43090809a06363dafce74e23df93dae4550ef8fbae78e6445e60c21a4bb1fe25419db113b6d88b12a07734aaaebb9d41e05e4e8c7035241585",
+  "encode_type": "Node(uint256 value,Node[] children)",
+  "hash": "0x682507e2bedce93de727b8419bb1e06f288f3a6a0a382a1980152e306fd61553",
+  "hash_struct": "0x60c21a4bb1fe25419db113b6d88b12a07734aaaebb9d41e05e4e8c7035241585",
+  "input": {
+    "domain": {
+      "chainId": 1,
+      "name": "Recursive tree",
+      "version": "1"
+    },
+    "types": {
+      "Node": [
+        {
+          "name": "value",
+          "type": "uint256"
+        },
+        {
+          "name": "children",
+          "type": "Node[]"
+        }
+      ]
+    },
+    "value": {
+      "children": [
+        {
+          "children": [],
+          "value": 2
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "value": 4
+            }
+          ],
+          "value": 3
+        }
+      ],
+      "value": 1
+    }
+  },
+  "source_revision": "b1ecb86de3562252547995e3d26050f283983144"
+}
