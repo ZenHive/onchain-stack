@@ -872,7 +872,7 @@
     },
     "onchain_tempo_native": {
       "path": "docs/specs/onchain-tempo-native.md",
-      "status": "draft"
+      "status": "active"
     }
   },
   "spec_tests": {

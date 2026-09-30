@@ -1,8 +1,7 @@
 # Tempo 0x76 native encoding
 
 Rules for onchain_tempo's transaction encoding after task 9033 moves it onto
-tempo-primitives. Status is `draft` until 9033 lands. Each rule's source
-follows it.
+tempo-primitives (landed 21ed60e). Each rule's source follows it.
 
 TEMPO-1: onchain_tempo's 0x76 transaction and 0x78 fee-payer encoding comes from tempo-primitives in a separate precompiled crate in packages/onchain_tempo; no hand-written 0x76/0x78 RLP encoding remains in Elixir.
   Source: task 9033 (acceptance criteria 4-5).

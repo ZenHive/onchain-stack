@@ -514,7 +514,7 @@ the rules they cover with `# spec-tags: ID`. List them with `rmap specs`.
 - `onchain-native.md` (NIF-*, active): the core ABI NIF boundary
 - `onchain-distribution.md` (DIST-*, draft): precompiled distribution,
   sibling/3, publishing, Rust supply-chain gates
-- `onchain-tempo-native.md` (TEMPO-*, draft): Tempo 0x76 encoding (task 9033)
+- `onchain-tempo-native.md` (TEMPO-*, active): Tempo 0x76 encoding
 
 ---
 

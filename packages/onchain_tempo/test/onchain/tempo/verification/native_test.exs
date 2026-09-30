@@ -80,6 +80,7 @@ defmodule Onchain.Tempo.Verification.NativeTest do
     refute changed_payload["hash"] == prepared["hash"]
   end
 
+  # spec-tags: TEMPO-4
   test "the native boundary rejects non-Secp256k1 authorization requests" do
     vector = load(@fixture)
     assert {:ok, tx} = Transaction.deserialize(vector["serialized"])
