@@ -4716,12 +4716,13 @@ phase = 3012
 bundle = "onchain_signer_backend_contract"
 target_repo = "onchain"
 milestone = "stack_read_surface_boundary"
-status = "pending"
+status = "in_progress"
 title = "Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA"
 scores = { d = 3, b = 7, u = 6 }
 markers = ["security"]
 acceptance_criteria = ["Cartouche.Signer exposes a public direct-signing path for a {backend, config} carrier that runs Backend.expect_algorithm/3 and backend.sign_payload/2; the MFA path keeps working for existing callers", "Onchain.Signer.sign_transaction/3 dispatches through {Cartouche.Signer.Secp256k1, key_bin} rather than an MFA", "The existing signer tests still recover the expected signer address from the signed V2", "A unit test with a stub backend whose algorithm/1 returns :ed25519 gets a tagged error and no signature", "Onchain.AA.sign_user_operation stays on sign_digest/2 and its :raw and :eip191 suites pass unchanged", "Focused tests for the changed behaviour pass and `mix check.dispatch` is green in every touched package (full `mix ci` is post-merge QA)"]
 out_of_scope = ["CloudKMS, AWS KMS or any non-Curvy backend as a supported Onchain.Signer option", "Changing Onchain.AA's digest scheme, or rescuing FunctionClauseError on a short digest — no public path can feed one", "Cartouche.Transaction.V4 and EIP-7702", "hieroglyph strict decode — task 88 owns that"]
+touches = ["packages/onchain/lib/onchain/signer.ex", "packages/onchain/lib/cartouche/signer.ex", "packages/onchain/test/", "packages/onchain/CHANGELOG.md"]
 assignee = "codex"
 model = "gpt-6-astra"
 body = """Onchain.Signer.sign_transaction/3 (packages/onchain/lib/onchain/signer.ex:204-218) builds mfa = {Cartouche.Signer.Secp256k1, :sign, [key_bin]} and calls Cartouche.Signer.sign_direct/4. sign_direct/4 matches only an MFA (packages/onchain/lib/cartouche/signer.ex:335). It does apply(mod, fun, [message | args]) and never runs Backend.expect_algorithm/3 or sign_payload/2. Only the private backend_sign/4 clause for a {backend, config} carrier (:371) does both, and it is reachable only through the Signer GenServer. So the enforced signer contracts (32-byte digest in sign_payload/2's function head, curve check before dispatch) never reach direct transaction signing.
@@ -4731,8 +4732,8 @@ Add a public direct-signing entry point for a {backend, config} carrier. Either 
 Onchain.AA already signs a keccak digest via Secp256k1.sign_digest/2 (packages/onchain/lib/onchain/aa.ex:596) and stays as is.
 """
 created_at = "2026-08-25"
+started_at = "2026-09-30"
 scored_at = "2026-09-29"
-touches = ["packages/onchain/lib/onchain/signer.ex", "packages/onchain/lib/cartouche/signer.ex", "packages/onchain/test/", "packages/onchain/CHANGELOG.md"]
 
 [[task]]
 id = 3090
