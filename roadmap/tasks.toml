@@ -3926,7 +3926,7 @@ phase = 2000
 bundle = "cartouche_rpc_read_surface"
 target_repo = "onchain"
 milestone = "stack_read_surface_boundary"
-status = "pending"
+status = "in_progress"
 title = "One JSON-RPC transport for the merged core — retry, telemetry, node-refusal classification and batch under Cartouche.RPC.send_rpc"
 scores = { d = 5, b = 9, u = 9 }
 acceptance_criteria = ["Exactly one JSON-RPC HTTP transport remains in packages/onchain: Onchain.RPC's do_rpc/3 and batch/2 route through Cartouche.RPC.send_rpc/3 (or its batch sibling), and the second POST path in lib/onchain/rpc.ex is deleted", "Node-refusal classification (-32601 / -32600 / -32001 -> tagged results) runs on the shared path with the semantics and live-Alchemy provenance of the current classify_node_refusal/1; the existing rpc_node_refusal tests pass against the shared path", "Opt-in retry wraps any call, typed or raw: transport failures retry, JSON-RPC errors carrying a code are final; a test proves a typed Cartouche.RPC wrapper retries a transport failure", "Every request, single or batch, emits the existing [:onchain, :rpc, :request] telemetry span with unchanged metadata, so existing handlers keep working", "A JSON-RPC array batch primitive exists on the shared transport; Onchain.RPC.batch/2's observable results are unchanged", "The URL-vs-options config split is resolved to one documented config key set, and the CHANGELOG states which keys a consumer sets", "Callers that opt into nothing see unchanged return shapes, except refusal classification, which becomes uniform across both modules and is listed in the CHANGELOG", "Focused tests for the changed behaviour pass and `mix check.dispatch` is green in every touched package (full `mix ci` is post-merge QA)", "Every in-repo pattern match on a raw JSON-RPC error from the RPC path is listed in the task outcome, found by grepping packages/*/lib for `code: -3`, `%{code:` and `-32_` (known sites: packages/onchain/lib/cartouche/rpc.ex:437 and :745, packages/onchain/lib/cartouche/filter.ex:182, packages/onchain_aerodrome/lib/mix/tasks/aerodrome.capture_fixtures.ex:554). Each one either still matches once classification runs under send_rpc/3 or is updated in the same diff with a test", "The `@default_ethereum_node \"https://mainnet.infura.io\"` fallback in lib/onchain/rpc.ex (no project id, cannot answer) is gone with the second POST path: a call with no :rpc_url/:ethereum_node and no :cartouche app-env node fails with an error naming the missing option, pinned by a test (added 2026-09-29 review)"]
@@ -3946,6 +3946,7 @@ onchain_tempo independently reimplemented -32601 -> :unsupported and its own Req
 The classification is the highest-value piece. Tasks 2127, 2131, 2132 and 2135 all build their capability answers on it and must not grow their own.
 """
 created_at = "2026-08-27"
+started_at = "2026-09-30"
 scored_at = "2026-09-29"
 
 # ---------------------------------------------------------------------------

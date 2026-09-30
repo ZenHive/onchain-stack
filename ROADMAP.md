@@ -254,7 +254,7 @@
 | Task 2134 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 EIP-191 personal_sign byte length, a recovery helper that applies the prefix, and the 65-byte signature invariant [D:3/B:7/U:6 → Eff:2.17?] 🎯 |
 | Task 2135 | ⬜ | 🎁 **cartouche_rpc_correctness** · 🚀 **stack_read_surface_boundary** · Portability @docs and a capability probe for the trace_* / debug_traceCall surface [D:3/B:7/U:7 → Eff:2.33] 🎯 |
 | Task 2136 | ✅ | 🎁 **cartouche_rpc_read_surface** · Multi-endpoint live-test seam so node-portability rule 4 can actually be executed [D:3/B:8/U:8 → Eff:2.67?] 🎯 |
-| Task 2137 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · One JSON-RPC transport for the merged core — retry, telemetry, node-refusal classification and batch under Cartouche.RPC.send_rpc [D:5/B:9/U:9 → Eff:1.8] 🚀 |
+| Task 2137 | 🔄 | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · One JSON-RPC transport for the merged core — retry, telemetry, node-refusal classification and batch under Cartouche.RPC.send_rpc [D:5/B:9/U:9 → Eff:1.8] 🚀 |
 | Task 9002 | ⛔ | 🎁 **cartouche_signer_backends** · Put secp256k1 sign and recover behind a native backend — curvy costs ~2.8 ms per signature on the DEX order path [D:5/B:7/U:7 → Eff:1.4] 📋 |
 | Task 9006 | ✅ | 🎁 **cartouche_correctness_010** · 🔒 Normalize high-s signatures at Cartouche's recovery boundary — recover_public_key_from_digest/2 still hits the curvy#8 recid bug [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 | Task 9007 | ⛔ | 🎁 **cartouche_release_010** · 🚀 **stack_read_surface_boundary** · Reconcile Cartouche release notes against everything landed since 0.9.1 [D:2/B:7/U:7 → Eff:3.5] 🎯 |

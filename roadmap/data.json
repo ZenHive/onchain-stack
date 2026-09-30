@@ -5859,7 +5859,7 @@
       "bundle": "cartouche_rpc_read_surface",
       "target_repo": "onchain",
       "milestone": "stack_read_surface_boundary",
-      "status": "pending",
+      "status": "in_progress",
       "title": "One JSON-RPC transport for the merged core — retry, telemetry, node-refusal classification and batch under Cartouche.RPC.send_rpc",
       "scores": {
         "d": 5,
@@ -5907,6 +5907,7 @@
       ],
       "body": "Context (post-9030): hieroglyph and cartouche now live inside packages/onchain, namespaces unchanged, so Cartouche.RPC (lib/cartouche/rpc.ex) and Onchain.RPC (lib/onchain/rpc.ex) are two modules in one package, and task 9036 will rename both to one Onchain.RPC. The milestone is RPC unification inside the merged core before 9036: each spec'd method gets exactly one wrapper, one decoder and one struct, built on the single transport from task 2137. Put the surviving implementation in Cartouche.RPC for now (9036 does the rename), and delete the Onchain.RPC copy in the same diff. There is no second package, so there is no re-presenting wrapper to keep.\n\n(2026-09-29 review) Single calls already share one HTTP path. Onchain.RPC's do_rpc/3 wraps Helpers.do_rpc/3, which calls Cartouche.RPC.send_rpc/3 (packages/onchain/lib/onchain/rpc/helpers.ex:28-33). The only second POST path is batch/2. The real gap is that the hardening lives in Onchain.RPC alone. Cartouche.RPC.send_rpc/3 (packages/onchain/lib/cartouche/rpc.ex:515) has no retry, no telemetry and no refusal classification. Onchain.RPC's private do_rpc/3 (packages/onchain/lib/onchain/rpc.ex:1308-1314) wraps every call in :telemetry.span([:onchain, :rpc, :request], ...), optionally retries (retry_rpc/4, :1352 — transport failures retry, JSON-RPC errors with a code are final), and passes the result through classify_node_refusal/1 (:1378), which turns -32601 / -32600 / -32001 into tagged outcomes pinned against live Alchemy responses (moduledoc :41-99). batch/2 (:1097) is a second POST path, and it reads its URL from :cartouche, :ethereum_node but its transport options from :onchain (:1529).\n\nMake one transport. Cartouche's typed wrappers decode inside send_rpc/3 through its :decode option, while retry_rpc/4 is hardcoded to Helpers.do_rpc/3 and cannot wrap a typed call. So the hardening has to move under send_rpc/3; putting it on top would invert the nesting and silently drop retry. Onchain.RPC's do_rpc/3 and batch/2 then route through it, which gives the codegen'd and hand-written Onchain.RPC wrappers the same behaviour as the Cartouche.RPC ones.\n\nonchain_tempo independently reimplemented -32601 -> :unsupported and its own Req transport (packages/onchain_tempo/lib/onchain/tempo/rpc.ex:164). That is a third copy of the same idea. It is noted here, not migrated.\n\nThe classification is the highest-value piece. Tasks 2127, 2131, 2132 and 2135 all build their capability answers on it and must not grow their own.\n",
       "created_at": "2026-08-27",
+      "started_at": "2026-09-30",
       "scored_at": "2026-09-29",
       "cross_repo": []
     },
