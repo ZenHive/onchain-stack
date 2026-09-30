@@ -10379,11 +10379,10 @@ spec_changes = [{ rule = "DIST-4", op = "change" }, { rule = "DIST-5", op = "add
 
 [[task]]
 id = "9044"
-spec_changes = [{ rule = "NIF-2", op = "change" }, { rule = "DIST-13", op = "add" }, { rule = "DIST-14", op = "add" }, { rule = "DIST-15", op = "add" }]
 phase = 9100
 bundle = "onchain_core_consolidation"
 milestone = "onchain_core_consolidation"
-status = "pending"
+status = "in_progress"
 title = "Gate the Rust dependency tree: cargo audit (and onchain's missing cargo test/clippy) in mix ci"
 scores = { d = 3, b = 7, u = 7 }
 depends_on = [9043, 9032]
@@ -10406,7 +10405,9 @@ Behaviour when the tool is absent: DIST-14 (docs/specs/onchain-distribution.md).
 **Added 2026-09-30 — deep-nesting runtime check (operator's call).** Reviewed `native/onchain_abi/src/lib.rs`: every export is wrapped in `catch_unwind`, the default path runs on `DirtyCpu`, only small static schemas take `abi_small` on the normal scheduler, and `spend`/`remaining` budgets bound parse and decode work; the crate has no `unsafe` of its own. What `catch_unwind` cannot catch is a stack overflow (and allocation failure), which aborts the whole VM. Premise unverified — confirm before building on it: the per-node budget should prevent recursion deep enough to overflow, but no test pins that. Add the test; if it crashes the VM, the budget needs an explicit depth limit.
 """
 created_at = "2026-09-29"
+started_at = "2026-09-30"
 scored_at = "2026-09-29"
+spec_changes = [{ rule = "NIF-2", op = "change" }, { rule = "DIST-13", op = "add" }, { rule = "DIST-14", op = "add" }, { rule = "DIST-15", op = "add" }]
 
 [[task]]
 id = "9045"
