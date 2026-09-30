@@ -193,6 +193,7 @@ defmodule OnchainTempo.MixProject do
         "reach.check --dead-code --arch --smells",
         "sobelow --skip --exit low",
         "deps.audit.gated",
+        &cargo_audit/1,
         # `--summary-only` is deliberately OMITTED here: the flag is in
         # ex_unit_json's `retry_disqualified_opts?/1` list, so it silently
         # disables the tool's own automatic retry-on-flaky. Dropping it
@@ -244,6 +245,8 @@ defmodule OnchainTempo.MixProject do
   # monorepo root. Resolved dynamically so a consumer evaluating this mix.exs
   # out of the tarball (where that file does not exist) gets a skip, not a
   # crash.
+  defp cargo_audit(args), do: shared_gate(:cargo_audit, args)
+
   defp agents_check(args), do: shared_gate(:agents_check, args)
 
   defp advisory_freshness(args), do: shared_gate(:advisory_freshness, args)

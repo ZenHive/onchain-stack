@@ -586,11 +586,17 @@ builds in the family, which is the source of most of what follows.
 ## Toolchain & check commands
 
 Full post-merge QA: **`mix ci`** (= `mix precommit.full`), same shape as every
-other package (root `CLAUDE.md` § Gates) **plus a native Rust step**:
+other package (root `CLAUDE.md` § Gates) **plus native Rust steps**:
+`cargo audit` for every native crate, then
 `cargo test` and `cargo clippy --all-targets -- -D warnings` over both
 native crates (`clippy::unwrap_used` denied in production; `expect_used` not
 denied; if `cargo`/clippy is absent, the step skips with a message rather
-than failing the gate). Coverage floor is **85%**.
+than failing the gate). The gate helper now lives once in
+`../../shared/cargo.exs`, outside the published runtime. With Cargo present,
+missing cargo-audit fails with `cargo install cargo-audit --locked`.
+Vulnerabilities and offline advisory-fetch failures fail; unmaintained/yanked
+warnings pass. Any ignore must be a commented per-advisory entry in the crate's
+`.cargo/audit.toml`. Coverage floor is **85%**.
 
 - **Do not add the cargo steps to `mix check.dispatch`** — a harness worktree
   has no `target/`, so a cold Rust build would be paid on every dispatch.
@@ -653,7 +659,6 @@ pattern:
 ```
 lib/onchain/
   bang_helper.ex              # defbang macro: generates bang (!) wrappers for ok/error functions
-  cargo.ex                    # mix ci gate: cargo test + clippy over both native crates
   evm.ex                      # Rustler NIF: revm local EVM execution
   evm/
     params.ex                 # cover-able sibling: pure-Elixir input validation + NIF-param assembly

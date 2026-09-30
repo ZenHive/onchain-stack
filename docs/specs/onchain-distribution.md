@@ -1,8 +1,7 @@
 # Native distribution and Rust supply chain
 
 How the in-repo NIF crates are built, shipped and gated, and how in-family
-dependencies resolve for development versus publishing. Status is `draft`
-until the cargo gates (DIST-13..15, task 9044) exist; flip to `active` then. Each rule's source follows it.
+dependencies resolve for development versus publishing. Status is `active`. Each rule's source follows it.
 
 DIST-1: The precompiled target set is exactly aarch64/x86_64 Darwin, aarch64/x86_64 GNU/Linux and x86_64 musl at NIF 2.15; `Onchain.Precompiled.targets/0` matches `scripts/build-precompiled.sh`, and no Windows target is declared.
   Source: packages/onchain/lib/onchain/precompiled.ex; task 9031 (five targets).

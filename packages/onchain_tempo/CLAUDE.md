@@ -32,6 +32,10 @@ other package (root `CLAUDE.md` § Gates). Coverage floor here is **90%**
 `MIX_ENV=test` since `preferred_envs` in `def cli` is ignored inside alias
 steps). `mix precommit` is the fast local loop.
 
+- `mix ci` audits every native crate with `cargo audit` through the root shared
+  helper. Vulnerabilities and offline fetch failures fail; warnings pass.
+  Missing Cargo skips visibly; missing cargo-audit fails with
+  `cargo install cargo-audit --locked`. See root Gates for the ignore policy.
 - `.reach.exs` carries no `smells.ignore` entries — this package's smell pass
   is clean without any workaround.
 - `deps.audit.gated` runs against `.mix_audit_ignore` (symlinked from the

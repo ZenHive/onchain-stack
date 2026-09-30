@@ -335,6 +335,23 @@ of eight near-identical copies. There is no per-package override left: every
 `packages/<name>/.credo.exs` are symlinks to the root `.credo.exs`, so
 editing the root policy is the only way to change any package's credo rules.
 
+### Rust gates
+
+Packages with native crates (onchain, onchain_evm, onchain_tempo) run
+`cargo audit` for every `native/**/Cargo.toml` from `mix ci`. The shared
+development helper lives in `shared/cargo.exs`, loaded by `shared/mix_helpers.exs`;
+neither ships in a Hex tarball. Vulnerabilities and advisory-fetch failures
+fail visibly. Unmaintained/yanked warnings retain cargo-audit's default
+warning-only behavior; any ignore must be commented and per advisory in the
+crate's `.cargo/audit.toml`, never a blanket ignore.
+
+Missing Cargo retains the explicit skip path. With Cargo present, missing
+cargo-audit fails with `cargo install cargo-audit --locked`. Offline fetches
+are errors, never a clean audit. onchain and onchain_evm also run `cargo test`
+and `cargo clippy --all-targets -- -D warnings`; missing clippy skips visibly.
+Production denies `unwrap_used`, test code is exempt, and `expect_used` is
+not denied. These steps belong to full QA, not `check.dispatch`.
+
 ### The gates are real — do not re-decorate them
 
 Four properties are easy to silently undo; carried forward from the
@@ -512,7 +529,7 @@ Normative rules for the native code live in `docs/specs/` and are registered in
 the rules they cover with `# spec-tags: ID`. List them with `rmap specs`.
 
 - `onchain-native.md` (NIF-*, active): the core ABI NIF boundary
-- `onchain-distribution.md` (DIST-*, draft): precompiled distribution,
+- `onchain-distribution.md` (DIST-*, active): precompiled distribution,
   sibling/3, publishing, Rust supply-chain gates
 - `onchain-tempo-native.md` (TEMPO-*, active): Tempo 0x76 encoding
 

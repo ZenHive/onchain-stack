@@ -4,6 +4,37 @@ defmodule ABI.NativeBoundaryTest do
 
   alias ABI.Native
 
+  # spec-tags: NIF-2
+  @tag timeout: 10_000
+  test "deep schemas and values return errors promptly and leave the BEAM alive" do
+    # 1,000 levels fit below 4,096 bytes: the 64 nesting-marker budget,
+    # not the byte or 100,000-node budget, rejects these before alloy parses.
+    depth = 1_000
+    tuple_type = String.duplicate("(", depth) <> "uint256" <> String.duplicate(")", depth)
+    array_type = "uint256" <> String.duplicate("[]", depth)
+    tuple_value = Enum.reduce(1..depth, 1, fn _, value -> {value} end)
+    array_value = Enum.reduce(1..depth, 1, fn _, value -> [value] end)
+
+    task =
+      Task.async(fn ->
+        for {type, value} <- [{tuple_type, tuple_value}, {array_type, array_value}] do
+          assert byte_size(type) < 4_096
+          assert {:error, "type_limit"} = Native.compile(type, <<>>)
+          assert {:error, "type_limit"} = Native.abi(:encode, type, value)
+          assert {:error, "type_limit"} = Native.abi_small(:encode, type, value)
+          assert {:error, "type_limit"} = Native.abi(:parse, type, :type)
+        end
+
+        # A valid schema also bounds traversal of a much deeper supplied value.
+        assert {:ok, schema} = Native.compile("uint256" <> String.duplicate("[]", 64), <<>>)
+        assert {:error, "invalid_term"} = Native.abi(:encode, schema, array_value)
+        assert {:ok, <<1::256>>} = Native.abi(:encode, "uint256", 1)
+      end)
+
+    assert Task.await(task, 5_000) == {:ok, <<1::256>>}
+    assert Process.alive?(self())
+  end
+
   test "improper lists return errors without entering Rust's panic path" do
     for result <- [
           Native.abi(:encode, "uint256[]", [1 | 2]),

@@ -1,3 +1,5 @@
+Code.require_file("cargo.exs", __DIR__)
+
 # Gate helpers shared by every package `mix.exs` in this monorepo.
 #
 # Until 2026-08-27 `agents_check/1`, `advisory_freshness/1` and `host_script/3`
@@ -16,6 +18,15 @@
 # code paths, and a tarball sees neither.
 defmodule OnchainMonorepo.MixHelpers do
   @moduledoc false
+
+  @spec cargo_test([String.t()]) :: :ok
+  def cargo_test(_args), do: OnchainMonorepo.Cargo.run(:test)
+
+  @spec cargo_clippy([String.t()]) :: :ok
+  def cargo_clippy(_args), do: OnchainMonorepo.Cargo.run(:clippy)
+
+  @spec cargo_audit([String.t()]) :: :ok
+  def cargo_audit(_args), do: OnchainMonorepo.Cargo.run(:audit)
 
   # `agents_check/1` is the only gate here that shells out to a path OUTSIDE
   # this repo: the AGENTS.md renderer needs the claude-marketplace checkout plus

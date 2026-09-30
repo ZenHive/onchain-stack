@@ -1,4 +1,5 @@
 //! Generic, bounded ABI boundary. All exported operations contain panics.
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 use alloy_dyn_abi::{DynSolType, DynSolValue};
 use alloy_primitives::{Address, FixedBytes, I256, U256};
 use rustler::{types::tuple, BigInt, Binary, Encoder, Env, NewBinary, ResourceArc, Term};

@@ -1,7 +1,7 @@
 defmodule Onchain.CargoTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.Cargo
+  alias OnchainMonorepo.Cargo
 
   setup do
     shell = Mix.shell()
@@ -75,9 +75,58 @@ defmodule Onchain.CargoTest do
     end
   end
 
-  describe "lint selection" do
-    test "both crates deny unwrap_used and do not deny expect_used" do
+  # spec-tags: DIST-13, DIST-14
+  describe "audit security gate" do
+    test "missing cargo follows the documented skip path" do
+      assert :ok = Cargo.run(:audit, find_executable: missing_cargo())
+      assert_receive {:mix_shell, :info, ["[skip] cargo audit: cargo not found on PATH."]}
+    end
+
+    test "missing cargo-audit fails with its installation command" do
+      find = fn
+        "cargo" -> "/usr/bin/cargo"
+        "cargo-audit" -> nil
+      end
+
+      assert_raise Mix.Error, ~r/cargo install cargo-audit --locked/, fn ->
+        Cargo.run(:audit, find_executable: find)
+      end
+    end
+
+    test "audits each crate in its own directory without denying warnings" do
+      pid = self()
+
+      cmd = fn _cargo, args, opts ->
+        send(pid, {:audit, args, opts[:cd]})
+        {"warning: unmaintained or yanked dependency", 0}
+      end
+
+      assert :ok = Cargo.run(:audit, find_executable: &present/1, cmd: cmd)
+
       for crate <- Cargo.crates() do
+        assert_receive {:audit, ["audit"], ^crate}
+      end
+
+      refute_receive {:audit, _, _}
+    end
+
+    test "vulnerabilities and offline fetch failures both fail closed" do
+      for output <- ["vulnerability found", "failed to fetch advisory database: offline"] do
+        cmd = fn _cargo, ["audit"], _opts -> {output, 1} end
+
+        assert_raise Mix.Error, ~r/cargo audit failed.*audit is not clean/, fn ->
+          Cargo.run(:audit, find_executable: &present/1, cmd: cmd)
+        end
+      end
+    end
+  end
+
+  defp present(tool), do: "/usr/bin/" <> tool
+
+  describe "lint selection" do
+    # spec-tags: DIST-15
+    test "core and EVM crates deny unwrap_used and do not deny expect_used" do
+      for crate <- ["../onchain/native/onchain_abi" | Cargo.crates()] do
         toml = File.read!(Path.join(crate, "Cargo.toml"))
         assert toml =~ ~r/(?m)^unwrap_used = "deny"$/
         refute toml =~ ~r/expect_used\s*=\s*"deny"/
@@ -88,15 +137,27 @@ defmodule Onchain.CargoTest do
     end
   end
 
+  test "discovers every package-owned native crate" do
+    for {package, expected} <- [
+          {"onchain", ["native/onchain_abi"]},
+          {"onchain_evm", ["native/onchain_evm", "native/onchain_solidity"]},
+          {"onchain_tempo", ["native/onchain_tempo"]}
+        ] do
+      assert File.cd!("../" <> package, &Cargo.crates/0) == expected
+    end
+  end
+
   describe "mix alias wiring" do
     test "precommit.full runs cargo test then clippy; dispatch and precommit do not" do
       aliases = Mix.Project.config()[:aliases]
       full = alias_fun_names(aliases[:"precommit.full"])
 
+      assert :cargo_audit in full
       assert :cargo_test in full
       assert :cargo_clippy in full
       assert Enum.find_index(full, &(&1 == :cargo_test)) < Enum.find_index(full, &(&1 == :cargo_clippy))
 
+      refute :cargo_audit in alias_fun_names(aliases[:"check.dispatch"])
       refute :cargo_test in alias_fun_names(aliases[:"check.dispatch"])
       refute :cargo_clippy in alias_fun_names(aliases[:"check.dispatch"])
       refute :cargo_test in alias_fun_names(aliases[:precommit])

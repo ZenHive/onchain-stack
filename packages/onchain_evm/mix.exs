@@ -222,6 +222,7 @@ defmodule OnchainEvm.MixProject do
         "reach.check --dead-code --arch --smells",
         "sobelow --skip --exit low",
         "deps.audit.gated",
+        &cargo_audit/1,
         "test.json --cover --cover-threshold 85 --exclude integration",
         &cargo_test/1,
         &cargo_clippy/1,
@@ -275,18 +276,16 @@ defmodule OnchainEvm.MixProject do
     ]
   end
 
-  # Rust crate gate. Lives in `Onchain.Cargo` so the skip/fail paths are
-  # unit-testable; these captures are the `precommit.full` steps.
-  @spec cargo_test([String.t()]) :: :ok
-  defp cargo_test(_args), do: Onchain.Cargo.run(:test)
-
-  @spec cargo_clippy([String.t()]) :: :ok
-  defp cargo_clippy(_args), do: Onchain.Cargo.run(:clippy)
-
   # Shared with the other seven packages — see `shared/mix_helpers.exs` at the
   # monorepo root. Resolved dynamically so a consumer evaluating this mix.exs
   # out of the tarball (where that file does not exist) gets a skip, not a
   # crash.
+  defp cargo_audit(args), do: shared_gate(:cargo_audit, args)
+
+  defp cargo_test(args), do: shared_gate(:cargo_test, args)
+
+  defp cargo_clippy(args), do: shared_gate(:cargo_clippy, args)
+
   defp agents_check(args), do: shared_gate(:agents_check, args)
 
   defp advisory_freshness(args), do: shared_gate(:advisory_freshness, args)

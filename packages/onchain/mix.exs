@@ -217,8 +217,11 @@ defmodule Onchain.MixProject do
         "reach.check --arch --smells",
         "sobelow --skip --exit low",
         "deps.audit.gated",
+        &cargo_audit/1,
         "cmd env MIX_ENV=test mix onchain.coverage",
         "hieroglyph.manifest --check",
+        &cargo_test/1,
+        &cargo_clippy/1,
         "dialyzer",
         # AGENTS.md is what the cross-family (codex/cursor/grok) reviewers read;
         # a stale render makes them gate against rules that already changed.
@@ -263,6 +266,12 @@ defmodule Onchain.MixProject do
   # monorepo root. Resolved dynamically so a consumer evaluating this mix.exs
   # out of the tarball (where that file does not exist) gets a skip, not a
   # crash.
+  defp cargo_audit(args), do: shared_gate(:cargo_audit, args)
+
+  defp cargo_test(args), do: shared_gate(:cargo_test, args)
+
+  defp cargo_clippy(args), do: shared_gate(:cargo_clippy, args)
+
   defp agents_check(args), do: shared_gate(:agents_check, args)
 
   defp advisory_freshness(args), do: shared_gate(:advisory_freshness, args)

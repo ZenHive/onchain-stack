@@ -799,3 +799,15 @@ with the preserved pre-migration codecs under `bench/legacy`; `bench/results.jso
 and `bench/README.md` record ips, BEAM allocation and compilation/phase costs.
 `bench/teardown_test.exs` is the shared consumer shutdown probe: run it together
 with focused package tests and record the OS exit status after the VM halts.
+
+
+Full QA (`mix ci`) also runs `cargo audit`, `cargo test` and
+`cargo clippy --all-targets -- -D warnings` for `native/onchain_abi` through
+the root's shared development helper. Production denies `unwrap_used`; tests
+are exempt and `expect_used` is allowed. Missing Cargo/clippy skips visibly;
+missing cargo-audit fails with `cargo install cargo-audit --locked`.
+Vulnerabilities and offline advisory-fetch failures fail the gate;
+unmaintained/yanked warnings pass. Any ignore must be a commented per-advisory
+entry in the crate's `.cargo/audit.toml`. See root Gates for the shared policy.
+The deep-input boundary test uses 1,000 tuple/array levels under 4,096 bytes:
+the existing 64 nesting-marker limit rejects them before alloy allocation.

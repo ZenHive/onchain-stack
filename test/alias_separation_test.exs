@@ -52,13 +52,32 @@ defmodule AliasSeparationTest do
               ]
 
             ~s("cmd env MIX_ENV=test mix test.json --cover --cover-threshold 70 --exclude integration") ->
-              [inspect("cmd env MIX_ENV=test mix onchain.coverage"), inspect("hieroglyph.manifest --check")]
+              [
+                inspect("cmd env MIX_ENV=test mix onchain.coverage"),
+                inspect("hieroglyph.manifest --check"),
+                "&cargo_test/1",
+                "&cargo_clippy/1"
+              ]
 
             ~s("reach.check --dead-code --arch --smells") ->
               [inspect("reach.check --arch --smells")]
 
             step ->
               [step]
+          end)
+        else
+          expected
+        end
+
+      # spec-tags: DIST-13
+      expected =
+        if @relative in ~w(packages/onchain/mix.exs packages/onchain_evm/mix.exs packages/onchain_tempo/mix.exs) do
+          Enum.flat_map(expected, fn step ->
+            if String.starts_with?(step, ~s("deps.audit)) do
+              [step, "&cargo_audit/1"]
+            else
+              [step]
+            end
           end)
         else
           expected
