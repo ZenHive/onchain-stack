@@ -7,6 +7,7 @@ defmodule ABI.AlloyDifferentialTest do
 
   alias ABI.Bench.Legacy
 
+  # spec-tags: NIF-4, NIF-5
   test "malformed decode inputs preserve legacy outcome classes" do
     cases = [
       {<<>>, [%{type: {:uint, 256}}]},

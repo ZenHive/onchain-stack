@@ -483,6 +483,7 @@ defmodule ABITest do
     end
   end
 
+  # spec-tags: NIF-5
   describe "strict decode mode" do
     test "decode/3 rejects non-zero uint high padding when strict" do
       bad_uint8 = <<1::248, 5>>

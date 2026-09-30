@@ -35,6 +35,7 @@ defmodule ABI.NativeBoundaryTest do
     assert Process.alive?(self())
   end
 
+  # spec-tags: NIF-1
   test "improper lists return errors without entering Rust's panic path" do
     for result <- [
           Native.abi(:encode, "uint256[]", [1 | 2]),
@@ -46,6 +47,7 @@ defmodule ABI.NativeBoundaryTest do
     end
   end
 
+  # spec-tags: NIF-1
   property "arbitrary payloads remain contained at the native boundary" do
     check all(payload <- binary(max_length: 256), max_runs: 1_000) do
       for type <- ["uint256[]", "(bytes,bytes[])", "((uint256,string)[])"] do
@@ -56,6 +58,7 @@ defmodule ABI.NativeBoundaryTest do
     end
   end
 
+  # spec-tags: NIF-2
   test "excessive allocation claims are refused before decoding" do
     assert {:error, _} = Native.compile("uint256[999999999999]", <<>>)
     assert {:error, _} = Native.abi(:parse, "uint256[18446744073709551615]", :type)
@@ -83,6 +86,7 @@ defmodule ABI.NativeBoundaryTest do
     assert {:error, _} = Native.abi(:decode, schema, <<1>>)
   end
 
+  # spec-tags: NIF-3
   test "compiled events enforce topic0 and retain scheduler limits" do
     {:ok, schema} = Native.compile("((bytes32,address),(uint256))", <<1::256>>)
     log = {[<<1::256>>, <<2::256>>], <<3::256>>}
@@ -108,6 +112,7 @@ defmodule ABI.NativeBoundaryTest do
     end
   end
 
+  # spec-tags: NIF-1
   property "malformed type strings return errors" do
     check all(text <- string(:alphanumeric, max_length: 128), max_runs: 1_000) do
       assert {:error, _} = Native.compile(text <> "?", <<>>)
@@ -116,18 +121,21 @@ defmodule ABI.NativeBoundaryTest do
     end
   end
 
+  # spec-tags: NIF-1
   property "wrong value terms return errors" do
     check all(value <- one_of([integer(), binary(), list_of(integer(), max_length: 10)]), max_runs: 1_000) do
       assert {:error, _} = Native.abi(:encode, "bool", value)
     end
   end
 
+  # spec-tags: NIF-1
   property "truncated words return errors" do
     check all(payload <- binary(max_length: 31), max_runs: 1_000) do
       assert {:error, _} = Native.abi(:decode, "uint256", payload)
     end
   end
 
+  # spec-tags: NIF-1, NIF-2
   test "wrong argument kinds and excessive parser nesting return errors" do
     assert {:error, _} = Native.abi(:unknown, "uint256", 0)
     assert {:error, _} = Native.abi(:encode, 42, 0)
@@ -178,6 +186,7 @@ defmodule ABI.NativeBoundaryTest do
     assert {:ok, []} = Native.abi(:events, schema, [])
   end
 
+  # spec-tags: NIF-3
   test "normal scheduler refuses dynamic schemas, oversized data and large schemas" do
     assert {:error, "dirty_required"} = Native.abi_small(:event, "((),(bytes))", {[], <<>>})
     assert {:error, "payload_limit"} = Native.abi_small(:event, "((),(uint256))", {[], :binary.copy(<<0>>, 4097)})
@@ -186,6 +195,7 @@ defmodule ABI.NativeBoundaryTest do
     assert {:error, _} = Native.abi(:events, "((),())", List.duplicate({[], <<>>}, 10_001))
   end
 
+  # spec-tags: NIF-1
   property "malformed event words return errors on both schedulers and in batches" do
     check all(payload <- binary(max_length: 31), max_runs: 1_000) do
       schema = "((uint256),(uint256))"

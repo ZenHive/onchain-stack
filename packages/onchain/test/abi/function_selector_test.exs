@@ -15,6 +15,7 @@ defmodule ABI.FunctionSelectorTest do
     end
   end
 
+  # spec-tags: NIF-6
   describe "parse-time rejection of unsupported grammar types (upstream #54)" do
     # `fixed` / `ufixed` (bare and explicit-M/N forms) are accepted by the
     # ABI grammar but not implemented by this library — Solidity itself

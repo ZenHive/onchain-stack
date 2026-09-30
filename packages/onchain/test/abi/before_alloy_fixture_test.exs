@@ -3,6 +3,7 @@ defmodule ABI.BeforeAlloyFixtureTest do
 
   @fixture Path.expand("../support/fixtures/abi_before_alloy.etf", __DIR__)
 
+  # spec-tags: NIF-4
   test "the pre-migration ABI corpus retains exact return values and exception reasons" do
     records = @fixture |> File.read!() |> :erlang.binary_to_term()
     assert length(records) == 17_352
