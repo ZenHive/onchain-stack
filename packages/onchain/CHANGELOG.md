@@ -39,6 +39,9 @@ Completed roadmap tasks.
   `<fun>_selector/0`, `encode_<fun>/…`, and `decode_call/1` when `:bytecode` or
   `:artifact_file` is provided, so `Cartouche.Sleuth.query_by/3` works with
   generator modules instead of the removed `mix cartouche.gen` output.
+  `deployed_bytecode/0` is emitted only when runtime bytecode is known
+  (`:deployed_bytecode` or the artifact's `deployedBytecode`), never as a copy
+  of the init bytecode.
 - `Cartouche.Sleuth.query`, `query_annotated`, `query_by`, and `query_v2` keep
   their decoded success shapes. RPC errors now use `{:error, {:rpc_error, map}}`
   and outer bytes decoding errors use `{:error, {:decode_error, reason}}`.

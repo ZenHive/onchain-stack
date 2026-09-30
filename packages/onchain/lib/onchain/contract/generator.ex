@@ -70,7 +70,8 @@ defmodule Onchain.Contract.Generator do
 
   When `:bytecode` is set (hex string, with or without `0x`), or when
   `:artifact_file` points at a Foundry-style JSON artifact, the generator also emits
-  `bytecode/0`, `deployed_bytecode/0` (defaults to `:bytecode` when omitted),
+  `bytecode/0`, `deployed_bytecode/0` (only when `:deployed_bytecode` or the
+  artifact's `deployedBytecode` is present),
   per-function `<name>_selector/0`, `encode_<name>/…`, `decode_<name>_call/1`, and
   `decode_call/1` — the surface `Cartouche.Sleuth.query_by/3` expects.
 
@@ -984,8 +985,13 @@ defmodule Onchain.Contract.Generator do
 
       bytecode_hex ->
         bytecode = normalize_bytecode_hex!(bytecode_hex)
-        deployed_hex = Keyword.get(opts, :deployed_bytecode, bytecode_hex)
-        deployed = normalize_bytecode_hex!(deployed_hex)
+
+        deployed =
+          case Keyword.get(opts, :deployed_bytecode) do
+            nil -> nil
+            deployed_hex -> normalize_bytecode_hex!(deployed_hex)
+          end
+
         {bytecode, deployed}
     end
   end
@@ -1006,7 +1012,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
-  @spec generate_sleuth_bytecode_surface([map()], binary(), binary()) :: [Macro.t()]
+  @spec generate_sleuth_bytecode_surface([map()], binary(), binary() | nil) :: [Macro.t()]
   defp generate_sleuth_bytecode_surface(functions, bytecode, deployed) do
     per_function = Enum.flat_map(functions, &generate_sleuth_function/1)
     decode_call = generate_decode_call(functions)
@@ -1016,14 +1022,25 @@ defmodule Onchain.Contract.Generator do
         @doc "Returns the contract init bytecode."
         @spec bytecode() :: binary()
         def bytecode, do: unquote(Macro.escape(bytecode))
+      end
+    ] ++
+      deployed_bytecode_surface(deployed) ++
+      per_function ++
+      [decode_call]
+  end
 
-        @doc "Returns the contract deployed bytecode."
+  @doc false
+  @spec deployed_bytecode_surface(binary() | nil) :: [Macro.t()]
+  defp deployed_bytecode_surface(nil), do: []
+
+  defp deployed_bytecode_surface(deployed) do
+    [
+      quote do
+        @doc "Returns the contract deployed (runtime) bytecode."
         @spec deployed_bytecode() :: binary()
         def deployed_bytecode, do: unquote(Macro.escape(deployed))
       end
-    ] ++
-      per_function ++
-      [decode_call]
+    ]
   end
 
   @doc false

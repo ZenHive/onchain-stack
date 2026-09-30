@@ -281,6 +281,14 @@ defmodule Onchain.Contract.GeneratorTest do
       assert %ABI.FunctionSelector{function: "answer"} = SleuthBytecodeModule.answer_selector()
     end
 
+    test "does not pass init bytecode off as deployed bytecode" do
+      refute function_exported?(SleuthBytecodeModule, :deployed_bytecode, 0)
+
+      artifact_module = Cartouche.Contract.BlockNumber
+      assert is_binary(artifact_module.deployed_bytecode())
+      refute artifact_module.deployed_bytecode() == artifact_module.bytecode()
+    end
+
     test "omits bytecode helpers without :bytecode" do
       refute function_exported?(ReadModule, :bytecode, 0)
       refute function_exported?(ReadModule, :decode_call, 1)
