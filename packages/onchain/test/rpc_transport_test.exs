@@ -107,6 +107,56 @@ defmodule Cartouche.RPCTransportTest do
     assert [{:result, "0x2a"}] = Process.get(:rpc_transport_responses)
   end
 
+  test "a non-2xx batch array keeps the historical raw transport error" do
+    opts = options([{:rpc_error, -32_601, "Method not found", 400}])
+
+    assert {:error, {:rpc_error, %{message: message}}} =
+             Onchain.RPC.batch([{"eth_blockNumber", []}], opts)
+
+    assert message =~ "Method not found"
+  end
+
+  test "a non-2xx top-level JSON-RPC refusal is classified" do
+    body =
+      Jason.encode!(%{
+        "jsonrpc" => "2.0",
+        "id" => nil,
+        "error" => %{"code" => -32_601, "message" => "Method not found"}
+      })
+
+    opts = options([{:http_error, 400, body}])
+
+    assert {:error, {:method_not_found, %{code: -32_601, message: "Method not found"}}} =
+             Onchain.RPC.batch([{"eth_blockNumber", []}], opts)
+  end
+
+  test "mev preserves classified refusals and still wraps other JSON-RPC maps" do
+    Application.put_env(:cartouche, Cartouche.RPC, plug: &__MODULE__.mev_plug/1)
+    raw_tx = "0x" <> String.duplicate("ab", 50)
+
+    Process.put(:mev_rpc_error, {-32_601, "Method not found"})
+
+    assert {:error, {:method_not_found, %{code: -32_601, message: "Method not found"}}} =
+             Onchain.MEV.send_private_transaction(raw_tx, endpoint: @url)
+
+    Process.put(:mev_rpc_error, {-32_000, "execution reverted"})
+
+    assert {:error, {:rpc_error, %{code: -32_000, message: "execution reverted"}}} =
+             Onchain.MEV.send_private_transaction(raw_tx, endpoint: @url)
+  end
+
+  @spec mev_plug(Plug.Conn.t()) :: Plug.Conn.t()
+  def mev_plug(conn) do
+    body = conn |> Req.Test.raw_body() |> IO.iodata_to_binary() |> Jason.decode!()
+    {code, message} = Process.get(:mev_rpc_error)
+
+    Req.Test.json(conn, %{
+      "jsonrpc" => "2.0",
+      "id" => body["id"],
+      "error" => %{"code" => code, "message" => message}
+    })
+  end
+
   test "batch retries use the same transport and classified application errors are final" do
     opts = options([{:transport_error, :closed}, {:result, "0x2a"}])
 
@@ -122,6 +172,22 @@ defmodule Cartouche.RPCTransportTest do
   end
 
   test "single and batch use the same app defaults and per-call overrides" do
+    previous_owner = Application.get_env(:onchain, Onchain.RPC)
+    previous_req = Application.get_env(:onchain, :req_options)
+
+    on_exit(fn ->
+      restore_env(:onchain, Onchain.RPC, previous_owner)
+      restore_env(:onchain, :req_options, previous_req)
+    end)
+
+    Application.put_env(:onchain, Onchain.RPC,
+      plug: fn _conn -> flunk("onchain owner config is not the JSON-RPC transport") end
+    )
+
+    Application.put_env(:onchain, :req_options,
+      plug: fn _conn -> flunk("onchain req_options are not the JSON-RPC transport") end
+    )
+
     Application.put_env(:cartouche, :ethereum_node, "http://configured.invalid")
     Application.put_env(:cartouche, Cartouche.RPC, plug: fn _ -> flunk("global options must override owner") end)
 
@@ -178,6 +244,9 @@ defmodule Cartouche.RPCTransportTest do
 
   @spec handle_event([atom()], map(), map(), pid()) :: term()
   def handle_event(event, measurements, metadata, pid), do: send(pid, {event, measurements, metadata})
+
+  defp restore_env(app, key, nil), do: Application.delete_env(app, key)
+  defp restore_env(app, key, value), do: Application.put_env(app, key, value)
 
   defp options(responses) do
     Process.put(:rpc_transport_responses, responses)

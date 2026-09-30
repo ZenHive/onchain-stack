@@ -170,9 +170,18 @@ defmodule Onchain.MEV do
   defp do_mev_rpc(method, params, opts) do
     with {:ok, rpc_opts} <- build_rpc_opts(opts) do
       case Cartouche.RPC.send_rpc(method, params, rpc_opts) do
-        {:ok, result} -> {:ok, result}
-        {:error, %{} = map} -> {:error, {:rpc_error, map}}
-        {:error, other} -> {:error, {:rpc_error, %{message: inspect(other)}}}
+        {:ok, result} ->
+          {:ok, result}
+
+        {:error, {tag, _}} = error
+        when tag in [:method_not_found, :namespace_unavailable, :unavailable, :missing_option, :invalid_retry_policy] ->
+          error
+
+        {:error, %{} = map} ->
+          {:error, {:rpc_error, map}}
+
+        {:error, other} ->
+          {:error, {:rpc_error, %{message: inspect(other)}}}
       end
     end
   end

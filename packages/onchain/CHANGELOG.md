@@ -8,6 +8,22 @@ Completed roadmap tasks.
 
 ### Breaking behaviour
 
+- JSON-RPC single calls and batches share `Cartouche.RPC`'s transport. Set the
+  URL with `config :cartouche, :ethereum_node`, or per call with `:rpc_url` /
+  `:ethereum_node` (`:rpc_url` wins). Set transport defaults with
+  `config :cartouche, Cartouche.RPC, [...]` and global Req options with
+  `config :cartouche, :req_options, [...]`; per-call `req_options:` still has
+  highest precedence. `config :onchain, Onchain.RPC` and
+  `config :onchain, :req_options` no longer affect JSON-RPC; they remain the
+  CCIP-Read gateway seam. A call with no URL returns
+  `{:error, {:missing_option, :ethereum_node}}` instead of posting to
+  `https://mainnet.infura.io`.
+- Node refusals are classified on that shared path for both `Cartouche.RPC` and
+  `Onchain.RPC`. `-32601` is `{:method_not_found, map}`. Message-scoped `-32600`
+  is `:method_not_found` or `:namespace_unavailable`. Message-scoped `-32001` is
+  `:unavailable`. Other single-call error shapes are unchanged. Opt-in
+  `retry: [max_retries: n, backoff_ms: ms]` covers typed, raw, and batch calls:
+  transport failures retry, and a JSON-RPC error that carries a code does not.
 - Transaction encoding and decoding now use alloy-consensus through the core NIF;
   EIP-712 value encoding and hashing use alloy-dyn-abi. Transaction structs and
   JSON entry points retain their shape, and signing stays on ex_secp256k1.

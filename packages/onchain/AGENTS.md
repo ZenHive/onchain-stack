@@ -552,8 +552,8 @@ users run Alchemy, Infura, or a pruned Geth. What is specific to this repo:
   that proved the two equivalent on reth v2.5.1. That comment tag is the convention:
   a non-obvious portability decision gets a `NOTE (portability):` comment naming the
   method, who serves it, and the consumer-visible error.
-- **Node-capability refusals are classified on `Onchain.RPC`'s shared `do_rpc/3`
-  path and on `batch/2`'s decode path.** A method the node does not implement is `{:error, {:method_not_found, map}}`,
+- **Node-capability refusals are classified in `Cartouche.RPC` (`send_rpc/3` and
+  `send_batch/2`).** `Onchain.RPC` `do_rpc/3` and `batch/2` both call that transport. A method the node does not implement is `{:error, {:method_not_found, map}}`,
   a plan-disabled namespace is `{:error, {:namespace_unavailable, map}}`, and a
   request the node cannot complete (including historical `eth_feeHistory` on Alchemy)
   is `{:error, {:unavailable, map}}`. Unrecognized codes stay `{:rpc_error, map}`.
@@ -590,12 +590,12 @@ precommit` is the fast local loop (no dialyzer/coverage).
 ```
 lib/onchain/
   hex.ex            # hex<->binary, hex<->integer, 0x prefix
-  http.ex           # req_options/3 — onchain's Req transport-override seam (:onchain app config) for batch + CCIP gateway
+  http.ex           # req_options/3 — onchain's Req transport-override seam (:onchain app config) for the CCIP-Read gateway; JSON-RPC uses Cartouche.HTTP
   address.ex        # validate, checksum (EIP-55), normalize
   abi.ex            # encode_call/2, decode_response/2, decode_types/2, decode_call/3, decode_error/2
   decimal.ex        # to_decimal/2, to_basis_points/1, div_pow10/2
   fees.ex           # suggest_fees/2 — EIP-1559 fee recommendation over Cartouche.FeeHistory.t()
-  rpc.ex            # eth_call, eth_estimateGas, eth_getLogs, eth_getBalance, receipts, nonces, syncing, fee_history, base_fee (portable, via the block header), blob_base_fee, get_proof, generic call/3 passthrough; do_rpc + batch classify node refusals (:method_not_found / :namespace_unavailable / :unavailable)
+  rpc.ex            # eth_call, eth_estimateGas, eth_getLogs, eth_getBalance, receipts, nonces, syncing, fee_history, base_fee (portable, via the block header), blob_base_fee, get_proof, generic call/3 passthrough; do_rpc and batch delegate to Cartouche.RPC, which classifies node refusals (:method_not_found / :namespace_unavailable / :unavailable)
   rpc/codegen.ex    # defrpc/defrpc_bang macros — NimbleOptions-backed codegen for uniform RPC wrapper bodies
   rpc/helpers.ex    # shared RPC helpers; parse_block_response/1, parse_transaction_map/1; do_rpc enriches revert maps with :data hex for decode_error/2
   signer.ex         # key management, transaction signing

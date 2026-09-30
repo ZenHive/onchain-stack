@@ -806,7 +806,13 @@ defmodule Cartouche.RPC do
         {:error, {:rpc_error, %{message: body}}}
 
       {:error, {tag, _}} = error
-      when tag in [:method_not_found, :namespace_unavailable, :unavailable, :missing_option, :invalid_retry_policy] ->
+      when tag in [
+             :method_not_found,
+             :namespace_unavailable,
+             :unavailable,
+             :missing_option,
+             :invalid_retry_policy
+           ] ->
         error
 
       {:error, message} ->

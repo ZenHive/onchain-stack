@@ -4,11 +4,11 @@ defmodule Onchain.RPC do
 
   Provides a curated API for common Ethereum RPC methods with consistent
   error tuples and option handling. All functions accept `:rpc_url`,
-  `:timeout`, and `:block` options. Single RPC calls also accept an opt-in
-  `:retry` policy. Omit `:retry` to preserve the underlying
-  `Cartouche.RPC.send_rpc/3` single-attempt behavior. Pass
-  `retry: [max_retries: 2, backoff_ms: 100]` to retry RPC/network errors before
-  returning the final normalized error.
+  `:timeout`, and `:block` options. Single calls and `batch/2` also accept an
+  opt-in `:retry` policy. Omit `:retry` to preserve the underlying
+  `Cartouche.RPC` single-attempt behavior. Pass
+  `retry: [max_retries: 2, backoff_ms: 100]` to retry transport failures before
+  returning the final error. JSON-RPC errors that carry a code are final.
 
   ## Telemetry
 
