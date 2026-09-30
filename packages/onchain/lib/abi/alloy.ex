@@ -23,49 +23,29 @@ defmodule ABI.Alloy do
   end
 
   # One persistent_term per cache, so a miss in one never rewrites the other.
-  # Inserts merge on retry when a concurrent miss publishes a stale map snapshot,
-  # so entries are not dropped. The cap bounds retained NIF resources for applications
-  # accepting arbitrary schemas.
+  # Inserts are a read-modify-write of the whole map, so they are serialized per
+  # cache; without the lock a concurrent miss can publish a stale snapshot and
+  # drop another process's entry. Compilation stays outside the lock. The cap
+  # bounds retained NIF resources for applications accepting arbitrary schemas.
   defp cached(name, key, compute) do
     term_key = {__MODULE__, name}
 
-    case cache_fetch(term_key, key) do
+    case Map.fetch(:persistent_term.get(term_key, %{}), key) do
       {:ok, value} ->
         value
 
       :error ->
         value = compute.()
-        cache_ensure(term_key, key, value)
+        :global.trans({term_key, self()}, fn -> insert(term_key, key, value) end, [node()])
         value
     end
   end
 
-  defp cache_fetch(term_key, key) do
-    term_key |> :persistent_term.get(%{}) |> Map.fetch(key)
-  end
-
-  defp cache_ensure(term_key, key, value, attempts \\ 0)
-
-  defp cache_ensure(_term_key, _key, _value, attempts) when attempts >= 32, do: :ok
-
-  defp cache_ensure(term_key, key, value, attempts) do
+  defp insert(term_key, key, value) do
     cache = :persistent_term.get(term_key, %{})
 
-    cond do
-      Map.has_key?(cache, key) ->
-        :ok
-
-      map_size(cache) >= 1024 ->
-        :ok
-
-      true ->
-        :persistent_term.put(term_key, Map.put(cache, key, value))
-
-        case cache_fetch(term_key, key) do
-          {:ok, _} -> :ok
-          :error -> cache_ensure(term_key, key, value, attempts + 1)
-        end
-    end
+    if not Map.has_key?(cache, key) and map_size(cache) < 1024,
+      do: :persistent_term.put(term_key, Map.put(cache, key, value))
   end
 
   @doc false
