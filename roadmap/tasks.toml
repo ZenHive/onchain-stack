@@ -4716,7 +4716,7 @@ phase = 3012
 bundle = "onchain_signer_backend_contract"
 target_repo = "onchain"
 milestone = "stack_read_surface_boundary"
-status = "in_progress"
+status = "done"
 title = "Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA"
 scores = { d = 3, b = 7, u = 6 }
 markers = ["security"]
@@ -4731,9 +4731,16 @@ Add a public direct-signing entry point for a {backend, config} carrier. Either 
 
 Onchain.AA already signs a keccak digest via Secp256k1.sign_digest/2 (packages/onchain/lib/onchain/aa.ex:596) and stays as is.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1790733442958-6742afbc, ee32f3c59a6e12aa2b6c7c0ddbb01e6bd426aa8f)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1790733442958-6742afbc"
 created_at = "2026-08-25"
 started_at = "2026-09-30"
 scored_at = "2026-09-29"
+done_at = "2026-09-30"
+shipped_in = "ee32f3c59a6e12aa2b6c7c0ddbb01e6bd426aa8f"
 
 [[task]]
 id = 3090

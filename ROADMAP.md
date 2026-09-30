@@ -18,7 +18,7 @@
 - **target_version:** none
 - **status:** 🔄 active
 - **hypothesis:** Tests whether, with cartouche folded into onchain (9030), every spec'd read method can end up with exactly one transport, one decoder and one struct — Cartouche.RPC and Onchain.RPC reconciled before 9036 renames them into a single Onchain.RPC.
-- **pinned tasks:** 0/10 done
+- **pinned tasks:** 1/10 done
 
 ### onchain_core_consolidation — [onchain] One core package, encoding from alloy
 
@@ -406,7 +406,7 @@
 | Task 3086 `[P]` | ⬜ | 🎁 **onchain_rpc_composition** · Multi-slot storage reads: many eth_getStorageAt calls in one batched round trip, with eth_getStorageValues only as a probed fast path [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 | Task 3087 | ⛔ | 🎁 **onchain_differential_testing** · 🔒 Mutation-adequacy campaign over the signing, key and address surface [D:5/B:8/U:3 → Eff:1.1?] 📋 |
 | Task 3088 | ✅ | 🎁 **onchain_abi_decode_hardening** · 🔒 Expose hieroglyph's strict decode mode through the Onchain.ABI, Contract and Log decode surface [D:4/B:7/U:6 → Eff:1.62?] 🚀 |
-| Task 3089 | 🔄 | 🎁 **onchain_signer_backend_contract** · 🚀 **stack_read_surface_boundary** · 🔒 Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA [D:3/B:7/U:6 → Eff:2.17] 🎯 |
+| Task 3089 | ✅ | 🎁 **onchain_signer_backend_contract** · 🚀 **stack_read_surface_boundary** · 🔒 Route Onchain.Signer.sign_transaction through cartouche's {backend, config} carrier instead of the legacy MFA [D:3/B:7/U:6 → Eff:2.17] 🎯 |
 | Task 3090 | ⬜ | 🎁 **onchain_subscription_hardening** · 🚀 **stack_read_surface_boundary** · Onchain.Filter (renamed Cartouche.Filter): Subscription-compatible delivery and optional ABI event decoding, so HTTP log/block/pending polling works on the default transport [D:5/B:6/U:5 → Eff:1.1] 📋 |
 | Task 3091 | ✅ | 🎁 **onchain_node_portability** · Normalize node-capability refusals into typed errors instead of passing the raw JSON-RPC code through [D:3/B:7/U:7 → Eff:2.33?] 🎯 |
 | Task 3092 | ⬜ | 🎁 **onchain_node_portability** · Node pre-flight: live evidence for eth_config/eth_capabilities and a documented retention check before historical queries [D:3/B:7/U:6 → Eff:2.17] 🎯 |
