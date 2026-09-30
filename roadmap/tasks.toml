@@ -10423,3 +10423,26 @@ started_at = "2026-09-30"
 scored_at = "2026-09-29"
 done_at = "2026-09-30"
 shipped_in = "b16a7c1eff903dba2513027f4c962b2e10dfc300"
+
+[[task]]
+id = "9046"
+phase = 9100
+bundle = "onchain_core_consolidation"
+target_repo = "onchain_tempo"
+status = "pending"
+title = "Run Tempo native mutants against a scratch copy instead of the tracked tree"
+scores = { d = 4, b = 5, u = 3 }
+markers = ["parallel"]
+depends_on = [9045]
+acceptance_criteria = ["Killing the mutation test run with SIGKILL while a mutant is applied leaves `git status --short packages/onchain_tempo` clean (demonstrate once and record how in the task outcome)", "`cd packages/onchain_tempo && ONCHAIN_BUILD=1 MIX_ENV=test mix test.json test/onchain/tempo/verification/mutation_test.exs` still passes with the same killed/survived classification in priv/verification/0x76/ledger.json", "If a scratch copy is used, the Rust build does not become a cold build per mutant (reuse the target dir or state the measured cost)"]
+out_of_scope = ["Changing which mutants exist or how survivors are classified (9045 owns that)"]
+touches = ["packages/onchain_tempo/test/support/tempo_verification"]
+assignee = "cursor"
+model = "composer-2.5"
+body = """
+Since 9045, the Tempo 0x76 mutation campaign (test/support/tempo_verification/campaign.ex, `with_patched_source`) rewrites tracked sources — native/onchain_tempo/src/lib.rs and lib/onchain/tempo/codec.ex — in place, recompiles inside the running test VM, and restores them in `after`. A hard kill (SIGKILL, VM crash, Ctrl-C twice) between patch and restore leaves a mutated file in the worktree, which a later commit can sweep up; in this repo several sessions share one tree. Raised by the 9045 reviewer (run run-1790726475254-3f8ded3f).
+
+Make an interrupted campaign unable to leave mutated tracked sources behind — for example by mutating a scratch copy of the package, or by a guarded backup plus a startup check that refuses to run on a dirty tree. The campaign's kill/survive results must not change.
+"""
+created_at = "2026-09-30"
+scored_at = "2026-09-30"
