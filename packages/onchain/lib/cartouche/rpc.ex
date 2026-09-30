@@ -557,6 +557,23 @@ defmodule Cartouche.RPC do
     end
   end
 
+  api(:send_batch, "Send several Ethereum JSON-RPC requests as one array batch and return raw results in request order.",
+    params: [
+      requests: [kind: :value, description: "List of `{method, params}` tuples, sent in this order."],
+      opts: [
+        kind: :value,
+        default: [],
+        description:
+          "Transport options, the same as `send_rpc/3`: `:rpc_url`, `:ethereum_node`, `:timeout`, `:headers`, `:retry`, and `:req_options`."
+      ]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, results}` with one raw result per request in request order. `{:error, reason}` for a transport failure, a batch-level JSON-RPC error, or the first request that errored or has no response; recognised node refusals are tagged as in `send_rpc/3`."
+    }
+  )
+
   @doc "Sends a JSON-RPC array batch and returns raw results in request order. Uses the same options as `send_rpc/3`."
   @spec send_batch([{String.t(), [term()]}], keyword()) :: {:ok, [term()]} | {:error, term()}
   def send_batch(requests, opts \\ [])

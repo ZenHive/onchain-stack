@@ -64,14 +64,19 @@ defmodule Cartouche.Test.LiveTest do
   end
 
   test "both real RPC answers reach their predicates, including method refusals" do
-    for code <- [-32_601, -32_600] do
+    # The shared transport tags a classified refusal (-32601 always); an
+    # unclassified -32600 message passes through as the raw error map.
+    for {code, refusal} <- [
+          {-32_601, {:method_not_found, %{code: -32_601, message: "refused"}}},
+          {-32_600, %{code: -32_600, message: "refused"}}
+        ] do
       System.put_env("CARTOUCHE_LIVE_NODE_URL", node_url("0x1", %{"result" => "0x2a"}))
       System.put_env("ETHEREUM_ALCHEMY_URL", node_url("0x1", %{"error" => %{"code" => code, "message" => "refused"}}))
 
-      assert [archive: {:ok, 42}, alchemy: {:error, %{code: ^code, message: "refused"}}] =
+      assert [archive: {:ok, 42}, alchemy: {:error, ^refusal}] =
                Live.assert_portability!(&Cartouche.RPC.base_fee/1,
                  archive: &match?({:ok, 42}, &1),
-                 alchemy: &match?({:error, %{code: ^code, message: "refused"}}, &1)
+                 alchemy: &match?({:error, ^refusal}, &1)
                )
     end
   end

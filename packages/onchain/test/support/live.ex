@@ -82,8 +82,9 @@ defmodule Cartouche.Test.Live do
       )
 
   See `test/rpc_portability_test.exs` for the observed Alchemy refusal predicate.
-  Choose expectations from observed responses; some providers refuse with HTTP 400
-  and a `%Req.Response{}` instead of a decoded JSON-RPC error map.
+  Choose expectations from observed responses. The shared transport decodes a
+  JSON-RPC error body even on HTTP 400 and tags recognised refusals
+  (`{:method_not_found, map}` and friends); unrecognised errors stay raw.
   """
   @spec assert_portability!((Keyword.t() -> term()), [{endpoint(), (term() -> boolean())}]) ::
           [{endpoint(), term()}]

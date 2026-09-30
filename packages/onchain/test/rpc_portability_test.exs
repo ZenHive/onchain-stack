@@ -16,12 +16,9 @@ defmodule Cartouche.RPCPortabilityTest do
     )
   end
 
-  defp alchemy_refusal?({:error, %Req.Response{status: 400, body: body}}) do
-    case Jason.decode(body) do
-      {:ok, %{"error" => %{"code" => -32_600, "message" => @alchemy_refusal}}} -> true
-      _ -> false
-    end
-  end
+  # Since the shared transport (task 2137) the HTTP 400 JSON-RPC body is decoded
+  # and tagged; the code and message stay verbatim.
+  defp alchemy_refusal?({:error, {:method_not_found, %{code: -32_600, message: @alchemy_refusal}}}), do: true
 
   defp alchemy_refusal?(_answer), do: false
 end
