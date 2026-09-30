@@ -15808,7 +15808,7 @@
       "bundle": "onchain_core_consolidation",
       "target_repo": "onchain",
       "milestone": "onchain_core_consolidation",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Remove the Onchain.Signer / Cartouche.Signer duplicate pair on top of the {backend, config} carrier",
       "scores": {
         "d": 4,
@@ -15852,6 +15852,7 @@
       ],
       "body": "Split from 9035 (2026-09-29 review). Onchain.Signer and Cartouche.Signer both sign transactions. Task 3089 routes Onchain.Signer.sign_transaction through Cartouche's {backend, config} carrier instead of the legacy MFA, and after that the two differ mainly in surface. Keep one implementation on the carrier, delete the other and repoint callers, so 9036 can map the survivor to a single Onchain.Signer.\n\nA signing fault is silent: wrong output is still well-formed. Capture signed bytes for every existing signer fixture before the change and assert them unchanged afterwards.\n\nFor the pair, keep the better-tested implementation. Where return shapes differ, keep the richer one and record the change in the CHANGELOG as part of the 0.16.0 break.",
       "created_at": "2026-09-29",
+      "started_at": "2026-09-30",
       "scored_at": "2026-09-29",
       "cross_repo": []
     },
