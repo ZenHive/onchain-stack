@@ -1,0 +1,34 @@
+{
+  "modules": [
+    {
+      "module": "Elixir.Cartouche.Signer",
+      "covered": 45,
+      "missed": 2,
+      "uncovered_lines": [
+        1,
+        298
+      ]
+    },
+    {
+      "module": "Elixir.Cartouche.Signer.Backend",
+      "covered": 2,
+      "missed": 1,
+      "uncovered_lines": [
+        102
+      ]
+    },
+    {
+      "module": "Elixir.Cartouche.Signer.CloudKMS",
+      "covered": 19,
+      "missed": 0,
+      "uncovered_lines": []
+    },
+    {
+      "module": "Elixir.Cartouche.Signer.Secp256k1",
+      "covered": 6,
+      "missed": 0,
+      "uncovered_lines": []
+    }
+  ],
+  "percentage": 96.0
+}

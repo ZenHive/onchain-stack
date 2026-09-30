@@ -140,6 +140,14 @@ defmodule Cartouche.Signer do
     GenServer.call(name, {:sign, {message, chain_id}})
   end
 
+  @doc false
+  @spec sign_digest(<<_::256>>, binary(), GenServer.server(), Keyword.t()) ::
+          {:ok, Cartouche.signature()} | {:error, term()}
+  def sign_digest(<<_::256>> = digest, payload, name, opts) do
+    chain_id = Keyword.get(opts, :chain_id, GenServer.call(name, :get_chain_id))
+    GenServer.call(name, {:sign, {{:digest, digest, payload}, chain_id}})
+  end
+
   api(:sign_message, "Sign a message the way a wallet's personal_sign / ethers signMessage does.",
     params: [
       message: [kind: :value, description: "Message bytes or string; the EIP-191 envelope is added here."],
@@ -222,7 +230,12 @@ defmodule Cartouche.Signer do
   @spec sign_typed_data(Cartouche.Typed.t(), GenServer.server(), Keyword.t()) ::
           {:ok, Cartouche.signature()} | {:error, term()}
   def sign_typed_data(%Cartouche.Typed{} = typed, name \\ Default, opts \\ []) do
-    sign(Cartouche.Typed.encode(typed), name, Keyword.put(opts, :chain_id, 0))
+    sign_digest(
+      Cartouche.Typed.Native.signing_hash(typed),
+      Cartouche.Typed.encode(typed),
+      name,
+      Keyword.put(opts, :chain_id, 0)
+    )
   end
 
   api(:address, "Get the Ethereum address controlled by a signer process.",
@@ -364,21 +377,29 @@ defmodule Cartouche.Signer do
   # normalized, and the recid is searched against the SAME digest.
   @spec backend_sign(
           Backend.t() | {module(), atom(), [any()]},
-          String.t(),
+          binary() | {:digest, binary(), binary()},
           binary(),
           integer() | atom() | nil
         ) :: {:ok, Cartouche.signature()} | {:error, term()}
   defp backend_sign({backend, config}, message, address, chain_id_or_name) when is_atom(backend) do
     with :ok <- Backend.expect_algorithm(backend, config, :secp256k1),
-         digest = keccak(message),
+         digest = payload_digest(message),
          {:ok, raw_signature} <- backend.sign_payload(digest, config) do
       emit_signature(digest, raw_signature, address, chain_id_or_name)
     end
   end
 
   defp backend_sign({_mod, _fun, _args} = mfa, message, address, chain_id_or_name) do
-    sign_direct(message, address, mfa, chain_id_or_name)
+    sign_direct(original_payload(message), address, mfa, chain_id_or_name)
   end
+
+  @spec payload_digest(binary() | {:digest, binary(), binary()}) :: binary()
+  defp payload_digest({:digest, digest, _payload}), do: digest
+  defp payload_digest(payload), do: keccak(payload)
+
+  @spec original_payload(binary() | {:digest, binary(), binary()}) :: binary()
+  defp original_payload({:digest, _digest, payload}), do: payload
+  defp original_payload(payload), do: payload
 
   # Sole packed-signature emission funnel. Low-s is applied here, before recid search,
   # so a high-s backend cannot produce a malleable signature and flipping s

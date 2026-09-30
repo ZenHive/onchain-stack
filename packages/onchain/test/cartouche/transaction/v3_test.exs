@@ -122,11 +122,9 @@ defmodule Cartouche.Transaction.V3Test do
     end
 
     test "rejects contract-creation destination" do
-      malformed =
-        representative_tx()
-        |> Map.put(:destination, <<>>)
-        |> V3.encode()
-
+      assert_raise ArgumentError, fn -> V3.encode(%{representative_tx() | destination: <<>>}) end
+      <<3, payload::binary>> = V3.encode(representative_tx())
+      malformed = <<3>> <> ExRLP.encode(List.replace_at(ExRLP.decode(payload), 5, <<>>))
       assert {:error, "invalid v3 transaction"} = V3.decode(malformed)
     end
 

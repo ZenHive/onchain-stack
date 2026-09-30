@@ -4,6 +4,8 @@ use alloy_primitives::{Address, FixedBytes, I256, U256};
 use rustler::{types::tuple, BigInt, Binary, Encoder, Env, NewBinary, ResourceArc, Term};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
+mod transaction;
+
 mod atoms {
     rustler::atoms! { ok, error, encode, decode, packed, event, events, raw_encode, raw_decode, parse, type_atom = "type", params, signature, profile, name, indexed, uint, int, address, bool_atom = "bool", function, string, bytes_atom = "bytes", array, tuple_atom = "tuple" }
 }
@@ -59,6 +61,7 @@ fn from_term(
         *byte_budget = byte_budget.checked_sub(bin.len()).ok_or("payload_limit")?;
     }
     Ok(match ty {
+        DynSolType::CustomStruct { .. } => return Err("custom_struct_not_abi".into()),
         DynSolType::Bool => DynSolValue::Bool(term.decode().map_err(bad_input)?),
         DynSolType::Uint(bits) => {
             let value = if let Ok(value) = term.decode::<u64>() {
@@ -168,6 +171,7 @@ fn from_term(
 fn to_term<'a>(env: Env<'a>, value: DynSolValue, remaining: &mut usize) -> Result<Term<'a>> {
     spend(remaining)?;
     Ok(match value {
+        DynSolValue::CustomStruct { .. } => return Err("custom_struct_not_abi".into()),
         DynSolValue::Bool(value) => value.encode(env),
         DynSolValue::Uint(value, _) => {
             if value.bit_len() <= 64 {

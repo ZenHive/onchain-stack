@@ -4,6 +4,8 @@ defmodule Cartouche.Typed do
   """
   use Cartouche.Hex
 
+  alias Cartouche.Typed.Native
+
   defstruct [:domain, :types, :value]
 
   @type value_map() :: %{String.t() => term()}
@@ -314,48 +316,7 @@ defmodule Cartouche.Typed do
     @spec encode_data_value(term(), field_type(), Cartouche.Typed.type_map()) :: binary()
     def encode_data_value(value, type, types \\ %{})
 
-    def encode_data_value(value, :address, _types), do: Cartouche.Hex.pad(value, 32)
-
-    def encode_data_value(value, {:uint, width}, _types)
-        when is_integer(width) and width in 8..256 and rem(width, 8) == 0 and is_integer(value) do
-      limit = Integer.pow(2, width)
-
-      if value < 0 or value >= limit do
-        raise ArgumentError, "value out of range for uint#{width}"
-      end
-
-      Cartouche.Hex.encode_bytes(value, 32)
-    end
-
-    def encode_data_value(value, :string, _types), do: Cartouche.Hash.keccak(value)
-    def encode_data_value(value, :bytes, _types), do: Cartouche.Hash.keccak(value)
-
-    def encode_data_value(value, {:bytes, n}, _types) when is_integer(n) and n in 1..32 do
-      value
-      |> Cartouche.Hex.pad_right(n)
-      |> Cartouche.Hex.pad_right(32)
-    end
-
-    def encode_data_value(value, {:int, width}, _types)
-        when is_integer(width) and width in 8..256 and rem(width, 8) == 0 and is_integer(value) do
-      limit = Integer.pow(2, width - 1)
-
-      if value < -limit or value >= limit do
-        raise ArgumentError, "value out of range for int#{width}"
-      end
-
-      <<value::signed-big-256>>
-    end
-
-    def encode_data_value(value, :bool, types), do: encode_data_value(if(value, do: 1, else: 0), {:uint, 256}, types)
-
-    def encode_data_value(value, {:array, ty}, types) do
-      value
-      |> Enum.map_join(&encode_data_value(&1, ty, types))
-      |> Cartouche.Hash.keccak()
-    end
-
-    def encode_data_value(value, type, types) when is_binary(type), do: Cartouche.Typed.hash_struct(type, value, types)
+    def encode_data_value(value, type, types), do: Native.encode_value(value, type, types)
   end
 
   defmodule Domain do
@@ -618,13 +579,6 @@ defmodule Cartouche.Typed do
   defp transform_value_map(value, fields, types, transform) do
     for {field, type} <- fields, into: %{} do
       {field, transform_value(fetch_value(value, field), type, types, transform)}
-    end
-  end
-
-  @spec encode_value_map(value_map(), Type.type_list(), type_map()) :: binary()
-  defp encode_value_map(value, fields, types) do
-    for {field, type} <- fields, into: <<>> do
-      Type.encode_data_value(fetch_value(value, field), type, types)
     end
   end
 
@@ -891,14 +845,7 @@ defmodule Cartouche.Typed do
       "0xc52c0ee5d84264471806290a3f2c4cecfc5490626bf912d01f240d7a274b371e"
   """
   @spec hash_struct(String.t(), value_map(), type_map()) :: binary()
-  def hash_struct(name, value, types) do
-    type = Map.fetch!(types, name)
-    encoded_type = encode_type(name, types)
-    type_hash = Cartouche.Hash.keccak(encoded_type)
-    encode_data = encode_value_map(value, type.fields, types)
-
-    Cartouche.Hash.keccak(type_hash <> encode_data)
-  end
+  def hash_struct(name, value, types), do: Native.hash_struct(name, value, types)
 
   @doc """
   Builds a domain struct for a given type, per the EIP-712 spec.
@@ -1029,11 +976,5 @@ defmodule Cartouche.Typed do
       "0x1901f4806c1a9dae718712eca4906bfca239a3a4a6dea2e9b9a1284fee5ff4df4b1c8c56315a01fe3937526fe8c2b472b7e9e1c21728f6c14d5ffb0e0c156f74aca0"
   """
   @spec encode(t()) :: binary()
-  def encode(%__MODULE__{types: types, value: value} = typed) do
-    {name, _type} = find_type(Map.keys(value), types)
-    domain_separator = domain_seperator(typed)
-    hash_struct_message = hash_struct(name, value, types)
-
-    <<0x19, 0x01, domain_separator::binary, hash_struct_message::binary>>
-  end
+  def encode(%__MODULE__{} = typed), do: Native.encode(typed)
 end

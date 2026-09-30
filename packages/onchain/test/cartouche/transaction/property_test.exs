@@ -18,6 +18,7 @@ defmodule Cartouche.Transaction.PropertyTest do
   @secp256k1_n 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
   @secp256k1_half_n div(@secp256k1_n, 2)
   @uint64_max 0xFFFFFFFFFFFFFFFF
+  @uint128_max 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
   @uint256_max 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
   @max_address :binary.copy(<<0xFF>>, 20)
   @max_word :binary.copy(<<0xFF>>, 32)
@@ -83,6 +84,33 @@ defmodule Cartouche.Transaction.PropertyTest do
         signed = add_arbitrary_signature(transaction, version, true, @max_word, @max_word)
         assert_round_trip(signed)
         assert_full_width_signature(version, signed)
+      end
+    end
+  end
+
+  property "out-of-range transaction fields raise a named bound error" do
+    check all(
+            version <- StreamData.member_of([:v1, :v2930, :v2, :v3, :v4]),
+            tx <- envelope_generator(version),
+            excess <- StreamData.integer(0..@uint256_max),
+            max_runs: @property_runs
+          ) do
+      fields = [
+        nonce: 64,
+        gas_limit: 64,
+        chain_id: 64,
+        gas_price: 128,
+        max_fee_per_gas: 128,
+        max_priority_fee_per_gas: 128,
+        max_fee_per_blob_gas: 128,
+        amount: 256,
+        value: 256
+      ]
+
+      for {field, width} <- fields, Map.has_key?(tx, field), value <- [-1, Integer.pow(2, width) + excess] do
+        assert_raise ArgumentError, "#{field} must be in 0..2^#{width}-1", fn ->
+          Transaction.encode(Map.put(tx, field, value))
+        end
       end
     end
   end
@@ -188,10 +216,10 @@ defmodule Cartouche.Transaction.PropertyTest do
   defp envelope_fields_generator do
     StreamData.fixed_map(%{
       chain_id: StreamData.integer(1..100),
-      nonce: uint256_generator(),
-      fee_a: uint256_generator(),
-      fee_b: uint256_generator(),
-      gas_limit: uint256_generator(),
+      nonce: uint64_generator(),
+      fee_a: uint128_generator(),
+      fee_b: uint128_generator(),
+      gas_limit: uint64_generator(),
       amount: uint256_generator(),
       destination: address_generator(),
       data: data_generator(),
@@ -203,6 +231,13 @@ defmodule Cartouche.Transaction.PropertyTest do
     StreamData.frequency([
       {1, StreamData.member_of([0, 1, @uint256_max])},
       {4, StreamData.integer(0..@uint256_max)}
+    ])
+  end
+
+  defp uint128_generator do
+    StreamData.frequency([
+      {1, StreamData.member_of([0, 1, @uint128_max])},
+      {4, StreamData.integer(0..@uint128_max)}
     ])
   end
 
@@ -337,10 +372,10 @@ defmodule Cartouche.Transaction.PropertyTest do
   defp boundary_envelopes(scalar, access_list) do
     fields = %{
       chain_id: 1,
-      nonce: scalar,
-      fee_a: scalar,
-      fee_b: scalar,
-      gas_limit: scalar,
+      nonce: min(scalar, @uint64_max),
+      fee_a: min(scalar, @uint128_max),
+      fee_b: min(scalar, @uint128_max),
+      gas_limit: min(scalar, @uint64_max),
       amount: scalar,
       destination: @max_address,
       data: <<>>,

@@ -56,7 +56,7 @@ defmodule Cartouche.Transaction.MutationGapTest do
     end
 
     test "accepts the same envelope with a one-byte y parity" do
-      assert {:ok, decoded} = V4.decode(signed_v4_wire(<<1>>, <<1::256>>, <<2::256>>))
+      assert {:ok, decoded} = V4.decode(signed_v4_wire(<<1>>, <<1>>, <<2>>))
       assert decoded.signature_y_parity == true
     end
 
@@ -64,9 +64,13 @@ defmodule Cartouche.Transaction.MutationGapTest do
     # bytes whenever it has leading zeros. `decode_word/1` left-pads those back to
     # a full word and only rejects one that is genuinely oversized.
     test "left-pads a signature word that RLP shortened" do
-      assert {:ok, decoded} = V4.decode(signed_v4_wire(<<1>>, <<1::248>>, <<2::256>>))
+      assert {:ok, decoded} = V4.decode(signed_v4_wire(<<1>>, <<1>>, <<2>>))
       assert decoded.signature_r == <<1::256>>
       assert byte_size(decoded.signature_r) == 32
+    end
+
+    test "rejects noncanonical signature scalars with leading zeroes" do
+      assert {:error, "invalid v4 transaction"} = V4.decode(signed_v4_wire(<<1>>, <<1::256>>, <<2>>))
     end
 
     test "rejects a signature word wider than 32 bytes" do
@@ -119,7 +123,7 @@ defmodule Cartouche.Transaction.MutationGapTest do
       <<2>>,
       <<1, 2, 3>>,
       [],
-      [[<<1>>, <<2::160>>, <<7>>, <<>>, <<1::256>>, <<2::256>>]],
+      [[<<1>>, <<2::160>>, <<7>>, <<>>, <<1>>, <<2>>]],
       y_parity,
       r,
       s

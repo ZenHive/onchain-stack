@@ -4,6 +4,23 @@ Completed roadmap tasks.
 
 ---
 
+## Unreleased — v0.16.0
+
+### Breaking behaviour
+
+- Transaction encoding and decoding now use alloy-consensus through the core NIF;
+  EIP-712 value encoding and hashing use alloy-dyn-abi. Transaction structs and
+  JSON entry points retain their shape, and signing stays on ex_secp256k1.
+- Transaction nonce, gas limit and chain ID must fit unsigned 64-bit integers;
+  gas price, priority fee, maximum fee and blob fee must fit unsigned 128-bit
+  integers. Value/amount remains unsigned 256-bit. Encoding rejects out-of-range
+  fields with `ArgumentError` naming the field and bound; decoding returns the
+  existing transaction error tuple. Values are never truncated or wrapped.
+  EIP-7702 authorization chain IDs retain their protocol-defined U256 width.
+- Decoding rejects noncanonical RLP integers (including leading-zero signature
+  scalars). EIP-4844 encoding rejects an empty destination. Previously accepted
+  invalid inputs remain negative cases in the captured differential suite.
+
 ## Unreleased — v0.15.0
 
 ### Changed

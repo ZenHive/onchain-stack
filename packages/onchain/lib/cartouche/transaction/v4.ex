@@ -39,8 +39,8 @@ defmodule Cartouche.Transaction.V4 do
 
   alias Cartouche.Signer.Default
   alias Cartouche.Transaction.JsonField
+  alias Cartouche.Transaction.Native
   alias Cartouche.Transaction.Signature
-  alias Cartouche.Transaction.TypedDecode
 
   @type authorization :: {
           non_neg_integer(),
@@ -109,9 +109,7 @@ defmodule Cartouche.Transaction.V4 do
             }
 
   @tx_type 0x04
-  @authorization_magic 0x05
   @invalid "invalid v4 transaction"
-  @empty_authorization_list "authorization_list must not be empty"
 
   @doc """
   Constructs an unsigned EIP-7702 transaction.
@@ -161,25 +159,20 @@ defmodule Cartouche.Transaction.V4 do
   Build an RLP-encoded EIP-7702 transaction.
   """
   @spec encode(tx_input()) :: binary()
-  def encode(%__MODULE__{} = transaction) do
-    <<@tx_type>> <>
-      (transaction
-       |> encoded_fields()
-       |> ExRLP.encode())
-  end
+  def encode(%__MODULE__{} = transaction), do: Native.encode(transaction)
 
   @doc """
   Decode an RLP-encoded EIP-7702 transaction.
   """
   @spec decode(binary()) :: {:ok, t()} | {:error, String.t()}
-  def decode(input), do: TypedDecode.decode(input, @tx_type, @invalid, &decode_fields/1)
+  def decode(input), do: Native.decode(input, __MODULE__, @invalid)
 
   @doc """
   Signs the outer EIP-7702 transaction.
   """
   @spec sign(t(), GenServer.server()) :: {:ok, t()} | {:error, String.t()}
   def sign(%__MODULE__{} = transaction, signer \\ Default) do
-    with {:ok, signature} <- Cartouche.Signer.sign(signing_payload(transaction), signer, chain_id: transaction.chain_id) do
+    with {:ok, signature} <- Native.sign(transaction, signer, chain_id: transaction.chain_id) do
       {:ok, add_signature(transaction, signature)}
     end
   end
@@ -228,7 +221,12 @@ defmodule Cartouche.Transaction.V4 do
           {:ok, authorization()} | {:error, String.t()}
   def sign_authorization({chain_id, address, nonce} = authorization, signer \\ Default) do
     with {:ok, signature} <-
-           Cartouche.Signer.sign(authorization_signing_payload(authorization), signer, chain_id: chain_id) do
+           Cartouche.Signer.sign_digest(
+             authorization_hash(authorization),
+             authorization_signing_payload(authorization),
+             signer,
+             chain_id: chain_id
+           ) do
       {:ok, add_authorization_signature({chain_id, address, nonce, nil, nil, nil}, signature)}
     end
   end
@@ -238,15 +236,14 @@ defmodule Cartouche.Transaction.V4 do
   """
   @spec authorization_signing_payload(unsigned_authorization() | authorization()) :: binary()
   def authorization_signing_payload(authorization) do
-    {chain_id, address, nonce} = authorization_core(authorization)
-    <<@authorization_magic>> <> ExRLP.encode([chain_id, address, nonce])
+    Native.authorization("authorization_encode", authorization_core(authorization))
   end
 
   @doc """
   Returns the EIP-7702 authorization signing hash.
   """
   @spec authorization_hash(unsigned_authorization() | authorization()) :: <<_::256>>
-  def authorization_hash(authorization), do: authorization |> authorization_signing_payload() |> Cartouche.Hash.keccak()
+  def authorization_hash(authorization), do: Native.authorization("authorization_hash", authorization_core(authorization))
 
   @doc """
   Adds an authorization signature from a packed binary (`r <> s <> v`).
@@ -349,252 +346,6 @@ defmodule Cartouche.Transaction.V4 do
       signature_s: JsonField.decode_signature_word(params["s"])
     }
   end
-
-  @spec encoded_fields(tx_input()) :: list()
-  defp encoded_fields(%__MODULE__{} = tx) do
-    [
-      tx.chain_id,
-      tx.nonce,
-      tx.max_priority_fee_per_gas,
-      tx.max_fee_per_gas,
-      tx.gas_limit,
-      tx.destination,
-      tx.amount,
-      tx.data,
-      encode_access_list(tx.access_list),
-      encode_authorization_list(tx.authorization_list)
-    ] ++ encode_signature_fields(tx.signature_y_parity, tx.signature_r, tx.signature_s)
-  end
-
-  @spec encode_access_list([{<<_::160>>, [<<_::256>>]}] | nil) :: list()
-  defp encode_access_list(nil), do: []
-  defp encode_access_list(access_list), do: TypedDecode.encode_access_list(access_list)
-
-  @spec encode_authorization_list(term()) :: list()
-  defp encode_authorization_list([_authorization | _rest] = authorization_list) do
-    Enum.map(authorization_list, &encode_authorization/1)
-  end
-
-  defp encode_authorization_list(_authorization_list) do
-    raise ArgumentError, @empty_authorization_list
-  end
-
-  @spec encode_authorization(authorization()) :: list()
-  defp encode_authorization({chain_id, address, nonce, y_parity, r, s})
-       when is_boolean(y_parity) and is_binary(r) and is_binary(s) do
-    [
-      chain_id,
-      address,
-      nonce,
-      y_parity_integer(y_parity),
-      trim_leading_zeroes(r),
-      trim_leading_zeroes(s)
-    ]
-  end
-
-  @spec encode_signature_fields(boolean() | nil, binary() | nil, binary() | nil) :: list()
-  defp encode_signature_fields(y_parity, r, s) when is_nil(y_parity) or is_nil(r) or is_nil(s), do: []
-
-  defp encode_signature_fields(y_parity, r, s) do
-    [y_parity_integer(y_parity), trim_leading_zeroes(r), trim_leading_zeroes(s)]
-  end
-
-  @spec decode_fields(list()) :: {:ok, t()} | {:error, String.t()}
-  defp decode_fields([_, _, _, _, _, _, _, _, _, _] = fields) do
-    decode_transaction_fields(fields, {nil, nil, nil})
-  end
-
-  defp decode_fields([
-         chain_id,
-         nonce,
-         max_priority_fee_per_gas,
-         max_fee_per_gas,
-         gas_limit,
-         destination,
-         amount,
-         data,
-         access_list,
-         authorization_list,
-         signature_y_parity,
-         signature_r,
-         signature_s
-       ]) do
-    fields = [
-      chain_id,
-      nonce,
-      max_priority_fee_per_gas,
-      max_fee_per_gas,
-      gas_limit,
-      destination,
-      amount,
-      data,
-      access_list,
-      authorization_list
-    ]
-
-    with {:ok, signature_y_parity} <- decode_y_parity(signature_y_parity),
-         {:ok, signature_r} <- decode_word(signature_r),
-         {:ok, signature_s} <- decode_word(signature_s) do
-      decode_transaction_fields(fields, {signature_y_parity, signature_r, signature_s})
-    else
-      _ -> {:error, @invalid}
-    end
-  end
-
-  defp decode_fields(_), do: {:error, @invalid}
-
-  @spec decode_transaction_fields(list(), {boolean() | nil, <<_::256>> | nil, <<_::256>> | nil}) ::
-          {:ok, t()} | {:error, String.t()}
-  defp decode_transaction_fields(
-         [
-           chain_id,
-           nonce,
-           max_priority_fee_per_gas,
-           max_fee_per_gas,
-           gas_limit,
-           destination,
-           amount,
-           data,
-           access_list,
-           authorization_list
-         ],
-         {signature_y_parity, signature_r, signature_s}
-       )
-       when is_binary(data) do
-    with {:ok, chain_id} <- decode_uint(chain_id, 32),
-         {:ok, nonce} <- decode_uint(nonce, 8),
-         {:ok, max_priority_fee_per_gas} <- decode_uint(max_priority_fee_per_gas, 32),
-         {:ok, max_fee_per_gas} <- decode_uint(max_fee_per_gas, 32),
-         {:ok, gas_limit} <- decode_uint(gas_limit, 8),
-         {:ok, amount} <- decode_uint(amount, 32),
-         {:ok, access_list} <- decode_access_list(access_list),
-         {:ok, authorization_list} <- decode_authorization_list(authorization_list),
-         {:ok, destination} <- decode_address(destination) do
-      {:ok,
-       %__MODULE__{
-         chain_id: chain_id,
-         nonce: nonce,
-         max_priority_fee_per_gas: max_priority_fee_per_gas,
-         max_fee_per_gas: max_fee_per_gas,
-         gas_limit: gas_limit,
-         destination: destination,
-         amount: amount,
-         data: data,
-         access_list: access_list,
-         authorization_list: authorization_list,
-         signature_y_parity: signature_y_parity,
-         signature_r: signature_r,
-         signature_s: signature_s
-       }}
-    end
-  end
-
-  defp decode_transaction_fields(_, _), do: {:error, @invalid}
-
-  @spec trim_leading_zeroes(binary()) :: binary()
-  defp trim_leading_zeroes(<<0, rest::binary>>), do: trim_leading_zeroes(rest)
-  defp trim_leading_zeroes(value), do: value
-
-  @spec decode_access_list(list()) :: {:ok, [{<<_::160>>, [<<_::256>>]}]} | {:error, String.t()}
-  defp decode_access_list(access_list) when is_list(access_list) do
-    access_list
-    |> Enum.reduce_while({:ok, []}, &decode_access_entry/2)
-    |> reverse_ok()
-  end
-
-  defp decode_access_list(_), do: {:error, @invalid}
-
-  @spec decode_access_entry(term(), {:ok, list()}) :: {:cont, {:ok, list()}} | {:halt, {:error, String.t()}}
-  defp decode_access_entry([address, storage], {:ok, entries}) when is_list(storage) do
-    with {:ok, address} <- decode_address(address),
-         {:ok, storage} <- decode_storage_keys(storage) do
-      {:cont, {:ok, [{address, storage} | entries]}}
-    else
-      _ -> {:halt, {:error, @invalid}}
-    end
-  end
-
-  defp decode_access_entry(_, _acc), do: {:halt, {:error, @invalid}}
-
-  @spec decode_storage_keys(list()) :: {:ok, [<<_::256>>]} | {:error, String.t()}
-  defp decode_storage_keys(storage) do
-    storage
-    |> Enum.reduce_while({:ok, []}, &decode_storage_key/2)
-    |> reverse_ok()
-  end
-
-  @spec decode_storage_key(term(), {:ok, list()}) :: {:cont, {:ok, list()}} | {:halt, {:error, String.t()}}
-  defp decode_storage_key(storage_key, {:ok, storage}) do
-    case decode_exact_binary(storage_key, 32) do
-      {:ok, storage_key} -> {:cont, {:ok, [storage_key | storage]}}
-      {:error, _} -> {:halt, {:error, @invalid}}
-    end
-  end
-
-  @spec decode_authorization_list(list()) :: {:ok, authorization_list()} | {:error, String.t()}
-  defp decode_authorization_list([]), do: {:error, @empty_authorization_list}
-
-  defp decode_authorization_list(authorization_list) when is_list(authorization_list) do
-    authorization_list
-    |> Enum.reduce_while({:ok, []}, &decode_authorization_entry/2)
-    |> reverse_ok()
-  end
-
-  defp decode_authorization_list(_), do: {:error, @invalid}
-
-  @spec decode_authorization_entry(term(), {:ok, list()}) :: {:cont, {:ok, list()}} | {:halt, {:error, String.t()}}
-  defp decode_authorization_entry([chain_id, address, nonce, y_parity, r, s], {:ok, authorizations}) do
-    with {:ok, chain_id} <- decode_uint(chain_id, 32),
-         {:ok, nonce} <- decode_uint(nonce, 8),
-         {:ok, address} <- decode_address(address),
-         {:ok, y_parity} <- decode_y_parity(y_parity),
-         {:ok, r} <- decode_word(r),
-         {:ok, s} <- decode_word(s) do
-      authorization = {chain_id, address, nonce, y_parity, r, s}
-      {:cont, {:ok, [authorization | authorizations]}}
-    else
-      _ -> {:halt, {:error, @invalid}}
-    end
-  end
-
-  defp decode_authorization_entry(_, _acc), do: {:halt, {:error, @invalid}}
-
-  @spec decode_address(binary()) :: {:ok, <<_::160>>} | {:error, String.t()}
-  defp decode_address(address), do: decode_exact_binary(address, 20)
-
-  @spec decode_word(binary()) :: {:ok, <<_::256>>} | {:error, String.t()}
-  defp decode_word(word) when byte_size(word) <= 32, do: {:ok, Cartouche.Hex.pad(word, 32)}
-  defp decode_word(_), do: {:error, @invalid}
-
-  @spec decode_exact_binary(binary(), pos_integer()) :: {:ok, binary()} | {:error, String.t()}
-  defp decode_exact_binary(value, size) when byte_size(value) == size, do: {:ok, value}
-  defp decode_exact_binary(_, _size), do: {:error, @invalid}
-
-  @spec decode_y_parity(binary() | nil) :: {:ok, boolean() | nil} | {:error, String.t()}
-  defp decode_y_parity(nil), do: {:ok, nil}
-
-  defp decode_y_parity(y_parity) do
-    case decode_uint(y_parity, 1) do
-      {:ok, 0} -> {:ok, false}
-      {:ok, 1} -> {:ok, true}
-      _ -> {:error, @invalid}
-    end
-  end
-
-  @spec decode_uint(binary(), pos_integer()) :: {:ok, non_neg_integer()} | {:error, String.t()}
-  defp decode_uint(value, max_bytes) when is_binary(value) and byte_size(value) <= max_bytes do
-    {:ok, :binary.decode_unsigned(value)}
-  end
-
-  defp decode_uint(_, _max_bytes), do: {:error, @invalid}
-
-  @spec reverse_ok({:ok, list()} | {:error, String.t()}) :: {:ok, list()} | {:error, String.t()}
-  defp reverse_ok({:ok, values}), do: {:ok, Enum.reverse(values)}
-  defp reverse_ok({:error, _} = error), do: error
-
-  @spec y_parity_integer(boolean() | nil) :: 0 | 1
-  defp y_parity_integer(true), do: 1
-  defp y_parity_integer(false), do: 0
 
   @spec authorization_core(unsigned_authorization() | authorization()) :: unsigned_authorization()
   defp authorization_core({chain_id, address, nonce}), do: {chain_id, address, nonce}

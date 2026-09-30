@@ -30,13 +30,10 @@ defmodule Cartouche.Transaction.V3 do
 
   alias Cartouche.Signer.Default
   alias Cartouche.Transaction.JsonField
+  alias Cartouche.Transaction.Native
   alias Cartouche.Transaction.Signature
-  alias Cartouche.Transaction.TypedDecode
 
-  @tx_type 0x03
   @invalid "invalid v3 transaction"
-  @invalid_blob_versioned_hashes "blob_versioned_hashes must be a non-empty list of 32-byte hashes prefixed with 0x01"
-  @versioned_hash_version_kzg <<0x01>>
 
   @type access_list :: [{<<_::160>>, [<<_::256>>]}]
   @type blob_versioned_hashes :: list(<<_::256>>)
@@ -134,12 +131,7 @@ defmodule Cartouche.Transaction.V3 do
   signing preimage.
   """
   @spec encode(t()) :: binary()
-  def encode(%__MODULE__{} = transaction) do
-    <<0x03>> <>
-      (transaction
-       |> rlp_payload()
-       |> ExRLP.encode())
-  end
+  def encode(%__MODULE__{} = transaction), do: Native.encode(transaction)
 
   @doc """
   Decode an EIP-4844 blob transaction envelope.
@@ -149,53 +141,7 @@ defmodule Cartouche.Transaction.V3 do
   decoded struct sets those fields to `nil`.
   """
   @spec decode(binary()) :: {:ok, t()} | {:error, String.t()}
-  def decode(input), do: TypedDecode.decode(input, @tx_type, @invalid, &decode_fields/1)
-
-  @spec decode_fields(term()) :: {:ok, t()} | {:error, String.t()}
-  defp decode_fields([_, _, _, _, _, _, _, _, _, _, _] = fields) do
-    decode_payload(fields, {nil, nil, nil})
-  end
-
-  defp decode_fields([
-         chain_id,
-         nonce,
-         max_priority_fee_per_gas,
-         max_fee_per_gas,
-         gas_limit,
-         destination,
-         amount,
-         data,
-         access_list,
-         max_fee_per_blob_gas,
-         blob_versioned_hashes,
-         signature_y_parity,
-         signature_r,
-         signature_s
-       ]) do
-    fields = [
-      chain_id,
-      nonce,
-      max_priority_fee_per_gas,
-      max_fee_per_gas,
-      gas_limit,
-      destination,
-      amount,
-      data,
-      access_list,
-      max_fee_per_blob_gas,
-      blob_versioned_hashes
-    ]
-
-    with {:ok, signature_y_parity} <- TypedDecode.decode_y_parity(signature_y_parity, @invalid),
-         {:ok, signature_r} <- TypedDecode.decode_word(signature_r, @invalid),
-         {:ok, signature_s} <- TypedDecode.decode_word(signature_s, @invalid) do
-      decode_payload(fields, {signature_y_parity, signature_r, signature_s})
-    else
-      _ -> {:error, @invalid}
-    end
-  end
-
-  defp decode_fields(_), do: {:error, @invalid}
+  def decode(input), do: Native.decode(input, __MODULE__, @invalid)
 
   @doc """
   Signs a V3 transaction with the given signer process.
@@ -204,7 +150,7 @@ defmodule Cartouche.Transaction.V3 do
   def sign(%__MODULE__{} = transaction, signer \\ Default) do
     unsigned = %{transaction | signature_y_parity: nil, signature_r: nil, signature_s: nil}
 
-    with {:ok, signature} <- Cartouche.Signer.sign(encode(unsigned), signer, chain_id: transaction.chain_id) do
+    with {:ok, signature} <- Native.sign(unsigned, signer, chain_id: transaction.chain_id) do
       {:ok, add_signature(transaction, signature)}
     end
   end
@@ -307,117 +253,4 @@ defmodule Cartouche.Transaction.V3 do
       signature_s: JsonField.decode_signature_word(params["s"])
     }
   end
-
-  @spec rlp_payload(t()) :: list()
-  defp rlp_payload(%__MODULE__{} = transaction) do
-    base_payload(transaction) ++ signature_payload(transaction)
-  end
-
-  @spec base_payload(t()) :: list()
-  defp base_payload(%__MODULE__{} = transaction) do
-    [
-      transaction.chain_id,
-      transaction.nonce,
-      transaction.max_priority_fee_per_gas,
-      transaction.max_fee_per_gas,
-      transaction.gas_limit,
-      transaction.destination,
-      transaction.amount,
-      transaction.data,
-      TypedDecode.encode_access_list(transaction.access_list),
-      transaction.max_fee_per_blob_gas,
-      encode_blob_versioned_hashes(transaction.blob_versioned_hashes)
-    ]
-  end
-
-  @spec signature_payload(t()) :: list()
-  defp signature_payload(%__MODULE__{signature_y_parity: v, signature_r: r, signature_s: s})
-       when is_nil(v) or is_nil(r) or is_nil(s), do: []
-
-  defp signature_payload(%__MODULE__{signature_y_parity: v, signature_r: r, signature_s: s}) do
-    [if(v, do: 1, else: 0), trim_signature_word(r), trim_signature_word(s)]
-  end
-
-  @spec encode_blob_versioned_hashes(term()) :: encodable_blob_versioned_hashes()
-  defp encode_blob_versioned_hashes(blob_versioned_hashes) do
-    if valid_blob_versioned_hashes?(blob_versioned_hashes) do
-      blob_versioned_hashes
-    else
-      raise ArgumentError, @invalid_blob_versioned_hashes
-    end
-  end
-
-  @spec trim_signature_word(<<_::256>>) :: binary()
-  defp trim_signature_word(signature_word), do: String.trim_leading(signature_word, <<0>>)
-
-  @spec decode_payload(
-          [term()],
-          {boolean() | nil, <<_::256>> | nil, <<_::256>> | nil}
-        ) :: {:ok, t()} | {:error, String.t()}
-  defp decode_payload(
-         [
-           chain_id,
-           nonce,
-           max_priority_fee_per_gas,
-           max_fee_per_gas,
-           gas_limit,
-           destination,
-           amount,
-           data,
-           access_list,
-           max_fee_per_blob_gas,
-           blob_versioned_hashes
-         ],
-         {signature_y_parity, signature_r, signature_s}
-       )
-       when is_binary(data) do
-    with true <- byte_size(destination) == 20,
-         {:ok, access_list} <- TypedDecode.decode_access_list(access_list, @invalid),
-         {:ok, blob_versioned_hashes} <- decode_blob_versioned_hashes(blob_versioned_hashes) do
-      {:ok,
-       %__MODULE__{
-         chain_id: :binary.decode_unsigned(chain_id),
-         nonce: :binary.decode_unsigned(nonce),
-         max_priority_fee_per_gas: :binary.decode_unsigned(max_priority_fee_per_gas),
-         max_fee_per_gas: :binary.decode_unsigned(max_fee_per_gas),
-         gas_limit: :binary.decode_unsigned(gas_limit),
-         destination: destination,
-         amount: :binary.decode_unsigned(amount),
-         data: data,
-         access_list: access_list,
-         max_fee_per_blob_gas: :binary.decode_unsigned(max_fee_per_blob_gas),
-         blob_versioned_hashes: blob_versioned_hashes,
-         signature_y_parity: signature_y_parity,
-         signature_r: signature_r,
-         signature_s: signature_s
-       }}
-    else
-      _ -> {:error, @invalid}
-    end
-  rescue
-    # `:binary.decode_unsigned/1` and `byte_size/1` raise ArgumentError on the
-    # non-binary terms a malformed RLP payload can yield; helpers return
-    # `{:error, …}` rather than raising.
-    ArgumentError -> {:error, @invalid}
-  end
-
-  defp decode_payload(_, _), do: {:error, @invalid}
-
-  @spec decode_blob_versioned_hashes(term()) :: {:ok, encodable_blob_versioned_hashes()} | {:error, String.t()}
-  defp decode_blob_versioned_hashes(blob_versioned_hashes) do
-    if valid_blob_versioned_hashes?(blob_versioned_hashes) do
-      {:ok, blob_versioned_hashes}
-    else
-      {:error, @invalid}
-    end
-  end
-
-  @spec valid_blob_versioned_hashes?(term()) :: boolean()
-  defp valid_blob_versioned_hashes?([_hash | _rest] = blob_versioned_hashes) do
-    Enum.all?(blob_versioned_hashes, fn hash ->
-      is_binary(hash) and byte_size(hash) == 32 and binary_part(hash, 0, 1) == @versioned_hash_version_kzg
-    end)
-  end
-
-  defp valid_blob_versioned_hashes?(_), do: false
 end

@@ -140,3 +140,50 @@ cargo clippy --locked --manifest-path native/onchain_abi/Cargo.toml --all-target
 After locally building precompiled artifacts, point
 `RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH` at their directory when testing without
 force-build. The release URL is not populated by this implementation session.
+
+## Task 9032: alloy transactions and EIP-712
+
+`transactions-before.json` records the handwritten encoder at
+`2b2eb421a7fbe653737bfacaf25d39127638f8ee`, before deletion.
+`transactions-after.json` records the replacement in this worktree;
+`transactions-outcome.json` pins its source hashes and verification commands.
+Both runs used the same machine/toolchain above, with Benchee concurrency 1,
+1 s warmup, 3 s runtime and 1 s memory measurement. Ips below is the reciprocal
+of median runtime. All four workloads regressed; performance is reporting-only
+per the operator decision. BEAM memory excludes NIF allocations.
+
+| Workload | Before median ips | After median ips | Before BEAM bytes | After BEAM bytes | Slowdown |
+|---|---:|---:|---:|---:|---:|
+| EIP-1559 encode + signing hash | 458,715.60 | 74,079.56 | 3,880 | 9,992 | 6.19× |
+| EIP-712 permit hash | 129,651.24 | 53,341.87 | 10,488 | 18,296 | 2.43× |
+| EIP-7702 encode + signing hash | 275,027.50 | 47,657.63 | 6,424 | 15,208 | 5.77× |
+| raw-tx decode | 2,036,659.88 | 106,462.26 | 3,288 | 5,840 | 19.13× |
+
+Reproduce with `ONCHAIN_BUILD=1 MIX_ENV=test mix run --no-start
+bench/transactions.exs after`. Run `mix deps.compile benchee deep_merge statistex`
+in the dev environment first; the script loads only those benchmark dependencies
+from the dev build. The before run used the same workloads and frozen external
+transaction vectors. Its first measurement completed but failed to write JSON
+because of an outdated Benchee field name; the recorded baseline is the corrected
+rerun, still before encoder deletion.
+
+`capture_transactions.exs` is only for the old revision. It captured 3,614 calls
+from the transaction, typed-data, vector/property and signing tests. The replay
+checks 1,775 codec calls: 536 unchanged outcomes and 1,239 explicit new negative
+cases (618 oversized encode/hash inputs, 620 decode rejections including
+noncanonical scalars, and one EIP-4844 empty destination). It also checks bytes,
+hashes and round trips for the captured encode calls. No frozen record was
+deleted. The property suite now exercises u64/u128 field boundaries and rejects
+negative/oversized values without truncation. EIP-7702 authorization chain IDs
+and transaction amounts retain their protocol-defined U256 width.
+
+Focused signer coverage is 96% with the same source-line accounting as
+`ExUnitJSON.Coverage`; see `transaction-signer-coverage.json` and
+`signing_coverage.exs`. Four live Sepolia tests passed, including two successful
+self-transfers; the compact result is in `transaction-live-signing.json`. Full
+post-merge QA has not run.
+
+Alloy's typed-data resolver requires acyclic schemas for hashing. The existing
+`encode_type/2` formatter still supports recursive schema descriptions, but
+finite recursive-value hashing remains a follow-up compatibility issue. The
+existing Mail, bytesN, signed-integer and array-of-struct conformance tests pass.

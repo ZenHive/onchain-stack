@@ -24,8 +24,8 @@ defmodule Cartouche.Transaction.V_2930 do
 
   alias Cartouche.Signer.Default
   alias Cartouche.Transaction.JsonField
+  alias Cartouche.Transaction.Native
   alias Cartouche.Transaction.Signature
-  alias Cartouche.Transaction.TypedDecode
 
   @type access_list :: [{<<_::160>>, [<<_::256>>]}]
 
@@ -57,7 +57,6 @@ defmodule Cartouche.Transaction.V_2930 do
     :signature_s
   ]
 
-  @tx_type 0x01
   @invalid "invalid v2930 transaction"
 
   @doc """
@@ -99,15 +98,13 @@ defmodule Cartouche.Transaction.V_2930 do
   data, accessList])`.
   """
   @spec encode(t()) :: binary()
-  def encode(%__MODULE__{} = transaction) do
-    <<@tx_type>> <> ExRLP.encode(encoded_fields(transaction))
-  end
+  def encode(%__MODULE__{} = transaction), do: Native.encode(transaction)
 
   @doc """
   Decodes an EIP-2930 typed RLP transaction.
   """
   @spec decode(binary()) :: {:ok, t()} | {:error, String.t()}
-  def decode(input), do: TypedDecode.decode(input, @tx_type, @invalid, &decode_fields/1)
+  def decode(input), do: Native.decode(input, __MODULE__, @invalid)
 
   @doc ~S"""
   Decodes an EIP-2930 (type 1) transaction object from block JSON-RPC.
@@ -129,46 +126,14 @@ defmodule Cartouche.Transaction.V_2930 do
     }
   end
 
-  @spec decode_fields(term()) :: {:ok, t()} | {:error, String.t()}
-  defp decode_fields([_, _, _, _, _, _, _, _] = fields) do
-    decode_payload(fields, {nil, nil, nil})
-  end
-
-  defp decode_fields([
-         chain_id,
-         nonce,
-         gas_price,
-         gas_limit,
-         destination,
-         amount,
-         data,
-         access_list,
-         signature_y_parity,
-         signature_r,
-         signature_s
-       ]) do
-    with {:ok, signature_y_parity} <- TypedDecode.decode_y_parity(signature_y_parity, @invalid),
-         {:ok, signature_r} <- TypedDecode.decode_word(signature_r, @invalid),
-         {:ok, signature_s} <- TypedDecode.decode_word(signature_s, @invalid) do
-      decode_payload(
-        [chain_id, nonce, gas_price, gas_limit, destination, amount, data, access_list],
-        {signature_y_parity, signature_r, signature_s}
-      )
-    else
-      _ -> {:error, @invalid}
-    end
-  end
-
-  defp decode_fields(_), do: {:error, @invalid}
-
   @doc """
   Signs a type-1 transaction with the given signer process.
   """
   @spec sign(t(), GenServer.server()) :: {:ok, t()} | {:error, String.t()}
   def sign(%__MODULE__{} = transaction, signer \\ Default) do
-    payload = encode(%{transaction | signature_y_parity: nil, signature_r: nil, signature_s: nil})
+    unsigned = %{transaction | signature_y_parity: nil, signature_r: nil, signature_s: nil}
 
-    with {:ok, signature} <- Cartouche.Signer.sign(payload, signer, chain_id: transaction.chain_id) do
+    with {:ok, signature} <- Native.sign(unsigned, signer, chain_id: transaction.chain_id) do
       {:ok, add_signature(transaction, signature)}
     end
   end
@@ -213,66 +178,5 @@ defmodule Cartouche.Transaction.V_2930 do
     with {:ok, signature} <- get_signature(transaction) do
       {:ok, Cartouche.Recover.recover_eth(payload, signature)}
     end
-  end
-
-  @spec decode_payload(
-          [term()],
-          {boolean() | nil, <<_::256>> | nil, <<_::256>> | nil}
-        ) :: {:ok, t()} | {:error, String.t()}
-  defp decode_payload(
-         [chain_id, nonce, gas_price, gas_limit, destination, amount, data, access_list],
-         {signature_y_parity, signature_r, signature_s}
-       )
-       when is_binary(data) do
-    with true <- byte_size(destination) == 20,
-         {:ok, access_list} <- TypedDecode.decode_access_list(access_list, @invalid) do
-      {:ok,
-       %__MODULE__{
-         chain_id: :binary.decode_unsigned(chain_id),
-         nonce: :binary.decode_unsigned(nonce),
-         gas_price: :binary.decode_unsigned(gas_price),
-         gas_limit: :binary.decode_unsigned(gas_limit),
-         destination: destination,
-         amount: :binary.decode_unsigned(amount),
-         data: data,
-         access_list: access_list,
-         signature_y_parity: signature_y_parity,
-         signature_r: signature_r,
-         signature_s: signature_s
-       }}
-    else
-      _ -> {:error, @invalid}
-    end
-  rescue
-    # `:binary.decode_unsigned/1` and `byte_size/1` raise ArgumentError on the
-    # non-binary terms a malformed RLP payload can yield; helpers return
-    # `{:error, …}` rather than raising.
-    ArgumentError -> {:error, @invalid}
-  end
-
-  defp decode_payload(_, _), do: {:error, @invalid}
-
-  @spec encoded_fields(t()) :: list()
-  defp encoded_fields(%__MODULE__{} = tx) do
-    [
-      tx.chain_id,
-      tx.nonce,
-      tx.gas_price,
-      tx.gas_limit,
-      tx.destination,
-      tx.amount,
-      tx.data,
-      TypedDecode.encode_access_list(tx.access_list)
-    ] ++ maybe_signature_rlp(tx)
-  end
-
-  @spec maybe_signature_rlp(t()) :: list()
-  defp maybe_signature_rlp(%__MODULE__{signature_y_parity: y_parity, signature_r: r, signature_s: s})
-       when is_nil(y_parity) or is_nil(r) or is_nil(s) do
-    []
-  end
-
-  defp maybe_signature_rlp(%__MODULE__{signature_y_parity: y_parity, signature_r: r, signature_s: s}) do
-    [if(y_parity, do: 1, else: 0), String.trim_leading(r, <<0>>), String.trim_leading(s, <<0>>)]
   end
 end

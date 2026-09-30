@@ -2,6 +2,9 @@ defmodule ABI.Native do
   @moduledoc false
   use RustlerPrecompiled, Onchain.Precompiled.opts("onchain_abi")
 
+  @spec consensus(String.t(), String.t(), binary()) :: {:ok, binary()} | {:error, term()}
+  def consensus(_family, _operation, _input), do: :erlang.nif_error(:nif_not_loaded)
+
   @spec compile(String.t(), binary()) :: {:ok, reference()} | {:error, term()}
   def compile(_types, _topic0), do: :erlang.nif_error(:nif_not_loaded)
 

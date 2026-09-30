@@ -1,0 +1,133 @@
+{
+  "task": 9032,
+  "baseline_revision": "2b2eb421a7fbe653737bfacaf25d39127638f8ee",
+  "after": "uncommitted task worktree; exact source hashes below",
+  "source_sha256": {
+    "lib/abi/native.ex": "71911a83d5bd46427d31cf502e9164393fa664d87d8dec50c531ca8558acf341",
+    "lib/cartouche/signer.ex": "97794c1d4efddff61472be63453c996c27abddd8528ab75b5f3f3cd312b4e5fb",
+    "lib/cartouche/transaction/call.ex": "e24bd06792c010b653e8463383a3a6721c10069561e096058d1e9a7211efcb9e",
+    "lib/cartouche/transaction/native.ex": "7023575e0282fb6e9803887eca69411646bd68a1a906ac0cbda2b6ff67e2f0b0",
+    "lib/cartouche/transaction/signature.ex": "25ca7889f7fd84a04fcaf540817d88c3a87cf07164b27679ad5f80f16d860106",
+    "lib/cartouche/transaction/typed_decode.ex": "68f49af675dcbf14317029f5fe36767e56d7dcb3de79c40534cd2ad29bcc321e",
+    "lib/cartouche/transaction/v3.ex": "c4567208420a12735e632a9421f65a7aa2a605b12fd74ef2b1f1f604aae43d50",
+    "lib/cartouche/transaction/v4.ex": "6dc097b9e958bfd2fe41c93fde58eff7f31a86cfdef868d23ab4623ba538e734",
+    "lib/cartouche/transaction/v_2930.ex": "3a645b88b7d51df34b7f2e1918a7203af79b399dc12dfdf936c61318401a133c",
+    "lib/cartouche/transaction.ex": "3f1ba5dc8ccd20f04a31e3ade2c2d4ea361da63d19917e7d539574b5dfcaa64d",
+    "lib/cartouche/typed/native.ex": "7167d5dd3afae42f17bc8abeee99927a415288e0f711306bf3f19b9a4449125d",
+    "lib/cartouche/typed.ex": "31c573b137ebbe4ff7d57366a7be6ed52d3c2ecf8c824de9867741db50cc12bf",
+    "native/onchain_abi/Cargo.lock": "7ffa121361b747ba56bbd278b249dc27169a9a5b18cc6ea1b067814285c4bdeb",
+    "native/onchain_abi/Cargo.toml": "1e84e80224200da48aa74ef7b592c384c012729aa2270866c3510ba40efdbac3",
+    "native/onchain_abi/src/lib.rs": "89d44b00261de25ee658633498c2ae9b9a4f436f35bfc4124d70bde1d82dc8e9",
+    "native/onchain_abi/src/transaction.rs": "bfc3348451148a7ec86ede8981f5f2a75267a7f7249b201d5508a1838e980f11"
+  },
+  "differential": {
+    "captured_calls": 3614,
+    "replayed_codec_calls": 1775,
+    "unchanged_outcomes": 536,
+    "new_negative_cases": 1239,
+    "encode_field_bound_errors": 618,
+    "encode_invalid_destination": 1,
+    "decode_rejections_including_noncanonical_scalars": 620,
+    "captured_encode_roundtrip_cases": 702
+  },
+  "verification": [
+    {
+      "command": "ONCHAIN_BUILD=1 MIX_ENV=test mix run --no-start bench/signing_coverage.exs",
+      "result": "446 passed (139 doctests, 13 properties, 294 tests); signer coverage 96.0% (72/75 source lines); exit 0"
+    },
+    {
+      "command": "ONCHAIN_BUILD=1 MIX_ENV=test mix test test/cartouche/transaction/native_test.exs test/cartouche/transaction/before_alloy_test.exs",
+      "result": "10 passed (1 property, 9 tests), after final boundary changes; exit 0"
+    },
+    {
+      "command": "ONCHAIN_BUILD=1 MIX_ENV=test mix test.json test/onchain/signer_integration_test.exs --include integration --no-retry --output bench/transaction-live-signing.json",
+      "result": "4 passed, including two live Sepolia self-transfers with successful receipts; exit 0"
+    },
+    {
+      "command": "ONCHAIN_BUILD=1 MIX_ENV=test elixir -pa ../onchain/_build/test/lib/rustler/ebin -S mix test test/onchain/tempo/transaction_test.exs test/onchain/tempo/transaction/builder_test.exs test/onchain/tempo/transaction/builder_estimate_test.exs ../onchain/bench/teardown_test.exs",
+      "cwd": "packages/onchain_tempo",
+      "result": "76 passed; exit 0"
+    },
+    {
+      "command": "ONCHAIN_BUILD=1 mix check.dispatch",
+      "cwd": "packages/onchain",
+      "result": "passed"
+    },
+    {
+      "command": "ONCHAIN_BUILD=1 MIX_ENV=test elixir -pa ../onchain/_build/test/lib/rustler/ebin -S mix check.dispatch",
+      "cwd": "packages/onchain_tempo",
+      "result": "passed"
+    },
+    {
+      "command": "cargo clippy --manifest-path packages/onchain/native/onchain_abi/Cargo.toml -- -D warnings",
+      "result": "passed"
+    }
+  ],
+  "benchmark": {
+    "machine": "Linux, Intel Core Ultra 7 265, Elixir 1.20.4 / OTP 29.1, 20 schedulers",
+    "warmup_seconds": 1,
+    "runtime_seconds": 3,
+    "memory_seconds": 1,
+    "before_command": "ONCHAIN_BUILD=1 MIX_ENV=test mix run --no-compile --no-start bench/transactions.exs before",
+    "after_command": "ONCHAIN_BUILD=1 MIX_ENV=test mix run --no-start bench/transactions.exs after",
+    "memory_note": "BEAM bytes only; Benchee cannot see native allocations. Performance is reporting-only.",
+    "workloads": {
+      "EIP-1559 encode + signing hash": {
+        "before": {
+          "median_ips": 458715.59633027524,
+          "beam_memory_bytes": 3880.0
+        },
+        "after": {
+          "median_ips": 74079.56144899622,
+          "beam_memory_bytes": 9992.0
+        },
+        "slowdown": 6.192201834862386
+      },
+      "EIP-712 permit hash": {
+        "before": {
+          "median_ips": 129651.23816932451,
+          "beam_memory_bytes": 10488.0
+        },
+        "after": {
+          "median_ips": 53341.86803221849,
+          "beam_memory_bytes": 18296.0
+        },
+        "slowdown": 2.4305717619603264
+      },
+      "EIP-7702 encode + signing hash": {
+        "before": {
+          "median_ips": 275027.502750275,
+          "beam_memory_bytes": 6424.0
+        },
+        "after": {
+          "median_ips": 47657.62760329791,
+          "beam_memory_bytes": 15208.0
+        },
+        "slowdown": 5.770902090209021
+      },
+      "raw-tx decode": {
+        "before": {
+          "median_ips": 2036659.8778004074,
+          "beam_memory_bytes": 3288.0
+        },
+        "after": {
+          "median_ips": 106462.25912913872,
+          "beam_memory_bytes": 5840.0
+        },
+        "slowdown": 19.130346232179225
+      }
+    },
+    "notes": "The final after run was repeated after the legacy six-field rejection guard was added; before results were reused."
+  },
+  "notes": [
+    "Public transaction structs and from_json entry points are unchanged. Transaction Call has no encoder and is unchanged.",
+    "Alloy-consensus 2.4.1 with alloy-dyn-abi 1.6.1 eip712 enabled; existing core crate pins retained.",
+    "Transaction field widths intentionally narrow per operator decision; authorization chain_id remains U256 per EIP-7702. No legacy compatibility codec.",
+    "The schema-only encode_type formatter remains to preserve recursive schema formatting accepted by the existing tests; EIP-712 value encoding and hashing use alloy.",
+    "Frozen old bytes are the differential oracle for hashes as well as RLP. Hash assertions derive expected keccak from those captured bytes.",
+    "Source building an optional Rustler dependency from Tempo requires the explicit Rustler code path shown above. No dependency declarations or lockfiles changed in Tempo.",
+    "Full mix ci and full-package coverage/analyzers were not run; those belong to post-merge QA.",
+    "CHANGELOG package Unreleased note added by explicit operator instruction; harness must preserve or reproduce it if its automatic reset removes it.",
+    "Known upstream limitation: alloy TypedData resolves acyclic schemas for hashing. The legacy encode_type API still formats cyclic schemas, but finite recursive-value hashing needs follow-up compatibility work; no handwritten hash fallback was added."
+  ]
+}

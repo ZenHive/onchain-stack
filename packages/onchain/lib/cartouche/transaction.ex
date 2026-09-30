@@ -14,6 +14,7 @@ defmodule Cartouche.Transaction do
   use Descripex, namespace: "/ethereum/transaction"
 
   alias Cartouche.Signer.Default
+  alias Cartouche.Transaction.Native
   alias Cartouche.Transaction.Signature
   alias Cartouche.Transaction.V3
   alias Cartouche.Transaction.V4
@@ -166,19 +167,7 @@ defmodule Cartouche.Transaction do
         "E80185174876E800830186A094000000000000000000000000000000000000000102830102032A8080"
     """
     @spec encode(t()) :: binary()
-    def encode(%__MODULE__{
-          nonce: nonce,
-          gas_price: gas_price,
-          gas_limit: gas_limit,
-          to: to,
-          value: value,
-          data: data,
-          v: v,
-          r: r,
-          s: s
-        }) do
-      ExRLP.encode([nonce, gas_price, gas_limit, to, value, data, v, r, s])
-    end
+    def encode(%__MODULE__{} = transaction), do: Native.encode(transaction)
 
     api(:decode, "Decode RLP bytes into a legacy transaction struct.",
       params: [
@@ -211,45 +200,7 @@ defmodule Cartouche.Transaction do
         }}
     """
     @spec decode(binary()) :: {:ok, t()} | {:error, String.t()}
-    def decode(trx_enc) when is_binary(trx_enc) do
-      with {:ok, decoded} <- safe_rlp_decode(trx_enc) do
-        decode_fields(decoded)
-      end
-    end
-
-    def decode(_), do: {:error, "invalid legacy transaction"}
-
-    @spec decode_fields(term()) :: {:ok, t()} | {:error, String.t()}
-    defp decode_fields([nonce, gas_price, gas_limit, to, value, data, v, r, s])
-         when is_binary(to) and byte_size(to) == 20 and is_binary(data) and byte_size(r) <= 32 and byte_size(s) <= 32 do
-      {:ok,
-       %__MODULE__{
-         nonce: :binary.decode_unsigned(nonce),
-         gas_price: :binary.decode_unsigned(gas_price),
-         gas_limit: :binary.decode_unsigned(gas_limit),
-         to: to,
-         value: :binary.decode_unsigned(value),
-         data: data,
-         v: :binary.decode_unsigned(v),
-         r: :binary.decode_unsigned(r),
-         s: :binary.decode_unsigned(s)
-       }}
-    rescue
-      # `:binary.decode_unsigned/1` raises ArgumentError on the non-binary
-      # terms a malformed RLP body can yield.
-      ArgumentError -> {:error, "invalid legacy transaction"}
-    end
-
-    defp decode_fields(_), do: {:error, "invalid legacy transaction"}
-
-    @spec safe_rlp_decode(binary()) :: {:ok, term()} | {:error, String.t()}
-    defp safe_rlp_decode(trx_enc) do
-      {:ok, ExRLP.decode(trx_enc)}
-    rescue
-      # ExRLP raises DecodeError on most malformed input, but leaks a MatchError
-      # on truncated length-prefixed binaries (an internal `<<_::size>> = tail`).
-      _e in [ExRLP.DecodeError, MatchError] -> {:error, "invalid legacy transaction"}
-    end
+    def decode(trx_enc), do: Native.decode(trx_enc, __MODULE__, "invalid legacy transaction")
 
     api(:add_signature, "Attach an Ethereum signature to a legacy transaction.",
       params: [
@@ -807,55 +758,7 @@ defmodule Cartouche.Transaction do
                 signature_s: nil
               }
           ) :: binary()
-    def encode(
-          %__MODULE__{signature_y_parity: signature_y_parity, signature_r: signature_r, signature_s: signature_s} =
-            transaction
-        )
-        when is_nil(signature_y_parity) or is_nil(signature_r) or is_nil(signature_s) do
-      <<0x02>> <> ExRLP.encode(unsigned_rlp_list(transaction))
-    end
-
-    def encode(
-          %__MODULE__{signature_y_parity: signature_y_parity, signature_r: signature_r, signature_s: signature_s} =
-            transaction
-        )
-        when is_boolean(signature_y_parity) and is_binary(signature_r) and is_binary(signature_s) do
-      <<0x02>> <>
-        (transaction
-         |> unsigned_rlp_list()
-         |> Kernel.++([
-           signature_y_parity(signature_y_parity),
-           String.trim_leading(signature_r, <<0>>),
-           String.trim_leading(signature_s, <<0>>)
-         ])
-         |> ExRLP.encode())
-    end
-
-    @doc false
-    @spec unsigned_rlp_list(%__MODULE__{}) :: [term()]
-    defp unsigned_rlp_list(%__MODULE__{
-           chain_id: chain_id,
-           nonce: nonce,
-           max_priority_fee_per_gas: max_priority_fee_per_gas,
-           max_fee_per_gas: max_fee_per_gas,
-           gas_limit: gas_limit,
-           destination: destination,
-           amount: amount,
-           data: data,
-           access_list: access_list
-         }) do
-      [
-        chain_id,
-        nonce,
-        max_priority_fee_per_gas,
-        max_fee_per_gas,
-        gas_limit,
-        destination,
-        amount,
-        data,
-        normalize_access_list(access_list)
-      ]
-    end
+    def encode(%__MODULE__{} = transaction), do: Native.encode(transaction)
 
     @spec canonicalize_access_list(access_list_input()) :: access_list()
     defp canonicalize_access_list(access_list) do
@@ -866,13 +769,6 @@ defmodule Cartouche.Transaction do
         entry -> TypedDecode.validate_access_list_entry!(entry)
       end)
     end
-
-    @spec normalize_access_list(access_list()) :: [[<<_::160>> | [<<_::256>>]]]
-    defp normalize_access_list(access_list), do: TypedDecode.encode_access_list(access_list)
-
-    @spec signature_y_parity(boolean()) :: 0 | 1
-    defp signature_y_parity(true), do: 1
-    defp signature_y_parity(false), do: 0
 
     api(:decode, "Decode typed RLP bytes into an EIP-1559 transaction struct.",
       params: [
@@ -945,152 +841,7 @@ defmodule Cartouche.Transaction do
         }}
     """
     @spec decode(binary()) :: {:ok, t()} | {:error, String.t()}
-    def decode(<<0x02, trx_enc::binary>>) do
-      with {:ok, fields} <- safe_rlp_decode(trx_enc) do
-        decode_fields(fields)
-      end
-    end
-
-    def decode(_), do: {:error, "invalid v2 transaction"}
-
-    @spec decode_fields(term()) :: {:ok, t()} | {:error, String.t()}
-    defp decode_fields([_, _, _, _, _, _, _, _, _] = fields) do
-      decode_payload(fields, {nil, nil, nil})
-    end
-
-    defp decode_fields([
-           chain_id,
-           nonce,
-           max_priority_fee_per_gas,
-           max_fee_per_gas,
-           gas_limit,
-           destination,
-           amount,
-           data,
-           access_list,
-           signature_y_parity,
-           signature_r,
-           signature_s
-         ]) do
-      with {:ok, signature_y_parity} <- decode_y_parity(signature_y_parity),
-           {:ok, signature_r} <- decode_word(signature_r),
-           {:ok, signature_s} <- decode_word(signature_s) do
-        decode_payload(
-          [
-            chain_id,
-            nonce,
-            max_priority_fee_per_gas,
-            max_fee_per_gas,
-            gas_limit,
-            destination,
-            amount,
-            data,
-            access_list
-          ],
-          {signature_y_parity, signature_r, signature_s}
-        )
-      else
-        _ -> {:error, "invalid v2 transaction"}
-      end
-    end
-
-    defp decode_fields(_), do: {:error, "invalid v2 transaction"}
-
-    @spec decode_payload(
-            list(),
-            {boolean() | nil, <<_::256>> | nil, <<_::256>> | nil}
-          ) :: {:ok, t()} | {:error, String.t()}
-    defp decode_payload(
-           [
-             chain_id,
-             nonce,
-             max_priority_fee_per_gas,
-             max_fee_per_gas,
-             gas_limit,
-             destination,
-             amount,
-             data,
-             access_list
-           ],
-           {signature_y_parity, signature_r, signature_s}
-         )
-         when is_binary(data) do
-      with {:ok, access_list} <- decode_access_list(access_list),
-           {:ok, destination} <- decode_address(destination) do
-        {:ok,
-         %__MODULE__{
-           chain_id: :binary.decode_unsigned(chain_id),
-           nonce: :binary.decode_unsigned(nonce),
-           max_priority_fee_per_gas: :binary.decode_unsigned(max_priority_fee_per_gas),
-           max_fee_per_gas: :binary.decode_unsigned(max_fee_per_gas),
-           gas_limit: :binary.decode_unsigned(gas_limit),
-           destination: destination,
-           amount: :binary.decode_unsigned(amount),
-           data: data,
-           access_list: access_list,
-           signature_y_parity: signature_y_parity,
-           signature_r: signature_r,
-           signature_s: signature_s
-         }}
-      end
-    rescue
-      # `:binary.decode_unsigned/1` raises ArgumentError on the non-binary
-      # terms a malformed RLP payload can yield.
-      ArgumentError -> {:error, "invalid v2 transaction"}
-    end
-
-    defp decode_payload(_, _), do: {:error, "invalid v2 transaction"}
-
-    @spec decode_access_list(term()) :: {:ok, [{<<_::160>>, [<<_::256>>]}]} | {:error, String.t()}
-    defp decode_access_list(access_list) when is_list(access_list) do
-      {:ok,
-       Enum.map(access_list, fn [address, storage] ->
-         {pad_address(address), Enum.map(storage, &pad_word/1)}
-       end)}
-    rescue
-      # A malformed access list raises when an entry isn't a 2-element list
-      # (FunctionClauseError), `storage` isn't enumerable
-      # (Protocol.UndefinedError), or a word/address fails its size guard.
-      _e in [MatchError, FunctionClauseError, Protocol.UndefinedError, ArgumentError] ->
-        {:error, "invalid v2 transaction"}
-    end
-
-    defp decode_access_list(_), do: {:error, "invalid v2 transaction"}
-
-    @spec decode_address(binary()) :: {:ok, <<_::160>>} | {:error, String.t()}
-    defp decode_address(address) when byte_size(address) == 20, do: {:ok, address}
-    defp decode_address(_), do: {:error, "invalid v2 transaction"}
-
-    @spec decode_word(binary()) :: {:ok, <<_::256>>} | {:error, String.t()}
-    defp decode_word(word) when byte_size(word) <= 32, do: {:ok, Cartouche.Hex.pad(word, 32)}
-    defp decode_word(_), do: {:error, "invalid v2 transaction"}
-
-    @spec decode_y_parity(binary()) :: {:ok, boolean()} | {:error, String.t()}
-    defp decode_y_parity(y_parity) do
-      case :binary.decode_unsigned(y_parity) do
-        0 -> {:ok, false}
-        1 -> {:ok, true}
-        _ -> {:error, "invalid v2 transaction"}
-      end
-    rescue
-      # `:binary.decode_unsigned/1` raises ArgumentError on a non-binary y-parity.
-      ArgumentError -> {:error, "invalid v2 transaction"}
-    end
-
-    @spec pad_address(binary()) :: <<_::160>>
-    defp pad_address(address) when byte_size(address) == 20, do: address
-
-    @spec pad_word(binary()) :: <<_::256>>
-    defp pad_word(word) when byte_size(word) == 32, do: word
-
-    @spec safe_rlp_decode(binary()) :: {:ok, term()} | {:error, String.t()}
-    defp safe_rlp_decode(trx_enc) do
-      {:ok, ExRLP.decode(trx_enc)}
-    rescue
-      # ExRLP raises DecodeError on most malformed input, but leaks a MatchError
-      # on truncated length-prefixed binaries (an internal `<<_::size>> = tail`).
-      _e in [ExRLP.DecodeError, MatchError] -> {:error, "invalid v2 transaction"}
-    end
+    def decode(trx_enc), do: Native.decode(trx_enc, __MODULE__, "invalid v2 transaction")
 
     api(:add_signature, "Attach an Ethereum signature to an EIP-1559 transaction.",
       params: [
@@ -1885,8 +1636,7 @@ defmodule Cartouche.Transaction do
     callback = if(is_nil(callback), do: fn trx -> {:ok, trx} end, else: callback)
 
     with {:ok, transaction} <- callback.(transaction),
-         transaction_encoded = V1.encode(transaction),
-         {:ok, signature} <- Cartouche.Signer.sign(transaction_encoded, signer, chain_id: chain_id) do
+         {:ok, signature} <- Native.sign(transaction, signer, chain_id: chain_id) do
       {:ok, V1.add_signature(transaction, signature)}
     end
   end
@@ -1997,8 +1747,7 @@ defmodule Cartouche.Transaction do
     callback = if(is_nil(callback), do: fn trx -> {:ok, trx} end, else: callback)
 
     with {:ok, transaction} <- callback.(transaction),
-         transaction_encoded = V2.encode(transaction),
-         {:ok, signature} <- Cartouche.Signer.sign(transaction_encoded, signer, chain_id: chain_id) do
+         {:ok, signature} <- Native.sign(transaction, signer, chain_id: chain_id) do
       {:ok, V2.add_signature(transaction, signature)}
     end
   end

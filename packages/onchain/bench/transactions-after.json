@@ -1,0 +1,22 @@
+{
+  "revision": "2b2eb421a7fbe653737bfacaf25d39127638f8ee",
+  "phase": "after",
+  "results": {
+    "EIP-1559 encode + signing hash": {
+      "median_ips": 74079.56144899622,
+      "beam_memory_bytes": 9992.0
+    },
+    "EIP-712 permit hash": {
+      "median_ips": 53341.86803221849,
+      "beam_memory_bytes": 18296.0
+    },
+    "EIP-7702 encode + signing hash": {
+      "median_ips": 47657.62760329791,
+      "beam_memory_bytes": 15208.0
+    },
+    "raw-tx decode": {
+      "median_ips": 106462.25912913872,
+      "beam_memory_bytes": 5840.0
+    }
+  }
+}
