@@ -1,9 +1,10 @@
 defmodule ABI.AlloyCacheTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias ABI.Alloy
   alias ABI.FunctionSelector
 
+  # spec-tags: NIF-7
   test "concurrent schema and signature misses keep both cache entries" do
     for n <- 1..32 do
       types = [%{type: {:uint, 256}}, %{type: {:bytes, n}}]

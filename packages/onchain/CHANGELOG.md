@@ -6,6 +6,13 @@ Completed roadmap tasks.
 
 ## Unreleased — v0.16.0
 
+### Changed
+
+- **ABI alloy schema/signature caches no longer lose entries on concurrent misses.**
+  `ABI.Alloy` merges retries when a stale `:persistent_term` snapshot would
+  clobber another insert; the alloy cache regression test is `async: false` and
+  tagged for NIF-7.
+
 ### Breaking behaviour
 
 - JSON-RPC single calls and batches share `Cartouche.RPC`'s transport. Set the

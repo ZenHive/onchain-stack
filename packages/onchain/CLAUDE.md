@@ -280,8 +280,9 @@ The boundary's rules are in `docs/specs/onchain-native.md` (repo root):
 - NIF-6: `fixed`/`ufixed` are rejected (exthereum/abi#54). Solidity cannot yet
   assign to or from fixed-point types, so a codec would support nothing usable
   (rationale from `docs/hieroglyph/README.md`).
-- NIF-7: bounded, separate schema and signature caches. Concurrent misses may
-  lose an insertion, which affects only performance.
+- NIF-7: bounded, separate schema and signature caches. Concurrent misses merge
+  on retry so stale map snapshots cannot drop another process's insert; misses
+  beyond the 1,024-entry cap compile without retention.
 
 Payload preflight bounds alloy allocation before decoding, including
 repeated/overlapping offsets. Compiled schema resources hold only immutable parsed
