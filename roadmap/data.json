@@ -5373,7 +5373,7 @@
       "bundle": "cartouche_rpc_read_surface",
       "target_repo": "onchain",
       "milestone": "stack_read_surface_boundary",
-      "status": "in_progress",
+      "status": "done",
       "title": "One eth_getLogs in the merged core — stateless log queries on Cartouche.Filter.Log, Onchain.RPC copy deleted",
       "scores": {
         "d": 3,
@@ -5417,10 +5417,17 @@
         "packages/onchain/lib/onchain/rpc/helpers.ex",
         "packages/onchain/lib/cartouche/filter.ex"
       ],
+      "shipped_in": "a185660ab2b8849f6aad8acd94342fdaa6a92724",
       "body": "Context (post-9030): hieroglyph and cartouche now live inside packages/onchain, namespaces unchanged, so Cartouche.RPC (lib/cartouche/rpc.ex) and Onchain.RPC (lib/onchain/rpc.ex) are two modules in one package, and task 9036 will rename both to one Onchain.RPC. The milestone is RPC unification inside the merged core before 9036: each spec'd method gets exactly one wrapper, one decoder and one struct, built on the single transport from task 2137. Put the surviving implementation in Cartouche.RPC for now (9036 does the rename), and delete the Onchain.RPC copy in the same diff. There is no second package, so there is no re-presenting wrapper to keep.\n\neth_getLogs is in the tagged execution-apis release v1.0.0-beta.7 (src/eth/filter.yaml) and in the vendored spec. Cartouche.RPC has no stateless log query. Its only log access is the installed-filter surface in packages/onchain/lib/cartouche/filter.ex, decoding into Cartouche.Filter.Log (lib/cartouche/filter/log.ex). Hosted providers limit or discourage installed filters. Onchain.RPC.eth_get_logs/2 (packages/onchain/lib/onchain/rpc.ex:969) is the stateless query, but it decodes into its own maps via parse_log.\n\nAdd eth_getLogs to Cartouche.RPC, decoding with the same log decoder Cartouche.Filter uses (refactor that decoder if it isn't reusable; don't copy it). Keep Onchain.RPC's filter normalization and validation (camelCase aliases, validate_log_filter_keys) if it is the better-tested input handling, and delete its parse_log decoder. Switching Onchain callers from maps to the struct is a breaking change and ships in the 0.16.0 release (9036). Record it in the CHANGELOG.\n\n(2026-09-29 review) parse_log (packages/onchain/lib/onchain/rpc/helpers.ex:201) is also used by parse_receipt (packages/onchain/lib/onchain/rpc.ex:1896), which decodes the logs inside Onchain.RPC.get_transaction_receipt. No read-surface task owns receipts; they go to 9035's residual RPC merge. Deleting parse_log must not break receipt logs. Either repoint parse_receipt to the shared log decoder in this diff (receipt logs become Cartouche.Filter.Log structs, which is a breaking change for the CHANGELOG), or keep parse_log as parse_receipt's private helper and leave its removal to 9035.\n\nAuthority: the tagged execution-apis spec and the live node.\n",
       "created_at": "2026-08-26",
       "started_at": "2026-09-30",
+      "done_at": "2026-09-30",
       "scored_at": "2026-09-29",
+      "implemented": "Landed by cursor via merge-train; reviewer-approved (run run-1790735637825-7315b918, a185660ab2b8849f6aad8acd94342fdaa6a92724).",
+      "delivered_by": "cursor",
+      "verified": true,
+      "verified_by": "claude",
+      "verification_ref": "harness-run:run-1790735637825-7315b918",
       "cross_repo": []
     },
     {
