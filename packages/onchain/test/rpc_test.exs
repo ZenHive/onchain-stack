@@ -878,7 +878,9 @@ defmodule Cartouche.RPCTest do
     # bytes that get signed. A signed or half-signed envelope is neither unsigned
     # nor safe to hand back from a method documented to return an unsigned fill.
     test "fill_transaction rejects a raw transaction that is not unambiguously unsigned" do
-      malformed = ExRLP.encode([9, 100_000_000_000, 21_000, <<1::160>>, 2, <<1, 2, 3>>, 0, 1, 2])
+      # v = 37 is an EIP-155 mainnet signature, so the envelope decodes (alloy rejects
+      # an undecodable legacy v before this check) and must still be refused as signed.
+      malformed = ExRLP.encode([9, 100_000_000_000, 21_000, <<1::160>>, 2, <<1, 2, 3>>, 37, 1, 2])
       plug = fn conn -> respond_with_result(conn, %{"raw" => Cartouche.Hex.encode_hex(malformed)}) end
 
       assert {:error, message} =
