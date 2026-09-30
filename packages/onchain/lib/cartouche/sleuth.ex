@@ -86,7 +86,8 @@ defmodule Cartouche.Sleuth do
     params: [
       mod: [
         kind: :value,
-        description: "Generated contract module that exposes `bytecode/0`, `encode_<fun>/0`, and `<fun>_selector/0`."
+        description:
+          "Contract module from `use Onchain.Contract.Generator` with `:bytecode` set, exposing `bytecode/0`, `encode_<fun>/0`, and `<fun>_selector/0`."
       ],
       fun: [
         kind: :value,
@@ -104,9 +105,9 @@ defmodule Cartouche.Sleuth do
 
   @doc """
   Convenience wrapper that derives bytecode, query calldata, and selector
-  from a generated contract module. Resolves `mod.bytecode/0`,
-  `mod.encode_<fun>/0`, and `mod.<fun>_selector/0` and forwards the rest
-  to `query/4`.
+  from a `use Onchain.Contract.Generator` module compiled with `:bytecode`.
+  Resolves `mod.bytecode/0`, `mod.encode_<fun>/0`, and `mod.<fun>_selector/0`
+  and forwards the rest to `query/4`.
   """
   @spec query_by(module(), atom() | Keyword.t()) :: {:ok, term()} | {:error, term()}
   def query_by(mod, fun) when is_atom(mod) and is_atom(fun), do: query_by(mod, fun, [])

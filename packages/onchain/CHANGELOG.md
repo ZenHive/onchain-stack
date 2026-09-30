@@ -35,6 +35,10 @@ Completed roadmap tasks.
   functions with `eth_call` and return `{:ok, [result_bytes]}`. Their input-count
   suffixes prevent collisions between overloads with default options.
   Use the generated `Multicall` builders instead of old `build_trx_*` helpers.
+- `Onchain.Contract.Generator` emits `bytecode/0`, `deployed_bytecode/0`,
+  `<fun>_selector/0`, `encode_<fun>/…`, and `decode_call/1` when `:bytecode` or
+  `:artifact_file` is provided, so `Cartouche.Sleuth.query_by/3` works with
+  generator modules instead of the removed `mix cartouche.gen` output.
 - `Cartouche.Sleuth.query`, `query_annotated`, `query_by`, and `query_v2` keep
   their decoded success shapes. RPC errors now use `{:error, {:rpc_error, map}}`
   and outer bytes decoding errors use `{:error, {:decode_error, reason}}`.

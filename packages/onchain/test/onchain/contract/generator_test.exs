@@ -62,6 +62,15 @@ defmodule Onchain.Contract.GeneratorTest do
       ])
   end
 
+  defmodule SleuthBytecodeModule do
+    @moduledoc false
+    use Generator,
+      abi_json: ~s([
+        {"type":"function","name":"answer","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"uint256"}]}
+      ]),
+      bytecode: "0x6001600155"
+  end
+
   # --- Unit tests: to_snake_case ---
 
   describe "to_snake_case/1" do
@@ -257,6 +266,24 @@ defmodule Onchain.Contract.GeneratorTest do
     test "preserves failed aggregate3 entries without treating them as simulation results" do
       assert {:error, "0xdeadbeef"} =
                ChainlinkModule.Multicall.decode_decimals({false, "0xdeadbeef"})
+    end
+  end
+
+  describe "Sleuth bytecode surface" do
+    test "emits bytecode and query_by helpers when :bytecode is set" do
+      assert function_exported?(SleuthBytecodeModule, :bytecode, 0)
+      assert function_exported?(SleuthBytecodeModule, :answer_selector, 0)
+      assert function_exported?(SleuthBytecodeModule, :encode_answer, 0)
+      assert function_exported?(SleuthBytecodeModule, :decode_call, 1)
+
+      assert <<0x60, 0x01, 0x60, 0x01, 0x55>> = SleuthBytecodeModule.bytecode()
+      assert is_binary(SleuthBytecodeModule.encode_answer())
+      assert %ABI.FunctionSelector{function: "answer"} = SleuthBytecodeModule.answer_selector()
+    end
+
+    test "omits bytecode helpers without :bytecode" do
+      refute function_exported?(ReadModule, :bytecode, 0)
+      refute function_exported?(ReadModule, :decode_call, 1)
     end
   end
 

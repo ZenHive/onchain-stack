@@ -68,6 +68,12 @@ defmodule Onchain.Contract.Generator do
   - `:root_contract` — name of the contract or interface to extract when the file
     contains multiple definitions (e.g., `"IPoolV3"`)
 
+  When `:bytecode` is set (hex string, with or without `0x`), or when
+  `:artifact_file` points at a Foundry-style JSON artifact, the generator also emits
+  `bytecode/0`, `deployed_bytecode/0` (defaults to `:bytecode` when omitted),
+  per-function `<name>_selector/0`, `encode_<name>/…`, `decode_<name>_call/1`, and
+  `decode_call/1` — the surface `Cartouche.Sleuth.query_by/3` expects.
+
   ## .sol Extras
 
   When using `sol:` source:
@@ -79,7 +85,7 @@ defmodule Onchain.Contract.Generator do
   - **NatSpec docs**: `@doc` pulled from `/// @notice` comments
   """
 
-  alias Onchain.Contract.ABI
+  alias Onchain.Contract.ABI, as: ContractABI
 
   @doc false
   @spec __using__(keyword()) :: Macro.t()
@@ -91,10 +97,43 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
+  @spec expand_artifact_file!(keyword(), String.t() | nil) :: keyword()
+  defp expand_artifact_file!(opts, caller_file) do
+    case Keyword.pop(opts, :artifact_file) do
+      {nil, opts} ->
+        opts
+
+      {path, opts} ->
+        path = Path.expand(path, Path.dirname(caller_file))
+
+        artifact =
+          path
+          |> File.read!()
+          |> Jason.decode!()
+
+        opts
+        |> Keyword.put(:abi_json, Jason.encode!(artifact["abi"]))
+        |> Keyword.put(:bytecode, get_in(artifact, ["bytecode", "object"]))
+        |> Keyword.put(:deployed_bytecode, get_in(artifact, ["deployedBytecode", "object"]))
+        |> Keyword.put(:artifact_file, path)
+    end
+  end
+
+  @doc false
   @spec __before_compile__(Macro.Env.t()) :: Macro.t()
   defmacro __before_compile__(env) do
-    opts = Module.get_attribute(env.module, :__contract_opts__)
+    opts =
+      env.module
+      |> Module.get_attribute(:__contract_opts__)
+      |> expand_artifact_file!(env.file)
+
     %{abi: abi, is_sol: is_sol, external_files: external_files} = resolve_contract_input(opts, env)
+
+    external_files =
+      case Keyword.get(opts, :artifact_file) do
+        nil -> external_files
+        path -> [path | external_files]
+      end
 
     Enum.each(external_files, fn file ->
       Module.put_attribute(env.module, :external_resource, file)
@@ -111,6 +150,7 @@ defmodule Onchain.Contract.Generator do
     struct_modules = if is_sol, do: generate_struct_modules(abi, env.module), else: []
     multicall_module = generate_multicall_module(disambiguated)
     fn_asts = Enum.flat_map(disambiguated, &generate_function(&1, is_sol))
+    sleuth_asts = generate_sleuth_surface(disambiguated, opts)
 
     quote do
       @moduledoc unquote(moduledoc)
@@ -119,6 +159,7 @@ defmodule Onchain.Contract.Generator do
       unquote_splicing(struct_modules)
       unquote(multicall_module)
       unquote_splicing(fn_asts)
+      unquote_splicing(sleuth_asts)
       unquote(abi_fn)
     end
   end
@@ -143,7 +184,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
-  @spec resolve_abi(keyword()) :: ABI.parsed_abi()
+  @spec resolve_abi(keyword()) :: ContractABI.parsed_abi()
   def resolve_abi(opts) do
     resolve_contract_input(opts, nil).abi
   end
@@ -166,10 +207,10 @@ defmodule Onchain.Contract.Generator do
         apply(frontend, :resolve_generator_input, [opts, env])
 
       json = Keyword.get(opts, :abi_json) ->
-        %ResolvedInput{abi: ABI.parse_abi_json!(json), is_sol: false, external_files: []}
+        %ResolvedInput{abi: ContractABI.parse_abi_json!(json), is_sol: false, external_files: []}
 
       file = Keyword.get(opts, :abi_file) ->
-        %ResolvedInput{abi: ABI.parse_abi_file!(file), is_sol: false, external_files: [Path.expand(file)]}
+        %ResolvedInput{abi: ContractABI.parse_abi_file!(file), is_sol: false, external_files: [Path.expand(file)]}
 
       true ->
         raise ArgumentError,
@@ -316,7 +357,7 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
-  @spec generate_abi_fn(ABI.parsed_abi()) :: Macro.t()
+  @spec generate_abi_fn(ContractABI.parsed_abi()) :: Macro.t()
   defp generate_abi_fn(abi) do
     quote do
       @doc "Returns the full parsed ABI map for this contract."
@@ -922,6 +963,206 @@ defmodule Onchain.Contract.Generator do
   defp solidity_to_struct_type("int" <> _), do: quote(do: integer())
   defp solidity_to_struct_type("uint" <> _), do: quote(do: non_neg_integer())
   defp solidity_to_struct_type(_), do: quote(do: term())
+
+  # --- Sleuth / Cartouche.Sleuth.query_by surface ---
+
+  @doc false
+  @spec generate_sleuth_surface([map()], keyword()) :: [Macro.t()]
+  defp generate_sleuth_surface(functions, opts) do
+    case sleuth_bytecode(opts) do
+      nil -> []
+      {bytecode, deployed} -> generate_sleuth_bytecode_surface(functions, bytecode, deployed)
+    end
+  end
+
+  @doc false
+  @spec sleuth_bytecode(keyword()) :: {binary(), binary()} | nil
+  defp sleuth_bytecode(opts) do
+    case Keyword.get(opts, :bytecode) do
+      nil ->
+        nil
+
+      bytecode_hex ->
+        bytecode = normalize_bytecode_hex!(bytecode_hex)
+        deployed_hex = Keyword.get(opts, :deployed_bytecode, bytecode_hex)
+        deployed = normalize_bytecode_hex!(deployed_hex)
+        {bytecode, deployed}
+    end
+  end
+
+  @doc false
+  @spec normalize_bytecode_hex!(String.t()) :: binary()
+  defp normalize_bytecode_hex!(hex) do
+    hex = String.trim(hex)
+
+    hex =
+      if String.starts_with?(hex, "0x") or String.starts_with?(hex, "0X") do
+        hex
+      else
+        "0x" <> hex
+      end
+
+    Onchain.Hex.decode!(hex)
+  end
+
+  @doc false
+  @spec generate_sleuth_bytecode_surface([map()], binary(), binary()) :: [Macro.t()]
+  defp generate_sleuth_bytecode_surface(functions, bytecode, deployed) do
+    per_function = Enum.flat_map(functions, &generate_sleuth_function/1)
+    decode_call = generate_decode_call(functions)
+
+    [
+      quote do
+        @doc "Returns the contract init bytecode."
+        @spec bytecode() :: binary()
+        def bytecode, do: unquote(Macro.escape(bytecode))
+
+        @doc "Returns the contract deployed bytecode."
+        @spec deployed_bytecode() :: binary()
+        def deployed_bytecode, do: unquote(Macro.escape(deployed))
+      end
+    ] ++
+      per_function ++
+      [decode_call, generate_decode_event_fn(), generate_decode_error_fn()]
+  end
+
+  @doc false
+  @spec generate_sleuth_function(map()) :: [Macro.t()]
+  defp generate_sleuth_function(func) do
+    selector_name = to_identifier_atom(func.elixir_name <> "_selector")
+    encode_name = to_identifier_atom("encode_" <> func.elixir_name)
+    decode_name = to_identifier_atom("decode_" <> func.elixir_name <> "_call")
+    selector = function_selector_struct!(func)
+    input_vars = build_input_vars(func.inputs)
+    var_asts = Enum.map(input_vars, fn {vname, _ty} -> Macro.var(vname, nil) end)
+    encode_params = Enum.map(input_vars, fn {vname, _ty} -> Macro.var(vname, nil) end)
+    prefix = Onchain.Hex.decode!(func.selector)
+    signature = func.signature
+    encode_def = sleuth_encode_def(encode_name, selector_name, signature, input_vars, var_asts, encode_params)
+
+    [
+      quote do
+        @doc unquote("Returns the ABI function selector for #{signature}.")
+        @spec unquote(selector_name)() :: ABI.FunctionSelector.t()
+        def unquote({selector_name, [], []}), do: unquote(Macro.escape(selector))
+      end,
+      encode_def,
+      quote do
+        @doc unquote("Decodes ABI calldata for #{signature}.")
+        @spec unquote(decode_name)(binary()) :: term()
+        def unquote(decode_name)(unquote(Macro.escape(prefix)) <> calldata) do
+          ABI.decode(unquote(selector_name)(), calldata)
+        end
+      end
+    ]
+  end
+
+  @doc false
+  @spec sleuth_encode_def(atom(), atom(), String.t(), [{atom(), String.t()}], [Macro.t()], [Macro.t()]) ::
+          Macro.t()
+  defp sleuth_encode_def(encode_name, selector_name, signature, input_vars, var_asts, encode_params) do
+    encode_body =
+      if var_asts == [] do
+        quote do
+          ABI.encode(unquote(selector_name)(), [])
+        end
+      else
+        quote do
+          ABI.encode(unquote(selector_name)(), unquote(encode_params))
+        end
+      end
+
+    encode_head =
+      if var_asts == [] do
+        quote do: unquote({encode_name, [], []})
+      else
+        quote do: unquote(encode_name)(unquote_splicing(var_asts))
+      end
+
+    quote do
+      @doc unquote("Encodes ABI calldata for #{signature}.")
+      @spec unquote(encode_name)(unquote_splicing(input_spec_types(input_vars))) :: binary()
+      def unquote(encode_head), do: unquote(encode_body)
+    end
+  end
+
+  @doc false
+  @spec generate_decode_call([map()]) :: Macro.t()
+  defp generate_decode_call(functions) do
+    clauses =
+      Enum.map(functions, fn func ->
+        decode_name = to_identifier_atom("decode_" <> func.elixir_name <> "_call")
+        prefix = Onchain.Hex.decode!(func.selector)
+
+        quote do
+          def decode_call(unquote(Macro.escape(prefix)) <> _ = calldata) do
+            {:ok, unquote(func.name), unquote(decode_name)(calldata)}
+          end
+        end
+      end)
+
+    quote do
+      @doc "Decodes ABI calldata and dispatches to the matching generated call decoder."
+      @spec decode_call(binary()) :: {:ok, String.t() | nil, term()} | :not_found
+      unquote_splicing(clauses)
+
+      def decode_call(_), do: :not_found
+    end
+  end
+
+  @doc false
+  @spec generate_decode_event_fn() :: Macro.t()
+  defp generate_decode_event_fn do
+    quote do
+      @doc "Decodes ABI event topics and data with the matching generated event decoder."
+      @spec decode_event([binary()], binary()) ::
+              {:ok, String.t() | nil, map()} | {:error, term()} | :not_found
+      def decode_event(_, _), do: :not_found
+    end
+  end
+
+  @doc false
+  @spec generate_decode_error_fn() :: Macro.t()
+  defp generate_decode_error_fn do
+    quote do
+      @doc "Decodes ABI revert data and dispatches to the matching generated error decoder."
+      @spec decode_error(binary()) :: {:ok, String.t() | nil, term()} | :not_found
+      def decode_error(_), do: :not_found
+    end
+  end
+
+  @doc false
+  @spec function_selector_struct!(map()) :: ABI.FunctionSelector.t()
+  defp function_selector_struct!(func) do
+    case ABI.parse_specification([function_abi_entry(func)]) do
+      [selector] -> selector
+      other -> raise "expected one selector for #{func.signature}, got #{inspect(other)}"
+    end
+  end
+
+  @doc false
+  @spec function_abi_entry(map()) :: map()
+  defp function_abi_entry(func) do
+    %{
+      "type" => "function",
+      "name" => func.name,
+      "inputs" => Enum.map(func.inputs, &param_abi_entry/1),
+      "outputs" => Enum.map(func.outputs, &param_abi_entry/1),
+      "stateMutability" => func.state_mutability
+    }
+  end
+
+  @doc false
+  @spec param_abi_entry(map()) :: map()
+  defp param_abi_entry(param) do
+    base = %{"name" => param.name, "type" => param.ty}
+
+    if param.components == [] do
+      base
+    else
+      Map.put(base, "components", Enum.map(param.components, &param_abi_entry/1))
+    end
+  end
 
   # --- Enum Generation (.sol only) ---
 
