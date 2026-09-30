@@ -93,9 +93,18 @@ defmodule ABI.AlloyEvents do
           name: selector.function
         }
 
-        if map_size(cache) < 1024, do: :persistent_term.put(__MODULE__, Map.put(cache, key, schema))
+        # Serialized like ABI.Alloy's caches: an unlocked read-modify-write of the
+        # whole map can publish a stale snapshot and drop a concurrent insert.
+        :global.trans({__MODULE__, self()}, fn -> insert(key, schema) end, [node()])
         schema
     end
+  end
+
+  defp insert(key, schema) do
+    cache = :persistent_term.get(__MODULE__, %{})
+
+    if not Map.has_key?(cache, key) and map_size(cache) < 1024,
+      do: :persistent_term.put(__MODULE__, Map.put(cache, key, schema))
   end
 
   defp prepare(data, topics, schema, opts) do

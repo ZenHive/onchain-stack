@@ -75,6 +75,14 @@ Completed roadmap tasks.
   Implicit `trace_reverts` / `debug_trace` calls are no longer performed; use
   `Onchain.Trace` in onchain_evm explicitly. Use `:rpc_url` for endpoint options.
 
+### Fixed
+
+- The ABI schema, signature and event-schema caches (`ABI.Alloy`, `ABI.AlloyEvents`)
+  could drop an entry when two processes missed the same cache concurrently: each
+  insert rewrote the whole `:persistent_term` map from a stale snapshot. Inserts are
+  now serialized per cache; compilation stays outside the lock and the 1,024-entry
+  cap still applies. A full cache keeps answering without retaining new entries.
+
 ## Unreleased — v0.15.0
 
 ### Changed

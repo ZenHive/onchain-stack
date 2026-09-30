@@ -4,11 +4,13 @@ defmodule ABI.AlloyCacheTest do
   use ExUnit.Case, async: false
 
   alias ABI.Alloy
+  alias ABI.AlloyEvents
   alias ABI.FunctionSelector
 
   setup do
     :persistent_term.erase({Alloy, :schema})
     :persistent_term.erase({Alloy, :signature})
+    :persistent_term.erase(AlloyEvents)
     :ok
   end
 
@@ -43,5 +45,34 @@ defmodule ABI.AlloyCacheTest do
     for {selector, signature} <- Enum.zip(selectors, signatures) do
       assert Map.fetch!(cache, {:event, selector}) == signature
     end
+  end
+
+  # spec-tags: NIF-7
+  test "concurrent event-schema misses keep every entry" do
+    selectors =
+      for n <- 1..200, do: %FunctionSelector{function: "event_probe_#{n}", types: [], function_type: :event}
+
+    selectors
+    |> Enum.map(fn selector ->
+      Task.async(fn -> AlloyEvents.decode(<<>>, [ABI.Event.event_signature(selector)], selector, []) end)
+    end)
+    |> Task.await_many()
+
+    cache = :persistent_term.get(AlloyEvents)
+    for selector <- selectors, do: assert(Map.has_key?(cache, {selector, true}))
+  end
+
+  # spec-tags: NIF-7
+  test "a full cache stops retaining new entries but still answers" do
+    for n <- 1..1024 do
+      Alloy.signature(%FunctionSelector{function: "cap_probe_#{n}", types: []}, :event)
+    end
+
+    assert map_size(:persistent_term.get({Alloy, :signature})) == 1024
+
+    overflow = %FunctionSelector{function: "cap_overflow", types: []}
+    assert Alloy.signature(overflow, :event) == Alloy.signature(overflow, :event)
+    refute Map.has_key?(:persistent_term.get({Alloy, :signature}), {:event, overflow})
+    assert map_size(:persistent_term.get({Alloy, :signature})) == 1024
   end
 end
