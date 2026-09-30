@@ -967,6 +967,24 @@ defmodule Cartouche.Test.Client do
   def eth_getFilterLogs(id), do: eth_getFilterChanges(id)
 
   @doc false
+  @spec eth_getLogs(map()) :: list(map())
+  def eth_getLogs(_filter) do
+    [
+      %{
+        address: "0x0000000000000000000000000000000000000001",
+        blockHash: "0x1111111111111111111111111111111111111111111111111111111111111111",
+        blockNumber: "0x10",
+        data: "0x01",
+        logIndex: "0x0",
+        removed: false,
+        topics: ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"],
+        transactionHash: "0x2222222222222222222222222222222222222222222222222222222222222222",
+        transactionIndex: "0x0"
+      }
+    ]
+  end
+
+  @doc false
   @spec eth_uninstallFilter(binary()) :: boolean()
   def eth_uninstallFilter(_id), do: true
 

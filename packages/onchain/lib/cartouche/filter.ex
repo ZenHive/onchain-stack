@@ -192,7 +192,7 @@ defmodule Cartouche.Filter do
 
     {logs, events} =
       raw_logs
-      |> Enum.map(&Log.deserialize/1)
+      |> Log.decode_logs()
       |> Enum.map(fn log -> %{log | extra_data: extra_data} end)
       |> parse_events(decoders)
 

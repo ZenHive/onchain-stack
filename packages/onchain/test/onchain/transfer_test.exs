@@ -21,7 +21,7 @@ defmodule Onchain.TransferTest do
   @operator_padded "0x0000000000000000000000001111111111111111111111111111111111111111"
 
   @doc false
-  # Builds a raw log map matching what RPC.eth_get_logs returns (atom-keyed).
+  # Builds the hex-string log map `Transfer.parse_log/1` still accepts.
   defp build_log(opts) do
     %{
       address: Keyword.get(opts, :address, @usdc_address),
@@ -98,6 +98,20 @@ defmodule Onchain.TransferTest do
       assert transfer.token_standard == :erc20
       assert transfer.amount == 1_000_000
       assert transfer.token_id == nil
+
+      filter_log = %Cartouche.Filter.Log{
+        address: Onchain.Hex.decode!(log.address),
+        topics: Enum.map(log.topics, &Onchain.Hex.decode!/1),
+        data: Onchain.Hex.decode!(log.data),
+        block_hash: <<0::256>>,
+        block_number: log.block_number,
+        log_index: log.log_index,
+        removed: false,
+        transaction_hash: Onchain.Hex.decode!(log.transaction_hash),
+        transaction_index: 0
+      }
+
+      assert {:ok, ^transfer} = Transfer.parse_log(filter_log)
       assert transfer.operator == nil
       assert transfer.block_number == 18_000_000
       assert transfer.log_index == 42

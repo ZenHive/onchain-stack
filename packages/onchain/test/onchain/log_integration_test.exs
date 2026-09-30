@@ -22,13 +22,18 @@ defmodule Onchain.Log.IntegrationTest do
         to_block: latest
       }
 
-      {:ok, logs} = RPC.eth_get_logs(filter, rpc_opts())
+      {:ok, logs} = Cartouche.RPC.eth_get_logs(filter, rpc_opts())
       assert logs != [], "Expected at least one USDC Transfer log in last 10 blocks"
 
       log = hd(logs)
       signature = "Transfer(address indexed from, address indexed to, uint256 value)"
 
-      assert {:ok, decoded} = Log.decode_event(log, signature)
+      raw = %{
+        topics: Enum.map(log.topics, &Onchain.Hex.encode/1),
+        data: Onchain.Hex.encode(log.data)
+      }
+
+      assert {:ok, decoded} = Log.decode_event(raw, signature)
       assert is_map(decoded)
 
       # from and to should be checksummed addresses

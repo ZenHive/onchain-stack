@@ -8,7 +8,7 @@ defmodule Onchain.Transfer do
 
   ## Does
 
-  - Parse raw log maps into `%Transfer{}` structs (`parse_log/1`, `parse_logs/1`)
+  - Parse raw log maps and `%Cartouche.Filter.Log{}` into `%Transfer{}` structs (`parse_log/1`, `parse_logs/1`)
   - Fetch and parse transfer logs in one call (`fetch/2`)
   - Expose topic hashes for filter building (`transfer_topics/0`)
 
@@ -41,17 +41,17 @@ defmodule Onchain.Transfer do
   | `parse_log!/1` | Same, raises on error |
   | `parse_logs/1` | List of raw logs → Transfer structs (skips non-Transfer) |
   | `parse_logs!/1` | Same, raises on error |
-  | `fetch/2` | `eth_get_logs` + `parse_logs` convenience |
+  | `fetch/2` | `Cartouche.RPC.eth_get_logs/2` + `parse_logs` convenience |
   | `fetch!/2` | Same, raises on error |
   | `transfer_topics/0` | The 3 topic0 hashes for filter building |
   """
 
   use Descripex, namespace: "/transfer"
 
+  alias Cartouche.Filter.Log, as: FilterLog
   alias Onchain.Address
   alias Onchain.Hex
   alias Onchain.Log
-  alias Onchain.RPC
 
   require Logger
 
@@ -121,11 +121,13 @@ defmodule Onchain.Transfer do
 
   # --- parse_log ---
 
-  api(:parse_log, "Parse a single raw log map into Transfer struct(s).",
+  api(:parse_log, "Parse a single raw log into Transfer struct(s).",
     params: [
       log: [
         kind: :value,
-        description: "Raw log map with :topics, :data, :address, :block_number, :transaction_hash, :log_index"
+        description:
+          "Hex-string log map (`:topics`, `:data`, `:address`, `:block_number`, " <>
+            "`:transaction_hash`, `:log_index`) or a `%Cartouche.Filter.Log{}`"
       ]
     ],
     returns: %{
@@ -135,6 +137,8 @@ defmodule Onchain.Transfer do
   )
 
   @spec parse_log(map()) :: {:ok, t()} | {:ok, [t()]} | {:error, term()}
+
+  def parse_log(%FilterLog{} = log), do: log |> filter_log_to_map() |> parse_log()
 
   # ERC-20: 3 topics [topic0, from, to] + value in data
   def parse_log(%{topics: [topic0, _, _]} = log) when topic0 == @transfer_topic do
@@ -160,9 +164,9 @@ defmodule Onchain.Transfer do
 
   # --- parse_log! ---
 
-  api(:parse_log!, "Parse a single raw log map into Transfer struct(s). Raises on error.",
+  api(:parse_log!, "Parse a single raw log into Transfer struct(s). Raises on error.",
     params: [
-      log: [kind: :value, description: "Raw log map (see parse_log/1)"]
+      log: [kind: :value, description: "Hex-string log map or `%Cartouche.Filter.Log{}` (see parse_log/1)"]
     ],
     returns: %{type: "t() | [t()]", description: "Transfer struct(s)"}
   )
@@ -179,7 +183,7 @@ defmodule Onchain.Transfer do
 
   api(:parse_logs, "Parse a list of raw logs, skipping non-Transfer events.",
     params: [
-      logs: [kind: :value, description: "List of raw log maps from eth_get_logs"]
+      logs: [kind: :value, description: "Raw log maps or `%Cartouche.Filter.Log{}` values from eth_getLogs"]
     ],
     returns: %{
       type: "{:ok, [t()]}",
@@ -233,7 +237,7 @@ defmodule Onchain.Transfer do
       filter: [
         kind: :value,
         description:
-          "Filter map for eth_get_logs (e.g. %{from_block: 18_000_000, to_block: 18_000_100, address: \"0x...\"})"
+          "Filter map for Cartouche.RPC.eth_get_logs/2 (e.g. %{from_block: 18_000_000, to_block: 18_000_100, address: \"0x...\"})"
       ],
       opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
     ],
@@ -249,7 +253,7 @@ defmodule Onchain.Transfer do
     # [[topicA, topicB, topicC]] means "match topicA OR topicB OR topicC as topic0"
     filter = Map.put_new(filter, :topics, [transfer_topics()])
 
-    with {:ok, logs} <- RPC.eth_get_logs(filter, opts) do
+    with {:ok, logs} <- Cartouche.RPC.eth_get_logs(filter, opts) do
       parse_logs(logs)
     end
   end
@@ -273,6 +277,20 @@ defmodule Onchain.Transfer do
   end
 
   # --- Private parsers ---
+
+  @spec filter_log_to_map(FilterLog.t()) :: map()
+  defp filter_log_to_map(%FilterLog{} = log) do
+    %{
+      address: Address.checksum!(log.address),
+      topics: Enum.map(log.topics, &Hex.encode/1),
+      data: Hex.encode(log.data),
+      block_number: log.block_number,
+      transaction_hash: Hex.encode(log.transaction_hash),
+      log_index: log.log_index,
+      transaction_index: log.transaction_index,
+      removed: log.removed
+    }
+  end
 
   @doc false
   # Parses an ERC-20 Transfer log: 3 topics + uint256 value in data.

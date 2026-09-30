@@ -48,12 +48,11 @@ defmodule Onchain.RPC.ReceiptIntegrationTest do
       assert is_integer(receipt.type)
     end
 
-    test "receipt logs match eth_get_logs structure" do
+    test "decodes receipt logs as maps" do
       {:ok, block} = RPC.get_block_by_number(@test_block, rpc_opts())
       tx_hash = hd(block.transactions)
       {:ok, receipt} = RPC.get_transaction_receipt(tx_hash, rpc_opts())
 
-      # If there are logs, verify they have the same structure as eth_get_logs
       for log <- receipt.logs do
         assert is_binary(log.address)
         assert String.starts_with?(log.address, "0x")
@@ -65,6 +64,21 @@ defmodule Onchain.RPC.ReceiptIntegrationTest do
         assert is_integer(log.transaction_index)
         assert is_boolean(log.removed)
       end
+    end
+
+    test "pins the decoded logs of a known USDC transfer receipt" do
+      tx_hash = "0x6742cd57e6aefce4b96887bb3090371ac49414c6b45a21e43d9e41e0ea9ed5ab"
+      assert {:ok, receipt} = RPC.get_transaction_receipt(tx_hash, rpc_opts())
+
+      log = Enum.find(receipt.logs, &(&1.log_index == 8))
+
+      assert log.address == "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+      assert hd(log.topics) == "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+      assert log.block_number == 18_000_000
+      assert log.transaction_hash == tx_hash
+      assert log.removed == false
+      assert is_binary(log.data)
+      assert is_integer(log.transaction_index)
     end
 
     test "returns nil for non-existent transaction hash" do

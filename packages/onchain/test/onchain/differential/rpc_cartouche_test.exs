@@ -157,7 +157,8 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
       to_block: @test_block
     }
 
-    assert {:ok, actual} = RPC.eth_get_logs(filter, onchain_opts(rpc_url))
+    assert {:ok, actual} =
+             Cartouche.RPC.eth_get_logs(filter, ethereum_node: rpc_url, timeout: @rpc_timeout_ms)
 
     expected =
       "eth_getLogs"
@@ -172,7 +173,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
         ],
         rpc_url
       )
-      |> Enum.map(&expected_log/1)
+      |> Enum.map(&Cartouche.Filter.Log.deserialize/1)
 
     assert actual == expected
   end

@@ -166,10 +166,12 @@ defmodule Onchain.RPC.IntegrationTest do
     end
   end
 
-  describe "eth_get_logs!/2" do
-    test "returns logs directly for valid filter" do
-      logs = RPC.eth_get_logs!(%{from_block: 20_000_000, to_block: 20_000_000}, rpc_opts())
-      assert is_list(logs)
+  describe "eth_get_logs/2" do
+    test "returns Cartouche.Filter.Log structs for a one-block filter" do
+      assert {:ok, logs} =
+               Cartouche.RPC.eth_get_logs(%{from_block: 20_000_000, to_block: 20_000_000}, rpc_opts())
+
+      assert [%Cartouche.Filter.Log{} | _] = logs
     end
   end
 

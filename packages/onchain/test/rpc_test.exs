@@ -4,6 +4,7 @@ defmodule Cartouche.RPCTest do
 
   import ExUnit.CaptureLog
 
+  alias Cartouche.Filter.Log
   alias Cartouche.RPC.Capabilities
   alias Cartouche.RPC.Configuration
   alias Cartouche.Test.Signer
@@ -947,8 +948,48 @@ defmodule Cartouche.RPCTest do
 
     test "get_filter_logs decodes the same Log shape as filter changes" do
       assert {:ok, [log]} = Cartouche.RPC.get_filter_logs("0xf11735")
-      assert %Cartouche.Filter.Log{} = log
+      assert %Log{} = log
       assert byte_size(log.address) == 20
+    end
+  end
+
+  describe "eth_get_logs/2" do
+    test "normalizes the filter and decodes with Filter.Log" do
+      raw = %{
+        "address" => "0x0000000000000000000000000000000000000001",
+        "blockHash" => "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "blockNumber" => "0x10",
+        "data" => "0x01",
+        "logIndex" => "0x2",
+        "removed" => false,
+        "topics" => ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"],
+        "transactionHash" => "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "transactionIndex" => "0x3"
+      }
+
+      parent = self()
+
+      plug = fn conn ->
+        body = conn |> Req.Test.raw_body() |> IO.iodata_to_binary() |> Jason.decode!()
+        send(parent, {:params, hd(body["params"])})
+        respond_with_result(conn, [raw])
+      end
+
+      topic = "0x" <> String.duplicate("ab", 32)
+
+      assert {:ok, [log]} =
+               Cartouche.RPC.eth_get_logs(
+                 %{"fromBlock" => 16, address: [<<1::160>>], topics: [nil, topic]},
+                 req_options: [plug: plug]
+               )
+
+      assert_received {:params, params}
+      assert params["fromBlock"] == "0x10"
+      assert params["address"] == ["0x0000000000000000000000000000000000000001"]
+      assert params["topics"] == [nil, topic]
+      refute Map.has_key?(params, "toBlock")
+      assert log == Log.deserialize(raw)
+      assert log == hd(Log.decode_logs([raw]))
     end
   end
 end

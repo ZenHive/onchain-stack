@@ -164,8 +164,6 @@ defmodule Onchain.RPC do
   | `get_block_access_list!/2` | Same, raises on error |
   | `chain_id/1` | Network chain ID |
   | `chain_id!/1` | Same, raises on error |
-  | `eth_get_logs/2` | Fetch event logs by filter |
-  | `eth_get_logs!/2` | Same, raises on error |
   | `get_transaction_receipt/2` | Transaction receipt by hash |
   | `get_transaction_receipt!/2` | Same, raises on error |
   | `get_transaction_count/2` | Account nonce (tx count) |
@@ -464,23 +462,6 @@ defmodule Onchain.RPC do
   )
 
   @block_tags Helpers.block_tags()
-
-  # Canonical log-filter keys accepted by eth_get_logs/2.
-  # Unknown keys are rejected loudly rather than silently dropped (Task 56).
-  # Canonical JSON-RPC string keys ("fromBlock"/"toBlock"/"address"/"topics"/"blockHash")
-  # are normalized to atoms before validation (Task 60).
-  # `:block_hash` is mutually exclusive with `:from_block`/`:to_block` per EIP-1474 (Task 61).
-  @allowed_log_filter_keys [:address, :topics, :from_block, :to_block, :block_hash]
-
-  # JSON-RPC camelCase string keys → canonical atom keys. Used by
-  # normalize_filter_keys/1 to accept JSON-RPC-style filter shapes (Task 60).
-  @camel_case_filter_aliases %{
-    "fromBlock" => :from_block,
-    "toBlock" => :to_block,
-    "address" => :address,
-    "topics" => :topics,
-    "blockHash" => :block_hash
-  }
 
   @spec get_block_by_number(integer() | String.t(), keyword()) ::
           {:ok, map() | nil} | {:error, term()}
@@ -933,82 +914,6 @@ defmodule Onchain.RPC do
     end
   end
 
-  # --- eth_get_logs ---
-
-  api(:eth_get_logs, "Fetch event logs matching a filter (eth_getLogs).",
-    params: [
-      filter: [
-        kind: :value,
-        description:
-          ~s|Filter map. Atom keys: :address (hex string), :topics (list), :from_block (integer or tag), :to_block (integer or tag), :block_hash (32-byte hex). Canonical JSON-RPC camelCase string keys ("fromBlock", "toBlock", "address", "topics", "blockHash") are accepted as aliases. If both an atom key and its camelCase alias are present, the atom key wins (the alias value is silently dropped). :block_hash is mutually exclusive with :from_block / :to_block per EIP-1474. Unknown keys return {:error, {:invalid_filter_key, key}}.|
-      ],
-      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
-    ],
-    returns: %{
-      type: "{:ok, [log_map]} | {:error, term}",
-      description:
-        "List of log maps with keys: address, topics, data, block_number, transaction_hash, log_index, transaction_index, removed. Errors: {:invalid_filter_key, key} for unknown filter keys; {:invalid_filter, {field, value}} for bad values; {:invalid_filter, {:block_hash_mutually_exclusive, present}} when :block_hash is combined with :from_block / :to_block."
-    }
-  )
-
-  @spec eth_get_logs(map(), keyword()) :: {:ok, [map()]} | {:error, term()}
-  def eth_get_logs(filter, opts \\ []) when is_map(filter) do
-    normalized = normalize_filter_keys(filter)
-
-    with :ok <- validate_log_filter_keys(normalized),
-         {:ok, rpc_filter} <- build_log_filter(normalized) do
-      case do_rpc("eth_getLogs", [rpc_filter], to_rpc_opts(opts)) do
-        {:ok, logs} when is_list(logs) ->
-          {:ok, Enum.map(logs, &parse_log/1)}
-
-        {:ok, other} ->
-          {:error, {:rpc_error, %{message: "unexpected response: #{inspect(other)}"}}}
-
-        error ->
-          error
-      end
-    end
-  end
-
-  # Rewrites canonical JSON-RPC camelCase string keys to their atom equivalents.
-  # Other string keys pass through unchanged (and trip validate_log_filter_keys/1).
-  # Atom keys take precedence on conflict (e.g. both :from_block and "fromBlock" set).
-  @spec normalize_filter_keys(map()) :: map()
-  defp normalize_filter_keys(filter) do
-    Enum.reduce(@camel_case_filter_aliases, filter, fn {string_key, atom_key}, acc ->
-      case Map.pop(acc, string_key) do
-        {nil, acc} -> acc
-        {value, acc} -> Map.put_new(acc, atom_key, value)
-      end
-    end)
-  end
-
-  @spec validate_log_filter_keys(map()) :: :ok | {:error, {:invalid_filter_key, term()}}
-  defp validate_log_filter_keys(filter) do
-    case Map.keys(filter) -- @allowed_log_filter_keys do
-      [] -> :ok
-      [unknown | _] -> {:error, {:invalid_filter_key, unknown}}
-    end
-  end
-
-  # --- eth_get_logs! ---
-
-  api(:eth_get_logs!, "Fetch event logs matching a filter. Raises on error.",
-    params: [
-      filter: [kind: :value, description: "Filter map (see eth_get_logs/2)"],
-      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
-    ],
-    returns: %{type: "[log_map]", description: "List of parsed log maps"}
-  )
-
-  @spec eth_get_logs!(map(), keyword()) :: [map()]
-  def eth_get_logs!(filter, opts \\ []) do
-    case eth_get_logs(filter, opts) do
-      {:ok, logs} -> logs
-      {:error, reason} -> raise "eth_get_logs failed: #{inspect(reason)}"
-    end
-  end
-
   # --- call (generic JSON-RPC passthrough) ---
 
   api(:call, "Generic JSON-RPC passthrough — invoke any method not covered by a named wrapper.",
@@ -1382,97 +1287,6 @@ defmodule Onchain.RPC do
   defp serialize_storage_keys([key | _rest], _acc), do: {:error, {:invalid_storage_key, key}}
 
   @doc false
-  # Builds a JSON-RPC filter object from an Elixir map.
-  # Per EIP-1474: when :block_hash is present, :from_block / :to_block are
-  # mutually exclusive — the spec rejects the combination at the JSON-RPC layer.
-  @spec build_log_filter(map()) :: {:ok, map()} | {:error, term()}
-  defp build_log_filter(filter) do
-    with :ok <- check_block_hash_exclusivity(filter),
-         {:ok, result} <- put_filter_address(%{}, filter),
-         {:ok, result} <- put_filter_topics(result, filter),
-         {:ok, result} <- put_filter_block_hash(result, filter),
-         {:ok, result} <-
-           put_block_param(result, "fromBlock", :fromBlock, Map.get(filter, :from_block)) do
-      put_block_param(result, "toBlock", :toBlock, Map.get(filter, :to_block))
-    end
-  end
-
-  @doc false
-  @spec check_block_hash_exclusivity(map()) ::
-          :ok | {:error, {:invalid_filter, {:block_hash_mutually_exclusive, [atom()]}}}
-  defp check_block_hash_exclusivity(filter) do
-    if Map.has_key?(filter, :block_hash) do
-      conflicts = Enum.filter([:from_block, :to_block], &Map.has_key?(filter, &1))
-
-      case conflicts do
-        [] ->
-          :ok
-
-        _ ->
-          {:error, {:invalid_filter, {:block_hash_mutually_exclusive, [:block_hash | conflicts]}}}
-      end
-    else
-      :ok
-    end
-  end
-
-  @doc false
-  @spec put_filter_address(map(), map()) :: {:ok, map()} | {:error, term()}
-  defp put_filter_address(result, filter) do
-    case Map.get(filter, :address) do
-      nil ->
-        {:ok, result}
-
-      addr ->
-        with {:ok, hex} <- ensure_hex_address(addr), do: {:ok, Map.put(result, "address", hex)}
-    end
-  end
-
-  @doc false
-  @spec put_filter_block_hash(map(), map()) :: {:ok, map()} | {:error, term()}
-  defp put_filter_block_hash(result, filter) do
-    case Map.get(filter, :block_hash) do
-      nil ->
-        {:ok, result}
-
-      hash ->
-        case ensure_tx_hash(hash) do
-          {:ok, valid_hash} -> {:ok, Map.put(result, "blockHash", valid_hash)}
-          {:error, _} -> {:error, {:invalid_filter, {:blockHash, hash}}}
-        end
-    end
-  end
-
-  @doc false
-  @spec put_filter_topics(map(), map()) :: {:ok, map()} | {:error, term()}
-  defp put_filter_topics(result, filter) do
-    case Map.get(filter, :topics) do
-      nil -> {:ok, result}
-      topics when is_list(topics) -> {:ok, Map.put(result, "topics", topics)}
-      other -> {:error, {:invalid_filter, {:topics, other}}}
-    end
-  end
-
-  @doc false
-  # Converts a block identifier to hex for the filter.
-  # `error_label` is an atom used in error tuples (e.g. :fromBlock, :toBlock).
-  @spec put_block_param(map(), String.t(), atom(), term()) :: {:ok, map()} | {:error, term()}
-  defp put_block_param(result, _key, _error_label, nil), do: {:ok, result}
-
-  defp put_block_param(result, key, _error_label, n) when is_integer(n) and n >= 0,
-    do: {:ok, Map.put(result, key, Onchain.Hex.from_integer(n))}
-
-  defp put_block_param(result, key, _error_label, tag) when tag in @block_tags, do: {:ok, Map.put(result, key, tag)}
-
-  defp put_block_param(result, key, error_label, "0x" <> _ = hex) do
-    if Onchain.Hex.valid?(hex),
-      do: {:ok, Map.put(result, key, hex)},
-      else: {:error, {:invalid_filter, {error_label, hex}}}
-  end
-
-  defp put_block_param(_result, _key, error_label, other), do: {:error, {:invalid_filter, {error_label, other}}}
-
-  @doc false
   @spec ensure_block_hash(term()) :: {:ok, String.t()} | {:error, term()}
   defp ensure_block_hash(block_hash) do
     case ensure_tx_hash(block_hash) do
@@ -1556,7 +1370,8 @@ defmodule Onchain.RPC do
   end
 
   @doc false
-  # Parses a raw transaction receipt map from the RPC response into atom-keyed map.
+  # Parses a raw transaction receipt map from the RPC response into an atom-keyed map.
+  # Logs stay on `parse_log/1` (map shape). `eth_getLogs` uses `Cartouche.Filter.Log`.
   @spec parse_receipt(map()) :: map()
   defp parse_receipt(receipt) when is_map(receipt) do
     %{

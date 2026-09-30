@@ -205,7 +205,8 @@ defmodule Onchain.RPC.Helpers do
   # raw JSON-RPC response fields into normalized Elixir values.
 
   @doc false
-  # Parses hex fields in a raw log map from the RPC response.
+  # Parses hex fields in a raw log map. Receipt and subscription logs still use
+  # this map shape. `eth_getLogs` decodes through `Cartouche.Filter.Log`.
   @spec parse_log(map()) :: map()
   def parse_log(log) when is_map(log) do
     %{

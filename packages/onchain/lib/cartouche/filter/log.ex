@@ -3,7 +3,8 @@ defmodule Cartouche.Filter.Log do
   A decoded Ethereum log entry.
 
   Produced by `Cartouche.Filter` for `kind: :log` filters and returned by
-  `Cartouche.RPC.get_filter_logs/2`. Addresses, hashes, and topics are decoded
+  `Cartouche.RPC.eth_get_logs/2` and `Cartouche.RPC.get_filter_logs/2`.
+  Addresses, hashes, and topics are decoded
   to raw binaries; `:block_number`, `:log_index`, and `:transaction_index` to
   integers. `:extra_data` is the opaque term a `Cartouche.Filter` was started
   with, stamped onto every log it dispatches, and is `nil` elsewhere.
@@ -61,4 +62,8 @@ defmodule Cartouche.Filter.Log do
       transaction_index: Hex.decode_hex_number!(transaction_index)
     }
   end
+
+  @doc false
+  @spec decode_logs(list()) :: [t()]
+  def decode_logs(logs) when is_list(logs), do: Enum.map(logs, &deserialize/1)
 end

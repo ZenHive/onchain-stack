@@ -8,6 +8,13 @@ Completed roadmap tasks.
 
 ### Breaking behaviour
 
+- `Onchain.RPC.eth_get_logs/2` and `eth_get_logs!/2` are removed. Stateless
+  `eth_getLogs` is `Cartouche.RPC.eth_get_logs/2`. It returns
+  `[%Cartouche.Filter.Log{}]` (addresses, hashes, topics, and data as binaries)
+  instead of the previous atom-keyed log maps (checksummed address strings,
+  hex topic and data strings). `Onchain.Transfer.fetch/2` follows the new call.
+  `Onchain.Transfer.parse_log/1` accepts both the struct and the old map.
+  Receipt logs from `get_transaction_receipt/2` stay maps.
 - JSON-RPC single calls and batches share `Cartouche.RPC`'s transport. Set the
   URL with `config :cartouche, :ethereum_node`, or per call with `:rpc_url` /
   `:ethereum_node` (`:rpc_url` wins). Set transport defaults with
