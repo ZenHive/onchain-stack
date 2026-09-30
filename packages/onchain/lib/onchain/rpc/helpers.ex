@@ -27,9 +27,18 @@ defmodule Onchain.RPC.Helpers do
   @spec do_rpc(String.t(), list(), keyword()) :: {:ok, term()} | {:error, term()}
   def do_rpc(method, params, opts) do
     case Cartouche.RPC.send_rpc(method, params, opts) do
-      {:ok, result} -> {:ok, result}
-      {:error, %{} = map} -> {:error, {:rpc_error, maybe_put_revert_data_hex(map)}}
-      {:error, other} -> {:error, {:rpc_error, %{message: inspect(other)}}}
+      {:ok, result} ->
+        {:ok, result}
+
+      {:error, {tag, _}} = error
+      when tag in [:method_not_found, :namespace_unavailable, :unavailable, :missing_option, :invalid_retry_policy] ->
+        error
+
+      {:error, %{} = map} ->
+        {:error, {:rpc_error, maybe_put_revert_data_hex(map)}}
+
+      {:error, other} ->
+        {:error, {:rpc_error, %{message: inspect(other)}}}
     end
   end
 
@@ -176,7 +185,7 @@ defmodule Onchain.RPC.Helpers do
   @spec to_rpc_opts(keyword()) :: keyword()
   def to_rpc_opts(opts) do
     opts
-    |> Keyword.take([:rpc_url, :timeout, :errors, :retry, :req_options])
+    |> Keyword.take([:rpc_url, :ethereum_node, :timeout, :headers, :errors, :retry, :req_options])
     |> Keyword.put_new(:timeout, @default_timeout_ms)
     |> rename_key(:rpc_url, :ethereum_node)
   end

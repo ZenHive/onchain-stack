@@ -9,5 +9,6 @@ import Config
 config :cartouche, Cartouche.OpenChain.API, plug: &Cartouche.OpenChainTest.TestClient.call/1
 config :cartouche, Cartouche.RPC, adapter: Cartouche.Test.RPCAdapter
 config :cartouche, :chain_id, :goerli
+config :cartouche, :ethereum_node, "https://example.com"
 config :cartouche, :open_chain_base_url, "https://example.com/open-chain"
 config :cartouche, :signer, default: {:priv_key, <<1::256>>}

@@ -3,10 +3,7 @@ defmodule Onchain.RPC.BatchTest do
 
   alias Onchain.RPC
 
-  # Req function plug (`fun(conn) -> conn`). It runs inside the test process that
-  # issues the batch request, so Process.get here reads that process's queued
-  # response. Injected via `config :onchain, Onchain.RPC, plug:` — onchain's own
-  # transport seam (Onchain.HTTP.req_options/3), not cartouche's removed one.
+  # Process-local response queue injected through the shared RPC transport.
   defmodule StubClient do
     @moduledoc false
 
@@ -31,13 +28,13 @@ defmodule Onchain.RPC.BatchTest do
   end
 
   setup_all do
-    previous = Application.get_env(:onchain, RPC)
-    Application.put_env(:onchain, RPC, plug: &StubClient.call/1)
+    previous = Application.get_env(:cartouche, Cartouche.RPC)
+    Application.put_env(:cartouche, Cartouche.RPC, plug: &StubClient.call/1)
 
     on_exit(fn ->
       case previous do
-        nil -> Application.delete_env(:onchain, RPC)
-        config -> Application.put_env(:onchain, RPC, config)
+        nil -> Application.delete_env(:cartouche, Cartouche.RPC)
+        config -> Application.put_env(:cartouche, Cartouche.RPC, config)
       end
     end)
 
@@ -159,9 +156,9 @@ defmodule Onchain.RPC.BatchTest do
       # Remove the app-config seam so the ONLY way the stub plug reaches Req is
       # the per-call `req_options:` (Onchain.HTTP.req_options/3 level 4). Before
       # the fix, to_rpc_opts/1 stripped :req_options and this hit the network.
-      previous = Application.get_env(:onchain, RPC)
-      Application.delete_env(:onchain, RPC)
-      on_exit(fn -> if previous, do: Application.put_env(:onchain, RPC, previous) end)
+      previous = Application.get_env(:cartouche, Cartouche.RPC)
+      Application.delete_env(:cartouche, Cartouche.RPC)
+      on_exit(fn -> if previous, do: Application.put_env(:cartouche, Cartouche.RPC, previous) end)
 
       StubClient.queue_response(fn _body ->
         [%{"id" => 1, "jsonrpc" => "2.0", "result" => "0x2a"}]

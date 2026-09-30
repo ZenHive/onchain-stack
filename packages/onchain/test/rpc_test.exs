@@ -454,8 +454,9 @@ defmodule Cartouche.RPCTest do
                Cartouche.RPC.send_rpc("net_version", [], req_options: [plug: &TransportErrorClient.call/1])
     end
 
-    test "an unsupported fee method preserves the node's observed error" do
-      assert {:error, %{code: -32_601, message: "The method eth_baseFee does not exist/is not available"}} =
+    test "an unsupported fee method tags the node refusal and preserves its details" do
+      assert {:error,
+              {:method_not_found, %{code: -32_601, message: "The method eth_baseFee does not exist/is not available"}}} =
                Cartouche.RPC.base_fee(req_options: [plug: &UnsupportedBaseFeeClient.call/1])
     end
   end

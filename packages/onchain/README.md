@@ -39,7 +39,23 @@ Requires an Ethereum JSON-RPC endpoint. Configure via:
 config :cartouche, :ethereum_node, "https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY"
 ```
 
-Or pass the URL per-call to `Onchain.RPC` functions.
+Or pass `rpc_url: url` or `ethereum_node: url` per call to either RPC module
+(`:rpc_url` takes precedence). Without either option or the application default,
+requests return `{:error, {:missing_option, :ethereum_node}}`.
+
+Single calls and JSON-RPC array batches now share `Cartouche.RPC`'s transport.
+Configure transport defaults with `config :cartouche, Cartouche.RPC, [...]`, then
+`config :cartouche, :req_options, [...]`; per-call `req_options: [...]` takes
+highest precedence. Migrate former batch settings under `:onchain, Onchain.RPC`
+and `:onchain, :req_options` to these `:cartouche` keys for RPC. The `:onchain`
+settings still apply to the CCIP-Read HTTP gateway.
+
+Opt into transport retries with `retry: [max_retries: 2, backoff_ms: 100]` on raw,
+typed, or batch calls. JSON-RPC errors are final; decoding does not resend a
+request. Each call emits one `[:onchain, :rpc, :request]` telemetry span, including
+all retry attempts, with the existing `method`, `status`, and `error` metadata.
+Cartouche callers now receive the same tagged node refusals as Onchain callers;
+other return shapes are unchanged.
 
 ## Node compatibility
 
@@ -60,7 +76,7 @@ your provider serves:
 | `trace_*` / `debug_*` on a free hosted plan | a plan that serves that namespace | `{:error, {:namespace_unavailable, map}}` (Alchemy: `-32600` "...not available on the Free tier") |
 | Methods the node does not implement (`eth_getBlockAccessList`, `eth_baseFee`, …) | a node that serves them, or a portable construction (`base_fee/1` reads the block header instead of `eth_baseFee`) | `{:error, {:method_not_found, map}}` |
 
-Each of those error terms is classified on the shared `Onchain.RPC` result path
+Each of those error terms is classified on the shared `Cartouche.RPC` transport path
 so a codegen'd wrapper, a hand-written wrapper, `call/3` and `batch/2` apply the
 same rules to the same wire response. Note that a provider may not send the same
 wire response in both modes — Alchemy reports pruned history as `-32001` to a
@@ -136,7 +152,7 @@ balance = Onchain.ERC20.balance_of!(usdc, "0xYourAddress")
 | `Onchain.Address` | Address validation, EIP-55 checksum, normalization |
 | `Onchain.Decimal` | Decimal precision helpers (to_decimal, div_pow10, to_basis_points) |
 | `Onchain.Fees` | EIP-1559 fee recommendation (`suggest_fees/2`) over `Cartouche.FeeHistory.t()` — pure function, returns `{base_fee, max_priority, max_fee}` |
-| `Onchain.RPC` | Ethereum JSON-RPC wrapper (eth_call, `eth_estimate_gas`, eth_getLogs, receipts, nonces, balances, block_number, chain_id, **decoded** `get_block_by_number`, `get_transaction_by_hash`, block-level receipt/count/by-index reads, EIP-7928 block access lists, eth_get_code, eth_send_raw_transaction, syncing, fee_history, `base_fee`, `blob_base_fee`, get_proof; `call/3` for any other method; `batch/2` for JSON-RPC array batching). Opt-in `retry: [max_retries: n, backoff_ms: ms]` on single-call paths retries transport failures only (default: no retry). Block receipts reuse the single-receipt parsed map; by-index transactions reuse the transaction map; block access lists preserve the node's raw camelCase response. `get_block_by_number/2` returns atom-keyed maps (quantities as integers — aligned with `get_transaction_by_hash/2`). `eth_get_logs/2` accepts atom keys or canonical camelCase string aliases (`"fromBlock"`, `"toBlock"`, `"blockHash"`, `"address"`, `"topics"`); `:block_hash` is mutually exclusive with `:from_block`/`:to_block` per EIP-1474 |
+| `Onchain.RPC` | Ethereum JSON-RPC wrapper (eth_call, `eth_estimate_gas`, eth_getLogs, receipts, nonces, balances, block_number, chain_id, **decoded** `get_block_by_number`, `get_transaction_by_hash`, block-level receipt/count/by-index reads, EIP-7928 block access lists, eth_get_code, eth_send_raw_transaction, syncing, fee_history, `base_fee`, `blob_base_fee`, get_proof; `call/3` for any other method; `batch/2` for JSON-RPC array batching). Opt-in `retry: [max_retries: n, backoff_ms: ms]` on single and batch paths retries transport failures only (default: no retry). Block receipts reuse the single-receipt parsed map; by-index transactions reuse the transaction map; block access lists preserve the node's raw camelCase response. `get_block_by_number/2` returns atom-keyed maps (quantities as integers — aligned with `get_transaction_by_hash/2`). `eth_get_logs/2` accepts atom keys or canonical camelCase string aliases (`"fromBlock"`, `"toBlock"`, `"blockHash"`, `"address"`, `"topics"`); `:block_hash` is mutually exclusive with `:from_block`/`:to_block` per EIP-1474 |
 | `Onchain.RPC.Helpers` | Shared RPC helpers (hex normalization, block tags, tx hash validation; `parse_block_response/1`, `parse_transaction_map/1`; execution-revert maps get `:data` hex for `decode_error/2`) |
 | `Onchain.Block` | Block fetching with parsed fields, timestamp-based binary search |
 | `Onchain.Contract` | Generic contract call (encode -> eth_call -> decode in one function) |

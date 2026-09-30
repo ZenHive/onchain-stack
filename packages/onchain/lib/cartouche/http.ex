@@ -1,6 +1,9 @@
 defmodule Cartouche.HTTP do
   @moduledoc """
-  HTTP helpers shared by cartouche's `Req`-based RPC transports.
+  HTTP helpers for the shared JSON-RPC transport and Cartouche HTTP clients.
+
+  `Cartouche.RPC.send_rpc/3` and `Cartouche.RPC.send_batch/2` both use
+  `Cartouche.RPC` as owner and the `:cartouche` configuration keys below.
   """
 
   @doc """

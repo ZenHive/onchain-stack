@@ -1,6 +1,19 @@
 defmodule Cartouche.RPC do
   @moduledoc """
-  Excessively simple RPC client for Ethereum.
+  Shared JSON-RPC transport and typed Ethereum client.
+
+  Single calls and batches use `config :cartouche, :ethereum_node` for the URL,
+  `config :cartouche, Cartouche.RPC, [...]` for transport defaults, and
+  `config :cartouche, :req_options, [...]` for global Req options. Per-call
+  `:rpc_url` / `:ethereum_node` and `:req_options` override these defaults.
+  A missing URL returns `{:error, {:missing_option, :ethereum_node}}`.
+  The former `:onchain` batch transport configuration is no longer used.
+
+  Both paths emit `[:onchain, :rpc, :request]` telemetry spans. Refusals now
+  uniformly return `:method_not_found`, `:namespace_unavailable`, or `:unavailable`
+  tags; other single-call error shapes remain unchanged. See `Onchain.RPC`'s
+  node-capability refusal documentation for the live Alchemy provenance and
+  message-sensitive meaning of -32600 and -32001.
 
   Local signing through `Cartouche.Signer` is the normal route for submitting
   transactions (`eth_sendRawTransaction`). The node-custody methods
@@ -31,8 +44,20 @@ defmodule Cartouche.RPC do
   alias Cartouche.Transaction.V1
   alias Cartouche.Transaction.V2
   alias Cartouche.Transaction.V_2930
+  alias Onchain.RPC.Helpers
 
   require Logger
+
+  @rpc_request_event [:onchain, :rpc, :request]
+  @batch_method "batch"
+  @default_retry_max_retries 2
+  @default_retry_backoff_ms 100
+  @no_retry_max_retries 0
+  # JSON-RPC 2.0 / observed hosted-provider refusal codes. Message patterns for
+  # -32600 and -32001 are pinned from live Alchemy mainnet responses (2026-08-25).
+  @jsonrpc_invalid_request -32_600
+  @jsonrpc_method_not_found -32_601
+  @jsonrpc_unable_to_complete -32_001
 
   # `r`/`s` decide whether a fill result is already signed; the full set is
   # shape-checked so a garbled value cannot pass as an unset field.
@@ -279,7 +304,7 @@ defmodule Cartouche.RPC do
   @type invalid_params_error :: {:invalid_params, Exception.t()}
 
   @typedoc "All values that can appear inside an `{:error, reason}` tuple returned by `send_rpc/3`."
-  @type send_rpc_error :: rpc_error() | invalid_params_error() | Req.Response.t() | String.t()
+  @type send_rpc_error :: rpc_error() | invalid_params_error() | Req.Response.t() | String.t() | {atom(), term()}
 
   @typedoc "Decoded `eth_createAccessList` result, retaining an optional execution error."
   @type access_list_result :: %{
@@ -455,7 +480,7 @@ defmodule Cartouche.RPC do
         kind: :value,
         default: [],
         description:
-          "Keyword options for transport and decoding: `:ethereum_node`, `:timeout`, `:headers`, `:verbose`, `:req_options`, `:decode`, `:errors`, and `:id`."
+          "Keyword options for transport and decoding: `:rpc_url`, `:ethereum_node`, `:timeout`, `:headers`, `:retry`, `:verbose`, `:req_options`, `:decode`, `:errors`, and `:id`."
       ]
     ],
     opts: [
@@ -500,7 +525,9 @@ defmodule Cartouche.RPC do
 
   Common options (other RPC wrappers forward `opts` here):
 
-  - `:ethereum_node` — node URL; falls back to `Application.get_env(:cartouche, :ethereum_node)`
+  - `:rpc_url` / `:ethereum_node` — node URL (`:rpc_url` takes precedence); falls back to `Application.get_env(:cartouche, :ethereum_node)`
+  - `:retry` — opt-in `[max_retries: 2, backoff_ms: 100]`; only transport failures
+    retry, before typed decoding. JSON-RPC application errors are final.
   - `:timeout` — Req `receive_timeout` in ms
   - `:headers` — extra request headers
   - `:verbose` — when `true`, decode failures log at `:error` instead of `:info`
@@ -513,43 +540,359 @@ defmodule Cartouche.RPC do
   @spec send_rpc(binary(), [term()], Keyword.t()) ::
           {:ok, term()} | {:error, send_rpc_error()} | :invalid_hex
   def send_rpc(method, params, opts \\ []) do
-    decode = Keyword.get(opts, :decode)
-    errors = Keyword.get(opts, :errors)
-    timeout = Keyword.get(opts, :timeout, @default_timeout)
-    verbose = Keyword.get(opts, :verbose, false)
-    url = Keyword.get(opts, :ethereum_node, Cartouche.Application.ethereum_node())
+    :telemetry.span(@rpc_request_event, %{method: method}, fn ->
+      result = method |> do_send_rpc(params, opts) |> classify_node_refusal()
+      {result, rpc_request_stop_metadata(method, result)}
+    end)
+  end
+
+  defp do_send_rpc(method, params, opts) do
     id = Keyword.get_lazy(opts, :id, fn -> System.unique_integer([:positive]) end)
     body = get_body(method, params, id)
 
-    with {:ok, encoded_body} <- encode_body(body) do
-      req_result =
-        normalize_response(
-          # NOTE: `receive_timeout` is a best-effort maybe-sort-of timeout.
-          # `decode_body: false` keeps `body` a raw string so `decode_response/5`
-          # can `Jason.decode/1` it; `retry: false` preserves the no-retry contract.
-          Req.request(
-            Cartouche.HTTP.req_options(
-              __MODULE__,
-              [
-                method: :post,
-                url: url,
-                headers: headers(Keyword.get(opts, :headers, [])),
-                body: encoded_body,
-                receive_timeout: timeout,
-                decode_body: false,
-                retry: false
-              ],
-              opts
-            )
-          )
-        )
+    with {:ok, encoded_body} <- encode_body(body),
+         {:ok, %Req.Response{body: resp_body}} <- request(encoded_body, opts),
+         {:ok, result} <- decode_response(resp_body, id, opts[:errors], method, body) do
+      decode_result(opts[:decode], result, method, Keyword.get(opts, :verbose, false))
+    end
+  end
 
-      with {:ok, %Req.Response{body: resp_body}} <- req_result,
-           {:ok, result} <- decode_response(resp_body, body["id"], errors, method, body) do
-        decode_result(decode, result, method, verbose)
+  @doc "Sends a JSON-RPC array batch and returns raw results in request order. Uses the same options as `send_rpc/3`."
+  @spec send_batch([{String.t(), [term()]}], keyword()) :: {:ok, [term()]} | {:error, term()}
+  def send_batch(requests, opts \\ [])
+  def send_batch([], _opts), do: {:ok, []}
+
+  def send_batch(requests, opts) when is_list(requests) do
+    :telemetry.span(@rpc_request_event, %{method: @batch_method}, fn ->
+      result = do_batch(requests, opts)
+      {result, rpc_request_stop_metadata(@batch_method, result)}
+    end)
+  end
+
+  defp request(encoded_body, opts) do
+    url = opts[:rpc_url] || opts[:ethereum_node] || Application.get_env(:cartouche, :ethereum_node)
+
+    with {:ok, policy} <- normalize_retry_policy(opts[:retry]) do
+      if is_binary(url) and url != "" do
+        base = [
+          method: :post,
+          url: url,
+          headers: headers(Keyword.get(opts, :headers, [])),
+          body: encoded_body,
+          receive_timeout: Keyword.get(opts, :timeout, @default_timeout),
+          decode_body: false,
+          retry: false
+        ]
+
+        request_opts = Cartouche.HTTP.req_options(__MODULE__, base, opts)
+        retry_request(request_opts, policy)
+      else
+        {:error, {:missing_option, :ethereum_node}}
       end
     end
   end
+
+  defp retry_request(opts, %{max_retries: remaining, backoff_ms: backoff} = policy) do
+    result = Req.request(opts)
+
+    if remaining > 0 and retryable_response?(result) do
+      if backoff > 0, do: Process.sleep(backoff)
+      retry_request(opts, %{policy | max_retries: remaining - 1})
+    else
+      normalize_response(result)
+    end
+  end
+
+  defp retryable_response?({:error, _}), do: true
+
+  defp retryable_response?({:ok, %Req.Response{status: status, body: body}}) when status < 200 or status >= 300 do
+    # A gateway failure can be retried, but a JSON-RPC application error is final,
+    # including providers that deliver it under HTTP 400 or 503.
+    case Jason.decode(body) do
+      {:ok, %{"error" => %{"code" => _}}} -> false
+      _ -> true
+    end
+  end
+
+  defp retryable_response?({:ok, _}), do: false
+
+  defp rpc_request_stop_metadata(method, {:ok, _}), do: %{method: method, status: :ok}
+
+  defp rpc_request_stop_metadata(@batch_method, {:error, reason}),
+    do: %{method: @batch_method, status: :error, error: reason}
+
+  defp rpc_request_stop_metadata(method, {:error, reason}) do
+    error =
+      case reason do
+        {tag, _}
+        when tag in [
+               :rpc_error,
+               :method_not_found,
+               :namespace_unavailable,
+               :unavailable,
+               :invalid_retry_policy,
+               :missing_option
+             ] ->
+          reason
+
+        %{} = map ->
+          {:rpc_error, Helpers.maybe_put_revert_data_hex(map)}
+
+        other ->
+          {:rpc_error, %{message: inspect(other)}}
+      end
+
+    %{method: method, status: :error, error: error}
+  end
+
+  defp rpc_request_stop_metadata(method, :invalid_hex), do: %{method: method, status: :error, error: :invalid_hex}
+
+  @spec normalize_retry_policy(term()) ::
+          {:ok, %{max_retries: non_neg_integer(), backoff_ms: non_neg_integer()}}
+          | {:error, term()}
+  defp normalize_retry_policy(retry) when retry in [nil, false] do
+    {:ok, %{max_retries: @no_retry_max_retries, backoff_ms: @default_retry_backoff_ms}}
+  end
+
+  defp normalize_retry_policy(policy) when is_list(policy) do
+    max_retries = Keyword.get(policy, :max_retries, @default_retry_max_retries)
+    backoff_ms = Keyword.get(policy, :backoff_ms, @default_retry_backoff_ms)
+
+    if valid_retry_policy?(max_retries, backoff_ms) do
+      {:ok, %{max_retries: max_retries, backoff_ms: backoff_ms}}
+    else
+      {:error, {:invalid_retry_policy, policy}}
+    end
+  end
+
+  defp normalize_retry_policy(policy), do: {:error, {:invalid_retry_policy, policy}}
+
+  @spec valid_retry_policy?(term(), term()) :: boolean()
+  defp valid_retry_policy?(max_retries, backoff_ms) do
+    is_integer(max_retries) and max_retries >= 0 and is_integer(backoff_ms) and backoff_ms >= 0
+  end
+
+  # Classify distinguishable node-capability refusals. Unrecognized shapes,
+  # including a `%Req.Response{}` whose body is not a JSON-RPC error, pass
+  # through byte-identical. Alchemy answers method-not-found as HTTP 400 with a
+  # JSON-RPC body (cartouche surfaces that as `%Req.Response{}` rather than
+  # decoding it), so the body is unwrapped only when the result is classified.
+  @spec classify_node_refusal({:ok, term()} | {:error, term()}) :: {:ok, term()} | {:error, term()}
+  defp classify_node_refusal({:ok, _} = ok), do: ok
+
+  defp classify_node_refusal({:error, {:rpc_error, map}} = err) when is_map(map) do
+    classify_error_map(map, err)
+  end
+
+  defp classify_node_refusal({:error, map} = err) when is_map(map) do
+    classify_error_map(map, err)
+  end
+
+  defp classify_node_refusal(other), do: other
+
+  defp classify_error_map(map, err) do
+    case jsonrpc_error_fields(map) do
+      {:ok, code, message, fields} ->
+        case refusal_tag(code, message) do
+          nil -> err
+          tag -> {:error, {tag, fields}}
+        end
+
+      :error ->
+        err
+    end
+  end
+
+  @spec jsonrpc_error_fields(map()) :: {:ok, integer(), String.t(), map()} | :error
+  defp jsonrpc_error_fields(%{code: code, message: message} = map) when is_integer(code) and is_binary(message) do
+    {:ok, code, message, map}
+  end
+
+  defp jsonrpc_error_fields(%Req.Response{body: body}) when is_binary(body) do
+    decode_jsonrpc_error_body(body)
+  end
+
+  defp jsonrpc_error_fields(_), do: :error
+
+  @spec decode_jsonrpc_error_body(binary()) :: {:ok, integer(), String.t(), map()} | :error
+  defp decode_jsonrpc_error_body(body) do
+    case Jason.decode(body) do
+      {:ok, %{"error" => %{"code" => code, "message" => message} = error}}
+      when is_integer(code) and is_binary(message) ->
+        fields = maybe_put_error_field(%{code: code, message: message}, :data, Map.get(error, "data"))
+
+        {:ok, code, message, fields}
+
+      _ ->
+        :error
+    end
+  end
+
+  @spec refusal_tag(integer(), String.t()) :: atom() | nil
+  defp refusal_tag(@jsonrpc_method_not_found, _message), do: :method_not_found
+
+  defp refusal_tag(@jsonrpc_invalid_request, message) when is_binary(message) do
+    cond do
+      namespace_unavailable_message?(message) -> :namespace_unavailable
+      method_not_found_message?(message) -> :method_not_found
+      true -> nil
+    end
+  end
+
+  defp refusal_tag(@jsonrpc_unable_to_complete, message) when is_binary(message) do
+    if unable_to_complete_message?(message), do: :unavailable
+  end
+
+  defp refusal_tag(_code, _message), do: nil
+
+  @spec namespace_unavailable_message?(String.t()) :: boolean()
+  defp namespace_unavailable_message?(message) do
+    down = String.downcase(message)
+    String.contains?(down, "not available on the") and String.contains?(down, "tier")
+  end
+
+  @spec method_not_found_message?(String.t()) :: boolean()
+  defp method_not_found_message?(message) do
+    down = String.downcase(message)
+    String.starts_with?(down, "unsupported method:") or String.contains?(down, "is not available")
+  end
+
+  @spec unable_to_complete_message?(String.t()) :: boolean()
+  defp unable_to_complete_message?(message) do
+    message |> String.downcase() |> String.contains?("unable to complete request")
+  end
+
+  @spec do_batch([{String.t(), [term()]}], keyword()) :: {:ok, [term()]} | {:error, term()}
+  defp do_batch(requests, opts) do
+    with {:ok, rpc_requests} <- build_batch_requests(requests),
+         {:ok, encoded_body} <- encode_json(rpc_requests),
+         {:ok, body} <- send_batch_request(encoded_body, opts) do
+      decode_batch_body(body, Enum.map(rpc_requests, & &1["id"]))
+    end
+  end
+
+  @spec build_batch_requests([{String.t(), [term()]}]) :: {:ok, [map()]} | {:error, term()}
+  defp build_batch_requests(requests) do
+    requests
+    |> Enum.with_index(1)
+    |> Enum.reduce_while({:ok, []}, fn
+      {{method, params}, id}, {:ok, acc} when is_binary(method) and is_list(params) ->
+        {:cont, {:ok, [Cartouche.RPC.get_body(method, params, id) | acc]}}
+
+      {request, _id}, {:ok, _acc} ->
+        {:halt, {:error, {:invalid_batch_request, request}}}
+    end)
+    |> case do
+      {:ok, rpc_requests} -> {:ok, Enum.reverse(rpc_requests)}
+      error -> error
+    end
+  end
+
+  @spec encode_json(term()) :: {:ok, binary()} | {:error, term()}
+  defp encode_json(term) do
+    case Jason.encode(term) do
+      {:ok, encoded} -> {:ok, encoded}
+      {:error, reason} -> {:error, {:rpc_error, %{message: inspect(reason)}}}
+    end
+  end
+
+  @spec send_batch_request(binary(), keyword()) :: {:ok, binary()} | {:error, term()}
+  defp send_batch_request(encoded_body, opts) do
+    case encoded_body |> request(opts) |> classify_node_refusal() do
+      {:ok, %Req.Response{body: body}} ->
+        {:ok, body}
+
+      {:error, %Req.Response{body: body}} ->
+        {:error, {:rpc_error, %{message: body}}}
+
+      {:error, {tag, _}} = error
+      when tag in [:method_not_found, :namespace_unavailable, :unavailable, :missing_option, :invalid_retry_policy] ->
+        error
+
+      {:error, message} ->
+        {:error, {:rpc_error, %{message: message}}}
+    end
+  end
+
+  @spec decode_batch_body(binary(), [pos_integer()]) :: {:ok, [term()]} | {:error, term()}
+  defp decode_batch_body(body, ids) do
+    case Jason.decode(body) do
+      {:ok, responses} when is_list(responses) ->
+        decode_batch_responses(responses, ids)
+
+      {:ok, %{"error" => error}} ->
+        classify_node_refusal({:error, normalize_rpc_error(error)})
+
+      {:ok, other} ->
+        {:error, {:rpc_error, %{message: "unexpected batch response: #{inspect(other)}"}}}
+
+      {:error, reason} ->
+        {:error, {:rpc_error, %{message: inspect(reason)}}}
+    end
+  end
+
+  @spec decode_batch_responses([term()], [pos_integer()]) :: {:ok, [term()]} | {:error, term()}
+  defp decode_batch_responses(responses, ids) do
+    responses_by_id =
+      responses
+      |> Enum.filter(&is_map/1)
+      |> Map.new(&{&1["id"], &1})
+
+    ids
+    |> Enum.map(&Map.get(responses_by_id, &1))
+    |> collect_batch_results()
+  end
+
+  @spec collect_batch_results([map() | nil]) :: {:ok, [term()]} | {:error, term()}
+  defp collect_batch_results(responses) do
+    responses
+    |> Enum.reduce_while({:ok, []}, fn
+      %{"result" => result}, {:ok, acc} ->
+        {:cont, {:ok, [result | acc]}}
+
+      %{"error" => error}, {:ok, _acc} ->
+        {:halt, classify_node_refusal({:error, normalize_rpc_error(error)})}
+
+      nil, {:ok, _acc} ->
+        {:halt, {:error, {:rpc_error, %{message: "missing batch response"}}}}
+
+      other, {:ok, _acc} ->
+        {:halt, {:error, {:rpc_error, %{message: "unexpected batch item: #{inspect(other)}"}}}}
+    end)
+    |> case do
+      {:ok, results} -> {:ok, Enum.reverse(results)}
+      error -> error
+    end
+  end
+
+  @spec normalize_rpc_error(term()) :: {:rpc_error, map()}
+  defp normalize_rpc_error(%{} = error) do
+    normalized =
+      %{}
+      |> maybe_put_error_field(:code, Map.get(error, "code"))
+      |> maybe_put_error_field(:message, Map.get(error, "message"))
+      |> maybe_put_error_field(:data, Map.get(error, "data"))
+      |> maybe_put_revert_from_error_data()
+      |> Helpers.maybe_put_revert_data_hex()
+
+    {:rpc_error, normalized}
+  end
+
+  defp normalize_rpc_error(other), do: {:rpc_error, %{message: inspect(other)}}
+
+  @spec maybe_put_error_field(map(), atom(), term()) :: map()
+  defp maybe_put_error_field(map, _key, nil), do: map
+  defp maybe_put_error_field(map, key, value), do: Map.put(map, key, value)
+
+  @spec maybe_put_revert_from_error_data(map()) :: map()
+  defp maybe_put_revert_from_error_data(%{code: 3, data: data} = map) when is_binary(data) do
+    case Onchain.Hex.decode(data) do
+      {:ok, revert} -> Map.put_new(map, :revert, revert)
+      {:error, _reason} -> map
+    end
+  end
+
+  defp maybe_put_revert_from_error_data(map), do: map
 
   @spec encode_body(map()) :: {:ok, binary()} | {:error, invalid_params_error()}
   defp encode_body(body) do
