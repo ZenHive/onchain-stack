@@ -11,6 +11,17 @@ defmodule Onchain.Tempo.Verification.MutationTest do
     {:ok, results: Campaign.run()}
   end
 
+  test "campaign never writes tracked patch targets on disk", %{results: _results} do
+    repo_root = Path.expand("../../../../..", __DIR__)
+
+    for rel <- Campaign.tracked_patch_files() do
+      path = Path.join("packages/onchain_tempo", rel)
+
+      assert {_, 0} = System.cmd("git", ["diff", "--quiet", "--", path], cd: repo_root),
+             "tracked file #{rel} differs from git after campaign"
+    end
+  end
+
   test "every mutant replace pattern is present in the live source" do
     root = Path.expand("../../../../", __DIR__)
 

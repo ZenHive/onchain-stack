@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **Run the 0x76 mutation campaign against scratch and in-memory sources** (task 9046). Native mutants compile from `_build/tempo_verification_scratch` via `Rustler.Compiler` with `CARGO_TARGET_DIR` pointed at the package `target/` tree; codec mutants compile through `Code.compile_string/2` without touching tracked files. The campaign refuses to start when `lib/onchain/tempo/codec.ex` or `native/onchain_tempo/src/lib.rs` have staged or unstaged git diffs.
+
 - **Retargeted the 0x76 mutation campaign at the tempo-primitives native encoder** (task 9045). Mutants and canaries now patch `native/onchain_tempo` glue, `Onchain.Tempo.Codec`, `Transaction`, and `Builder` instead of the removed Elixir RLP encoder; the ledger records thirteen killed mutants, with canaries for a wrong field mapping, the 0x78 fee-payer domain and a key_authorization dropped from the 0x78 preimage.
 
 - **Requires cartouche `~> 0.10`; fee-payer signing and sender recovery run on `Cartouche.Signer.Secp256k1` (RustCrypto k256) instead of curvy.** `recover_sender/2` builds a `%Cartouche.Signature{}`; the curvy#8 pre-normalization workaround is subsumed by `Cartouche.Signature.normalize/1`. curvy is no longer in onchain_tempo's dependency tree.

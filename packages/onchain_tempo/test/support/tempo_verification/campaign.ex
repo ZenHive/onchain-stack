@@ -34,6 +34,8 @@ defmodule Onchain.Tempo.Verification.Campaign do
   @codec_rel "lib/onchain/tempo/codec.ex"
   @native_rel "native/onchain_tempo/src/lib.rs"
   @key_auth_fixture "priv/verification/0x76/tempo_primitives_key_authorization.json"
+  @scratch_dir "_build/tempo_verification_scratch"
+  @tracked_patch_files [@native_rel, @codec_rel]
 
   @type mutant :: Mutant.t()
 
@@ -170,8 +172,13 @@ defmodule Onchain.Tempo.Verification.Campaign do
   @spec canary_ids() :: [String.t()]
   def canary_ids, do: Enum.map(Enum.filter(mutants(), & &1.canary?), & &1.id)
 
+  @doc false
+  @spec tracked_patch_files() :: [String.t()]
+  def tracked_patch_files, do: @tracked_patch_files
+
   @spec run() :: [map()]
   def run do
+    assert_tracked_patch_targets_clean!()
     Enum.map(mutants(), &evaluate/1)
   end
 
@@ -227,21 +234,146 @@ defmodule Onchain.Tempo.Verification.Campaign do
   end
 
   @spec with_patched_source(mutant(), (-> term())) :: term() | {:error, term()}
-  defp with_patched_source(mutant, continue) do
-    path = source_path(mutant.file)
-    original = File.read!(path)
+  defp with_patched_source(%Mutant{surface: :native} = mutant, continue) do
+    with_patched_native_scratch(mutant, continue)
+  end
 
-    if String.contains?(original, mutant.replace) do
-      File.write!(path, String.replace(original, mutant.replace, mutant.with, global: false))
+  defp with_patched_source(%Mutant{surface: :codec} = mutant, continue) do
+    with_patched_codec(mutant, continue)
+  end
+
+  @spec with_patched_codec(mutant(), (-> term())) :: term() | {:error, term()}
+  defp with_patched_codec(mutant, continue) do
+    path = source_path(mutant.file)
+    source = File.read!(path)
+
+    if String.contains?(source, mutant.replace) do
+      patched = String.replace(source, mutant.replace, mutant.with, global: false)
 
       try do
-        with :ok <- recompile_native!(), do: continue.()
+        with :ok <- compile_codec_source!(patched, path),
+             :ok <- reload_native_nif!(),
+             do: continue.()
       after
-        File.write!(path, original)
+        _ = compile_codec_source!(source, path)
+        _ = reload_native_nif!()
+      end
+    else
+      {:error, {:pattern_missing, mutant.replace}}
+    end
+  end
+
+  @spec with_patched_native_scratch(mutant(), (-> term())) :: term() | {:error, term()}
+  defp with_patched_native_scratch(mutant, continue) do
+    path = source_path(mutant.file)
+    source = File.read!(path)
+
+    if String.contains?(source, mutant.replace) do
+      scratch_rs = scratch_source_path(mutant.file)
+      ensure_scratch_native_tree!()
+      File.write!(scratch_rs, String.replace(source, mutant.replace, mutant.with, global: false))
+
+      try do
+        with :ok <- recompile_native_scratch!(), do: continue.()
+      after
         _ = recompile_native!()
       end
     else
       {:error, {:pattern_missing, mutant.replace}}
+    end
+  end
+
+  @spec assert_tracked_patch_targets_clean!() :: :ok
+  defp assert_tracked_patch_targets_clean! do
+    repo_root = monorepo_root()
+
+    for {args, label} <- [
+          {["diff", "--quiet", "--"], "unstaged"},
+          {["diff", "--cached", "--quiet", "--"], "staged"}
+        ] do
+      paths = Enum.map(@tracked_patch_files, &Path.join("packages/onchain_tempo", &1))
+
+      case System.cmd("git", args ++ paths, cd: repo_root, stderr_to_stdout: true) do
+        {"", 0} ->
+          :ok
+
+        {output, _} ->
+          raise """
+          mutation campaign refuses to run: tracked patch target has #{label} changes (#{inspect(paths)}).
+          Restore or commit before re-running. git output: #{String.trim(output)}
+          """
+      end
+    end
+
+    :ok
+  end
+
+  @spec monorepo_root() :: String.t()
+  defp monorepo_root do
+    package_root()
+    |> Path.join("../..")
+    |> Path.expand()
+  end
+
+  @spec scratch_root() :: String.t()
+  defp scratch_root, do: Path.join(package_root(), @scratch_dir)
+
+  @spec scratch_source_path(String.t()) :: String.t()
+  defp scratch_source_path(rel), do: Path.join(scratch_root(), rel)
+
+  @spec ensure_scratch_native_tree!() :: :ok
+  defp ensure_scratch_native_tree! do
+    tracked_native = Path.join(package_root(), "native/onchain_tempo")
+    scratch_native = Path.join(scratch_root(), "native/onchain_tempo")
+
+    if not File.exists?(scratch_native) do
+      File.mkdir_p!(Path.dirname(scratch_native))
+      File.cp_r!(tracked_native, scratch_native)
+    end
+
+    :ok
+  end
+
+  @spec compile_codec_source!(String.t(), String.t()) :: :ok | {:error, term()}
+  defp compile_codec_source!(source, file) do
+    previous = Code.get_compiler_option(:ignore_module_conflict)
+
+    try do
+      Code.put_compiler_option(:ignore_module_conflict, true)
+      purge(Codec)
+
+      case Code.compile_string(source, file) do
+        [{Codec, _}] ->
+          :ok
+
+        compiled ->
+          {:error, {:codec_module_missing, Enum.map(compiled, &elem(&1, 0))}}
+      end
+    catch
+      kind, reason -> {:error, Exception.format_banner(kind, reason)}
+    after
+      Code.put_compiler_option(:ignore_module_conflict, previous)
+    end
+  end
+
+  @spec recompile_native_scratch!() :: :ok | {:error, term()}
+  defp recompile_native_scratch! do
+    scratch_native = Path.join(scratch_root(), "native/onchain_tempo")
+    shared_target = Path.join(package_root(), "native/onchain_tempo/target")
+
+    try do
+      Rustler.Compiler.compile_crate(
+        :onchain_tempo,
+        [crate: "onchain_tempo"],
+        otp_app: :onchain_tempo,
+        crate: "onchain_tempo",
+        path: scratch_native,
+        env: [{"CARGO_TARGET_DIR", shared_target}]
+      )
+
+      reload_native_nif!()
+    catch
+      kind, reason -> {:error, Exception.format_banner(kind, reason)}
     end
   end
 
