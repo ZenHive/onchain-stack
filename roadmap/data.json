@@ -16024,7 +16024,7 @@
       "phase": 9100,
       "bundle": "onchain_core_consolidation",
       "milestone": "onchain_core_consolidation",
-      "status": "in_progress",
+      "status": "done",
       "title": "Gate the Rust dependency tree: cargo audit (and onchain's missing cargo test/clippy) in mix ci",
       "scores": {
         "d": 3,
@@ -16066,10 +16066,17 @@
         "packages/onchain/test/abi",
         "packages/onchain/native/onchain_abi/src/lib.rs"
       ],
+      "shipped_in": "288f70699f23a3af9f1a9d1fe346a2e5e852d5c6",
       "body": "Since the alloy/tempo-primitives switch, onchain ships a Rust NIF (`packages/onchain/native/onchain_abi`) with a large crate tree, and onchain_evm has two more crates. `mix deps.audit` only sees Hex packages, so no gate looks at any Cargo.lock for advisories.\n\nEvidence (2026-09-30, `cargo audit` 0.21 by hand): onchain_evm's crate carried RUSTSEC-2026-0285 (rustls 0.23.43, medium) with nothing flagging it; fixed inline in 1539ba1 by bumping rustls to 0.23.45. All three crates additionally report allowed warnings (unmaintained `paste`, `derivative`; yanked `chacha20` in onchain_evm) — cargo audit exits 0 on those.\n\nAlso: onchain_evm gates its crates with `cargo test` + `cargo clippy` via `Onchain.Cargo` (its `lib/`, so it ships in the tarball); onchain has no Rust gate at all — its crate's tests and lints are ungated.\n\nWanted: every in-repo crate is audited from its package's `mix ci`, and onchain's crate gets the same test/clippy gate onchain_evm already has. Where the shared logic lives (shared/mix_helpers.exs vs a per-package module) is the implementer's call; it must not end up in a published tarball's runtime surface if avoidable, and must not duplicate a copy per package.\n\nBehaviour when the tool is absent: DIST-14 (docs/specs/onchain-distribution.md). The install command is `cargo install cargo-audit --locked`. This deliberately differs from the existing test/clippy skip on absent cargo, because cargo audit is a security gate.\n\n**Added 2026-09-30 — deep-nesting runtime check (operator's call).** Reviewed `native/onchain_abi/src/lib.rs`: every export is wrapped in `catch_unwind`, the default path runs on `DirtyCpu`, only small static schemas take `abi_small` on the normal scheduler, and `spend`/`remaining` budgets bound parse and decode work; the crate has no `unsafe` of its own. What `catch_unwind` cannot catch is a stack overflow (and allocation failure), which aborts the whole VM. Premise unverified — confirm before building on it: the per-node budget should prevent recursion deep enough to overflow, but no test pins that. Add the test; if it crashes the VM, the budget needs an explicit depth limit.\n",
       "created_at": "2026-09-29",
       "started_at": "2026-09-30",
+      "done_at": "2026-09-30",
       "scored_at": "2026-09-29",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1790733441675-670a809e, 288f70699f23a3af9f1a9d1fe346a2e5e852d5c6).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1790733441675-670a809e",
       "spec_changes": [
         {
           "rule": "NIF-2",
