@@ -66,7 +66,9 @@ defmodule Cartouche.Transaction.BeforeAlloyTest do
       end
 
     counts = Enum.frequencies_by(results, &elem(&1, 2))
-    IO.inspect(counts, label: "Captured call compatibility outcomes")
+    {bounds, rest} = Enum.split_with(counts, &match?({{:encode_bound, _, _}, _}, &1))
+    assert Enum.sum(for {_key, count} <- bounds, do: count) == 618
+    assert Map.new(rest) == %{nil => 536, encode_invalid: 1, decode_invalid: 620}
     mismatches = Enum.reject(results, &elem(&1, 0))
 
     assert mismatches == [],

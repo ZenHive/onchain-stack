@@ -1,19 +1,19 @@
 {
   "task": 9032,
   "baseline_revision": "2b2eb421a7fbe653737bfacaf25d39127638f8ee",
-  "after": "uncommitted task worktree; exact source hashes below",
+  "after": "review adjustments on the alloy adapters; exact source hashes below",
   "source_sha256": {
     "lib/abi/native.ex": "71911a83d5bd46427d31cf502e9164393fa664d87d8dec50c531ca8558acf341",
     "lib/cartouche/signer.ex": "97794c1d4efddff61472be63453c996c27abddd8528ab75b5f3f3cd312b4e5fb",
     "lib/cartouche/transaction/call.ex": "e24bd06792c010b653e8463383a3a6721c10069561e096058d1e9a7211efcb9e",
-    "lib/cartouche/transaction/native.ex": "7023575e0282fb6e9803887eca69411646bd68a1a906ac0cbda2b6ff67e2f0b0",
+    "lib/cartouche/transaction/native.ex": "298db8889879eaf863c40a76803f85f80d2f31b6df90cb6e3cdd4c02460f1ac8",
     "lib/cartouche/transaction/signature.ex": "25ca7889f7fd84a04fcaf540817d88c3a87cf07164b27679ad5f80f16d860106",
     "lib/cartouche/transaction/typed_decode.ex": "68f49af675dcbf14317029f5fe36767e56d7dcb3de79c40534cd2ad29bcc321e",
     "lib/cartouche/transaction/v3.ex": "c4567208420a12735e632a9421f65a7aa2a605b12fd74ef2b1f1f604aae43d50",
     "lib/cartouche/transaction/v4.ex": "6dc097b9e958bfd2fe41c93fde58eff7f31a86cfdef868d23ab4623ba538e734",
     "lib/cartouche/transaction/v_2930.ex": "3a645b88b7d51df34b7f2e1918a7203af79b399dc12dfdf936c61318401a133c",
     "lib/cartouche/transaction.ex": "3f1ba5dc8ccd20f04a31e3ade2c2d4ea361da63d19917e7d539574b5dfcaa64d",
-    "lib/cartouche/typed/native.ex": "7167d5dd3afae42f17bc8abeee99927a415288e0f711306bf3f19b9a4449125d",
+    "lib/cartouche/typed/native.ex": "91ea88f335368fc130f46fb372fdadf7328b4cdbcbe12939013086bb70d63842",
     "lib/cartouche/typed.ex": "31c573b137ebbe4ff7d57366a7be6ed52d3c2ecf8c824de9867741db50cc12bf",
     "native/onchain_abi/Cargo.lock": "7ffa121361b747ba56bbd278b249dc27169a9a5b18cc6ea1b067814285c4bdeb",
     "native/onchain_abi/Cargo.toml": "1e84e80224200da48aa74ef7b592c384c012729aa2270866c3510ba40efdbac3",
@@ -128,6 +128,7 @@
     "Source building an optional Rustler dependency from Tempo requires the explicit Rustler code path shown above. No dependency declarations or lockfiles changed in Tempo.",
     "Full mix ci and full-package coverage/analyzers were not run; those belong to post-merge QA.",
     "CHANGELOG package Unreleased note added by explicit operator instruction; harness must preserve or reproduce it if its automatic reset removes it.",
-    "Known upstream limitation: alloy TypedData resolves acyclic schemas for hashing. The legacy encode_type API still formats cyclic schemas, but finite recursive-value hashing needs follow-up compatibility work; no handwritten hash fallback was added."
+    "Known upstream limitation: alloy TypedData resolves acyclic schemas for hashing. The legacy encode_type API still formats cyclic schemas, but finite recursive-value hashing needs follow-up compatibility work; no handwritten hash fallback was added.",
+    "Review split the typed-transaction RPC mapper so Credo complexity stays within the package limit, marked the internal NIF adapters @doc false for the cartouche doctor gate, and asserted the captured-call outcome counts in the differential test."
   ]
 }

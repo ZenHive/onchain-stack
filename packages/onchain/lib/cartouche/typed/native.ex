@@ -4,15 +4,19 @@ defmodule Cartouche.Typed.Native do
   alias Cartouche.Typed.Domain
   alias Cartouche.Typed.Type
 
+  @doc false
   @spec signing_hash(Typed.t()) :: binary()
   def signing_hash(typed), do: run!("hash", document(typed))
 
+  @doc false
   @spec encode(Typed.t()) :: binary()
   def encode(typed), do: run!("encode", document(typed))
 
+  @doc false
   @spec hash_struct(String.t(), map(), Typed.type_map()) :: binary()
   def hash_struct(name, value, types), do: run!("hash_struct", document(name, value, types))
 
+  @doc false
   @spec encode_value(term(), Type.field_type(), Typed.type_map()) :: binary()
   def encode_value(value, type, types) do
     # A single field's encodeData is exactly its EIP-712 data word.

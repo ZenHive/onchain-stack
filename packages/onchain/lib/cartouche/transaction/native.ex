@@ -19,17 +19,21 @@ defmodule Cartouche.Transaction.Native do
     amount: "value"
   ]
 
+  @doc false
   @spec encode(struct()) :: binary()
   def encode(transaction), do: run!("encode", transaction)
 
+  @doc false
   @spec signing_hash(struct()) :: binary()
   def signing_hash(transaction), do: run!("signing_hash", transaction)
 
+  @doc false
   @spec sign(struct(), GenServer.server(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def sign(transaction, signer, opts) do
     Cartouche.Signer.sign_digest(signing_hash(transaction), run!("signing_payload", transaction), signer, opts)
   end
 
+  @doc false
   @spec decode(term(), module(), String.t()) :: {:ok, struct()} | {:error, String.t()}
   def decode(input, module, invalid) when is_binary(input) do
     with {:ok, json} <- ABI.Native.consensus("transaction", "decode", input),
@@ -58,6 +62,7 @@ defmodule Cartouche.Transaction.Native do
     end
   end
 
+  @doc false
   @spec authorization(String.t(), tuple()) :: binary()
   def authorization(operation, authorization) do
     [chain_id, address, nonce | _] = Tuple.to_list(authorization)
@@ -143,39 +148,53 @@ defmodule Cartouche.Transaction.Native do
 
   defp to_rpc(tx) do
     params = for {field, key} <- @fields, Map.has_key?(tx, field), into: %{}, do: {key, quantity(Map.fetch!(tx, field))}
-    access_list = if tx.__struct__ == V4 and is_nil(tx.access_list), do: [], else: tx.access_list
     # Retain the existing validation error at the public struct boundary.
-    access_list = TypedDecode.encode_access_list(access_list)
+    access_list = TypedDecode.encode_access_list(access_list(tx))
 
-    params =
-      Map.merge(params, %{
-        "type" => type(tx.__struct__),
-        "to" => hex(tx.destination),
-        "input" => hex(tx.data),
-        "accessList" =>
-          Enum.map(access_list, fn [address, keys] ->
-            %{"address" => hex(address), "storageKeys" => Enum.map(keys, &hex/1)}
-          end)
-      })
+    params
+    |> Map.merge(%{
+      "type" => type(tx.__struct__),
+      "to" => hex(tx.destination),
+      "input" => hex(tx.data),
+      "accessList" => access_list_rpc(access_list)
+    })
+    |> put_type_fields(tx)
+    |> put_signature(tx)
+  end
 
-    params =
-      if tx.__struct__ == V3,
-        do: Map.put(params, "blobVersionedHashes", Enum.map(tx.blob_versioned_hashes, &hex/1)),
-        else: params
+  @spec access_list(struct()) :: list()
+  defp access_list(%V4{access_list: nil}), do: []
+  defp access_list(tx), do: tx.access_list
 
-    params =
-      if tx.__struct__ == V4,
-        do: Map.put(params, "authorizationList", Enum.map(tx.authorization_list, &authorization_rpc/1)),
-        else: params
+  @spec access_list_rpc(list()) :: [map()]
+  defp access_list_rpc(access_list) do
+    Enum.map(access_list, fn [address, keys] ->
+      %{"address" => hex(address), "storageKeys" => Enum.map(keys, &hex/1)}
+    end)
+  end
 
-    if is_nil(tx.signature_y_parity) or is_nil(tx.signature_r) or is_nil(tx.signature_s),
-      do: params,
-      else:
-        Map.merge(params, %{
-          "yParity" => quantity(if(tx.signature_y_parity, do: 1, else: 0)),
-          "r" => quantity(:binary.decode_unsigned(tx.signature_r)),
-          "s" => quantity(:binary.decode_unsigned(tx.signature_s))
-        })
+  @spec put_type_fields(map(), struct()) :: map()
+  defp put_type_fields(params, %V3{blob_versioned_hashes: hashes}) do
+    Map.put(params, "blobVersionedHashes", Enum.map(hashes, &hex/1))
+  end
+
+  defp put_type_fields(params, %V4{authorization_list: list}) do
+    Map.put(params, "authorizationList", Enum.map(list, &authorization_rpc/1))
+  end
+
+  defp put_type_fields(params, _tx), do: params
+
+  @spec put_signature(map(), struct()) :: map()
+  defp put_signature(params, %{signature_y_parity: nil}), do: params
+  defp put_signature(params, %{signature_r: nil}), do: params
+  defp put_signature(params, %{signature_s: nil}), do: params
+
+  defp put_signature(params, tx) do
+    Map.merge(params, %{
+      "yParity" => quantity(if(tx.signature_y_parity, do: 1, else: 0)),
+      "r" => quantity(:binary.decode_unsigned(tx.signature_r)),
+      "s" => quantity(:binary.decode_unsigned(tx.signature_s))
+    })
   end
 
   @spec authorization_rpc(tuple()) :: map()
