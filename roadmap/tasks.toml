@@ -9595,7 +9595,7 @@ id = "9023"
 phase = 0
 bundle = "monorepo_root_gates"
 target_repo = "onchain_stack"
-status = "superseded"
+status = "pending"
 title = "mix ci in onchain_aave and onchain_aerodrome exits 139 after every gate is already green"
 scores = { d = 4, b = 7, u = 6 }
 acceptance_criteria = ["`cd packages/onchain_aave && mix ci` and `cd packages/onchain_aerodrome && mix ci` return exit 0 on a cold worktree after all existing steps, with no SIGSEGV (139) on VM halt", "`cd packages/onchain_evm && mix ci` still returns 0 — do not 'fix' the consumers by making the NIF owner's own gate red", "The diagnosis names the crashing site (NIF unload vs Mix env split vs rustler_precompiled copy into the consumer _build) with a reproducing command; a workaround that swallows 139 is not acceptable", "If the cause is NIF teardown, the fix also holds for the core onchain NIF introduced by task 9031: every package that loads it exits 0 on halt", "Root `mix ci` walks all seven packages without Mix.raise on a consumer 139", "The reproduction and the fix are pinned to a named host and OS (the harness node's distribution, kernel and CPU arch, plus OTP 29.1 / Elixir 1.20.4) and also run on the macOS dev machine; the outcome states whether the 139 reproduces on each, because all recorded 139s (.audit/1975218.md, 1c0b4f9.md, 4990119.md) come from harness-node runs"]
