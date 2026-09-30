@@ -16070,7 +16070,7 @@
       "phase": 9100,
       "bundle": "onchain_core_consolidation",
       "milestone": "onchain_core_consolidation",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Retarget the Tempo 0x76 mutation campaign at the native encoder",
       "scores": {
         "d": 6,
@@ -16107,6 +16107,7 @@
       ],
       "body": "9033 (21ed60e) moved 0x76 encoding into an onchain_tempo NIF on tempo-primitives. The mutation campaign from task 12 still mutates the deleted Elixir encoder: `Campaign.mutants/0` replaces literals such as `@calls_index 4`, `@fee_payer_domain 0x78`, `@tempo_tx_type 0x76`, the fee-token/fee-payer indexes, `encode_uint`, `List.replace_at` and `recid + 27`. The 9033 reviewer reproduced it: `ONCHAIN_BUILD=1 MIX_ENV=test mix test.json test/onchain/tempo/verification/mutation_test.exs` fails 3 tests, first `{:pattern_missing, \"@calls_index 4\"}`. `:verification` is not excluded by default, so onchain_tempo's `mix ci` is red on main until this lands. 8013 is superseded and 9033's out_of_scope deferred this to a new task.\n\nPoint the campaign, canaries and lanes at what now carries the semantics: the Rust glue in native/onchain_tempo (field mapping into tempo-primitives, fee-payer/0x78 preimage choice, key_authorization handling, signature/recid conversion) and the thin Elixir protocol around it. Mutating tempo-primitives itself is not the goal — the target is our code that could still get it wrong. Graded per the onchain-verification rules; relevant spec rules are TEMPO-2 and TEMPO-3 in docs/specs/onchain-tempo-native.md.\n",
       "created_at": "2026-09-29",
+      "started_at": "2026-09-30",
       "scored_at": "2026-09-29",
       "cross_repo": []
     }
