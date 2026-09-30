@@ -90,7 +90,7 @@ defmodule Cartouche.Typed.Native do
 
   @spec run!(String.t(), map()) :: binary()
   defp run!(operation, document) do
-    case ABI.Native.consensus("typed", operation, Jason.encode!(document)) do
+    case ABI.Native.consensus("typed", operation, document) do
       {:ok, value} -> value
       {:error, reason} -> raise ArgumentError, reason
     end

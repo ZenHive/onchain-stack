@@ -1,5 +1,5 @@
-//! Transaction/EIP-712 operations use alloy's codecs; JSON is the RPC-shaped adapter.
-use crate::{atoms, binary, bytes, Result};
+//! Transaction/EIP-712 operations use alloy's codecs with a BEAM term boundary.
+use crate::{atoms, binary, bytes, consensus_term, Result};
 use alloy_consensus::{
     EthereumTxEnvelope, EthereumTypedTransaction, SignableTransaction, TxEip1559, TxEip2930,
     TxEip4844, TxEip7702, TxLegacy,
@@ -19,35 +19,6 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 
 type Transaction = EthereumTypedTransaction<TxEip4844>;
 type Envelope = EthereumTxEnvelope<TxEip4844>;
-
-fn json(term: Term<'_>) -> Result<Value> {
-    let value: Value =
-        serde_json::from_slice(bytes(term)?.as_slice()).map_err(|_| "invalid_json")?;
-    let mut nodes = 100_000;
-    preflight_json(&value, 0, &mut nodes)?;
-    Ok(value)
-}
-
-fn preflight_json(value: &Value, depth: usize, nodes: &mut usize) -> Result<()> {
-    if depth > 64 {
-        return Err("depth_limit".into());
-    }
-    crate::spend(nodes)?;
-    match value {
-        Value::Array(items) => {
-            for item in items {
-                preflight_json(item, depth + 1, nodes)?;
-            }
-        }
-        Value::Object(items) => {
-            for item in items.values() {
-                preflight_json(item, depth + 1, nodes)?;
-            }
-        }
-        _ => (),
-    }
-    Ok(())
-}
 
 fn check_uint(value: &Value, field: &str, width: usize) -> Result<()> {
     let number: U256 = serde_json::from_value(value.clone())
@@ -115,7 +86,7 @@ fn preflight_rlp(mut input: &[u8], depth: usize, nodes: &mut usize) -> Result<()
     Ok(())
 }
 
-fn decode(input: &[u8]) -> Result<Vec<u8>> {
+fn decode(input: &[u8]) -> Result<Value> {
     if input
         .first()
         .is_none_or(|b| *b == 0 || (*b > 4 && *b < 0xc0))
@@ -144,7 +115,7 @@ fn decode(input: &[u8]) -> Result<Vec<u8>> {
                 value["r"] = "0x0".into();
                 value["s"] = "0x0".into();
             }
-            return serde_json::to_vec(&value).map_err(|e| e.to_string());
+            return Ok(value);
         }
     }
     let mut remaining = input;
@@ -152,21 +123,47 @@ fn decode(input: &[u8]) -> Result<Vec<u8>> {
     if !remaining.is_empty() {
         return Err("trailing_bytes".into());
     }
-    let value = serde_json::to_value(&tx).map_err(|e| e.to_string())?;
+    let value = decoded_envelope(&tx)?;
     if matches!(tx, Envelope::Legacy(_))
         && tx.signature().r().is_zero()
         && tx.signature().s().is_zero()
     {
         check_uint(&value["v"], "chain_id", 64)?;
     }
-    serde_json::to_vec(&value).map_err(|e| e.to_string())
+    Ok(value)
+}
+
+fn decoded_envelope(tx: &Envelope) -> Result<Value> {
+    // Serializing Signed<T> also computes an unused transaction hash. Only
+    // cross the boundary with the fields consumed by Cartouche's structs.
+    let (fields, kind) = match tx {
+        Envelope::Legacy(tx) => (serde_json::to_value(tx.tx()), "0x0"),
+        Envelope::Eip2930(tx) => (serde_json::to_value(tx.tx()), "0x1"),
+        Envelope::Eip1559(tx) => (serde_json::to_value(tx.tx()), "0x2"),
+        Envelope::Eip4844(tx) => (serde_json::to_value(tx.tx()), "0x3"),
+        Envelope::Eip7702(tx) => (serde_json::to_value(tx.tx()), "0x4"),
+    };
+    let mut value = fields.map_err(|e| e.to_string())?;
+    let signature = serde_json::to_value(tx.signature()).map_err(|e| e.to_string())?;
+    value
+        .as_object_mut()
+        .ok_or("expected_map")?
+        .extend(signature.as_object().ok_or("expected_map")?.clone());
+    value["type"] = kind.into();
+    if let Envelope::Legacy(tx) = tx {
+        // EIP-155 v can exceed u64 even though the chain ID cannot.
+        let parity = u128::from(tx.signature().v());
+        let v = tx
+            .tx()
+            .chain_id
+            .map_or(27 + parity, |id| u128::from(id) * 2 + 35 + parity);
+        value["v"] = format!("0x{v:x}").into();
+    }
+    Ok(value)
 }
 
 fn transaction(operation: &str, input: Term<'_>) -> Result<Vec<u8>> {
-    if operation == "decode" {
-        return decode(bytes(input)?.as_slice());
-    }
-    let value = json(input)?;
+    let value = consensus_term::from_term(input)?;
     if operation.starts_with("authorization_") {
         check_uint(&value["nonce"], "authorization_nonce", 64)?;
         check_uint(&value["chainId"], "authorization_chain_id", 256)?;
@@ -363,7 +360,7 @@ fn recursive_data_word(
 }
 
 fn typed(operation: &str, input: Term<'_>) -> Result<Vec<u8>> {
-    typed_value(operation, json(input)?)
+    typed_value(operation, consensus_term::from_term(input)?)
 }
 
 fn typed_value(operation: &str, value: Value) -> Result<Vec<u8>> {
@@ -437,14 +434,22 @@ fn typed_value(operation: &str, value: Value) -> Result<Vec<u8>> {
 }
 
 #[rustler::nif(schedule = "DirtyCpu")]
-fn consensus<'a>(env: Env<'a>, family: &str, operation: &str, input: Term<'a>) -> Term<'a> {
-    let result = catch_unwind(AssertUnwindSafe(|| match family {
-        "transaction" => transaction(operation, input),
-        "typed" => typed(operation, input),
-        _ => Err("unknown_family".into()),
+fn consensus<'a>(env: Env<'a>, family: Term<'a>, operation: Term<'a>, input: Term<'a>) -> Term<'a> {
+    let result = catch_unwind(AssertUnwindSafe(|| -> Result<Term<'_>> {
+        let family = family.decode::<&str>().map_err(crate::bad_input)?;
+        let operation = operation.decode::<&str>().map_err(crate::bad_input)?;
+        if family == "transaction" && operation == "decode" {
+            return consensus_term::to_term(env, &decode(bytes(input)?.as_slice())?);
+        }
+        let value = match family {
+            "transaction" => transaction(operation, input),
+            "typed" => typed(operation, input),
+            _ => Err("unknown_family".into()),
+        }?;
+        Ok(binary(env, &value))
     }));
     match result {
-        Ok(Ok(value)) => (atoms::ok(), binary(env, &value)).encode(env),
+        Ok(Ok(value)) => (atoms::ok(), value).encode(env),
         Ok(Err(error)) => (atoms::error(), error).encode(env),
         Err(_) => (atoms::error(), "native_panic").encode(env),
     }

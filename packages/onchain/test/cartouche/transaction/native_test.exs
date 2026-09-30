@@ -38,7 +38,7 @@ defmodule Cartouche.Transaction.NativeTest do
     assert_raise ArgumentError, "chain_id must be in 0..2^64-1", fn -> V1.encode(%{tx | v: max + 1}) end
   end
 
-  test "native JSON input cannot truncate legacy fees" do
+  test "native term input cannot truncate legacy fees" do
     tx = %{
       "type" => "0x0",
       "chainId" => "0x1",
@@ -50,7 +50,7 @@ defmodule Cartouche.Transaction.NativeTest do
       "to" => "0x3535353535353535353535353535353535353535"
     }
 
-    assert {:error, "gas_price must be in 0..2^128-1"} = ABI.Native.consensus("transaction", "encode", Jason.encode!(tx))
+    assert {:error, "gas_price must be in 0..2^128-1"} = ABI.Native.consensus("transaction", "encode", tx)
   end
 
   test "native boundary rejects excessive input, nesting and schema expansion" do
@@ -69,8 +69,58 @@ defmodule Cartouche.Transaction.NativeTest do
       |> Map.put("T21", [%{"name" => "end", "type" => "uint256"}])
 
     data = %{"domain" => %{}, "types" => types, "primaryType" => "T0", "message" => %{}}
-    assert {:error, "value_limit"} = ABI.Native.consensus("typed", "hash", Jason.encode!(data))
+    assert {:error, "value_limit"} = ABI.Native.consensus("typed", "hash", data)
     assert {:error, _} = ABI.Native.consensus("typed", "hash", "not JSON")
+  end
+
+  # spec-tags: NIF-1, NIF-2
+  test "term conversion rejects malformed input and remains usable" do
+    malformed = [
+      nil,
+      :unknown,
+      [],
+      %{:nonce => 0},
+      %{<<255>> => "value"},
+      %{"value" => <<255>>},
+      %{"value" => [1 | 2]},
+      %{"value" => {1, 2}},
+      %{"value" => self()},
+      %{"value" => make_ref()},
+      %{"value" => :unknown},
+      %{"value" => 1.5}
+    ]
+
+    for input <- malformed, {family, operation} <- [{"transaction", "encode"}, {"typed", "hash"}] do
+      assert {:error, reason} = ABI.Native.consensus(family, operation, input)
+      refute reason == "native_panic"
+    end
+
+    assert {:error, "invalid_term"} = ABI.Native.consensus(nil, "encode", %{})
+    assert {:error, "invalid_term"} = ABI.Native.consensus("transaction", nil, %{})
+
+    raw = Cartouche.Hex.decode_hex!(@vectors["v2"]["serialized"])
+    assert {:ok, %{"type" => "0x2"}} = ABI.Native.consensus("transaction", "decode", raw)
+    assert {:ok, tx} = Transaction.decode(raw)
+    assert Transaction.encode(tx) == raw
+  end
+
+  # spec-tags: NIF-1, NIF-2
+  test "term budgets count nested values and aggregate string bytes, including map keys" do
+    nested = Enum.reduce(1..65, [], fn _, value -> [value] end)
+    chunk = :binary.copy("x", 1024 * 1024)
+
+    for {input, expected} <- [
+          {%{"value" => nested}, "depth_limit"},
+          {%{"value" => List.duplicate(nil, 100_000)}, "value_limit"},
+          {%{"value" => List.duplicate(chunk, 17)}, "payload_limit"},
+          {%{:binary.copy("x", 16 * 1024 * 1024 + 1) => nil}, "payload_limit"}
+        ],
+        family <- ["transaction", "typed"] do
+      assert {:error, ^expected} = ABI.Native.consensus(family, "encode", input)
+    end
+
+    assert {:ok, _} =
+             ABI.Native.consensus("transaction", "decode", Cartouche.Hex.decode_hex!(@vectors["v2"]["serialized"]))
   end
 
   test "valid envelopes reject trailing bytes and truncation" do

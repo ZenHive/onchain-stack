@@ -187,3 +187,49 @@ Alloy's typed-data resolver requires acyclic schemas for hashing. The existing
 `encode_type/2` formatter still supports recursive schema descriptions, but
 finite recursive-value hashing remains a follow-up compatibility issue. The
 existing Mail, bytesN, signed-integer and array-of-struct conformance tests pass.
+
+## Task 9048: transaction and EIP-712 term boundary
+
+The consensus NIF now accepts BEAM maps/lists and returns decoded maps directly.
+The bounded converter in `native/onchain_abi/src/consensus_term.rs` creates alloy's
+serde values without encoding or parsing JSON text. RPC-shaped field normalization
+and alloy's transaction/EIP-712 codecs remain unchanged. Signed-envelope decoding
+also avoids serializing an unused transaction hash. Recursive hashing is unchanged.
+
+Conversion stays on dirty CPU schedulers and inside the panic boundary, with limits
+of 64 nesting levels, 100,000 nodes (including map keys), and 16 MiB of aggregate
+string bytes (including keys). Invalid terms return error tuples. Wide EVM integers
+still cross as lossless decimal/hex strings.
+
+Both runs below used this session's machine: Intel Core Ultra 7 265, Linux x86_64,
+Elixir 1.20.4 / OTP 29.1, 20 schedulers, Rust 1.98.0 release builds, MIX_ENV=dev,
+Benchee 1.5.1 with concurrency 1, 1 s warmup, 3 s runtime, and 1 s memory time.
+The baseline is the JSON boundary at `3c01c00f0960096cf9d80632238749d8e82130fc`.
+
+| Workload | JSON median ips | Term median ips | JSON BEAM bytes | Term BEAM bytes | Speedup |
+|---|---:|---:|---:|---:|---:|
+| EIP-1559 encode + signing hash | 74,085 | 90,514 | 10,160 | 4,032 | 1.22× |
+| EIP-712 permit hash | 48,709 | 53,519 | 18,296 | 10,152 | 1.10× |
+| EIP-7702 encode + signing hash | 47,762 | 60,419 | 15,488 | 6,000 | 1.26× |
+| raw-tx decode | 109,613 | 120,192 | 5,840 | 4,896 | 1.10× |
+
+Performance remains reporting-only. BEAM memory does not include native allocations,
+and these gains do not recover the historical pre-alloy throughput. The raw records
+are `transactions-boundary-before.json` and `transactions-boundary-after.json`;
+`transactions-outcome.json` → `boundary_replacement` records source hashes, commands,
+limits, and verification. The original task 9032 evidence is retained separately.
+
+To reproduce, compile each corresponding source revision with
+`ONCHAIN_BUILD=1 mix compile --warnings-as-errors`, then run:
+
+```sh
+ONCHAIN_BUILD=1 mix run --no-compile --no-start bench/transactions.exs boundary-before
+ONCHAIN_BUILD=1 mix run --no-compile --no-start bench/transactions.exs boundary-after
+```
+
+The baseline uses the updated benchmark script with the original JSON NIF sources;
+both labels run identical native workloads. The `before` label remains reserved for
+the old handwritten implementation. Focused verification passed 357 checks, including
+the unchanged frozen fixture, integer-bound error contracts, malformed-term limits,
+signing and VM shutdown; four live Sepolia integration tests also passed. Full QA
+and coverage remain separate post-merge work.

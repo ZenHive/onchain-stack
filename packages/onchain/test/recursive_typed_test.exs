@@ -139,6 +139,6 @@ defmodule Cartouche.RecursiveTypedTest do
     |> Map.delete("value")
   end
 
-  defp native(operation, document), do: ABI.Native.consensus("typed", operation, Jason.encode!(document))
+  defp native(operation, document), do: ABI.Native.consensus("typed", operation, document)
   defp hex(key), do: Cartouche.Hex.decode_hex!(@oracle[key])
 end

@@ -7,7 +7,7 @@ defmodule ABI.Native do
   def parse_abi_json(_json), do: :erlang.nif_error(:nif_not_loaded)
 
   @doc false
-  @spec consensus(String.t(), String.t(), binary()) :: {:ok, binary()} | {:error, term()}
+  @spec consensus(String.t(), String.t(), map() | binary()) :: {:ok, map() | binary()} | {:error, term()}
   def consensus(_family, _operation, _input), do: :erlang.nif_error(:nif_not_loaded)
 
   @doc false

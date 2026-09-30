@@ -36,8 +36,7 @@ defmodule Cartouche.Transaction.Native do
   @doc false
   @spec decode(term(), module(), String.t()) :: {:ok, struct()} | {:error, String.t()}
   def decode(input, module, invalid) when is_binary(input) do
-    with {:ok, json} <- ABI.Native.consensus("transaction", "decode", input),
-         params = Jason.decode!(json),
+    with {:ok, params} <- ABI.Native.consensus("transaction", "decode", input),
          true <- params["type"] == type(module),
          true <- is_binary(params["to"]),
          transaction = from_rpc(module, params),
@@ -115,7 +114,7 @@ defmodule Cartouche.Transaction.Native do
 
   @spec request!(String.t(), map()) :: binary()
   defp request!(operation, params) do
-    case ABI.Native.consensus("transaction", operation, Jason.encode!(params)) do
+    case ABI.Native.consensus("transaction", operation, params) do
       {:ok, result} -> result
       {:error, reason} -> raise ArgumentError, "invalid transaction: #{reason}"
     end

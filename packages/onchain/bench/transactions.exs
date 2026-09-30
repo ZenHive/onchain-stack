@@ -3,7 +3,7 @@ alias Cartouche.Transaction.Native
 alias Cartouche.Transaction.V2
 alias Cartouche.Transaction.V4
 
-# ONCHAIN_BUILD=1 MIX_ENV=test mix run --no-start bench/transactions.exs before|after
+# ONCHAIN_BUILD=1 MIX_ENV=test mix run --no-start bench/transactions.exs before|after|boundary-before|boundary-after
 # Benchee is a development dependency; load its compiled dev artifacts for this offline run.
 for app <- ~w(benchee deep_merge statistex), do: Code.prepend_path("_build/dev/lib/#{app}/ebin")
 Application.ensure_all_started(:crypto)
@@ -44,7 +44,9 @@ permit =
   })
 
 [phase] = System.argv()
-if phase not in ["before", "after"], do: raise("expected before or after")
+
+if phase not in ["before", "after", "boundary-before", "boundary-after"],
+  do: raise("expected before, after, boundary-before or boundary-after")
 
 if phase == "before" and Code.ensure_loaded?(Native),
   do: raise("the baseline must run against the pre-alloy revision")

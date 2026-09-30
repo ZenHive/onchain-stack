@@ -130,5 +130,144 @@
     "CHANGELOG package Unreleased note added by explicit operator instruction; harness must preserve or reproduce it if its automatic reset removes it.",
     "Known upstream limitation: alloy TypedData resolves acyclic schemas for hashing. The legacy encode_type API still formats cyclic schemas, but finite recursive-value hashing needs follow-up compatibility work; no handwritten hash fallback was added.",
     "Review split the typed-transaction RPC mapper so Credo complexity stays within the package limit, marked the internal NIF adapters @doc false for the cartouche doctor gate, and asserted the captured-call outcome counts in the differential test."
-  ]
+  ],
+  "boundary_replacement": {
+    "task": 9048,
+    "baseline_revision": "3c01c00f0960096cf9d80632238749d8e82130fc",
+    "after": "Task 9048 working tree based on baseline_revision; exact measured sources identified below",
+    "source_sha256": {
+      "lib/abi/native.ex": "cf2228ae13e92647a8ca5e6e3635142ea877b47d9c43060a00c50bc8039449db",
+      "lib/cartouche/transaction/native.ex": "a5cfe84315e63f9edb7606cbe73b346907b377555af37d9442694208e7f40b2c",
+      "lib/cartouche/typed/native.ex": "feb70f37a4f260095ee33d0e42efc58dc923e3cd7dcf2773f06a440359b3af0c",
+      "native/onchain_abi/src/lib.rs": "90530210fc12ef2a7c64179892a55d3e14922b799ab675f38e1d611e73c65121",
+      "native/onchain_abi/src/transaction.rs": "de8127b99026b098f67e99870cc0790456ef97fa2ea924f60b2bbe4de87148bd",
+      "native/onchain_abi/src/consensus_term.rs": "63b47ae880ff9fdca3442cd1ebd5dc696f4e19d704466e124a7dd53538eb53fe",
+      "native/onchain_abi/Cargo.lock": "7ffa121361b747ba56bbd278b249dc27169a9a5b18cc6ea1b067814285c4bdeb",
+      "bench/transactions.exs": "71091e4bed3b4a8dad0e07243b236ac2edf495dafd9cb60fc6cdde3ce79e9ef9"
+    },
+    "fixture_sha256": "05a887cb3978c23de9eafccc6eebde25400fae9a52ac4c311317fb2c10135c8b",
+    "implementation": "Pass BEAM maps/lists directly to bounded Rust conversion into alloy serde Values; return decoded maps directly. No JSON text serialization at the consensus boundary. Skip unused signed-envelope hash serialization. Alloy codecs, validation and EIP-712 hashing remain in place.",
+    "benchmark": {
+      "machine": "Linux 6.8.0-139-generic x86_64, Intel Core Ultra 7 265, 20 schedulers",
+      "toolchain": "Elixir 1.20.4 / OTP 29.1, rustc 1.98.0, cargo 1.98.0",
+      "mix_env": "dev",
+      "native_profile": "release",
+      "benchee_version": "1.5.1",
+      "parallel": 1,
+      "warmup_seconds": 1,
+      "runtime_seconds": 3,
+      "memory_seconds": 1,
+      "before_command": "ONCHAIN_BUILD=1 mix run --no-compile --no-start bench/transactions.exs boundary-before",
+      "after_command": "ONCHAIN_BUILD=1 mix run --no-compile --no-start bench/transactions.exs boundary-after",
+      "memory_note": "BEAM bytes only; Benchee cannot see NIF allocations. Performance is reporting-only, with no thresholds or gates.",
+      "workloads": {
+        "EIP-1559 encode + signing hash": {
+          "before": {
+            "median_ips": 74085.04963698325,
+            "beam_memory_bytes": 10160.0
+          },
+          "after": {
+            "median_ips": 90514.12020275163,
+            "beam_memory_bytes": 4032.0
+          },
+          "speedup": 1.2217595944967414
+        },
+        "EIP-712 permit hash": {
+          "before": {
+            "median_ips": 48709.20603994155,
+            "beam_memory_bytes": 18296.0
+          },
+          "after": {
+            "median_ips": 53518.86540005352,
+            "beam_memory_bytes": 10152.0
+          },
+          "speedup": 1.0987423066630988
+        },
+        "EIP-7702 encode + signing hash": {
+          "before": {
+            "median_ips": 47762.334622916365,
+            "beam_memory_bytes": 15488.0
+          },
+          "after": {
+            "median_ips": 60419.31001147967,
+            "beam_memory_bytes": 6000.0
+          },
+          "speedup": 1.26499909371035
+        },
+        "raw-tx decode": {
+          "before": {
+            "median_ips": 109613.0658774526,
+            "beam_memory_bytes": 5840.0
+          },
+          "after": {
+            "median_ips": 120192.30769230769,
+            "beam_memory_bytes": 4896.0
+          },
+          "speedup": 1.096514423076923
+        }
+      },
+      "notes": [
+        "Both measurements ran sequentially on this machine with identical workloads and settings. The baseline uses the JSON NIF at baseline_revision, not the historical pre-alloy implementation.",
+        "An initial term-boundary measurement regressed raw decode from 109613 to 99641 median ips. Inspection found signed-envelope serde generated an unused transaction hash. Removing that serialization produced the final measurements above.",
+        "The old pre-alloy measurements remain historical data, not a same-session comparison or performance target."
+      ]
+    },
+    "verification": [
+      {
+        "command": "ONCHAIN_BUILD=1 mix compile --warnings-as-errors",
+        "result": "exit 0",
+        "cwd": "packages/onchain"
+      },
+      {
+        "command": "ONCHAIN_BUILD=1 MIX_ENV=test mix test test/cartouche/transaction test/transaction_test.exs test/typed_test.exs test/recursive_typed_test.exs test/signer_test.exs test/signer/transaction_test.exs test/signer/before_consolidation_test.exs bench/teardown_test.exs",
+        "result": "357 passed (114 doctests, 8 properties, 235 tests); exit 0 including VM shutdown",
+        "cwd": "packages/onchain"
+      },
+      {
+        "command": "ONCHAIN_BUILD=1 MIX_ENV=test mix test test/signer/transaction_integration_test.exs --include integration",
+        "result": "4 passed; exit 0, including both live Sepolia self-transfers with successful receipts",
+        "cwd": "packages/onchain"
+      },
+      {
+        "command": "cargo test --manifest-path packages/onchain/native/onchain_abi/Cargo.toml",
+        "result": "1 passed; exit 0",
+        "cwd": "repository root"
+      },
+      {
+        "command": "cargo clippy --manifest-path packages/onchain/native/onchain_abi/Cargo.toml --all-targets -- -D warnings",
+        "result": "exit 0",
+        "cwd": "repository root"
+      },
+      {
+        "command": "mix format --check-formatted lib/abi/native.ex lib/cartouche/transaction/native.ex lib/cartouche/typed/native.ex test/cartouche/transaction/native_test.exs test/recursive_typed_test.exs bench/transactions.exs",
+        "cwd": "packages/onchain",
+        "result": "exit 0"
+      },
+      {
+        "command": "cargo fmt --manifest-path packages/onchain/native/onchain_abi/Cargo.toml --check",
+        "cwd": "repository root",
+        "result": "exit 0"
+      },
+      {
+        "command": "git diff --check",
+        "cwd": "repository root",
+        "result": "exit 0"
+      },
+      {
+        "command": "Python json/hashlib validation of outcome, raw benchmark measurements, measured source hashes and frozen-fixture hash",
+        "cwd": "repository root",
+        "result": "all matched"
+      }
+    ],
+    "acceptance": {
+      "frozen_fixture": "Unchanged; replay passes all 1775 captured codec calls with the existing 536 unchanged outcomes and 1239 intentional negative cases, plus captured-byte round trips and signing hashes.",
+      "measurements": "All four workloads remeasured on one machine; raw measurements in transactions-boundary-before.json and transactions-boundary-after.json.",
+      "malformed_input": "Error tuples for invalid term shapes, improper lists, invalid UTF-8, malformed operation arguments, excessive depth/nodes/aggregate bytes; subsequent valid calls succeed. Existing arbitrary-wire property also passes."
+    },
+    "limits": "Dirty CPU scheduler retained; panic boundary includes argument conversion and result encoding. Conversion limits: 64 depth, 100000 nodes including map keys, 16 MiB aggregate string bytes including keys. Wider EVM integers retain normalized string representation; no precision-losing numeric conversion.",
+    "scope_notes": [
+      "Public APIs and frozen fixtures unchanged. Recursive EIP-712 hashing implementation unchanged.",
+      "Full QA, coverage and broad analyzers were not run; they remain separate post-merge work. No automatic CI runner exists."
+    ]
+  }
 }
