@@ -82,6 +82,13 @@ Completed roadmap tasks.
   insert rewrote the whole `:persistent_term` map from a stale snapshot. Inserts are
   now serialized per cache; compilation stays outside the lock and the 1,024-entry
   cap still applies. A full cache keeps answering without retaining new entries.
+- Finite recursive EIP-712 values hash through the alloy NIF again. Alloy 1.6.1
+  `TypedData::resolve` cannot build a `DynSolType` for a type cycle, and its
+  `encode_type` rejects a cycle between distinct structs, so the NIF encodes
+  those finite values itself. Acyclic values stay on alloy. A value past the
+  depth budget returns `{:error, "depth_limit"}` from the NIF;
+  `Cartouche.Typed` raises `ArgumentError` with that reason, and the VM keeps
+  running.
 
 ## Unreleased — v0.15.0
 

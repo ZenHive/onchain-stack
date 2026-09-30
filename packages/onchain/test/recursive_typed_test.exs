@@ -40,6 +40,51 @@ defmodule Cartouche.RecursiveTypedTest do
     assert Typed.hash_struct("Branch", value, types) == expected
   end
 
+  test "recursive structs hash strings, addresses, and dynamic bytes as EIP-712 words" do
+    types = %{
+      "Node" => %Typed.Type{
+        fields: [
+          {"note", :string},
+          {"wallet", :address},
+          {"blob", :bytes},
+          {"children", {:array, "Node"}}
+        ]
+      }
+    }
+
+    type_hash = Cartouche.Hash.keccak(Typed.encode_type("Node", types))
+    empty = Cartouche.Hash.keccak(<<>>)
+
+    leaf =
+      Cartouche.Hash.keccak(
+        type_hash <>
+          Cartouche.Hash.keccak("leaf") <>
+          <<0::96, 2::160>> <>
+          Cartouche.Hash.keccak(<<>>) <>
+          empty
+      )
+
+    expected =
+      Cartouche.Hash.keccak(
+        type_hash <>
+          Cartouche.Hash.keccak("root") <>
+          <<0::96, 1::160>> <>
+          Cartouche.Hash.keccak(<<0xAB, 0xCD>>) <>
+          Cartouche.Hash.keccak(leaf)
+      )
+
+    value = %{
+      "note" => "root",
+      "wallet" => <<1::160>>,
+      "blob" => <<0xAB, 0xCD>>,
+      "children" => [
+        %{"note" => "leaf", "wallet" => <<2::160>>, "blob" => <<>>, "children" => []}
+      ]
+    }
+
+    assert Typed.hash_struct("Node", value, types) == expected
+  end
+
   test "recursive fixed arrays enforce cardinality and preserve nested-array hashing" do
     data = document()
     fields = [%{"name" => "children", "type" => "Node[][1]"}]
@@ -64,6 +109,14 @@ defmodule Cartouche.RecursiveTypedTest do
     assert {:error, "depth_limit"} = native("hash", Map.put(document(), "message", message))
     assert {:ok, expected} = native("hash", document())
     assert expected == hex("hash")
+
+    typed = Typed.deserialize(@oracle["input"])
+
+    assert_raise ArgumentError, "depth_limit", fn ->
+      Typed.hash_struct("Node", message, typed.types)
+    end
+
+    assert Typed.hash_struct("Node", typed.value, typed.types) == hex("hash_struct")
   end
 
   # spec-tags: NIF-1
