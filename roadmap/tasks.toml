@@ -10552,3 +10552,25 @@ started_at = "2026-09-30"
 scored_at = "2026-09-30"
 done_at = "2026-09-30"
 shipped_in = "145a2d7ec5fa6fb6a1b877bf99976a3f74f6b5de"
+
+[[task]]
+id = "9050"
+phase = 9100
+bundle = "onchain_core_consolidation"
+target_repo = "onchain"
+status = "pending"
+title = "Deflake the concurrent schema/signature cache-miss test in alloy_cache_test"
+scores = { d = 3, b = 4, u = 4 }
+markers = ["bug", "parallel"]
+depends_on = [9044]
+acceptance_criteria = ["The root cause is named in the outcome (test timing vs cache race), with the evidence that decided it", "The test passes 200 consecutive runs (`mix test.json test/abi/alloy_cache_test.exs --repeat-until-failure 200` or equivalent) and still fails against a deliberately broken cache that drops one of the two keys"]
+touches = ["packages/onchain/test/abi/alloy_cache_test.exs", "packages/onchain/lib/abi/alloy.ex"]
+assignee = "cursor"
+model = "composer-2.5"
+body = """
+`packages/onchain/test/abi/alloy_cache_test.exs` "concurrent schema and signature misses keep both cache entries" failed once with a missing `{:function, selector}` cache key and passed on retry (9049 reviewer, run run-1790733445819-67a3444b). This test covers NIF-7 in docs/specs/onchain-native.md (compiled-schema cache keying). Whether the race is in the test or in the cache itself is unknown — premise unverified; find out before fixing.
+
+If the cache can lose an entry under concurrent misses, that is a product bug: fix the cache, not the test. If it is only the test's timing assumption, make the test deterministic without weakening what it checks.
+"""
+created_at = "2026-09-30"
+scored_at = "2026-09-30"
