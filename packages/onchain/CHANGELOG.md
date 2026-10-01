@@ -45,6 +45,38 @@ Completed roadmap tasks.
 
 ### Breaking behaviour
 
+- One module per utility (task 9039). Removed modules and their survivors:
+  - `Onchain.Hex` → `Cartouche.Hex`. The convenience function names stay.
+  - `Cartouche.Address` → `Onchain.Address`, which keeps `from_public_key/1`.
+  - `Onchain.HTTP` → `Cartouche.HTTP`. ENS still reads `:onchain` configuration;
+    everything else reads `:cartouche`. Per-call options still win.
+  - `Onchain.Block` → `Cartouche.Block`. `get_by_number` and `find_by_timestamp`
+    return a full `%Cartouche.Block{}` instead of a three-field map, and hashes
+    are 32-byte binaries instead of hex strings. A null RPC block stays `nil`;
+    the fetch helper returns `:block_not_found`.
+  - `Cartouche.Erc20`, `Cartouche.Erc20.Call` and `Cartouche.Erc20.CallData` →
+    `Onchain.ERC20`, `Onchain.ERC20.Call` and `Onchain.ERC20.CallData`.
+    `transfer/3` is gone. `transfer/4` signs with an explicit private key, nonce
+    and chain id, and returns a hex transaction hash instead of raw bytes. For a
+    configured signer, use `exec_trx/3` with `CallData.transfer/2`.
+  - `Onchain.ABI` → `ABI`. The hex forms of `encode_call`, `decode_call` and
+    `decode_error` (and their bang forms) are now `encode_hex_call`,
+    `decode_hex_call` and `decode_hex_error`. `decode_response` and
+    `decode_types` keep their names and shapes.
+  - `Onchain.Log` → `ABI.event_signature/1` (returns raw topic bytes) and
+    `ABI.decode_event(signature, data, topics, opts)`, which returns
+    `{:ok, event_name, args}` with string keys. Addresses are raw bytes,
+    unnamed parameters get positional string keys, and indexed reference values
+    are `{:indexed_hash, bytes}`. Tuple parameters now decode; parameter names
+    are no longer interned as atoms; errors carry the native error tags.
+  - `Cartouche.Receipt.Log` → `Cartouche.Filter.Log`. `receipt.logs` holds that
+    struct, with `removed` (`nil` when absent) and `extra_data` (`nil` outside
+    filters).
+
+  `Onchain.Transfer` and `Onchain.Tempo.Transfer` still return checksummed
+  addresses. Configuration application keys are unchanged. The module map for
+  the `Onchain.*` rename is in `docs/task-outcomes/9039-utility-consolidation.md`
+  at the repo root.
 - Remove `Onchain.RPC.get_transaction_by_hash/2`, `get_transaction_by_hash!/2`,
   `get_transaction_by_block_hash_and_index/3`,
   `get_transaction_by_block_hash_and_index!/3`,
