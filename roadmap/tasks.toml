@@ -10069,7 +10069,7 @@ phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain"
 milestone = "onchain_core_consolidation"
-status = "in_progress"
+status = "done"
 title = "Merge Cartouche.RPC and Onchain.RPC: the twelve residual duplicate methods and one defrpc convention"
 depends_on = [2127, 2128, 2129, 2130, 2131, 2137]
 acceptance_criteria = ["Each of the twelve methods listed in the body has exactly one implementation, in Cartouche.RPC; the removed duplicate's tests are merged into the survivor's and in-repo callers (all packages/*/lib) are repointed", "Exactly one defrpc macro remains, spec-driven through lib/onchain/rpc/specs.ex; every former call site of the other macro uses it; any bang-variant convention it carries is documented", "Onchain.RPC defines no function body that duplicates a Cartouche.RPC method; the outcome lists what remains in Onchain.RPC (aliases only) for 9036 to rename away", "CHANGELOG lists every removed function and any return-shape change as breaking for 0.16.0", "Focused tests of the core and every in-repo dependent pass and `mix check.dispatch` is green in every touched package (full `mix ci` is post-merge QA)", "One log shape: receipt logs (get_transaction_receipt/parse_receipt) and Onchain.Subscription.Parser decode through Cartouche.Filter.Log (deserialize/decode_logs, tolerating pending-log fields), Onchain.RPC.Helpers.parse_log is deleted, and the map->struct change is recorded as breaking in the 0.16.0 CHANGELOG (2128 review, run run-1790735637825-7315b918)"]
@@ -10097,9 +10097,16 @@ For each method, keep the better-tested implementation in Cartouche.RPC (9036 re
 There are two defrpc macros with different conventions: Onchain.RPC.Codegen.defrpc/2 plus defrpc_bang (lib/onchain/rpc/codegen.ex:85, :115, driven by the OpenRPC specs in lib/onchain/rpc/specs.ex) and Cartouche.RPC.DSL.defrpc/3 (lib/cartouche/rpc/dsl.ex:57). Leave exactly one, keep spec-driven generation, and migrate every defrpc call site to it.
 
 After this task Onchain.RPC has no remaining function bodies of its own, which is what lets 9036 rename Cartouche.RPC to Onchain.RPC without a collision."""
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1790830507847-6f1c279c, a2f3479228cd24c7331d34f348a7f1181ad1f3d5)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1790830507847-6f1c279c"
 created_at = "2026-09-29"
 started_at = "2026-10-01"
 scored_at = "2026-09-29"
+done_at = "2026-10-01"
+shipped_in = "a2f3479228cd24c7331d34f348a7f1181ad1f3d5"
 
 [task.scores]
 d = 4
