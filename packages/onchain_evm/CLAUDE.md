@@ -124,10 +124,10 @@ priv/
 | Module | Used for |
 |--------|----------|
 | `Onchain.Address` | Validation |
-| `Onchain.Hex` | Hex encoding/decoding |
+| `Cartouche.Hex` | Hex encoding/decoding |
 | `Onchain.RPC.Helpers` | Shared RPC helpers (Trace + EVM: `ensure_hex_address`, `ensure_hex_data`, `normalize_block`) |
 | `Onchain.Contract` | Generic contract call (Generator runtime) |
-| `Onchain.ABI` | ABI encoding (Generator runtime) |
+| `ABI` | ABI encoding (Generator runtime; hex calldata is `encode_hex_call/2`) |
 | `Cartouche.Signer` | Transaction signing (Generator runtime) |
 
 ## Testing

@@ -88,11 +88,11 @@ lib/onchain/aave/
 
 | Module | Used for |
 |--------|----------|
-| `Onchain.ABI` | ABI encoding/decoding |
+| `ABI` | ABI encoding/decoding (`encode_hex_call/2`, `decode_response/2`) |
 | `Onchain.RPC` | eth_call |
 | `Cartouche.Signer` | Transaction signing (pool writes, faucet) |
 | `Onchain.Address` | Validation, checksumming |
-| `Onchain.Hex` | Hex encoding/decoding |
+| `Cartouche.Hex` | Hex encoding/decoding |
 | `Onchain.Contract` | Generic contract call (oracle) |
 | `Onchain.Decimal` | Decimal math (types) |
 

@@ -622,7 +622,7 @@ The **deployed ABI is the only authority.** Sugar's own `readme.md` in `velodrom
 
 - ABIs live in `priv/abis/`, captured from **Sourcify v2** (`https://sourcify.dev/server/v2/contract/8453/<addr>?fields=abi`) because it serves the *deployed* ABI **with named tuple components** — the source for per-struct field-count and field-order drift tests. `priv/abis/README.md` records address, match type, fetch date, and the exact `curl` per file.
 - After any Sugar redeploy: re-capture from Sourcify, re-run the golden decode suite, and re-run the live probes in `priv/abis/README.md`. Positional decoding cannot detect reordered fields by itself; ABI field-order tests must guard that drift.
-- Decode positionally: `Onchain.RPC.eth_call/3` → `Onchain.ABI.decode_response/2` → hand-written `from_raw/1` constructors, matching onchain_aave. Do not use `decode_structs: true`: it raises on un-interned field atoms. Literal defstruct fields need no dynamic atom lookup. `Bindings.Abi` records the wrapper-version evidence and derives signatures from the captures.
+- Decode positionally: `Onchain.RPC.eth_call/3` → `ABI.decode_response/2` → hand-written `from_raw/1` constructors, matching onchain_aave. Do not use `decode_structs: true`: it raises on un-interned field atoms. Literal defstruct fields need no dynamic atom lookup. `Bindings.Abi` records the wrapper-version evidence and derives signatures from the captures.
 
 ## 🚨 Pagination — never terminate on a short page
 
@@ -751,13 +751,13 @@ before those modules land.
 
 | Module | Used for |
 |--------|----------|
-| `Onchain.ABI` | ABI encoding/decoding |
+| `ABI` | ABI encoding/decoding |
 | `Onchain.RPC` | `eth_call`, `batch/2`, per-call retry |
 | `Onchain.Multicall` | `aggregate3/2`, `call_many/2` — per-pool enrichment |
 | `Onchain.Contract` | Generic contract call |
 | `Cartouche.Signer` | Transaction signing (opt-in write path only) |
 | `Onchain.Address` | Validation, checksumming |
-| `Onchain.Hex` | Hex encoding/decoding |
+| `Cartouche.Hex` | Hex encoding/decoding |
 | `Onchain.Decimal` | Decimal math (ratios) |
 
 `Onchain.Solidity.parse_abi_file/1` (ABI parsing over `priv/abis/`) and

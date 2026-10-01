@@ -70,7 +70,7 @@ precision — there is no `BigNumber`/`bigint` distinction anywhere.
 | `id("Transfer(address,uint256)")` | `toEventSelector` / `keccak256(toBytes(s))` | `Cartouche.Hash.keccak/1` on the string, or `ABI.Event.event_signature/1` from a selector | — |
 | `getAddress("0x…")` | `getAddress` | `Cartouche.Hex.checksum_address/1` (string → string) or `Cartouche.Hex.to_address/1` (bytes → string) | **produces** EIP-55 but never **validates** it — see rule 4 |
 | `isAddress` | `isAddress` | `Cartouche.Hex.decode_address!/1` (raises otherwise) | length check only, no checksum check |
-| `computeAddress(pubkey)` | `publicKeyToAddress` | `Cartouche.Address.from_public_key/1` | SEC1 uncompressed `0x04‖X‖Y` (65 bytes) only; compressed keys are not accepted |
+| `computeAddress(pubkey)` | `publicKeyToAddress` | `Onchain.Address.from_public_key/1` | SEC1 uncompressed `0x04‖X‖Y` (65 bytes) only; compressed keys are not accepted |
 | `getCreateAddress`, `getCreate2Address` | `getContractAddress` | — | not in Cartouche |
 
 ## Keys and signers
@@ -166,7 +166,7 @@ client struct is roadmap task 9017 in `onchain`.
 | `contract.fn.staticCall(args)` | `readContract` | `Cartouche.RPC.call_trx(%Cartouche.Transaction.Call{destination: addr, data: calldata})` then `ABI.decode/3` | two steps unless you use generated bindings |
 | `contract.fn(args)` | `writeContract` | `Cartouche.RPC.execute_trx(addr, {"fn(types)", args}, opts)` | see Transactions — simulates first by default |
 | — | `simulateContract` | `execute_trx/3` with `verify: true` (default), or `call_trx/2` with `from:` | simulation is **on by default** — the opposite of ethers, which never simulates |
-| — | `erc20Abi` | `Cartouche.Erc20.Call.balance_of/3` (read), `Cartouche.Erc20.transfer/4` (send) | — |
+| — | `erc20Abi` | `Onchain.ERC20.Call.balance_of/3` (read), `Onchain.ERC20.transfer/4` (send) | `transfer/3` is gone; configured-signer sends use `exec_trx/3` with `CallData.transfer/2` |
 
 ## Events and filters
 

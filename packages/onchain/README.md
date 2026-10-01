@@ -67,7 +67,7 @@ a deliberate constraint, not an accident: the maintainers develop against a full
 node, and anything that only works there is treated as a bug.
 
 Everything in `Onchain.RPC`, `Onchain.ERC20`, `Onchain.ERC721`, `Onchain.ERC1155`,
-`Onchain.Contract`, `Onchain.Log`, `Onchain.Block`, `Onchain.Multicall` and `Onchain.ENS`
+`Onchain.Contract`, `Cartouche.Block`, `Onchain.Multicall` and `Onchain.ENS`
 uses standard methods and needs no special endpoint. These surfaces depend on what
 your provider serves:
 
@@ -136,13 +136,13 @@ balance = Onchain.ERC20.balance_of!(usdc, "0xYourAddress")
 
 # Decode a Solidity 0.8.4+ custom-error revert against a list of candidate signatures
 {:ok, %{error: "OwnableUnauthorizedAccount", args: [_addr]}} =
-  Onchain.ABI.decode_error(
+  ABI.decode_hex_error(
     "0x118cdaa7000000000000000000000000d8da6bf26964af9d7eed9e03e53415d37aa96045",
     ["OwnableUnauthorizedAccount(address)"]
   )
 
 # After an eth_call that reverts with a custom error, use :data from the rpc_error map:
-# {:error, {:rpc_error, %{data: revert_hex}}} -> Onchain.ABI.decode_error(revert_hex, [...])
+# {:error, {:rpc_error, %{data: revert_hex}}} -> ABI.decode_hex_error(revert_hex, [...])
 ```
 
 ## Modules
@@ -151,19 +151,19 @@ balance = Onchain.ERC20.balance_of!(usdc, "0xYourAddress")
 
 | Module | Purpose |
 |--------|---------|
-| `Onchain.Hex` | Hex encoding/decoding (hex<->binary, hex<->integer, 0x prefix) |
-| `Onchain.ABI` | ABI encoding/decoding for contract calls (`encode_call/2`, `decode_response/3`, `decode_types/3`, `decode_call/3` for selector-prefixed calldata, `decode_error/3` for Solidity 0.8.4+ custom-error revert data). Optional trailing keyword is forwarded to hieroglyph; `strict: true` rejects non-canonical payloads as `{:error, {:decode_error, {:strict_violation, detail}}}` |
+| `Cartouche.Hex` | Hex encoding/decoding (hex<->binary, hex<->integer, 0x prefix), plus the convenience names `decode/1`, `encode/1`, `to_integer/1`, `from_integer/1`, `valid?/1` |
+| `ABI` | ABI encoding/decoding. Binary codecs stay `encode/2`, `decode/3`, `encode_call/3`, `decode_call/3`, `decode_error/3`. Hex conveniences are `encode_hex_call/2`, `decode_hex_call/3`, `decode_hex_error/3`, `decode_response/3`, and `decode_types/3`. `strict: true` rejects non-canonical payloads as `{:error, {:decode_error, {:strict_violation, detail}}}`. Events are `event_signature/1` and `decode_event/4` |
 | `Onchain.Address` | Address validation, EIP-55 checksum, normalization |
 | `Onchain.Decimal` | Decimal precision helpers (to_decimal, div_pow10, to_basis_points) |
 | `Onchain.Fees` | EIP-1559 fee recommendation (`suggest_fees/2`) over `Cartouche.FeeHistory.t()` — pure function, returns `{base_fee, max_priority, max_fee}` |
-| `Onchain.RPC` | Ethereum JSON-RPC wrapper (eth_call, `eth_estimate_gas`, receipts, nonces, balances, block_number, chain_id, **decoded** `get_block_by_number`, EIP-7928 block access lists, eth_get_code, eth_send_raw_transaction, fee_history, `base_fee`, `blob_base_fee`; `call/3` for any other method; `batch/2` for JSON-RPC array batching). Opt-in `retry: [max_retries: n, backoff_ms: ms]` on single and batch paths retries transport failures only (default: no retry). Block access lists preserve the node's raw camelCase response. `get_block_by_number/2` returns atom-keyed maps (quantities as integers). `eth_getStorageAt` and EIP-1186 proofs are `Cartouche.RPC.eth_get_storage_at/3` (32-byte binary) and `eth_get_proof/3` (`Cartouche.RPC.Proof`). Stateless `eth_getLogs` is `Cartouche.RPC.eth_get_logs/2`, returning `[%Cartouche.Filter.Log{}]`. It accepts atom keys or canonical camelCase string aliases (`"fromBlock"`, `"toBlock"`, `"blockHash"`, `"address"`, `"topics"`); `:block_hash` is mutually exclusive with `:from_block`/`:to_block`. Receipt logs stay atom-keyed maps. `eth_syncing`, block transaction counts, `net_listening`, `net_peerCount`, and `web3_clientVersion` are `Cartouche.RPC.eth_syncing/1`, `eth_get_block_transaction_count_by_hash/2`, `eth_get_block_transaction_count_by_number/2`, `net_listening/1`, `net_peer_count/1`, and `web3_client_version/1`. Transaction objects are `Cartouche.RPC.eth_get_transaction_by_hash/2`, `eth_get_transaction_by_block_hash_and_index/3`, and `eth_get_transaction_by_block_number_and_index/3` (`%Cartouche.Transaction.Info{}`; a null result is `{:error, :not_found}`). Block receipts are `Cartouche.RPC.eth_get_block_receipts/2` (`[%Cartouche.Receipt{}]`) |
-| `Onchain.RPC.Helpers` | Shared RPC helpers (hex normalization, block tags, tx hash validation; `parse_block_response/1`, `parse_transaction_map/1`; execution-revert maps get `:data` hex for `decode_error/2`) |
-| `Onchain.Block` | Block fetching with parsed fields, timestamp-based binary search |
+| `Onchain.RPC` | Ethereum JSON-RPC wrapper (eth_call, `eth_estimate_gas`, receipts, nonces, balances, block_number, chain_id, **decoded** `get_block_by_number`, EIP-7928 block access lists, eth_get_code, eth_send_raw_transaction, fee_history, `base_fee`, `blob_base_fee`; `call/3` for any other method; `batch/2` for JSON-RPC array batching). Opt-in `retry: [max_retries: n, backoff_ms: ms]` on single and batch paths retries transport failures only (default: no retry). Block access lists preserve the node's raw camelCase response. `get_block_by_number/2` returns atom-keyed maps (quantities as integers). `eth_getStorageAt` and EIP-1186 proofs are `Cartouche.RPC.eth_get_storage_at/3` (32-byte binary) and `eth_get_proof/3` (`Cartouche.RPC.Proof`). Stateless `eth_getLogs` is `Cartouche.RPC.eth_get_logs/2`, returning `[%Cartouche.Filter.Log{}]`. It accepts atom keys or canonical camelCase string aliases (`"fromBlock"`, `"toBlock"`, `"blockHash"`, `"address"`, `"topics"`); `:block_hash` is mutually exclusive with `:from_block`/`:to_block`. Receipt logs are `%Cartouche.Filter.Log{}` (`removed` is nil when the node omits it). `eth_syncing`, block transaction counts, `net_listening`, `net_peerCount`, and `web3_clientVersion` are `Cartouche.RPC.eth_syncing/1`, `eth_get_block_transaction_count_by_hash/2`, `eth_get_block_transaction_count_by_number/2`, `net_listening/1`, `net_peer_count/1`, and `web3_client_version/1`. Transaction objects are `Cartouche.RPC.eth_get_transaction_by_hash/2`, `eth_get_transaction_by_block_hash_and_index/3`, and `eth_get_transaction_by_block_number_and_index/3` (`%Cartouche.Transaction.Info{}`; a null result is `{:error, :not_found}`). Block receipts are `Cartouche.RPC.eth_get_block_receipts/2` (`[%Cartouche.Receipt{}]`) |
+| `Onchain.RPC.Helpers` | Shared RPC helpers (hex normalization, block tags, tx hash validation; `parse_block_response/1`, `parse_transaction_map/1`; execution-revert maps get `:data` hex for `ABI.decode_hex_error/2`) |
+| `Cartouche.Block` | Full decoded block plus `get_by_number/2` and timestamp binary search. Hashes are 32-byte binaries. A null RPC block is `{:error, :block_not_found}`; a pending block is `{:error, :pending_block}` |
 | `Onchain.Contract` | Generic contract call (encode -> eth_call -> decode in one function) |
 | `Onchain.Contract.Generator` | Compile-time codegen from ABI JSON (`use` with `:abi_json` or `:abi_file`). `.sol` inputs need `onchain_evm` |
 | `Onchain.Multicall` | Batch multiple eth_call via Multicall3 |
 | `Cartouche.Sleuth.deploy_query/5` | Deploy-as-call: ship creation bytecode in one eth_call, decode returned bytes |
-| `Onchain.Log` | Event log parsing against ABI signatures |
+| `Cartouche.Filter.Log` | Decoded log struct for `eth_getLogs` and receipt logs (`removed` is nil when the node omits it) |
 | `Cartouche.Signer` | Key management and transaction signing |
 | `Onchain.ERC20` | ERC-20 read (balanceOf, allowance, decimals, symbol, totalSupply) and write (transfer, approve) |
 | `Onchain.ERC721` | ERC-721 NFT reads (owner_of, token_uri, balance_of, name, symbol, get_approved, approved_for_all?) |
@@ -196,7 +196,7 @@ balance = Onchain.ERC20.balance_of!(usdc, "0xYourAddress")
 | `Onchain.AA` | ERC-4337 UserOperation hashing (`user_op_hash/4`), signing (`sign_user_operation/5` — `:eip191`/`:raw`), and bundler JSON-RPC (`send_user_operation/3`, `estimate_user_operation_gas/3`, `get_user_operation_by_hash/2`, `get_user_operation_receipt/2`, `supported_entry_points/1`). Handles both v0.6 and v0.7 EntryPoint wire formats; `user_op_hash` verified against viem reference vectors |
 | `Onchain.AA.UserOperation` | Version-agnostic UserOperation struct (numeric fields as integers, byte fields as `0x` hex, optional v0.7 `factory`/`paymaster` fields). Build with `Onchain.AA.new/1` |
 
-Most read functions (`Onchain.RPC`, `Onchain.ERC20`/`ERC721`/`ERC1155`, `Onchain.Block`, `Onchain.DEX.Router.amount_out_v2`, …) expose a `function!/1` bang variant that raises on error instead of returning `{:error, reason}`. Newer composite modules (`Onchain.MEV`, `Onchain.AA`, `Onchain.ERC7730`, `Onchain.DEX.Router.route`/`quote_pool`) return tagged tuples only — no bang variant.
+Most read functions (`Onchain.RPC`, `Onchain.ERC20`/`ERC721`/`ERC1155`, `Cartouche.Block`, `Onchain.DEX.Router.amount_out_v2`, …) expose a `function!/1` bang variant that raises on error instead of returning `{:error, reason}`. Newer composite modules (`Onchain.MEV`, `Onchain.AA`, `Onchain.ERC7730`, `Onchain.DEX.Router.route`/`quote_pool`) return tagged tuples only — no bang variant.
 
 ## Real-time Subscriptions
 

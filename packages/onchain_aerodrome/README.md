@@ -162,7 +162,7 @@ enumeration is an explicit decision.
 `priv/abis/` holds ABIs captured from **Sourcify v2**, which serves the
 *deployed* ABI with named tuple components for field-count and field-order
 drift tests. Decode positionally with `Onchain.RPC.eth_call/3`,
-`Onchain.ABI.decode_response/2`, and hand-written `from_raw/1` constructors.
+`ABI.decode_response/2`, and hand-written `from_raw/1` constructors.
 `Bindings.Abi` derives signatures from these captures. Avoid
 `decode_structs: true`, which raises on un-interned field atoms.
 `priv/abis/README.md` records the address, Sourcify match type, fetch date and

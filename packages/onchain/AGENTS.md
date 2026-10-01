@@ -594,17 +594,18 @@ precommit` is the fast local loop (no dialyzer/coverage).
 ## Module Layout
 
 ```
+lib/abi.ex          # ABI codec; hex conveniences are encode_hex_call/decode_hex_call/decode_hex_error
+lib/cartouche/hex.ex    # hex codec, sigils, and the former Onchain.Hex convenience names
+lib/cartouche/http.ex   # Req options; Onchain.ENS reads :onchain, other owners read :cartouche
+lib/cartouche/block.ex  # full block decode plus get_by_number/find_by_timestamp
 lib/onchain/
-  hex.ex            # hex<->binary, hex<->integer, 0x prefix
-  http.ex           # req_options/3 — onchain's Req transport-override seam (:onchain app config) for the CCIP-Read gateway; JSON-RPC uses Cartouche.HTTP
-  address.ex        # validate, checksum (EIP-55), normalize
-  abi.ex            # encode_call/2, decode_response/2, decode_types/2, decode_call/3, decode_error/2
+  address.ex        # validate, checksum (EIP-55), normalize, from_public_key/1
   decimal.ex        # to_decimal/2, to_basis_points/1, div_pow10/2
   fees.ex           # suggest_fees/2 — EIP-1559 fee recommendation over Cartouche.FeeHistory.t()
   rpc.ex            # eth_call, eth_estimateGas, eth_getBalance, receipts, nonces, fee_history, blob_base_fee. Next-block base fee is Cartouche.RPC.base_fee/1 via eth_feeHistory, generic call/3 passthrough; do_rpc and batch delegate to Cartouche.RPC, which classifies node refusals (:method_not_found / :namespace_unavailable / :unavailable). eth_syncing, block transaction counts, net_listening, net_peerCount, and web3_clientVersion are Cartouche.RPC. Stateless eth_getLogs is Cartouche.RPC.eth_get_logs/2. eth_getStorageAt and EIP-1186 eth_getProof are Cartouche.RPC.eth_get_storage_at/3 and eth_get_proof/3
   rpc/codegen.ex    # defrpc/defrpc_bang macros — NimbleOptions-backed codegen for uniform RPC wrapper bodies
   rpc/helpers.ex    # shared RPC helpers; parse_block_response/1, parse_transaction_map/1; do_rpc enriches revert maps with :data hex for decode_error/2
-  erc20.ex          # reads + writes: balanceOf, allowance, decimals, symbol, totalSupply, approve, transfer
+  erc20.ex          # reads + writes, plus ERC20.Call and ERC20.CallData
   erc721.ex         # ERC-721 NFT reads: ownerOf, tokenURI, balanceOf
   erc1155.ex        # ERC-1155 multi-token reads: balanceOf, balanceOfBatch, uri
   erc7730.ex        # ERC-7730 clear-signing: load/1, format/2, format!/2
@@ -612,19 +613,17 @@ lib/onchain/
     descriptor.ex   # parse + structurally validate descriptor JSON → struct
     binding.ex      # resolve which display format applies (calldata / EIP-712 / UserOp)
     formatter.ex    # display-rule engine: path resolution + field formatters
-  block.ex          # block queries
   contract.ex       # generic call/4 (encode → eth_call → decode)
   contract/
     abi.ex          # alloy-json-abi JSON parser (core NIF)
     generator.ex    # compile-time ABI JSON codegen; .sol inputs delegate to onchain_evm
-  log.ex            # event log queries
   wallet.ex         # classify (EOA/contract), native ETH balance
   multicall.ex      # batched calls via Multicall3
   ens.ex            # ENS resolution: namehash, resolve, reverse, records; address/3 multi-coin (ENSIP-9/10 wildcard + EIP-3668 CCIP-Read); normalize/1, dns_encode/1, evm_coin_type/1
   ens/
     normalize.ex    # UTS-46/ENSIP-15 name normalization (deterministic subset: case-fold + NFC + ignored/disallowed code points)
     ccip.ex         # EIP-3668 CCIP-Read pure helpers + injectable gateway round-trip loop
-  transfer.ex       # ERC-20 Transfer event parsing
+  transfer.ex       # ERC-20/721/1155 Transfer parsing via ABI.decode_event/3
   mev.ex            # private tx submission via Flashbots-style relays (eth_sendPrivateTransaction / eth_sendBundle)
   subscription.ex   # real-time eth_subscribe (newHeads, pendingTx, logs)
   subscription/
