@@ -113,13 +113,13 @@ Signer specs:
 Cartouche talks to whatever JSON-RPC endpoint you configure. The transaction, balance,
 block, log, receipt, call and fee-history methods work against any mainstream Ethereum
 node — Alchemy, Infura, QuickNode, a self-hosted Geth/reth/Erigon, pruned or archive
-alike. The tracing surface does not, and one fee method does not.
+alike. The tracing surface has additional endpoint requirements.
 
 Three caveats worth knowing before you pick an endpoint:
 
 | Surface | Requirement | Symptom without it |
 | --- | --- | --- |
-| `Cartouche.RPC.base_fee/1` | `eth_baseFee` — an **Erigon-origin method**, since adopted by reth, Nethermind and go-ethereum (v1.17.4) and merged into `ethereum/execution-apis` `main` on 2026-06-15, but carried by **no tagged spec release** and documented by neither Alchemy nor Infura | Alchemy mainnet answers `-32600 "eth_baseFee is not available on the ETH_MAINNET"` (observed 2026-08-25). Other hosted providers have not been probed; expect a refusal, but the exact code and message will vary |
+| `Cartouche.RPC.base_fee/1` | Reads the next fee through `eth_feeHistory(1, "latest", [])`, supported by Alchemy and Infura mainnet | Does not require `eth_baseFee` or the `pending` block tag; see [live probe evidence](../base-fee-portability.md) |
 | `Cartouche.RPC.trace_trx/2`, `trace_call/2`, `trace_call_many/2`, `debug_trace_call/2` | the `trace_*` namespace (OpenEthereum-origin; served by Erigon and reth) and `debug_traceCall` — **none of them in `ethereum/execution-apis`** | hosted endpoints that do not expose the tracing namespaces reject the call; the exact code and message vary by provider and have not been probed |
 | Historical-state reads (a `block` parameter older than ~128 blocks) | an **archive** node, or a hosted plan that retains history | `-32001 Unable to complete request`, or a "missing trie node" error, depending on client |
 

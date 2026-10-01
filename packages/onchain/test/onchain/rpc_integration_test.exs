@@ -320,49 +320,6 @@ defmodule Onchain.RPC.IntegrationTest do
     end
   end
 
-  describe "base_fee/1" do
-    test "returns the next block's base fee per gas in wei" do
-      assert {:ok, base_fee} = RPC.base_fee(rpc_opts())
-      assert is_integer(base_fee)
-      assert base_fee > 0
-    end
-
-    test "default block is pending, matching Erigon eth_baseFee's next-block semantics" do
-      # Read all three in one batch so the comparison is same-instant and cannot be
-      # invalidated by a block landing mid-test.
-      assert {:ok, [pending, latest]} =
-               RPC.batch(
-                 [
-                   {"eth_getBlockByNumber", ["pending", false]},
-                   {"eth_getBlockByNumber", ["latest", false]}
-                 ],
-                 rpc_opts()
-               )
-
-      {:ok, pending_base_fee} = Onchain.Hex.to_integer(pending["baseFeePerGas"])
-      {:ok, latest_base_fee} = Onchain.Hex.to_integer(latest["baseFeePerGas"])
-
-      assert {:ok, ^pending_base_fee} = RPC.base_fee(rpc_opts())
-      assert {:ok, ^latest_base_fee} = RPC.base_fee(Keyword.put(rpc_opts(), :block, "latest"))
-
-      # The two differ in normal operation; if they were equal the assertion above
-      # would not distinguish the default, so pin that the default tracks pending.
-      refute pending_base_fee == latest_base_fee
-    end
-
-    test "returns the historical base fee for a numeric block" do
-      assert {:ok, base_fee} = RPC.base_fee(Keyword.put(rpc_opts(), :block, 20_000_000))
-      assert is_integer(base_fee)
-      assert base_fee > 0
-    end
-  end
-
-  describe "base_fee!/1" do
-    test "returns the base fee unwrapped" do
-      assert is_integer(RPC.base_fee!(rpc_opts()))
-    end
-  end
-
   describe "blob_base_fee/1" do
     test "returns the EIP-4844 base fee per blob gas in wei" do
       assert {:ok, blob_base_fee} = RPC.blob_base_fee(rpc_opts())

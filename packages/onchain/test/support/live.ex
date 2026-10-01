@@ -76,8 +76,8 @@ defmodule Cartouche.Test.Live do
   the consumer's node — not ours — as the case that matters:
   the identical green run on both endpoints is what the portability claim rests on.
 
-      assert_portability!(&Cartouche.RPC.base_fee/1,
-        archive: &match?({:ok, fee} when is_integer(fee) and fee >= 0, &1),
+      assert_portability!(&Cartouche.RPC.send_rpc("eth_baseFee", [], &1),
+        archive: &match?({:ok, "0x" <> _fee}, &1),
         alchemy: &expected_alchemy_refusal?/1
       )
 

@@ -2577,19 +2577,34 @@ defmodule Cartouche.RPC do
     """
   )
 
-  defrpc(:base_fee, "eth_baseFee",
-    decode: :hex_unsigned,
-    summary: "Fetch the computed base fee per gas for the next block.",
-    returns_desc: "`{:ok, wei_per_gas}` decoded from `eth_baseFee`, or the node's unchanged `{:error, reason}`.",
-    doc: ~S"""
-    RPC call to get the computed base fee per gas for the next block.
-
-    ## Examples
-
-        iex> Cartouche.RPC.base_fee()
-        {:ok, 1000000000}
-    """
+  api(:base_fee, "Fetch the EIP-1559 base fee per gas for the next block.",
+    params: [opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]],
+    returns: %{type: :ok_error_tuple, description: "`{:ok, wei_per_gas}` or `{:error, reason}`."}
   )
+
+  @doc """
+  Returns the next block's base fee in wei via `eth_feeHistory(1, "latest", [])`.
+
+  The final `baseFeePerGas` entry is the next block's fee, as specified in
+  execution-apis v1.0.0-beta.7. This avoids hosted endpoints' differing handling
+  of the `pending` block tag. Uses the shared fee-history decoder and transport;
+  node errors propagate unchanged. An incomplete fee window returns
+  `{:error, :invalid_base_fee_history}`.
+
+  `eth_baseFee` landed on execution-apis `main` on 2026-06-15, but is in no
+  tagged release (latest verified: v1.0.0-beta.7). Alchemy and Infura mainnet
+  refused it in live probes on 2026-10-01; see `docs/base-fee-portability.md`.
+  """
+  @spec base_fee(keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def base_fee(opts \\ []) do
+    opts = Keyword.merge(opts, block_count: "0x1", newest_block: "latest", reward_percentiles: [])
+
+    case fee_history(opts) do
+      {:ok, %Cartouche.FeeHistory{base_fee_per_gas: [_current, next]}} -> {:ok, next}
+      {:ok, %Cartouche.FeeHistory{}} -> {:error, :invalid_base_fee_history}
+      {:error, reason} -> {:error, reason}
+    end
+  end
 
   defrpc(:blob_base_fee, "eth_blobBaseFee",
     decode: :hex_unsigned,

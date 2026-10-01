@@ -70,7 +70,13 @@ defmodule Cartouche.Test.LiveTest do
           {-32_601, {:method_not_found, %{code: -32_601, message: "refused"}}},
           {-32_600, %{code: -32_600, message: "refused"}}
         ] do
-      System.put_env("CARTOUCHE_LIVE_NODE_URL", node_url("0x1", %{"result" => "0x2a"}))
+      System.put_env(
+        "CARTOUCHE_LIVE_NODE_URL",
+        node_url("0x1", %{
+          "result" => %{"oldestBlock" => "0x1", "baseFeePerGas" => ["0x20", "0x2a"], "gasUsedRatio" => [0.5]}
+        })
+      )
+
       System.put_env("ETHEREUM_ALCHEMY_URL", node_url("0x1", %{"error" => %{"code" => code, "message" => "refused"}}))
 
       assert [archive: {:ok, 42}, alchemy: {:error, ^refusal}] =
@@ -83,7 +89,12 @@ defmodule Cartouche.Test.LiveTest do
 
   test "one call can succeed on archive and multiple hosted lanes" do
     for env <- Enum.take(@envs, 3) do
-      System.put_env(env, node_url("0x1", %{"result" => "0x2a"}))
+      System.put_env(
+        env,
+        node_url("0x1", %{
+          "result" => %{"oldestBlock" => "0x1", "baseFeePerGas" => ["0x20", "0x2a"], "gasUsedRatio" => [0.5]}
+        })
+      )
     end
 
     assert [archive: {:ok, 42}, alchemy: {:ok, 42}, infura: {:ok, 42}] =

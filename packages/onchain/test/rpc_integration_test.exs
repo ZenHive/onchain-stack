@@ -450,8 +450,23 @@ defmodule Cartouche.RPC.IntegrationTest do
   end
 
   describe "fee reads" do
-    test "eth_baseFee matches the EIP-1559 next-block update rule" do
-      {head, base_fee} = stable_head_fee!("eth_baseFee", &Cartouche.RPC.base_fee/1)
+    @tag :base_fee_portability
+    test "fee history and eth_baseFee agree in one batch" do
+      assert {:ok, [raw_fee, raw_history]} =
+               Cartouche.RPC.send_batch(
+                 [{"eth_baseFee", []}, {"eth_feeHistory", ["0x1", "latest", []]}],
+                 live_opts()
+               )
+
+      assert %Cartouche.FeeHistory{base_fee_per_gas: [_current, next]} =
+               Cartouche.FeeHistory.deserialize(raw_history)
+
+      assert next == Cartouche.Hex.decode_hex_number!(raw_fee)
+    end
+
+    @tag :base_fee_portability
+    test "base_fee matches the EIP-1559 next-block update rule" do
+      {head, base_fee} = stable_head_fee!("eth_feeHistory", &Cartouche.RPC.base_fee/1)
 
       assert base_fee == next_base_fee(head)
     end

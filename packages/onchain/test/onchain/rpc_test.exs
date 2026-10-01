@@ -843,30 +843,6 @@ defmodule Onchain.RPCTest do
     end
   end
 
-  describe "base_fee/1 block validation" do
-    test "rejects an invalid :block value before any network call" do
-      assert {:error, {:invalid_block_id, :bogus}} = RPC.base_fee(block: :bogus)
-    end
-
-    test "accepts a block tag (passes input validation)" do
-      result = RPC.base_fee(block: "latest", rpc_url: "http://localhost:1")
-      refute match?({:error, {:invalid_block_id, _}}, result)
-    end
-
-    test "accepts an integer block number (passes input validation)" do
-      result = RPC.base_fee(block: 20_000_000, rpc_url: "http://localhost:1")
-      refute match?({:error, {:invalid_block_id, _}}, result)
-    end
-  end
-
-  describe "base_fee!/1" do
-    test "raises on an invalid :block value" do
-      assert_raise RuntimeError, ~r/base_fee failed.*invalid_block_id/, fn ->
-        RPC.base_fee!(block: :bogus)
-      end
-    end
-  end
-
   describe "blob_base_fee/1 (connection failure)" do
     test "returns an rpc_error tuple when the node is unreachable" do
       assert {:error, {:rpc_error, %{message: _}}} =

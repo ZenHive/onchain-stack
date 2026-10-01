@@ -175,7 +175,7 @@ defmodule Cartouche.RPCTest do
     def call(conn) do
       id = Cartouche.RPCTest.decode_id(conn)
 
-      # Recorded from Infura mainnet on 2026-08-23.
+      # Observed on Infura mainnet on 2026-10-01; docs/base-fee-portability.md.
       Req.Test.json(conn, %{
         "jsonrpc" => "2.0",
         "error" => %{"code" => -32_601, "message" => "The method eth_baseFee does not exist/is not available"},
@@ -276,9 +276,6 @@ defmodule Cartouche.RPCTest do
     end
 
     test "fee reads use their spec method names and decode quantities" do
-      assert {:ok, 1_000_000_000} = Cartouche.RPC.base_fee()
-      assert_received {:rpc_request, %{"method" => "eth_baseFee", "params" => []}}
-
       assert {:ok, 42} = Cartouche.RPC.blob_base_fee()
       assert_received {:rpc_request, %{"method" => "eth_blobBaseFee", "params" => []}}
     end
@@ -458,7 +455,58 @@ defmodule Cartouche.RPCTest do
     test "an unsupported fee method tags the node refusal and preserves its details" do
       assert {:error,
               {:method_not_found, %{code: -32_601, message: "The method eth_baseFee does not exist/is not available"}}} =
-               Cartouche.RPC.base_fee(req_options: [plug: &UnsupportedBaseFeeClient.call/1])
+               Cartouche.RPC.send_rpc("eth_baseFee", [], req_options: [plug: &UnsupportedBaseFeeClient.call/1])
+    end
+  end
+
+  describe "base_fee/1" do
+    test "reads the next fee, fixes the window, and forwards transport options" do
+      plug = fn conn ->
+        request = conn |> Req.Test.raw_body() |> IO.iodata_to_binary() |> Jason.decode!()
+        assert request["method"] == "eth_feeHistory"
+        assert request["params"] == ["0x1", "latest", []]
+
+        respond_with_result(conn, %{
+          "oldestBlock" => "0x18e2a28",
+          "baseFeePerGas" => ["0x42043a9", "0x4001897"],
+          "gasUsedRatio" => [0.37818105640761723]
+        })
+      end
+
+      assert {:ok, 0x4001897} =
+               Cartouche.RPC.base_fee(
+                 block_count: 5,
+                 newest_block: "pending",
+                 reward_percentiles: [50],
+                 req_options: [plug: plug]
+               )
+    end
+
+    test "accepts zero fees and rejects incomplete fee windows" do
+      for {fees, expected} <- [
+            {["0x0", "0x0"], {:ok, 0}},
+            {[], {:error, :invalid_base_fee_history}},
+            {["0x1"], {:error, :invalid_base_fee_history}}
+          ] do
+        plug = fn conn ->
+          respond_with_result(conn, %{"oldestBlock" => "0x1", "baseFeePerGas" => fees, "gasUsedRatio" => [0.0]})
+        end
+
+        assert Cartouche.RPC.base_fee(req_options: [plug: plug]) == expected
+      end
+    end
+
+    test "preserves upstream errors" do
+      plug = fn conn ->
+        Req.Test.json(conn, %{
+          "jsonrpc" => "2.0",
+          "id" => decode_id(conn),
+          "error" => %{"code" => -32_602, "message" => "invalid params"}
+        })
+      end
+
+      assert {:error, %{code: -32_602, message: "invalid params"}} =
+               Cartouche.RPC.base_fee(req_options: [plug: plug])
     end
   end
 
