@@ -2642,12 +2642,16 @@ defmodule Cartouche.RPC do
     end
   end
 
+  @spec normalize_storage_slot(term()) :: {:ok, String.t()} | {:error, {:invalid_slot, term()}}
   defp normalize_storage_slot("0x" <> digits = slot) when byte_size(digits) in 1..64 do
     if Regex.match?(@hex_digits, digits), do: {:ok, String.downcase(slot)}, else: {:error, {:invalid_slot, slot}}
   end
 
   defp normalize_storage_slot(slot), do: {:error, {:invalid_slot, slot}}
 
+  @spec validate_storage_keys(term()) ::
+          {:ok, [String.t()]}
+          | {:error, {:invalid_storage_keys, term()} | {:invalid_storage_key, term()}}
   defp validate_storage_keys(keys) when is_list(keys) do
     keys
     |> Enum.reduce_while({:ok, []}, fn key, {:ok, acc} ->

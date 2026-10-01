@@ -26,6 +26,12 @@ Completed roadmap tasks.
   `txpool` 3, `testing` 1, `net` 1). Codegen gains no methods and loses none.
   `net_listening`, `net_peerCount`, `web3_clientVersion`, and `eth_baseFee`
   stay out of the vendored file.
+- `Cartouche.RPC.eth_get_storage_at/3` reads one storage word (`eth_getStorageAt`,
+  execution-apis v1.0.0-beta.7) and returns a 32-byte binary. `eth_get_proof/3`
+  returns an EIP-1186 `%Cartouche.RPC.Proof{}`; each `storage_proof` entry is a
+  `%Cartouche.RPC.Proof.StorageProof{}` with `key`, `value`, and `proof`.
+  Historical availability is endpoint-specific. The 2026-10-01 probes are in
+  `docs/state-read-portability.md`.
 
 ### Breaking behaviour
 
@@ -55,6 +61,9 @@ Completed roadmap tasks.
   `eth_get_block_transaction_count_by_hash/2` and
   `eth_get_block_transaction_count_by_number/2`.
 
+- Remove `Onchain.RPC.get_proof/3` and `get_proof!/3`. EIP-1186 proofs are
+  `Cartouche.RPC.eth_get_proof/3`, decoded into `%Cartouche.RPC.Proof{}`
+  (bytes and integers) instead of the previous atom-keyed hex map.
 - `Onchain.RPC.eth_get_logs/2` and `eth_get_logs!/2` are removed. Stateless
   `eth_getLogs` is `Cartouche.RPC.eth_get_logs/2`. It returns
   `[%Cartouche.Filter.Log{}]` (addresses, hashes, topics, and data as binaries)

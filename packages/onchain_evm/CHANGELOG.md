@@ -4,6 +4,14 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## Unreleased
+
+### Changed
+
+- `Onchain.Trace.storage_at/3` reads `eth_getStorageAt` through
+  `Cartouche.RPC.eth_get_storage_at/3`. The public result is still a 32-byte
+  hex string, and node errors stay `{:error, {:rpc_error, map}}`.
+
 ## [0.7.1] — 2026-09-16
 
 ### Fixed

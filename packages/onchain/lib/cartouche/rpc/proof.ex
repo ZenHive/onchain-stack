@@ -41,6 +41,7 @@ defmodule Cartouche.RPC.Proof do
     }
   end
 
+  @spec deserialize_storage(map()) :: StorageProof.t()
   defp deserialize_storage(entry) do
     %StorageProof{
       key: Hex.decode_hex_number!(Map.fetch!(entry, "key")),
