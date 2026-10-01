@@ -10290,7 +10290,7 @@ phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain"
 milestone = "onchain_core_consolidation"
-status = "in_progress"
+status = "done"
 title = "Remove the utility duplicate pairs between Cartouche.* / ABI.* and Onchain.* (Hex, Address, HTTP, Block, ERC20, Log, ABI) and write the full module mapping for 9036"
 scores = { d = 5, b = 7, u = 7 }
 depends_on = [2128, 2129, 2137]
@@ -10315,9 +10315,16 @@ Owned elsewhere: RPC methods (9035), Onchain.Signer vs Cartouche.Signer (the Sig
 Sequenced after 2128, 2129 and 2137 because they edit Cartouche.Block, the log decoder and the HTTP modules this task merges.
 
 For each pair, keep the better-tested implementation, delete the other and update in-repo callers. Where return shapes differ, keep the richer one and record the change in the CHANGELOG as part of the 0.16.0 break."""
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1790828274676-879cb3f9, f25131fd32184633c561be4bf128c3e2b377d1a3)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1790828274676-879cb3f9"
 created_at = "2026-09-29"
 started_at = "2026-10-01"
 scored_at = "2026-09-29"
+done_at = "2026-10-01"
+shipped_in = "f25131fd32184633c561be4bf128c3e2b377d1a3"
 
 [[task]]
 id = "9040"
