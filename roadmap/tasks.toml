@@ -3716,7 +3716,7 @@ phase = 2000
 bundle = "cartouche_rpc_read_surface"
 target_repo = "onchain"
 milestone = "stack_read_surface_boundary"
-status = "in_progress"
+status = "done"
 title = "Node-introspection surface on Cartouche.RPC — six methods, with the three untagged ones marked"
 scores = { d = 3, b = 6, u = 6 }
 depends_on = [2136, 2137]
@@ -3739,9 +3739,16 @@ Existing copies in Onchain.RPC (packages/onchain/lib/onchain/rpc.ex): syncing :4
 
 (2026-09-29 review) net_version is not missing. It is in the tagged spec since v1.0.0-beta.5 (src/eth/client.yaml) and Cartouche.RPC already wraps it. The vendored spec is also mislabelled. packages/onchain/priv/specs/openrpc-v1.0.0-beta.4.json carries x_pinnedSource ethereum/execution-apis@1ad4d255, which is the v1.0.0-beta.5 tag commit, not beta.4. Onchain.RPC.Specs reads it by that name (lib/onchain/rpc/specs.ex:6). Re-vendor from the v1.0.0-beta.7 tag, never from main, so the untagged net_* and eth_baseFee methods cannot slip in as standard.
 """
+implemented = "Landed by cursor via merge-train; reviewer-approved (run run-1790815604453-74d5a8a0, f92a6052cd8689a052648cf853a6064125211451)."
+delivered_by = "cursor"
+verified = true
+verified_by = "claude"
+verification_ref = "harness-run:run-1790815604453-74d5a8a0"
 created_at = "2026-08-26"
 started_at = "2026-10-01"
 scored_at = "2026-09-29"
+done_at = "2026-10-01"
+shipped_in = "f92a6052cd8689a052648cf853a6064125211451"
 
 [[task]]
 id = 2132

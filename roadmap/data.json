@@ -5544,7 +5544,7 @@
       "bundle": "cartouche_rpc_read_surface",
       "target_repo": "onchain",
       "milestone": "stack_read_surface_boundary",
-      "status": "in_progress",
+      "status": "done",
       "title": "Node-introspection surface on Cartouche.RPC — six methods, with the three untagged ones marked",
       "scores": {
         "d": 3,
@@ -5586,10 +5586,17 @@
         "packages/onchain/lib/onchain/rpc/specs.ex",
         "packages/onchain/priv/specs/"
       ],
+      "shipped_in": "f92a6052cd8689a052648cf853a6064125211451",
       "body": "Context (post-9030): hieroglyph and cartouche now live inside packages/onchain, namespaces unchanged, so Cartouche.RPC (lib/cartouche/rpc.ex) and Onchain.RPC (lib/onchain/rpc.ex) are two modules in one package, and task 9036 will rename both to one Onchain.RPC. The milestone is RPC unification inside the merged core before 9036: each spec'd method gets exactly one wrapper, one decoder and one struct, built on the single transport from task 2137. Put the surviving implementation in Cartouche.RPC for now (9036 does the rename), and delete the Onchain.RPC copy in the same diff. There is no second package, so there is no re-presenting wrapper to keep.\n\nSix methods, and they do not share a standardization status (verified 2026-08-27 against execution-apis at tag and at main):\n- In tagged v1.0.0-beta.7 and the vendored spec: eth_syncing (src/eth/client.yaml), eth_getBlockTransactionCountByHash and ...ByNumber (src/eth/block.yaml).\n- On main only, in no tag: net_listening and net_peerCount (commit 7c58b32, #843, after beta.7).\n- Never in execution-apis at all: web3_clientVersion, which is defined only by EIP-1474.\n\nAll six go into Cartouche.RPC. The untagged three get a @doc naming what defines them and what a refusing endpoint returns. Their capability answer comes from task 2137's shared refusal classification rather than a new per-method probe. Wrapping net_listening and net_peerCount with their status written down stops a later re-vendor from main silently reclassifying them as standard, which is the same trap eth_baseFee fell into.\n\nExisting copies in Onchain.RPC (packages/onchain/lib/onchain/rpc.ex): syncing :446, eth_getBlockTransactionCountByHash :601, ...ByNumber :636. eth_syncing's false-or-object union is the only decode of substance.\n\n(2026-09-29 review) net_version is not missing. It is in the tagged spec since v1.0.0-beta.5 (src/eth/client.yaml) and Cartouche.RPC already wraps it. The vendored spec is also mislabelled. packages/onchain/priv/specs/openrpc-v1.0.0-beta.4.json carries x_pinnedSource ethereum/execution-apis@1ad4d255, which is the v1.0.0-beta.5 tag commit, not beta.4. Onchain.RPC.Specs reads it by that name (lib/onchain/rpc/specs.ex:6). Re-vendor from the v1.0.0-beta.7 tag, never from main, so the untagged net_* and eth_baseFee methods cannot slip in as standard.\n",
       "created_at": "2026-08-26",
       "started_at": "2026-10-01",
+      "done_at": "2026-10-01",
       "scored_at": "2026-09-29",
+      "implemented": "Landed by cursor via merge-train; reviewer-approved (run run-1790815604453-74d5a8a0, f92a6052cd8689a052648cf853a6064125211451).",
+      "delivered_by": "cursor",
+      "verified": true,
+      "verified_by": "claude",
+      "verification_ref": "harness-run:run-1790815604453-74d5a8a0",
       "cross_repo": []
     },
     {
