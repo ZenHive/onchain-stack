@@ -1,12 +1,7 @@
 %{
-  "libonchain_abi-v0.15.0-nif-2.15-aarch64-apple-darwin.so.tar.gz" =>
-    "sha256:3995ff0723006ec4a255ea7aeb08cd5fa6dde92116fed04451ecb38c78ab6a42",
-  "libonchain_abi-v0.15.0-nif-2.15-aarch64-unknown-linux-gnu.so.tar.gz" =>
-    "sha256:ad8640a5f225d89a9c2369d7e85fa00868c63ed9ba71677af690befb8baeab43",
-  "libonchain_abi-v0.15.0-nif-2.15-x86_64-apple-darwin.so.tar.gz" =>
-    "sha256:c7cfba981214d9990433250e45ddf03269a92ef251b2b175c9c1e0a6c1cb0be3",
-  "libonchain_abi-v0.15.0-nif-2.15-x86_64-unknown-linux-gnu.so.tar.gz" =>
-    "sha256:2b25ef318ef5ede46f8160cac13c384bd24c6b4a9a4ac411acb90b6bd1e4fa85",
-  "libonchain_abi-v0.15.0-nif-2.15-x86_64-unknown-linux-musl.so.tar.gz" =>
-    "sha256:713c50b72c3604fc7bff6905d8db8e6fc200e1c778b32636f317a820d029ac46"
+  "libonchain_abi-v0.16.0-nif-2.15-aarch64-apple-darwin.so.tar.gz" => "sha256:c4398d61ff82b0a49d9a9ea167cd38872b78b57280c55fad8d5701fcac97f945",
+  "libonchain_abi-v0.16.0-nif-2.15-aarch64-unknown-linux-gnu.so.tar.gz" => "sha256:270bf7cc3ab7a2f198668cb69477a50f4587599e295ea4f87cab5dff600a055e",
+  "libonchain_abi-v0.16.0-nif-2.15-x86_64-apple-darwin.so.tar.gz" => "sha256:80eac21c6872746ac9ae9ecc7c1c1ba4d80ff9a4273c33718c518544ac270752",
+  "libonchain_abi-v0.16.0-nif-2.15-x86_64-unknown-linux-gnu.so.tar.gz" => "sha256:e79cad07544f4cfe769e7d47038e20d50a5a6f1a4863c0d6f9b0bd423b1bbdeb",
+  "libonchain_abi-v0.16.0-nif-2.15-x86_64-unknown-linux-musl.so.tar.gz" => "sha256:d683a6123bd232e87ca5614736b35f384a23ac4e2ee216c427276955c944ad23",
 }
