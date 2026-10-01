@@ -3695,7 +3695,7 @@ phase = 2000
 bundle = "cartouche_rpc_read_surface"
 target_repo = "onchain"
 milestone = "stack_read_surface_boundary"
-status = "in_progress"
+status = "done"
 title = "One state-read surface in the merged core — eth_getStorageAt and eth_getProof (EIP-1186) on Cartouche.RPC"
 scores = { d = 3, b = 6, u = 5 }
 depends_on = [2136, 2137]
@@ -3715,9 +3715,16 @@ eth_getProof decodes into a struct, not a bare map. Spec residency says nothing 
 
 Authority: the tagged execution-apis spec, EIP-1186, and the live node.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1790821986916-09792bdd, 26e7e95edee22ce843247723fcd73a92e56797ab)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1790821986916-09792bdd"
 created_at = "2026-08-26"
 started_at = "2026-10-01"
 scored_at = "2026-09-29"
+done_at = "2026-10-01"
+shipped_in = "26e7e95edee22ce843247723fcd73a92e56797ab"
 
 [[task]]
 id = 2131

@@ -5500,7 +5500,7 @@
       "bundle": "cartouche_rpc_read_surface",
       "target_repo": "onchain",
       "milestone": "stack_read_surface_boundary",
-      "status": "in_progress",
+      "status": "done",
       "title": "One state-read surface in the merged core — eth_getStorageAt and eth_getProof (EIP-1186) on Cartouche.RPC",
       "scores": {
         "d": 3,
@@ -5541,10 +5541,17 @@
         "packages/onchain/lib/onchain/rpc.ex",
         "packages/onchain_evm/lib/onchain/trace.ex"
       ],
+      "shipped_in": "26e7e95edee22ce843247723fcd73a92e56797ab",
       "body": "Context (post-9030): hieroglyph and cartouche now live inside packages/onchain, namespaces unchanged, so Cartouche.RPC (lib/cartouche/rpc.ex) and Onchain.RPC (lib/onchain/rpc.ex) are two modules in one package, and task 9036 will rename both to one Onchain.RPC. The milestone is RPC unification inside the merged core before 9036: each spec'd method gets exactly one wrapper, one decoder and one struct, built on the single transport from task 2137. Put the surviving implementation in Cartouche.RPC for now (9036 does the rename), and delete the Onchain.RPC copy in the same diff. There is no second package, so there is no re-presenting wrapper to keep.\n\nBoth methods are in tagged execution-apis v1.0.0-beta.7 (src/eth/state.yaml) and the vendored spec, and both are absent from Cartouche.RPC. Existing copies:\n- eth_getProof is implemented in Onchain.RPC.get_proof (packages/onchain/lib/onchain/rpc.ex:1188-1213, parser parse_proof :1935), including key normalization.\n- eth_getStorageAt has one caller, inlined in onchain_evm (packages/onchain_evm/lib/onchain/trace.ex:164-185). The hit at onchain/rpc.ex:1033 is a doc-string example, not a wrapper.\n\neth_getProof decodes into a struct, not a bare map. Spec residency says nothing about availability at depth: a hosted provider serves recent state and refuses or truncates deep history. Probe that rather than documenting an assumption.\n\nAuthority: the tagged execution-apis spec, EIP-1186, and the live node.\n",
       "created_at": "2026-08-26",
       "started_at": "2026-10-01",
+      "done_at": "2026-10-01",
       "scored_at": "2026-09-29",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1790821986916-09792bdd, 26e7e95edee22ce843247723fcd73a92e56797ab).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1790821986916-09792bdd",
       "cross_repo": []
     },
     {
