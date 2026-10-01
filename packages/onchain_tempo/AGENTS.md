@@ -458,7 +458,7 @@ cartouche 0.8.0's `base_fee/1` calls `eth_baseFee` — an **Erigon-origin method
 (v1.17.4) in mid-2026 and **merged into `ethereum/execution-apis` `main` on 2026-06-15**
 (PR #795) — but present in **no tagged spec release** (latest is `v1.0.0-beta.7`,
 2026-06-10, five days *before* the merge), absent from the vendored
-`openrpc-v1.0.0-beta.4.json`, and documented as supported by **neither Alchemy nor
+`openrpc-v1.0.0-beta.7.json`, and documented as supported by **neither Alchemy nor
 Infura**. Our reth node serves it; Alchemy mainnet answers
 `-32600 "eth_baseFee is not available on the ETH_MAINNET"`. It was caught only by
 hand-probing both endpoints.
