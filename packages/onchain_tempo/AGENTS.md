@@ -442,8 +442,8 @@ assumptions. The failure is invisible here — it works — and lands on the con
    census, so it does not carry `eth_*` extensions at all. Rule 1 is currently a judgment
    call, not a compile-time gate.)
 2. **Prefer the portable construction.** If a value is reachable from a standard method,
-   read it that way — `base_fee` via the pending block header's `baseFeePerGas`, not via
-   `eth_baseFee`.
+   read it that way — `base_fee` via the final `baseFeePerGas` of
+   `eth_feeHistory(1, "latest", [])`, not via `eth_baseFee`.
 3. **When only a non-standard method will do, say so in the `@doc`** — name who serves it
    and the error consumers get without it — and expose a capability probe rather than
    failing deep in a pipeline (precedent: `Onchain.Trace.available?/1`).
@@ -468,15 +468,15 @@ hand-probing both endpoints.
 spec today gives the **wrong** answer here — `main` says standard, the consumer's endpoint
 says `-32600`. Only the hand-probe gives the right one. That is rule 4's whole case.
 
-`Onchain.RPC.base_fee/1` therefore reads `baseFeePerGas`
-from the **pending** block header — portable to any EIP-1559 node, and verified
-equivalent against reth v2.5.1 in a single batch request (`eth_baseFee` == pending
-`baseFeePerGas` == 71_739_926, while `latest` was 68_871_658 — the pending header, not
-the latest one, carries `eth_baseFee`'s "next block" semantics).
-
-The inverse also exists: cartouche ships that same `eth_baseFee` wrapper while defaulting
-`:ethereum_node` to `https://mainnet.infura.io` — a consumer following cartouche's own
-README gets `-32600`.
+Since onchain 0.16.0 the one wrapper is `Cartouche.RPC.base_fee/1`. It returns the final
+`baseFeePerGas` of `eth_feeHistory(1, "latest", [])`: the next block's base fee, from a
+method in every tagged spec release since beta.4, without the `pending` tag. On reth one
+batch of `eth_baseFee`, that fee-history read and the pending header returned the same
+value. Infura answers `eth_baseFee` with HTTP 200 and `-32601 "The method eth_baseFee does
+not exist/is not available"`; Alchemy with HTTP 400 and `-32600`. Both serve fee history.
+`Onchain.RPC.base_fee/1` (the earlier pending-header read) is removed. The verbatim
+refusals and the equality batch are in onchain-stack
+`packages/onchain/docs/base-fee-portability.md`.
 
 ### Wording to reuse
 
@@ -489,10 +489,11 @@ paraphrasing:
 
 ### Honest limits
 
-- **No multi-endpoint test seam exists yet.** `Onchain.RPCCase.rpc_url!/0` returns a
-  single string and 17 integration files use it; the dual-endpoint `base_fee`
-  verification was done by manually re-running the whole suite with a different env var.
-  Rule 4 has no tooling today — whoever builds it should build it first.
+- **The multi-endpoint seam covers named portability tests only.** onchain's
+  `rpc_portability_test.exs` runs `base_fee` against archive, Alchemy and Infura and
+  flunks with export instructions when a hosted URL is missing. Most integration files
+  still use the single-URL `Onchain.RPCCase.rpc_url!/0`, so any other portability claim
+  still means re-running against a hosted endpoint by hand.
 - **No CI in any repo** (`.github/workflows` is empty across the stack), so none of this
   is machine-enforced beyond local `mix ci`. Real enforcement is the reviewer reading
   `AGENTS.md`.
