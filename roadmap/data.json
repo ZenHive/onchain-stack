@@ -5444,7 +5444,7 @@
       "bundle": "cartouche_rpc_read_surface",
       "target_repo": "onchain",
       "milestone": "stack_read_surface_boundary",
-      "status": "pending",
+      "status": "in_progress",
       "title": "One transaction and receipt read-back in the merged core — 4 methods on Cartouche.RPC, Onchain.RPC decoders deleted",
       "scores": {
         "d": 4,
@@ -5491,6 +5491,7 @@
       ],
       "body": "Context (post-9030): hieroglyph and cartouche now live inside packages/onchain, namespaces unchanged, so Cartouche.RPC (lib/cartouche/rpc.ex) and Onchain.RPC (lib/onchain/rpc.ex) are two modules in one package, and task 9036 will rename both to one Onchain.RPC. The milestone is RPC unification inside the merged core before 9036: each spec'd method gets exactly one wrapper, one decoder and one struct, built on the single transport from task 2137. Put the surviving implementation in Cartouche.RPC for now (9036 does the rename), and delete the Onchain.RPC copy in the same diff. There is no second package, so there is no re-presenting wrapper to keep.\n\neth_getTransactionByHash, eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex (src/eth/transaction.yaml) and eth_getBlockReceipts (src/eth/block.yaml) are all in tagged execution-apis v1.0.0-beta.7 and the vendored spec. Cartouche.RPC has none of them, although it does fetch a single receipt (eth_getTransactionReceipt). Onchain.RPC hand-decodes all four in packages/onchain/lib/onchain/rpc.ex: eth_getBlockReceipts :569, ...ByBlockHashAndIndex :672, ...ByBlockNumberAndIndex :715, eth_getTransactionByHash :924.\n\nThe substantive design work is the envelope, not the per-type decoder. (2026-09-29 review) Per-type decoding already exists: Cartouche.Block decodes hydrated block transactions by type through each Vn.from_json/1 (lib/cartouche/block.ex:164-169), and from_json/1 exists on all five types (transaction.ex:447 V1, :1359 V2; transaction/v_2930.ex:116; transaction/v3.ex:292; transaction/v4.ex:335). Reuse that dispatch rather than write a third convention. What from_json/1 does not do is carry the RPC transaction object's inclusion metadata. The tagged spec's TransactionInfo (execution-apis v1.0.0-beta.7 src/schemas/transaction.yaml:459) adds blockHash, blockNumber, blockTimestamp, from, hash and transactionIndex to the signed transaction, and from_json/1 drops all of them. It also raises (its @spec returns no_return()) instead of returning an error. The three transaction reads therefore return an envelope struct holding that metadata plus the typed Vn struct. Block fields are nil for a pending transaction, and malformed input returns {:error, reason}. The receipt-wait task needs exactly `from`, the nonce and blockNumber from this read for replacement detection. eth_getBlockReceipts reuses the existing receipt decoding.\n\nAuthority: the tagged execution-apis spec plus the live node.\n",
       "created_at": "2026-08-26",
+      "started_at": "2026-10-01",
       "scored_at": "2026-09-29",
       "cross_repo": []
     },

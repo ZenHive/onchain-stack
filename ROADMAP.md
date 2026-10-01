@@ -246,7 +246,7 @@
 | Task 2126 | ✅ | 🎁 **cartouche_rpc_correctness** · Spec-path fill_transaction V1 results drop chainId, so encode is pre-EIP-155 [D:4/B:5/U:4 → Eff:1.12?] 📋 |
 | Task 2127 | ✅ | 🎁 **cartouche_rpc_correctness** · 🚀 **stack_read_surface_boundary** · One base_fee/1 in the merged core — probe the hosted eth_baseFee refusal, keep the pending-header read [D:3/B:7/U:4 → Eff:1.83] 🚀 |
 | Task 2128 | ✅ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · One eth_getLogs in the merged core — stateless log queries on Cartouche.Filter.Log, Onchain.RPC copy deleted [D:3/B:8/U:7 → Eff:2.5] 🎯 |
-| Task 2129 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · One transaction and receipt read-back in the merged core — 4 methods on Cartouche.RPC, Onchain.RPC decoders deleted [D:4/B:7/U:6 → Eff:1.62] 🚀 |
+| Task 2129 | 🔄 | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · One transaction and receipt read-back in the merged core — 4 methods on Cartouche.RPC, Onchain.RPC decoders deleted [D:4/B:7/U:6 → Eff:1.62] 🚀 |
 | Task 2130 | ✅ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · One state-read surface in the merged core — eth_getStorageAt and eth_getProof (EIP-1186) on Cartouche.RPC [D:3/B:6/U:5 → Eff:1.83] 🚀 |
 | Task 2131 | ✅ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · Node-introspection surface on Cartouche.RPC — six methods, with the three untagged ones marked [D:3/B:6/U:6 → Eff:2.0] 🎯 |
 | Task 2132 | ⬜ | 🎁 **cartouche_rpc_read_surface** · 🚀 **stack_read_surface_boundary** · eth_simulateV1 on Cartouche.RPC — the portable simulation entry point, keeping per-call failure, request rejection and unsupported distinct [D:5/B:7/U:6 → Eff:1.3] 📋 |
