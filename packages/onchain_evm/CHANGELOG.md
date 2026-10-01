@@ -10,7 +10,9 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 - Requires onchain `~> 0.16`, where `ABI.*` and `Cartouche.*` are renamed to `Onchain.*` (onchain's CHANGELOG has the full module map). Calls into the core now use the new names; this package's own public API is unchanged. `Onchain.Trace` stays onchain_evm's `debug_*` wrapper; the core's former `Cartouche.Trace` struct is `Onchain.RPC.Trace`.
 - `Onchain.Trace.storage_at/3` reads `eth_getStorageAt` through
-  `Onchain.RPC.eth_get_storage_at/3`. The public result is still a 32-byte
+  `Onchain.RPC.eth_get_storage_at/3`.
+- Widened `rustler_precompiled` from `~> 0.9.0` to `~> 0.9`, admitting 0.10.0
+  (adds NIF 2.18 support; onchain_evm still ships NIF 2.15 artifacts). The public result is still a 32-byte
   hex string, and node errors stay `{:error, {:rpc_error, map}}`.
 
 ## [0.7.1] — 2026-09-16

@@ -103,12 +103,7 @@ defmodule Onchain.Transaction.Info do
   end
 
   @spec present?(map(), String.t()) :: boolean()
-  defp present?(params, field) do
-    case Map.fetch(params, field) do
-      {:ok, value} when not is_nil(value) -> true
-      _ -> false
-    end
-  end
+  defp present?(params, field), do: not is_nil(Map.get(params, field))
 
   # `from_json/1` raises. The envelope is the boundary that turns that into
   # `{:error, reason}`; callers of the transaction reads must not see a raise.

@@ -50,7 +50,11 @@ defmodule Onchain.Subscription.Parser do
   def parse_event(:logs, raw) when is_map(raw) do
     {:ok, Onchain.Filter.Log.deserialize(raw)}
   rescue
-    exception -> {:error, {:invalid_log, exception}}
+    # deserialize/1 raises on a missing required key (FunctionClauseError), bad
+    # hex (Onchain.Hex.InvalidHex, ArgumentError) or a non-list topics value
+    # (Protocol.UndefinedError); all of these are malformed node frames.
+    exception in [FunctionClauseError, Onchain.Hex.InvalidHex, ArgumentError, Protocol.UndefinedError] ->
+      {:error, {:invalid_log, exception}}
   end
 
   def parse_event(:logs, other), do: {:error, {:invalid_log, other}}

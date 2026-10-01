@@ -14,39 +14,30 @@ end
 
 defmodule Onchain.SignerTest.HighSBackend do
   @moduledoc false
-  @behaviour Onchain.Signer.Backend
-
-  @impl true
-  @spec algorithm({binary(), Onchain.Signature.t()}) :: :secp256k1
-  def algorithm(_config), do: :secp256k1
-
-  @impl true
-  @spec public_key({binary(), Onchain.Signature.t()}) :: {:ok, binary()} | {:error, String.t()}
-  def public_key({priv, _signature}), do: Onchain.Signer.Secp256k1.public_key(priv)
-
-  @impl true
-  @spec sign_payload(<<_::256>>, {binary(), Onchain.Signature.t()}) :: {:ok, Onchain.Signature.t()}
-  def sign_payload(_digest, {_priv, signature}), do: {:ok, signature}
-end
-
-defmodule Onchain.Test.HighSSignerBackend do
-  @moduledoc false
+  # Returns high-s signatures. Config is either a private key (sign, then flip
+  # s to n - s) or `{private_key, signature}` (return that fixed signature; the
+  # captured signer fixtures record this carrier shape).
   @behaviour Onchain.Signer.Backend
 
   alias Onchain.Signer.Secp256k1
 
   @secp256k1_n 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
-  @impl true
-  @spec algorithm(binary()) :: :secp256k1
-  def algorithm(_private_key), do: :secp256k1
+  @type config :: binary() | {binary(), Onchain.Signature.t()}
 
   @impl true
-  @spec public_key(binary()) :: {:ok, binary()} | {:error, String.t()}
+  @spec algorithm(config()) :: :secp256k1
+  def algorithm(_config), do: :secp256k1
+
+  @impl true
+  @spec public_key(config()) :: {:ok, binary()} | {:error, String.t()}
+  def public_key({private_key, _signature}), do: Secp256k1.public_key(private_key)
   def public_key(private_key), do: Secp256k1.public_key(private_key)
 
   @impl true
-  @spec sign_payload(<<_::256>>, binary()) :: {:ok, Onchain.Signature.t()} | {:error, String.t()}
+  @spec sign_payload(<<_::256>>, config()) :: {:ok, Onchain.Signature.t()} | {:error, String.t()}
+  def sign_payload(_digest, {_private_key, signature}), do: {:ok, signature}
+
   def sign_payload(digest, private_key) do
     with {:ok, signature} <- Secp256k1.sign_payload(digest, private_key) do
       {:ok, %{signature | s: @secp256k1_n - signature.s, recid: nil}}

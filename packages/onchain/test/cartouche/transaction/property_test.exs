@@ -5,7 +5,7 @@ defmodule Onchain.Transaction.PropertyTest do
   alias Onchain.Recover
   alias Onchain.Signer
   alias Onchain.Signer.Secp256k1
-  alias Onchain.Test.HighSSignerBackend
+  alias Onchain.SignerTest.HighSBackend
   alias Onchain.Transaction
   alias Onchain.Transaction.V1
   alias Onchain.Transaction.V2
@@ -53,11 +53,11 @@ defmodule Onchain.Transaction.PropertyTest do
 
   property "INV-SIGN-LOW-S: every 65-byte signing route canonicalizes s", %{signer: pure_signer} do
     legacy_signer = start_signer!({Secp256k1, :sign, [@private_key]})
-    high_s_signer = start_signer!({HighSSignerBackend, @private_key})
+    high_s_signer = start_signer!({HighSBackend, @private_key})
 
     check all(message <- StreamData.binary(max_length: 128), max_runs: @property_runs) do
       digest = Onchain.Hash.keccak(message)
-      assert {:ok, high_s} = HighSSignerBackend.sign_payload(digest, @private_key)
+      assert {:ok, high_s} = HighSBackend.sign_payload(digest, @private_key)
       assert high_s.s > @secp256k1_half_n
 
       signatures = [

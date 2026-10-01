@@ -119,11 +119,7 @@ defmodule Onchain.SignerTest do
     end
 
     test "canonicalizes a high-s backend signature so the packed s is at most n/2" do
-      high_sig = high_s_signature("test")
-      assert high_sig.s > @secp256k1_half_n
-
-      {:ok, pid} =
-        Signer.start_link(mfa: {HighSBackend, {@priv_key, high_sig}}, name: nil)
+      {:ok, pid} = Signer.start_link(mfa: {HighSBackend, @priv_key}, name: nil)
 
       assert {:ok, <<_r::256, s::256, _v::binary>> = packed} = Signer.sign("test", pid)
       assert s <= @secp256k1_half_n

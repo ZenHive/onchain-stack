@@ -21,12 +21,17 @@ defmodule Onchain.Test.LegacyModuleNames do
   def translate(term), do: term
 
   # Improper lists (iodata) must keep their tail shape.
+  @spec translate_list(list()) :: list()
   defp translate_list([]), do: []
   defp translate_list([head | tail]) when is_list(tail), do: [translate(head) | translate_list(tail)]
   defp translate_list([head | tail]), do: [translate(head) | translate(tail)]
 
+  @spec translate_atom(atom()) :: atom()
   defp translate_atom(atom) do
     case Atom.to_string(atom) do
+      # The high-s test double was merged into Onchain.SignerTest.HighSBackend,
+      # which accepts the same private-key config.
+      "Elixir.Cartouche.Test.HighSSignerBackend" -> Onchain.SignerTest.HighSBackend
       "Elixir.ABI" -> Onchain.ABI
       "Elixir.ABI." <> rest -> Module.concat(Onchain.ABI, rest)
       "Elixir.Cartouche" -> Onchain.Configuration

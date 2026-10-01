@@ -102,7 +102,7 @@ defmodule OnchainEvm.MixProject do
       # hieroglyph already declares `~> 1.0`. With hieroglyph in the graph as a
       # path dep a `< 1.0.0` ceiling here makes the family unresolvable.
       {:descripex, "~> 1.0"},
-      {:rustler_precompiled, "~> 0.9.0"},
+      {:rustler_precompiled, "~> 0.9"},
       # Optional so Hex consumers with a matching artifact don't need a Rust
       # toolchain. Required when `force_build` is set (Windows, unmatched
       # targets, `RUSTLER_PRECOMPILED_FORCE_BUILD_ALL=1`, `ONCHAIN_EVM_BUILD=1`).

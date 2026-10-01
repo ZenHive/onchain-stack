@@ -47,7 +47,10 @@ defmodule Onchain.ABI.ConsolidatedLogTest do
     signature = "OwnerChanged(address indexed newOwner)"
 
     assert {:ok, "OwnerChanged", %{"newOwner" => @from}} =
-             Onchain.ABI.decode_event(signature, <<>>, [Onchain.ABI.event_signature(signature), <<0::96, @from::binary>>])
+             Onchain.ABI.decode_event(signature, <<>>, [
+               Onchain.ABI.event_signature(signature),
+               <<0::96, @from::binary>>
+             ])
 
     assert {:ok, "EmptyEvent", %{}} =
              Onchain.ABI.decode_event("EmptyEvent()", <<>>, [Onchain.ABI.event_signature("EmptyEvent()")])

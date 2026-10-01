@@ -113,16 +113,16 @@
                 "description": "Keyword options forwarded to decode/3, including strict: true.",
                 "kind": "value"
               },
+              "error_definitions": {
+                "description": "List of candidate error signatures, each either a raw signature string (\"InsufficientBalance(uint256,uint256)\") or a pre-parsed Onchain.ABI.FunctionSelector. The first definition whose 4-byte selector matches revert_data[0..3] is used to decode the payload. The built-in Error(string) (0x08c379a0) and Panic(uint256) (0x4e487b71) errors are recognized implicitly as a fallback, so they resolve even when this list is empty; a user definition colliding with a built-in selector still wins.",
+                "kind": "value"
+              },
               "revert_data": {
                 "description": "Selector-prefixed revert payload (4-byte error ID + ABI-encoded args), e.g. the data field returned by a Solidity 0.8.4+ custom-error revert.",
                 "kind": "value",
                 "schema": {
                   "type": "string"
                 }
-              },
-              "error_definitions": {
-                "description": "List of candidate error signatures, each either a raw signature string (\"InsufficientBalance(uint256,uint256)\") or a pre-parsed Onchain.ABI.FunctionSelector. The first definition whose 4-byte selector matches revert_data[0..3] is used to decode the payload. The built-in Error(string) (0x08c379a0) and Panic(uint256) (0x4e487b71) errors are recognized implicitly as a fallback, so they resolve even when this list is empty; a user definition colliding with a built-in selector still wins.",
-                "kind": "value"
               }
             },
             "errors": [
@@ -211,7 +211,7 @@
         {
           "arity": 3,
           "name": "decode_hex_call",
-          "description": "Decode selector-prefixed calldata to function args.\n\n## Parameters\n\n  * `signature_or_selector` - Function signature like \"transfer(address,uint256)\" OR an `Onchain.ABI.FunctionSelector` struct. The 4-byte selector of the signature must match the first 4 bytes of calldata. (value)\n  * `hex_calldata` - 0x-prefixed hex string of selector-prefixed ABI-encoded calldata (value)\n  * `opts` - Forwarded to `Onchain.ABI.decode_call/3`. Pass `decode_structs: true` for a named-field map instead of a positional list. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`). (default: `[]`, value)\n\n## Returns\n\nList of args (or map when `decode_structs: true`). Error reasons: `:calldata_too_short`, `:selector_mismatch`, `:no_function_name`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string. (`{:ok, list | map} | {:error, {:decode_error, reason}}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to `Onchain.ABI.decode_call/3`. Pass `decode_structs: true` for a named-field map instead of a positional list. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`).\",\n      kind: :value\n    },\n    signature_or_selector: %{\n      description: \"Function signature like \\\"transfer(address,uint256)\\\" OR an `Onchain.ABI.FunctionSelector` struct. The 4-byte selector of the signature must match the first 4 bytes of calldata.\",\n      kind: :value\n    },\n    hex_calldata: %{\n      description: \"0x-prefixed hex string of selector-prefixed ABI-encoded calldata\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"{:ok, list | map} | {:error, {:decode_error, reason}}\",\n    description: \"List of args (or map when `decode_structs: true`). Error reasons: `:calldata_too_short`, `:selector_mismatch`, `:no_function_name`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string.\"\n  }\n}\n```",
+          "description": "Decode selector-prefixed calldata to function args.\n\n## Parameters\n\n  * `signature_or_selector` - Function signature like \"transfer(address,uint256)\" OR an `Onchain.ABI.FunctionSelector` struct. The 4-byte selector of the signature must match the first 4 bytes of calldata. (value)\n  * `hex_calldata` - 0x-prefixed hex string of selector-prefixed ABI-encoded calldata (value)\n  * `opts` - Forwarded to `Onchain.ABI.decode_call/3`. Pass `decode_structs: true` for a named-field map instead of a positional list. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`). (default: `[]`, value)\n\n## Returns\n\nList of args (or map when `decode_structs: true`). Error reasons: `:calldata_too_short`, `:selector_mismatch`, `:no_function_name`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string. (`{:ok, list | map} | {:error, {:decode_error, reason}}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to `Onchain.ABI.decode_call/3`. Pass `decode_structs: true` for a named-field map instead of a positional list. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`).\",\n      kind: :value\n    },\n    hex_calldata: %{\n      description: \"0x-prefixed hex string of selector-prefixed ABI-encoded calldata\",\n      kind: :value\n    },\n    signature_or_selector: %{\n      description: \"Function signature like \\\"transfer(address,uint256)\\\" OR an `Onchain.ABI.FunctionSelector` struct. The 4-byte selector of the signature must match the first 4 bytes of calldata.\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"{:ok, list | map} | {:error, {:decode_error, reason}}\",\n    description: \"List of args (or map when `decode_structs: true`). Error reasons: `:calldata_too_short`, `:selector_mismatch`, `:no_function_name`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string.\"\n  }\n}\n```",
           "signature": "decode_hex_call(signature_or_selector, hex_calldata, opts \\\\ [])",
           "spec": "decode_hex_call(String.t() | Onchain.ABI.FunctionSelector.t(), String.t(), keyword()) ::\n  {:ok, list() | map()} | {:error, {:decode_error, term()}}",
           "defaults": 1,
@@ -223,16 +223,16 @@
                 "description": "Forwarded to `Onchain.ABI.decode_call/3`. Pass `decode_structs: true` for a named-field map instead of a positional list. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`).",
                 "kind": "value"
               },
-              "signature_or_selector": {
-                "description": "Function signature like \"transfer(address,uint256)\" OR an `Onchain.ABI.FunctionSelector` struct. The 4-byte selector of the signature must match the first 4 bytes of calldata.",
-                "kind": "value"
-              },
               "hex_calldata": {
                 "description": "0x-prefixed hex string of selector-prefixed ABI-encoded calldata",
                 "kind": "value",
                 "schema": {
                   "type": "string"
                 }
+              },
+              "signature_or_selector": {
+                "description": "Function signature like \"transfer(address,uint256)\" OR an `Onchain.ABI.FunctionSelector` struct. The 4-byte selector of the signature must match the first 4 bytes of calldata.",
+                "kind": "value"
               }
             },
             "returns": {
@@ -244,7 +244,7 @@
         {
           "arity": 3,
           "name": "decode_hex_call!",
-          "description": "Decode selector-prefixed calldata. Raises on error.\n\n## Parameters\n\n  * `signature_or_selector` - Function signature string or `Onchain.ABI.FunctionSelector` struct (value)\n  * `hex_calldata` - 0x-prefixed hex string of selector-prefixed calldata (value)\n  * `opts` - Forwarded to `Onchain.ABI.decode_call/3` (e.g. `decode_structs: true`, `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded args (or map when `decode_structs: true`) (`list | map`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to `Onchain.ABI.decode_call/3` (e.g. `decode_structs: true`, `strict: true`)\",\n      kind: :value\n    },\n    signature_or_selector: %{\n      description: \"Function signature string or `Onchain.ABI.FunctionSelector` struct\",\n      kind: :value\n    },\n    hex_calldata: %{\n      description: \"0x-prefixed hex string of selector-prefixed calldata\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"list | map\",\n    description: \"List of decoded args (or map when `decode_structs: true`)\"\n  }\n}\n```",
+          "description": "Decode selector-prefixed calldata. Raises on error.\n\n## Parameters\n\n  * `signature_or_selector` - Function signature string or `Onchain.ABI.FunctionSelector` struct (value)\n  * `hex_calldata` - 0x-prefixed hex string of selector-prefixed calldata (value)\n  * `opts` - Forwarded to `Onchain.ABI.decode_call/3` (e.g. `decode_structs: true`, `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded args (or map when `decode_structs: true`) (`list | map`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to `Onchain.ABI.decode_call/3` (e.g. `decode_structs: true`, `strict: true`)\",\n      kind: :value\n    },\n    hex_calldata: %{\n      description: \"0x-prefixed hex string of selector-prefixed calldata\",\n      kind: :value\n    },\n    signature_or_selector: %{\n      description: \"Function signature string or `Onchain.ABI.FunctionSelector` struct\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"list | map\",\n    description: \"List of decoded args (or map when `decode_structs: true`)\"\n  }\n}\n```",
           "signature": "decode_hex_call!(signature_or_selector, hex_calldata, opts \\\\ [])",
           "spec": "decode_hex_call!(String.t() | Onchain.ABI.FunctionSelector.t(), String.t(), keyword()) ::\n  list() | map()",
           "defaults": 1,
@@ -256,16 +256,16 @@
                 "description": "Forwarded to `Onchain.ABI.decode_call/3` (e.g. `decode_structs: true`, `strict: true`)",
                 "kind": "value"
               },
-              "signature_or_selector": {
-                "description": "Function signature string or `Onchain.ABI.FunctionSelector` struct",
-                "kind": "value"
-              },
               "hex_calldata": {
                 "description": "0x-prefixed hex string of selector-prefixed calldata",
                 "kind": "value",
                 "schema": {
                   "type": "string"
                 }
+              },
+              "signature_or_selector": {
+                "description": "Function signature string or `Onchain.ABI.FunctionSelector` struct",
+                "kind": "value"
               }
             },
             "returns": {
@@ -343,7 +343,7 @@
         {
           "arity": 3,
           "name": "decode_response",
-          "description": "Decode hex-encoded ABI response data to Elixir values.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types like \"uint256,bool\" are NOT accepted and raise an unhelpful upstream error. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to `Onchain.ABI.decode/3`. Pass `strict: true` to reject non-canonical padding, trailing bytes, and over-long dynamic length prefixes (`{:error, {:decode_error, {:strict_violation, detail}}}`). Pass `decode_structs: true` for a named-field map instead of a positional list. (default: `[]`, value)\n\n## Returns\n\nList of decoded values (or map when `decode_structs: true`). `reason` may be `{:strict_violation, detail}` when `strict: true`. (`{:ok, list | map} | {:error, {:decode_error, reason}}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to `Onchain.ABI.decode/3`. Pass `strict: true` to reject non-canonical padding, trailing bytes, and over-long dynamic length prefixes (`{:error, {:decode_error, {:strict_violation, detail}}}`). Pass `decode_structs: true` for a named-field map instead of a positional list.\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types like \\\"uint256,bool\\\" are NOT accepted and raise an unhelpful upstream error.\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"{:ok, list | map} | {:error, {:decode_error, reason}}\",\n    description: \"List of decoded values (or map when `decode_structs: true`). `reason` may be `{:strict_violation, detail}` when `strict: true`.\"\n  }\n}\n```",
+          "description": "Decode hex-encoded ABI response data to Elixir values.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types like \"uint256,bool\" are NOT accepted and raise an unhelpful upstream error. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to `Onchain.ABI.decode/3`. Pass `strict: true` to reject non-canonical padding, trailing bytes, and over-long dynamic length prefixes (`{:error, {:decode_error, {:strict_violation, detail}}}`). Pass `decode_structs: true` for a named-field map instead of a positional list. (default: `[]`, value)\n\n## Returns\n\nList of decoded values (or map when `decode_structs: true`). `reason` may be `{:strict_violation, detail}` when `strict: true`. (`{:ok, list | map} | {:error, {:decode_error, reason}}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to `Onchain.ABI.decode/3`. Pass `strict: true` to reject non-canonical padding, trailing bytes, and over-long dynamic length prefixes (`{:error, {:decode_error, {:strict_violation, detail}}}`). Pass `decode_structs: true` for a named-field map instead of a positional list.\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types like \\\"uint256,bool\\\" are NOT accepted and raise an unhelpful upstream error.\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"{:ok, list | map} | {:error, {:decode_error, reason}}\",\n    description: \"List of decoded values (or map when `decode_structs: true`). `reason` may be `{:strict_violation, detail}` when `strict: true`.\"\n  }\n}\n```",
           "signature": "decode_response(type_signature, hex_data, opts \\\\ [])",
           "spec": "decode_response(String.t(), String.t(), keyword()) ::\n  {:ok, list() | map()} | {:error, {:decode_error, term()}}",
           "defaults": 1,
@@ -355,15 +355,15 @@
                 "description": "Forwarded to `Onchain.ABI.decode/3`. Pass `strict: true` to reject non-canonical padding, trailing bytes, and over-long dynamic length prefixes (`{:error, {:decode_error, {:strict_violation, detail}}}`). Pass `decode_structs: true` for a named-field map instead of a positional list.",
                 "kind": "value"
               },
-              "type_signature": {
-                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types like \"uint256,bool\" are NOT accepted and raise an unhelpful upstream error.",
+              "hex_data": {
+                "description": "0x-prefixed hex string of ABI-encoded data",
                 "kind": "value",
                 "schema": {
                   "type": "string"
                 }
               },
-              "hex_data": {
-                "description": "0x-prefixed hex string of ABI-encoded data",
+              "type_signature": {
+                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types like \"uint256,bool\" are NOT accepted and raise an unhelpful upstream error.",
                 "kind": "value",
                 "schema": {
                   "type": "string"
@@ -379,7 +379,7 @@
         {
           "arity": 3,
           "name": "decode_response!",
-          "description": "Decode hex-encoded ABI response data to Elixir values. Raises on error.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to `Onchain.ABI.decode/3` (e.g. `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded values (or map when `decode_structs: true`) (`union`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to `Onchain.ABI.decode/3` (e.g. `strict: true`)\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types are NOT accepted.\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: :union,\n    description: \"List of decoded values (or map when `decode_structs: true`)\"\n  }\n}\n```",
+          "description": "Decode hex-encoded ABI response data to Elixir values. Raises on error.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to `Onchain.ABI.decode/3` (e.g. `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded values (or map when `decode_structs: true`) (`union`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to `Onchain.ABI.decode/3` (e.g. `strict: true`)\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types are NOT accepted.\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: :union,\n    description: \"List of decoded values (or map when `decode_structs: true`)\"\n  }\n}\n```",
           "signature": "decode_response!(type_signature, hex_data, opts \\\\ [])",
           "spec": "decode_response!(String.t(), String.t(), keyword()) :: list() | map()",
           "defaults": 1,
@@ -391,15 +391,15 @@
                 "description": "Forwarded to `Onchain.ABI.decode/3` (e.g. `strict: true`)",
                 "kind": "value"
               },
-              "type_signature": {
-                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted.",
+              "hex_data": {
+                "description": "0x-prefixed hex string of ABI-encoded data",
                 "kind": "value",
                 "schema": {
                   "type": "string"
                 }
               },
-              "hex_data": {
-                "description": "0x-prefixed hex string of ABI-encoded data",
+              "type_signature": {
+                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted.",
                 "kind": "value",
                 "schema": {
                   "type": "string"
@@ -415,7 +415,7 @@
         {
           "arity": 3,
           "name": "decode_types",
-          "description": "Decode arbitrary ABI-encoded hex data. Alias of decode_response/3.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to decode_response/3 (e.g. `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded values. Identical to decode_response/3 — use this name when the input isn't an RPC response (mempool calldata, custom ABI payloads). (`{:ok, list | map} | {:error, {:decode_error, reason}}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to decode_response/3 (e.g. `strict: true`)\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types are NOT accepted.\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"{:ok, list | map} | {:error, {:decode_error, reason}}\",\n    description: \"List of decoded values. Identical to decode_response/3 — use this name when the input isn't an RPC response (mempool calldata, custom ABI payloads).\"\n  }\n}\n```",
+          "description": "Decode arbitrary ABI-encoded hex data. Alias of decode_response/3.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to decode_response/3 (e.g. `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded values. Identical to decode_response/3 — use this name when the input isn't an RPC response (mempool calldata, custom ABI payloads). (`{:ok, list | map} | {:error, {:decode_error, reason}}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to decode_response/3 (e.g. `strict: true`)\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types are NOT accepted.\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"{:ok, list | map} | {:error, {:decode_error, reason}}\",\n    description: \"List of decoded values. Identical to decode_response/3 — use this name when the input isn't an RPC response (mempool calldata, custom ABI payloads).\"\n  }\n}\n```",
           "signature": "decode_types(type_signature, hex_data, opts \\\\ [])",
           "spec": "decode_types(String.t(), String.t(), keyword()) ::\n  {:ok, list() | map()} | {:error, {:decode_error, term()}}",
           "defaults": 1,
@@ -427,15 +427,15 @@
                 "description": "Forwarded to decode_response/3 (e.g. `strict: true`)",
                 "kind": "value"
               },
-              "type_signature": {
-                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted.",
+              "hex_data": {
+                "description": "0x-prefixed hex string of ABI-encoded data",
                 "kind": "value",
                 "schema": {
                   "type": "string"
                 }
               },
-              "hex_data": {
-                "description": "0x-prefixed hex string of ABI-encoded data",
+              "type_signature": {
+                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted.",
                 "kind": "value",
                 "schema": {
                   "type": "string"
@@ -451,7 +451,7 @@
         {
           "arity": 3,
           "name": "decode_types!",
-          "description": "Decode arbitrary ABI-encoded hex data. Alias of decode_response!/3.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to decode_response!/3 (e.g. `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded values (or map when `decode_structs: true`) (`union`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to decode_response!/3 (e.g. `strict: true`)\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types are NOT accepted.\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: :union,\n    description: \"List of decoded values (or map when `decode_structs: true`)\"\n  }\n}\n```",
+          "description": "Decode arbitrary ABI-encoded hex data. Alias of decode_response!/3.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to decode_response!/3 (e.g. `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded values (or map when `decode_structs: true`) (`union`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to decode_response!/3 (e.g. `strict: true`)\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types are NOT accepted.\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: :union,\n    description: \"List of decoded values (or map when `decode_structs: true`)\"\n  }\n}\n```",
           "signature": "decode_types!(type_signature, hex_data, opts \\\\ [])",
           "spec": "decode_types!(String.t(), String.t(), keyword()) :: list() | map()",
           "defaults": 1,
@@ -463,15 +463,15 @@
                 "description": "Forwarded to decode_response!/3 (e.g. `strict: true`)",
                 "kind": "value"
               },
-              "type_signature": {
-                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted.",
+              "hex_data": {
+                "description": "0x-prefixed hex string of ABI-encoded data",
                 "kind": "value",
                 "schema": {
                   "type": "string"
                 }
               },
-              "hex_data": {
-                "description": "0x-prefixed hex string of ABI-encoded data",
+              "type_signature": {
+                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted.",
                 "kind": "value",
                 "schema": {
                   "type": "string"
@@ -1654,5 +1654,5 @@
       "namespace": "/math"
     }
   ],
-  "generated_at": "2026-10-01T08:01:13.596361Z"
+  "generated_at": "2026-10-01T08:40:58.306349Z"
 }

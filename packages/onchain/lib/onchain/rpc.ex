@@ -2214,8 +2214,11 @@ defmodule Onchain.RPC do
   `eth_getTransactionByBlockNumberAndIndex`). Same envelope as
   `eth_get_transaction_by_hash/2`. A null result is `{:error, :not_found}`.
   """
-  @spec eth_get_transaction_by_block_number_and_index(integer() | String.t(), non_neg_integer() | String.t(), Keyword.t()) ::
-          {:ok, Transaction.Info.t()} | {:error, term()}
+  @spec eth_get_transaction_by_block_number_and_index(
+          integer() | String.t(),
+          non_neg_integer() | String.t(),
+          Keyword.t()
+        ) :: {:ok, Transaction.Info.t()} | {:error, term()}
   def eth_get_transaction_by_block_number_and_index(block, transaction_index, opts \\ []) do
     with {:ok, block} <- Helpers.normalize_block(block),
          {:ok, transaction_index} <- normalize_transaction_index(transaction_index),
@@ -2902,17 +2905,20 @@ defmodule Onchain.RPC do
     keys
     |> Enum.reduce_while({:ok, []}, fn key, {:ok, acc} ->
       case normalize_storage_slot(key) do
-        {:ok, "0x" <> digits} -> {:cont, {:ok, ["0x" <> String.pad_leading(digits, 64, "0") | acc]}}
+        {:ok, slot} -> {:cont, {:ok, [slot | acc]}}
         {:error, _} -> {:halt, {:error, {:invalid_storage_key, key}}}
       end
     end)
     |> case do
-      {:ok, keys} -> {:ok, Enum.reverse(keys)}
+      {:ok, keys} -> {:ok, keys |> Enum.reverse() |> Enum.map(&pad_storage_key/1)}
       error -> error
     end
   end
 
   defp validate_storage_keys(keys), do: {:error, {:invalid_storage_keys, keys}}
+
+  @spec pad_storage_key(String.t()) :: String.t()
+  defp pad_storage_key("0x" <> digits), do: "0x" <> String.pad_leading(digits, 64, "0")
 
   api(:base_fee, "Fetch the EIP-1559 base fee per gas for the next block.",
     params: [opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]],

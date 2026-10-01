@@ -27,8 +27,18 @@ defmodule Onchain.RPC.Proof do
           storage_proof: [StorageProof.t()]
         }
 
+  @typedoc """
+  An `eth_getProof` result as the node returns it: hex strings under
+  `"address"`, `"balance"`, `"nonce"`, `"codeHash"`, `"storageHash"`, a hex list
+  under `"accountProof"`, and `"storageProof"` entries.
+  """
+  @type raw :: %{required(String.t()) => String.t() | [String.t()] | [raw_storage()]}
+
+  @typedoc ~s(One `storageProof` entry: hex `"key"` and `"value"`, hex list `"proof"`.)
+  @type raw_storage :: %{required(String.t()) => String.t() | [String.t()]}
+
   @doc "Decodes all required EIP-1186 fields, raising on missing or malformed data."
-  @spec deserialize(map()) :: t()
+  @spec deserialize(raw()) :: t()
   def deserialize(params) do
     %__MODULE__{
       address: Hex.decode_address!(Map.fetch!(params, "address")),
@@ -41,7 +51,7 @@ defmodule Onchain.RPC.Proof do
     }
   end
 
-  @spec deserialize_storage(map()) :: StorageProof.t()
+  @spec deserialize_storage(raw_storage()) :: StorageProof.t()
   defp deserialize_storage(entry) do
     %StorageProof{
       key: Hex.decode_hex_number!(Map.fetch!(entry, "key")),

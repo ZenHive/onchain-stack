@@ -17,7 +17,7 @@ defmodule Onchain.MutationCanaryTest do
   alias Onchain.Recover
   alias Onchain.Signer
   alias Onchain.Signer.Secp256k1
-  alias Onchain.Test.HighSSignerBackend
+  alias Onchain.SignerTest.HighSBackend
   alias Onchain.Transaction.V1
 
   @private_key Base.decode16!("800509FA3E80882AD0BE77C27505BDC91380F800D51ED80897D22F9FCC75F4BF")
@@ -34,7 +34,7 @@ defmodule Onchain.MutationCanaryTest do
     # signature, violating EIP-2.
 
     test "the unmutated funnel canonicalizes a high-s backend signature" do
-      signer = start_signer!({HighSSignerBackend, @private_key})
+      signer = start_signer!({HighSBackend, @private_key})
 
       assert {:ok, <<_r::256, s::256, _v::8>>} = Signer.sign(@message, signer, chain_id: @chain_id)
       assert s <= @secp256k1_half_n
@@ -114,7 +114,7 @@ defmodule Onchain.MutationCanaryTest do
   defp high_s_mutant do
     digest = Hash.keccak(@message)
 
-    assert {:ok, raw_signature} = HighSSignerBackend.sign_payload(digest, @private_key)
+    assert {:ok, raw_signature} = HighSBackend.sign_payload(digest, @private_key)
     assert raw_signature.s > @secp256k1_half_n
 
     assert {:ok, recid} = Recover.find_recid_from_digest(digest, raw_signature, @signer_address)
