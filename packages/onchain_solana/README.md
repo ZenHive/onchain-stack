@@ -18,5 +18,5 @@ config :cartouche, Onchain.Solana.RPC, finch: MyFinch
 ```
 
 Onchain.Solana.Application supervises configured signers. The KMS backend requires
-the optional `:goth` dependency and uses the shared Cartouche.CloudKMS client.
-Cartouche remains a runtime dependency for shared transport and signing helpers.
+the optional `:goth` dependency and uses the shared Onchain.CloudKMS client.
+onchain (`~> 0.16`) remains a runtime dependency for shared transport and signing helpers.

@@ -1,8 +1,8 @@
-defmodule ABI.NativeBoundaryTest do
+defmodule Onchain.ABI.NativeBoundaryTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  alias ABI.Native
+  alias Onchain.ABI.Native
 
   # spec-tags: NIF-2
   @tag timeout: 10_000
@@ -72,7 +72,7 @@ defmodule ABI.NativeBoundaryTest do
 
   test "packed address errors describe the invalid value" do
     assert_raise ArgumentError, "encode_packed address: expected 20 bytes, got 19", fn ->
-      ABI.encode_packed("f(address)", [:binary.copy(<<1>>, 19)])
+      Onchain.ABI.encode_packed("f(address)", [:binary.copy(<<1>>, 19)])
     end
   end
 

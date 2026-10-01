@@ -1,5 +1,6 @@
 defmodule Onchain.ENS.CCIP do
   @moduledoc false
+  alias Onchain.Address
 
   # EIP-3668 (CCIP-Read) pure helpers plus an injectable gateway round-trip.
   #
@@ -9,9 +10,6 @@ defmodule Onchain.ENS.CCIP do
   # then queries one of the gateway `urls`, and re-calls `sender` with
   # `callbackFunction(response, extraData)`. That callback may itself revert with
   # another `OffchainLookup`, so the round-trip is a bounded loop.
-  alias Cartouche.Hex
-  alias Onchain.Address
-
   # keccak256("OffchainLookup(address,string[],bytes,bytes4,bytes)")[0..3]
   #
   # The transport-bearing functions (`fetch/5`) take `call_fun` and `gateway_fun`
@@ -19,6 +17,8 @@ defmodule Onchain.ENS.CCIP do
   # testable offline; `Onchain.ENS` supplies real `eth_call` / HTTP closures.
   #
   # Reference: https://eips.ethereum.org/EIPS/eip-3668
+
+  alias Onchain.Hex
 
   @offchain_lookup_selector <<0x55, 0x6F, 0x18, 0x30>>
   @offchain_lookup_args "(address,string[],bytes,bytes4,bytes)"
@@ -95,7 +95,7 @@ defmodule Onchain.ENS.CCIP do
   @spec build_callback_calldata(lookup(), binary()) :: binary()
   def build_callback_calldata(lookup, response) when is_binary(response) do
     # hieroglyph encodes a tuple type from a tuple wrapped in a list.
-    lookup.callback_function <> ABI.encode(@callback_args, [{response, lookup.extra_data}])
+    lookup.callback_function <> Onchain.ABI.encode(@callback_args, [{response, lookup.extra_data}])
   end
 
   @doc false
@@ -141,10 +141,10 @@ defmodule Onchain.ENS.CCIP do
   # hieroglyph. Anything outside it is a bug in this module and propagates.
   @spec safe_decode(String.t(), binary()) :: {:ok, list()} | :error
   defp safe_decode(types, binary) do
-    {:ok, ABI.decode(types, binary)}
+    {:ok, Onchain.ABI.decode(types, binary)}
   rescue
     _ in [
-      ABI.TypeDecoder.StrictViolation,
+      Onchain.ABI.TypeDecoder.StrictViolation,
       ArgumentError,
       CaseClauseError,
       FunctionClauseError,

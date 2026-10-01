@@ -1,6 +1,6 @@
 # Onchain
 
-Ethereum library with RPC, ABI encoding/decoding and transaction signing. The former hieroglyph and cartouche libraries now ship here with their `ABI.*` and `Cartouche.*` names unchanged. ABI, transaction and EIP-712 codecs use the core alloy Rust NIF. Cryptography uses the existing Keccak and secp256k1 NIF dependencies.
+Ethereum library with RPC, ABI encoding/decoding and transaction signing. The former hieroglyph and cartouche libraries ship here; since 0.16.0 their `ABI.*` and `Cartouche.*` modules are `Onchain.ABI.*` and `Onchain.*` (see the CHANGELOG migration section). ABI, transaction and EIP-712 codecs use the core alloy Rust NIF. Cryptography uses the existing Keccak and secp256k1 NIF dependencies.
 
 ## Package Family
 
@@ -21,7 +21,7 @@ EVM simulation and the JavaScript bridge remain separate optional packages.
 ```elixir
 def deps do
   [
-    {:onchain, "~> 0.7"},
+    {:onchain, "~> 0.16"},
     # Add if you need Aave:
     {:onchain_aave, "~> 0.1"},
     # Add if you need EVM simulation / Solidity parsing:
@@ -45,8 +45,8 @@ Or pass `rpc_url: url` or `ethereum_node: url` per call to either RPC module
 (`:rpc_url` takes precedence). Without either option or the application default,
 requests return `{:error, {:missing_option, :ethereum_node}}`.
 
-Single calls and JSON-RPC array batches now share `Cartouche.RPC`'s transport.
-Configure transport defaults with `config :cartouche, Cartouche.RPC, [...]`, then
+Single calls and JSON-RPC array batches now share `Onchain.RPC`'s transport.
+Configure transport defaults with `config :cartouche, Onchain.RPC, [...]`, then
 `config :cartouche, :req_options, [...]`; per-call `req_options: [...]` takes
 highest precedence. Migrate former batch settings under `:onchain, Onchain.RPC`
 and `:onchain, :req_options` to these `:cartouche` keys for RPC. The `:onchain`
@@ -56,8 +56,7 @@ Opt into transport retries with `retry: [max_retries: 2, backoff_ms: 100]` on ra
 typed, or batch calls. JSON-RPC errors are final; decoding does not resend a
 request. Each call emits one `[:onchain, :rpc, :request]` telemetry span, including
 all retry attempts, with the existing `method`, `status`, and `error` metadata.
-Cartouche callers now receive the same tagged node refusals as Onchain callers;
-other return shapes are unchanged.
+All RPC calls go through `Onchain.RPC` and return the same tagged node refusals.
 
 ## Node compatibility
 
@@ -67,19 +66,19 @@ a deliberate constraint, not an accident: the maintainers develop against a full
 node, and anything that only works there is treated as a bug.
 
 Everything in `Onchain.RPC`, `Onchain.ERC20`, `Onchain.ERC721`, `Onchain.ERC1155`,
-`Onchain.Contract`, `Cartouche.Block`, `Onchain.Multicall` and `Onchain.ENS`
+`Onchain.Contract`, `Onchain.Block`, `Onchain.Multicall` and `Onchain.ENS`
 uses standard methods and needs no special endpoint. These surfaces depend on what
 your provider serves:
 
 | Surface | Requirement | Symptom without it |
 | --- | --- | --- |
 | Historical reads — any `block` parameter older than ~128 blocks (`eth_call`, `eth_getBalance`, `eth_feeHistory` at an old block) | an **archive** node, or a hosted plan that retains history | `{:error, {:unavailable, map}}` (`-32001 Unable to complete request` on Alchemy), or a "missing trie node" error, depending on client |
-| `Cartouche.RPC.eth_get_storage_at/3` and `eth_get_proof/3` | historical state/proof retention is endpoint-specific: Alchemy served DAI at block 18,000,000 on 2026-10-01; the archive node refused that proof | raw `%{code: -32602, message: "distance to target block exceeds maximum proof window"}` for the observed archive proof refusal; see [verbatim probes](docs/state-read-portability.md) |
+| `Onchain.RPC.eth_get_storage_at/3` and `eth_get_proof/3` | historical state/proof retention is endpoint-specific: Alchemy served DAI at block 18,000,000 on 2026-10-01; the archive node refused that proof | raw `%{code: -32602, message: "distance to target block exceeds maximum proof window"}` for the observed archive proof refusal; see [verbatim probes](docs/state-read-portability.md) |
 | `Onchain.Subscription` (`eth_subscribe`) | a **WebSocket** endpoint (`wss://`), which not every plan includes | connection refused, or `{:error, {:method_not_found, map}}` over HTTP |
 | `trace_*` / `debug_*` on a free hosted plan | a plan that serves that namespace | `{:error, {:namespace_unavailable, map}}` (Alchemy: `-32600` "...not available on the Free tier") |
-| Methods the node does not implement (`eth_getBlockAccessList`, `eth_baseFee`, …) | a node that serves them. The next-block base fee does not need `eth_baseFee`: `Cartouche.RPC.base_fee/1` reads `eth_feeHistory(1, "latest", [])` | `{:error, {:method_not_found, map}}` |
+| Methods the node does not implement (`eth_getBlockAccessList`, `eth_baseFee`, …) | a node that serves them. The next-block base fee does not need `eth_baseFee`: `Onchain.RPC.base_fee/1` reads `eth_feeHistory(1, "latest", [])` | `{:error, {:method_not_found, map}}` |
 
-Each of those error terms is classified on the shared `Cartouche.RPC` transport path
+Each of those error terms is classified on the shared `Onchain.RPC` transport path
 so a codegen'd wrapper, a hand-written wrapper, `call/3` and `batch/2` apply the
 same rules to the same wire response. Note that a provider may not send the same
 wire response in both modes — Alchemy reports pruned history as `-32001` to a
@@ -89,7 +88,7 @@ See `Onchain.RPC`'s moduledoc § "Node-capability refusals" for the pinned
 message shapes and for the finding that `-32001` is **not** uniquely pruned
 history (Alchemy answers it for some unimplemented methods too).
 
-`Onchain.RPC.base_fee/1` is gone. `Cartouche.RPC.base_fee/1` returns the next block's
+`Onchain.RPC.base_fee/1` returns the next block's
 fee from `eth_feeHistory`, which Alchemy and Infura mainnet serve; it does not call
 `eth_baseFee` or read the `pending` header. `Onchain.RPC.blob_base_fee/1` still wraps
 `eth_blobBaseFee`. The probe, the hosted refusals, and why fee history won are in
@@ -136,13 +135,13 @@ balance = Onchain.ERC20.balance_of!(usdc, "0xYourAddress")
 
 # Decode a Solidity 0.8.4+ custom-error revert against a list of candidate signatures
 {:ok, %{error: "OwnableUnauthorizedAccount", args: [_addr]}} =
-  ABI.decode_hex_error(
+  Onchain.ABI.decode_hex_error(
     "0x118cdaa7000000000000000000000000d8da6bf26964af9d7eed9e03e53415d37aa96045",
     ["OwnableUnauthorizedAccount(address)"]
   )
 
 # After an eth_call that reverts with a custom error, use :data from the rpc_error map:
-# {:error, {:rpc_error, %{data: revert_hex}}} -> ABI.decode_hex_error(revert_hex, [...])
+# {:error, {:rpc_error, %{data: revert_hex}}} -> Onchain.ABI.decode_hex_error(revert_hex, [...])
 ```
 
 ## Modules
@@ -151,20 +150,20 @@ balance = Onchain.ERC20.balance_of!(usdc, "0xYourAddress")
 
 | Module | Purpose |
 |--------|---------|
-| `Cartouche.Hex` | Hex encoding/decoding (hex<->binary, hex<->integer, 0x prefix), plus the convenience names `decode/1`, `encode/1`, `to_integer/1`, `from_integer/1`, `valid?/1` |
-| `ABI` | ABI encoding/decoding. Binary codecs stay `encode/2`, `decode/3`, `encode_call/3`, `decode_call/3`, `decode_error/3`. Hex conveniences are `encode_hex_call/2`, `decode_hex_call/3`, `decode_hex_error/3`, `decode_response/3`, and `decode_types/3`. `strict: true` rejects non-canonical payloads as `{:error, {:decode_error, {:strict_violation, detail}}}`. Events are `event_signature/1` and `decode_event/4` |
+| `Onchain.Hex` | Hex encoding/decoding (hex<->binary, hex<->integer, 0x prefix), plus the convenience names `decode/1`, `encode/1`, `to_integer/1`, `from_integer/1`, `valid?/1` |
+| `Onchain.ABI` | ABI encoding/decoding. Binary codecs stay `encode/2`, `decode/3`, `encode_call/3`, `decode_call/3`, `decode_error/3`. Hex conveniences are `encode_hex_call/2`, `decode_hex_call/3`, `decode_hex_error/3`, `decode_response/3`, and `decode_types/3`. `strict: true` rejects non-canonical payloads as `{:error, {:decode_error, {:strict_violation, detail}}}`. Events are `event_signature/1` and `decode_event/4` |
 | `Onchain.Address` | Address validation, EIP-55 checksum, normalization |
 | `Onchain.Decimal` | Decimal precision helpers (to_decimal, div_pow10, to_basis_points) |
-| `Onchain.Fees` | EIP-1559 fee recommendation (`suggest_fees/2`) over `Cartouche.FeeHistory.t()` — pure function, returns `{base_fee, max_priority, max_fee}` |
-| `Onchain.RPC` | Ethereum JSON-RPC wrapper (eth_call, `eth_estimate_gas`, receipts, nonces, balances, block_number, chain_id, **decoded** `get_block_by_number`, EIP-7928 block access lists, eth_get_code, eth_send_raw_transaction, fee_history, `base_fee`, `blob_base_fee`; `call/3` for any other method; `batch/2` for JSON-RPC array batching). Opt-in `retry: [max_retries: n, backoff_ms: ms]` on single and batch paths retries transport failures only (default: no retry). Block access lists preserve the node's raw camelCase response. `get_block_by_number/2` returns atom-keyed maps (quantities as integers). `eth_getStorageAt` and EIP-1186 proofs are `Cartouche.RPC.eth_get_storage_at/3` (32-byte binary) and `eth_get_proof/3` (`Cartouche.RPC.Proof`). Stateless `eth_getLogs` is `Cartouche.RPC.eth_get_logs/2`, returning `[%Cartouche.Filter.Log{}]`. It accepts atom keys or canonical camelCase string aliases (`"fromBlock"`, `"toBlock"`, `"blockHash"`, `"address"`, `"topics"`); `:block_hash` is mutually exclusive with `:from_block`/`:to_block`. Receipt logs are `%Cartouche.Filter.Log{}` (`removed` is nil when the node omits it). `eth_syncing`, block transaction counts, `net_listening`, `net_peerCount`, and `web3_clientVersion` are `Cartouche.RPC.eth_syncing/1`, `eth_get_block_transaction_count_by_hash/2`, `eth_get_block_transaction_count_by_number/2`, `net_listening/1`, `net_peer_count/1`, and `web3_client_version/1`. Transaction objects are `Cartouche.RPC.eth_get_transaction_by_hash/2`, `eth_get_transaction_by_block_hash_and_index/3`, and `eth_get_transaction_by_block_number_and_index/3` (`%Cartouche.Transaction.Info{}`; a null result is `{:error, :not_found}`). Block receipts are `Cartouche.RPC.eth_get_block_receipts/2` (`[%Cartouche.Receipt{}]`) |
-| `Onchain.RPC.Helpers` | Shared RPC helpers (hex normalization, block tags, tx hash validation; `parse_block_response/1`, `parse_transaction_map/1`; execution-revert maps get `:data` hex for `ABI.decode_hex_error/2`) |
-| `Cartouche.Block` | Full decoded block plus `get_by_number/2` and timestamp binary search. Hashes are 32-byte binaries. A null RPC block is `{:error, :block_not_found}`; a pending block is `{:error, :pending_block}` |
+| `Onchain.Fees` | EIP-1559 fee recommendation (`suggest_fees/2`) over `Onchain.FeeHistory.t()` — pure function, returns `{base_fee, max_priority, max_fee}` |
+| `Onchain.RPC` | Ethereum JSON-RPC wrapper (eth_call, `eth_estimate_gas`, receipts, nonces, balances, block_number, chain_id, **decoded** `get_block_by_number`, EIP-7928 block access lists, eth_get_code, eth_send_raw_transaction, fee_history, `base_fee`, `blob_base_fee`; `call/3` for any other method; `batch/2` for JSON-RPC array batching). Opt-in `retry: [max_retries: n, backoff_ms: ms]` on single and batch paths retries transport failures only (default: no retry). Block access lists preserve the node's raw camelCase response. `get_block_by_number/2` returns atom-keyed maps (quantities as integers). `eth_getStorageAt` and EIP-1186 proofs are `Onchain.RPC.eth_get_storage_at/3` (32-byte binary) and `eth_get_proof/3` (`Onchain.RPC.Proof`). Stateless `eth_getLogs` is `Onchain.RPC.eth_get_logs/2`, returning `[%Onchain.Filter.Log{}]`. It accepts atom keys or canonical camelCase string aliases (`"fromBlock"`, `"toBlock"`, `"blockHash"`, `"address"`, `"topics"`); `:block_hash` is mutually exclusive with `:from_block`/`:to_block`. Receipt logs are `%Onchain.Filter.Log{}` (`removed` is nil when the node omits it). `eth_syncing`, block transaction counts, `net_listening`, `net_peerCount`, and `web3_clientVersion` are `Onchain.RPC.eth_syncing/1`, `eth_get_block_transaction_count_by_hash/2`, `eth_get_block_transaction_count_by_number/2`, `net_listening/1`, `net_peer_count/1`, and `web3_client_version/1`. Transaction objects are `Onchain.RPC.eth_get_transaction_by_hash/2`, `eth_get_transaction_by_block_hash_and_index/3`, and `eth_get_transaction_by_block_number_and_index/3` (`%Onchain.Transaction.Info{}`; a null result is `{:error, :not_found}`). Block receipts are `Onchain.RPC.eth_get_block_receipts/2` (`[%Onchain.Receipt{}]`) |
+| `Onchain.RPC.Helpers` | Shared RPC helpers (hex normalization, block tags, tx hash validation; `parse_block_response/1`, `parse_transaction_map/1`; execution-revert maps get `:data` hex for `Onchain.ABI.decode_hex_error/2`) |
+| `Onchain.Block` | Full decoded block plus `get_by_number/2` and timestamp binary search. Hashes are 32-byte binaries. A null RPC block is `{:error, :block_not_found}`; a pending block is `{:error, :pending_block}` |
 | `Onchain.Contract` | Generic contract call (encode -> eth_call -> decode in one function) |
 | `Onchain.Contract.Generator` | Compile-time codegen from ABI JSON (`use` with `:abi_json` or `:abi_file`). `.sol` inputs need `onchain_evm` |
 | `Onchain.Multicall` | Batch multiple eth_call via Multicall3 |
-| `Cartouche.Sleuth.deploy_query/5` | Deploy-as-call: ship creation bytecode in one eth_call, decode returned bytes |
-| `Cartouche.Filter.Log` | Decoded log struct for `eth_getLogs` and receipt logs (`removed` is nil when the node omits it) |
-| `Cartouche.Signer` | Key management and transaction signing |
+| `Onchain.Sleuth.deploy_query/5` | Deploy-as-call: ship creation bytecode in one eth_call, decode returned bytes |
+| `Onchain.Filter.Log` | Decoded log struct for `eth_getLogs` and receipt logs (`removed` is nil when the node omits it) |
+| `Onchain.Signer` | Key management and transaction signing |
 | `Onchain.ERC20` | ERC-20 read (balanceOf, allowance, decimals, symbol, totalSupply) and write (transfer, approve) |
 | `Onchain.ERC721` | ERC-721 NFT reads (owner_of, token_uri, balance_of, name, symbol, get_approved, approved_for_all?) |
 | `Onchain.ERC1155` | ERC-1155 multi-token reads (balance_of, balance_of_batch, uri, approved_for_all?) |
@@ -196,7 +195,7 @@ balance = Onchain.ERC20.balance_of!(usdc, "0xYourAddress")
 | `Onchain.AA` | ERC-4337 UserOperation hashing (`user_op_hash/4`), signing (`sign_user_operation/5` — `:eip191`/`:raw`), and bundler JSON-RPC (`send_user_operation/3`, `estimate_user_operation_gas/3`, `get_user_operation_by_hash/2`, `get_user_operation_receipt/2`, `supported_entry_points/1`). Handles both v0.6 and v0.7 EntryPoint wire formats; `user_op_hash` verified against viem reference vectors |
 | `Onchain.AA.UserOperation` | Version-agnostic UserOperation struct (numeric fields as integers, byte fields as `0x` hex, optional v0.7 `factory`/`paymaster` fields). Build with `Onchain.AA.new/1` |
 
-Most read functions (`Onchain.RPC`, `Onchain.ERC20`/`ERC721`/`ERC1155`, `Cartouche.Block`, `Onchain.DEX.Router.amount_out_v2`, …) expose a `function!/1` bang variant that raises on error instead of returning `{:error, reason}`. Newer composite modules (`Onchain.MEV`, `Onchain.AA`, `Onchain.ERC7730`, `Onchain.DEX.Router.route`/`quote_pool`) return tagged tuples only — no bang variant.
+Most read functions (`Onchain.RPC`, `Onchain.ERC20`/`ERC721`/`ERC1155`, `Onchain.Block`, `Onchain.DEX.Router.amount_out_v2`, …) expose a `function!/1` bang variant that raises on error instead of returning `{:error, reason}`. Newer composite modules (`Onchain.MEV`, `Onchain.AA`, `Onchain.ERC7730`, `Onchain.DEX.Router.route`/`quote_pool`) return tagged tuples only — no bang variant.
 
 ## Real-time Subscriptions
 
@@ -250,7 +249,7 @@ mix test.json --quiet                          # Unit tests (no RPC needed)
 mix test.json --quiet --include integration    # Integration tests (requires RPC)
 ```
 
-Differential tests compare `Onchain.RPC` against `Cartouche.RPC` on the same node (opt-in, requires mainnet RPC):
+Differential tests compare `Onchain.RPC` against independently decoded raw JSON-RPC on the same node (opt-in, requires mainnet RPC):
 
 ```bash
 export ONCHAIN_DIFFERENTIAL_TESTS=1

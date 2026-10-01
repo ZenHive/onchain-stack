@@ -1,4 +1,4 @@
-defmodule Cartouche.RPC.DevNodeTest do
+defmodule Onchain.RPC.DevNodeTest do
   @moduledoc """
   Development-node tests for node-custody JSON-RPC methods.
 
@@ -9,11 +9,11 @@ defmodule Cartouche.RPC.DevNodeTest do
   """
   use ExUnit.Case, async: false
 
-  alias Cartouche.Test.Live
-  alias Cartouche.Transaction
-  alias Cartouche.Transaction.Call
-  alias Cartouche.Transaction.V1
-  alias Cartouche.Transaction.V2
+  alias Onchain.Test.Live
+  alias Onchain.Transaction
+  alias Onchain.Transaction.Call
+  alias Onchain.Transaction.V1
+  alias Onchain.Transaction.V2
 
   @moduletag :dev_node
 
@@ -30,7 +30,7 @@ defmodule Cartouche.RPC.DevNodeTest do
     end)
 
     opts = Live.dev_opts()
-    {:ok, accounts} = Cartouche.RPC.accounts(opts)
+    {:ok, accounts} = Onchain.RPC.accounts(opts)
     {:ok, %{opts: opts, accounts: accounts}}
   end
 
@@ -40,7 +40,7 @@ defmodule Cartouche.RPC.DevNodeTest do
   end
 
   test "eth_coinbase returns a 20-byte fee recipient", %{opts: opts} do
-    assert {:ok, coinbase} = Cartouche.RPC.coinbase(opts)
+    assert {:ok, coinbase} = Onchain.RPC.coinbase(opts)
     assert byte_size(coinbase) == 20
   end
 
@@ -52,7 +52,7 @@ defmodule Cartouche.RPC.DevNodeTest do
 
     call = Call.new(<<0::160>>, <<>>, value: 0)
 
-    case Cartouche.RPC.fill_transaction(call, Keyword.put(opts, :from, from)) do
+    case Onchain.RPC.fill_transaction(call, Keyword.put(opts, :from, from)) do
       {:ok, filled} ->
         encoded = Transaction.encode(filled)
         assert {:ok, decoded} = Transaction.decode(encoded)
@@ -70,7 +70,7 @@ defmodule Cartouche.RPC.DevNodeTest do
   test "eth_sign returns a 65-byte signature from a managed account", %{opts: opts, accounts: accounts} do
     from = hd(accounts)
     digest = :crypto.hash(:sha256, "cartouche-dev-node-sign")
-    assert {:ok, signature} = Cartouche.RPC.sign(from, digest, opts)
+    assert {:ok, signature} = Onchain.RPC.sign(from, digest, opts)
     assert byte_size(signature) == 65
   end
 
@@ -80,7 +80,7 @@ defmodule Cartouche.RPC.DevNodeTest do
 
     # Observed on anvil for an account the node does not hold: code -32602,
     # message "No Signer available".
-    assert {:error, %{code: -32_602, message: message}} = Cartouche.RPC.sign(unknown, digest, opts)
+    assert {:error, %{code: -32_602, message: message}} = Onchain.RPC.sign(unknown, digest, opts)
     assert message =~ "No Signer available"
   end
 
@@ -89,7 +89,7 @@ defmodule Cartouche.RPC.DevNodeTest do
     recipient = Enum.at(accounts, 1, <<0::160>>)
     call = Call.new(recipient, <<>>, value: 0)
 
-    assert {:ok, signed} = Cartouche.RPC.sign_transaction(call, Keyword.put(opts, :from, from))
+    assert {:ok, signed} = Onchain.RPC.sign_transaction(call, Keyword.put(opts, :from, from))
     signer = recover_signer!(signed, opts)
     assert signer == from
   end
@@ -102,11 +102,11 @@ defmodule Cartouche.RPC.DevNodeTest do
     recipient = Enum.at(accounts, 1, @anvil_account)
     call = Call.new(recipient, <<>>, value: 1)
 
-    assert {:ok, hash} = Cartouche.RPC.send_transaction(call, Keyword.put(opts, :from, from))
+    assert {:ok, hash} = Onchain.RPC.send_transaction(call, Keyword.put(opts, :from, from))
     assert byte_size(hash) == 32
 
     assert {:ok, params} =
-             Cartouche.RPC.send_rpc("eth_getTransactionByHash", [Cartouche.Hex.encode_hex(hash)], opts)
+             Onchain.RPC.send_rpc("eth_getTransactionByHash", [Onchain.Hex.encode_hex(hash)], opts)
 
     signed =
       case params["type"] do
@@ -122,8 +122,8 @@ defmodule Cartouche.RPC.DevNodeTest do
     from = hd(accounts)
     recipient = Enum.at(accounts, 1, @anvil_account)
     access_list = [{@weth9, [<<0::256>>, <<1::256>>]}]
-    {:ok, chain_id} = Cartouche.RPC.eth_chain_id(opts)
-    {:ok, nonce} = Cartouche.RPC.get_nonce(from, opts)
+    {:ok, chain_id} = Onchain.RPC.eth_chain_id(opts)
+    {:ok, nonce} = Onchain.RPC.get_nonce(from, opts)
 
     trx =
       V2.new(
@@ -141,7 +141,7 @@ defmodule Cartouche.RPC.DevNodeTest do
         chain_id
       )
 
-    assert {:ok, signed} = Cartouche.RPC.sign_transaction(trx, Keyword.put(opts, :from, from))
+    assert {:ok, signed} = Onchain.RPC.sign_transaction(trx, Keyword.put(opts, :from, from))
 
     # The node signs what it was handed. If `accessList` or `type` never reach
     # it, this comes back as a legacy envelope with the access list dropped —
@@ -155,7 +155,7 @@ defmodule Cartouche.RPC.DevNodeTest do
   defp recover_signer!(trx, opts) do
     case trx do
       %V1{} = signed ->
-        {:ok, chain_id} = Cartouche.RPC.eth_chain_id(opts)
+        {:ok, chain_id} = Onchain.RPC.eth_chain_id(opts)
         assert {:ok, signer} = V1.recover_signer(signed, chain_id)
         signer
 

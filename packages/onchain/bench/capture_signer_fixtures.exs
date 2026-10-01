@@ -16,7 +16,7 @@ tracer =
           records =
             case result do
               {:ok, value} ->
-                expected = if mod == Onchain.Signer, do: Cartouche.Transaction.V2.encode(value), else: value
+                expected = if mod == Onchain.Signer, do: Onchain.Transaction.V2.encode(value), else: value
                 [{mod, fun, args, expected} | records]
 
               _ ->
@@ -38,8 +38,8 @@ tracer =
 
 for {mod, fun, arity} <- [
       {Onchain.Signer, :sign_transaction, 3},
-      {Cartouche.Signer, :sign_direct, 4},
-      {Cartouche.Signer, :backend_sign, 4}
+      {Onchain.Signer, :sign_direct, 4},
+      {Onchain.Signer, :backend_sign, 4}
     ] do
   Code.ensure_loaded!(mod)
   :erlang.trace_pattern({mod, fun, arity}, [{:_, [], [{:return_trace}]}], [:local])

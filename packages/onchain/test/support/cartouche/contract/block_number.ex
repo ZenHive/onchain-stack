@@ -1,4 +1,4 @@
-defmodule Cartouche.Contract.BlockNumber do
+defmodule Onchain.Contract.BlockNumber do
   @moduledoc false
 
   use Onchain.Contract.Generator,

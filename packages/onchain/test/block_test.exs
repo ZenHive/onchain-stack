@@ -1,15 +1,15 @@
-defmodule Cartouche.BlockTest do
+defmodule Onchain.BlockTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Block
-  alias Cartouche.Block.Withdrawal
-  alias Cartouche.Hex.InvalidHex
-  alias Cartouche.Transaction.V1
-  alias Cartouche.Transaction.V2
-  alias Cartouche.Transaction.V3
-  alias Cartouche.Transaction.V4
-  alias Cartouche.Transaction.V_2930
+  alias Onchain.Block
+  alias Onchain.Block.Withdrawal
+  alias Onchain.Hex.InvalidHex
+  alias Onchain.Transaction.V1
+  alias Onchain.Transaction.V2
+  alias Onchain.Transaction.V3
+  alias Onchain.Transaction.V4
+  alias Onchain.Transaction.V_2930
 
   doctest Block
   doctest Withdrawal
@@ -436,7 +436,7 @@ defmodule Cartouche.BlockTest do
       assert tx.chain_id == 1
       # Authorization list is decoded into the {chain_id, address, nonce,
       # y_parity, r, s} tuple shape used elsewhere in V4 (matches
-      # `Cartouche.Transaction.V4.authorization()` type).
+      # `Onchain.Transaction.V4.authorization()` type).
       assert tx.authorization_list == [
                {1, ~h[0x000000000000000000000000000000000000beef], 7, false, <<1::256>>, <<2::256>>}
              ]
@@ -484,7 +484,7 @@ defmodule Cartouche.BlockTest do
       assert tx.authorization_list == []
     end
 
-    test "y_parity hex value other than 0/1 raises Cartouche.Hex.InvalidHex" do
+    test "y_parity hex value other than 0/1 raises Onchain.Hex.InvalidHex" do
       # Defensive: the spec says yParity ∈ {0, 1}; a malformed node
       # response with `"yParity": "0x2"` should raise rather than
       # silently truncate.
@@ -527,8 +527,8 @@ defmodule Cartouche.BlockTest do
       end
     end
 
-    test "hash-only path validates hex — non-hex string raises Cartouche.Hex.InvalidHex" do
-      # Cartouche.Block.transactions hash-only branch returns the wire
+    test "hash-only path validates hex — non-hex string raises Onchain.Hex.InvalidHex" do
+      # Onchain.Block.transactions hash-only branch returns the wire
       # String.t() unchanged but must not let a malformed hash leak
       # through — otherwise downstream code that expects 0x-prefixed
       # 32-byte hex breaks far from the failure point.
@@ -538,7 +538,7 @@ defmodule Cartouche.BlockTest do
     end
   end
 
-  describe "Cartouche.Block.Withdrawal.deserialize/1 (Task 64)" do
+  describe "Onchain.Block.Withdrawal.deserialize/1 (Task 64)" do
     test "happy path — single withdrawal" do
       w =
         Withdrawal.deserialize(%{

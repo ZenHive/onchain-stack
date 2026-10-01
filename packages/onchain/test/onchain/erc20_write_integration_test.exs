@@ -1,8 +1,8 @@
 defmodule Onchain.ERC20WriteIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.RPC
   alias Onchain.ERC20
+  alias Onchain.RPC
 
   @moduletag :integration
 

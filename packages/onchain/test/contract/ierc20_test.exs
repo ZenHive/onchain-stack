@@ -1,8 +1,8 @@
-defmodule Cartouche.Contract.IERC20Test do
+defmodule Onchain.Contract.IERC20Test do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Contract.IERC20
+  alias Onchain.Contract.IERC20
 
   doctest IERC20
 

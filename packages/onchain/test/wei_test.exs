@@ -1,7 +1,7 @@
-defmodule Cartouche.WeiTest do
+defmodule Onchain.WeiTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Wei
+  alias Onchain.Wei
 
   doctest Wei
 

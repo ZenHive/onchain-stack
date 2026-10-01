@@ -28,7 +28,7 @@ defmodule Onchain.Subscription do
   Event shapes:
   - `{:new_heads, subscription_id, head_map}`
   - `{:pending_transactions, subscription_id, tx_hash}`
-  - `{:logs, subscription_id, %Cartouche.Filter.Log{}}`
+  - `{:logs, subscription_id, %Onchain.Filter.Log{}}`
   - `{:parse_error, subscription_id, reason}` — malformed notification; `reason` is a
     tagged tuple from the internal parser
     (`{:invalid_head, _}` | `{:invalid_tx_hash, _}` | `{:invalid_log, _}`)
@@ -110,7 +110,7 @@ defmodule Onchain.Subscription do
           receipts_root: String.t()
         }
 
-  @type log :: Cartouche.Filter.Log.t()
+  @type log :: Onchain.Filter.Log.t()
 
   @type event ::
           {:new_heads, String.t(), head()}

@@ -1,4 +1,4 @@
-defmodule ABI.Hex do
+defmodule Onchain.ABI.Hex do
   @moduledoc """
   This is Signet.Hex, but copied just for test-cases.
   """
@@ -18,10 +18,10 @@ defmodule ABI.Hex do
 
   defmacro __using__(_opts) do
     quote do
-      import ABI.Hex,
+      import Onchain.ABI.Hex,
         only: [sigil_h: 2, hex!: 1, to_hex: 1, from_hex: 1, from_hex!: 1]
 
-      alias ABI.Hex
+      alias Onchain.ABI.Hex
 
       require Hex
     end
@@ -34,11 +34,11 @@ defmodule ABI.Hex do
 
   ## Examples
 
-      iex> use ABI.Hex
+      iex> use Onchain.ABI.Hex
       iex> ~h[0x22]
       <<0x22>>
 
-      iex> use ABI.Hex
+      iex> use Onchain.ABI.Hex
       iex> ~h[0x2244]
       <<0x22, 0x44>>
   """
@@ -55,11 +55,11 @@ defmodule ABI.Hex do
 
   ## Examples
 
-      iex> use ABI.Hex
+      iex> use Onchain.ABI.Hex
       iex> hex!("0x22")
       <<0x22>>
 
-      iex> use ABI.Hex
+      iex> use Onchain.ABI.Hex
       iex> hex!("0x2244")
       <<0x22, 0x44>>
   """
@@ -73,13 +73,13 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.decode_hex("0xaabb")
+    iex> Onchain.ABI.Hex.decode_hex("0xaabb")
     {:ok, <<170, 187>>}
 
-    iex> ABI.Hex.decode_hex("aabb")
+    iex> Onchain.ABI.Hex.decode_hex("aabb")
     {:ok, <<170, 187>>}
 
-    iex> ABI.Hex.decode_hex("0xgggg")
+    iex> Onchain.ABI.Hex.decode_hex("0xgggg")
     :invalid_hex
   """
   @spec decode_hex(String.t()) :: {:ok, t()} | :error
@@ -90,7 +90,7 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.from_hex("0xaabb")
+    iex> Onchain.ABI.Hex.from_hex("0xaabb")
     {:ok, <<0xaa, 0xbb>>}
   """
   @spec from_hex(t()) :: {:ok, t()} | :error
@@ -101,7 +101,7 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.from_hex!("0xaabb")
+    iex> Onchain.ABI.Hex.from_hex!("0xaabb")
     <<0xaa, 0xbb>>
   """
   @spec from_hex!(t()) :: String.t()
@@ -112,11 +112,11 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.decode_hex!("aabb")
+    iex> Onchain.ABI.Hex.decode_hex!("aabb")
     <<170, 187>>
 
-    iex> ABI.Hex.decode_hex!("0xggaabb")
-    ** (ABI.Hex.HexError) invalid hex: "0xggaabb"
+    iex> Onchain.ABI.Hex.decode_hex!("0xggaabb")
+    ** (Onchain.ABI.Hex.HexError) invalid hex: "0xggaabb"
   """
   @spec decode_hex!(String.t()) :: t()
   def decode_hex!(b) do
@@ -137,11 +137,11 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.decode_address!("0x0000000000000000000000000000000000000001")
+    iex> Onchain.ABI.Hex.decode_address!("0x0000000000000000000000000000000000000001")
     <<1::160>>
 
-    iex> ABI.Hex.decode_address!("0xaabb")
-    ** (ABI.Hex.HexError) invalid hex address: "0xaabb"
+    iex> Onchain.ABI.Hex.decode_address!("0xaabb")
+    ** (Onchain.ABI.Hex.HexError) invalid hex address: "0xaabb"
   """
   @spec decode_address!(String.t()) :: t() | no_return()
   def decode_address!(hex) do
@@ -156,11 +156,11 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.decode_word!("0x0000000000000000000000000000000000000000000000000000000000000001")
+    iex> Onchain.ABI.Hex.decode_word!("0x0000000000000000000000000000000000000000000000000000000000000001")
     <<1::256>>
 
-    iex> ABI.Hex.decode_word!("0xaabb")
-    ** (ABI.Hex.HexError) invalid hex word: "0xaabb"
+    iex> Onchain.ABI.Hex.decode_word!("0xaabb")
+    ** (Onchain.ABI.Hex.HexError) invalid hex word: "0xaabb"
   """
   @spec decode_word!(String.t()) :: t() | no_return()
   def decode_word!(hex) do
@@ -175,11 +175,11 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.decode_sized!("0x001122", 3)
+    iex> Onchain.ABI.Hex.decode_sized!("0x001122", 3)
     <<0x00, 0x11, 0x22>>
 
-    iex> ABI.Hex.decode_sized!("0xaabb", 3)
-    ** (ABI.Hex.HexError) invalid 3-byte sized hex: "0xaabb"
+    iex> Onchain.ABI.Hex.decode_sized!("0xaabb", 3)
+    ** (Onchain.ABI.Hex.HexError) invalid 3-byte sized hex: "0xaabb"
   """
   @spec decode_sized!(String.t(), integer(), String.t() | nil) ::
           t() | no_return()
@@ -205,10 +205,10 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.decode_maybe_hex!("0xaabb")
+    iex> Onchain.ABI.Hex.decode_maybe_hex!("0xaabb")
     <<170, 187>>
 
-    iex> ABI.Hex.decode_maybe_hex!(nil)
+    iex> Onchain.ABI.Hex.decode_maybe_hex!(nil)
     nil
   """
   @spec decode_maybe_hex!(String.t() | nil) :: t() | nil
@@ -220,11 +220,11 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.decode_hex_number!("0xaabb")
+    iex> Onchain.ABI.Hex.decode_hex_number!("0xaabb")
     0xaabb
 
-    iex> ABI.Hex.decode_hex_number!("0xgggg")
-    ** (ABI.Hex.HexError) invalid hex number: "0xgggg"
+    iex> Onchain.ABI.Hex.decode_hex_number!("0xgggg")
+    ** (Onchain.ABI.Hex.HexError) invalid hex number: "0xgggg"
   """
   @spec decode_hex_number!(String.t()) :: integer() | no_return()
   def decode_hex_number!(b) do
@@ -242,10 +242,10 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.decode_hex_number("0xaabb")
+    iex> Onchain.ABI.Hex.decode_hex_number("0xaabb")
     {:ok, 0xaabb}
 
-    iex> ABI.Hex.decode_hex_number("0xgggg")
+    iex> Onchain.ABI.Hex.decode_hex_number("0xgggg")
     :invalid_hex
   """
   @spec decode_hex_number(String.t()) :: {:ok, integer()} | :error
@@ -258,7 +258,7 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.encode_hex(<<0xaa, 0xbb>>)
+    iex> Onchain.ABI.Hex.encode_hex(<<0xaa, 0xbb>>)
     "0xaabb"
   """
   @spec encode_hex(t()) :: String.t()
@@ -269,7 +269,7 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.to_hex(<<0xaa, 0xbb>>)
+    iex> Onchain.ABI.Hex.to_hex(<<0xaa, 0xbb>>)
     "0xaabb"
   """
   @spec to_hex(t()) :: String.t()
@@ -280,7 +280,7 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.encode_big_hex(<<0xcc, 0xdd>>)
+    iex> Onchain.ABI.Hex.encode_big_hex(<<0xcc, 0xdd>>)
     "0xCCDD"
   """
   @spec encode_big_hex(binary()) :: String.t()
@@ -291,13 +291,13 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.encode_short_hex(<<0xc>>)
+    iex> Onchain.ABI.Hex.encode_short_hex(<<0xc>>)
     "0xC"
 
-    iex> ABI.Hex.encode_short_hex(12)
+    iex> Onchain.ABI.Hex.encode_short_hex(12)
     "0xC"
 
-    iex> ABI.Hex.encode_short_hex(<<0x0>>)
+    iex> Onchain.ABI.Hex.encode_short_hex(<<0x0>>)
     "0x0"
   """
   @spec encode_short_hex(binary() | integer()) :: String.t()
@@ -322,10 +322,10 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.encode_hex_result({:ok, <<0xaa, 0xbb>>})
+    iex> Onchain.ABI.Hex.encode_hex_result({:ok, <<0xaa, 0xbb>>})
     {:ok, "0xaabb"}
 
-    iex> ABI.Hex.encode_hex_result({:error, 55})
+    iex> Onchain.ABI.Hex.encode_hex_result({:error, 55})
     {:error, 55}
   """
   @spec encode_hex_result({:ok, t()} | term()) :: {:ok, String.t()} | term()
@@ -338,10 +338,10 @@ defmodule ABI.Hex do
 
   ## Examples
 
-    iex> ABI.Hex.maybe_encode_hex(<<0xaa, 0xbb>>)
+    iex> Onchain.ABI.Hex.maybe_encode_hex(<<0xaa, 0xbb>>)
     "0xaabb"
 
-    iex> ABI.Hex.maybe_encode_hex(nil)
+    iex> Onchain.ABI.Hex.maybe_encode_hex(nil)
     nil
   """
   @spec maybe_encode_hex(t() | nil) :: String.t() | nil

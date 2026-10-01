@@ -3,7 +3,7 @@ defmodule Onchain.ERC20 do
   ERC-20 token operations.
 
   Read operations are thin wrappers around `Onchain.Contract.call/5`.
-  Write operations delegate to `Cartouche.Signer.send_transaction/3`.
+  Write operations delegate to `Onchain.Signer.send_transaction/3`.
   Returns raw integer values for balances — consumers use
   `Onchain.Decimal.to_decimal/2` with the result of `decimals/2` to normalize.
 
@@ -15,8 +15,8 @@ defmodule Onchain.ERC20 do
   |--------|-------------|
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
   | `Onchain.Contract.call/5` | `{:error, {:encode_error, ...}}`, `{:error, {:rpc_error, ...}}`, `{:error, {:decode_error, ...}}` |
-  | `ABI.encode_hex_call/2` | `{:error, {:encode_error, ...}}` |
-  | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
+  | `Onchain.ABI.encode_hex_call/2` | `{:error, {:encode_error, ...}}` |
+  | `Onchain.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
 
   ## Functions
 
@@ -38,13 +38,14 @@ defmodule Onchain.ERC20 do
 
   use Descripex, namespace: "/erc20"
 
-  alias Cartouche.Hex
-  alias Cartouche.Signer
   alias Onchain.Address
   alias Onchain.Contract
-  alias Onchain.ERC.Helpers
 
   # --- balance_of ---
+
+  alias Onchain.ERC.Helpers
+  alias Onchain.Hex
+  alias Onchain.Signer
 
   api(:balance_of, "Get the token balance of an address.",
     params: [
@@ -59,11 +60,11 @@ defmodule Onchain.ERC20 do
     }
   )
 
+  # --- balance_of! ---
+
   @spec balance_of(String.t() | binary(), String.t() | binary(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
   def balance_of(token, holder, opts \\ []), do: Helpers.balance_of(token, holder, opts)
-
-  # --- balance_of! ---
 
   api(:balance_of!, "Get the token balance of an address. Raises on error.",
     params: [
@@ -71,13 +72,14 @@ defmodule Onchain.ERC20 do
       holder: [kind: :value, description: "Address to check balance for"],
       opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
     ],
+
+    # --- allowance ---
+
     returns: %{type: :non_neg_integer, description: "Raw token balance"}
   )
 
   @spec balance_of!(String.t() | binary(), String.t() | binary(), keyword()) :: non_neg_integer()
   def balance_of!(token, holder, opts \\ []), do: Helpers.unwrap!(balance_of(token, holder, opts), "balance_of")
-
-  # --- allowance ---
 
   api(:allowance, "Get the amount an owner has approved a spender to transfer.",
     params: [
@@ -100,6 +102,7 @@ defmodule Onchain.ERC20 do
          {:ok, spender_bin} <- Address.validate(spender),
          {:ok, [amount]} <-
            Contract.call(
+             # --- allowance! ---
              token,
              "allowance(address,address)",
              [owner_bin, spender_bin],
@@ -109,8 +112,6 @@ defmodule Onchain.ERC20 do
       {:ok, amount}
     end
   end
-
-  # --- allowance! ---
 
   api(:allowance!, "Get the approved spending amount. Raises on error.",
     params: [
@@ -122,6 +123,8 @@ defmodule Onchain.ERC20 do
     returns: %{type: :non_neg_integer, description: "Approved spending amount"}
   )
 
+  # --- decimals ---
+
   @spec allowance!(String.t() | binary(), String.t() | binary(), String.t() | binary(), keyword()) ::
           non_neg_integer()
   def allowance!(token, owner, spender, opts \\ []) do
@@ -130,8 +133,6 @@ defmodule Onchain.ERC20 do
       {:error, reason} -> raise "allowance failed: #{inspect(reason)}"
     end
   end
-
-  # --- decimals ---
 
   api(:decimals, "Get the number of decimal places for a token.",
     params: [
@@ -145,6 +146,8 @@ defmodule Onchain.ERC20 do
     }
   )
 
+  # --- decimals! ---
+
   @spec decimals(String.t() | binary(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
   def decimals(token, opts \\ []) do
@@ -153,13 +156,12 @@ defmodule Onchain.ERC20 do
     end
   end
 
-  # --- decimals! ---
-
   api(:decimals!, "Get the number of decimal places for a token. Raises on error.",
     params: [
       token: [kind: :value, description: "ERC-20 token contract address"],
       opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
     ],
+    # --- symbol ---
     returns: %{type: :non_neg_integer, description: "Token decimal places"}
   )
 
@@ -171,8 +173,6 @@ defmodule Onchain.ERC20 do
     end
   end
 
-  # --- symbol ---
-
   api(:symbol, "Get the ticker symbol of a token.",
     params: [
       token: [kind: :value, description: "ERC-20 token contract address"],
@@ -181,6 +181,7 @@ defmodule Onchain.ERC20 do
     returns: %{
       type: "{:ok, String.t()} | {:error, term()}",
       description: "Token symbol string",
+      # --- symbol! ---
       example: ~s("USDC")
     }
   )
@@ -193,7 +194,7 @@ defmodule Onchain.ERC20 do
     end
   end
 
-  # --- symbol! ---
+  # --- total_supply ---
 
   api(:symbol!, "Get the ticker symbol of a token. Raises on error.",
     params: [
@@ -206,14 +207,13 @@ defmodule Onchain.ERC20 do
   @spec symbol!(String.t() | binary(), keyword()) :: String.t()
   def symbol!(token, opts \\ []), do: Helpers.unwrap!(symbol(token, opts), "symbol")
 
-  # --- total_supply ---
-
   api(:total_supply, "Get the total supply of a token.",
     params: [
       token: [kind: :value, description: "ERC-20 token contract address"],
       opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
     ],
     returns: %{
+      # --- total_supply! ---
       type: "{:ok, non_neg_integer()} | {:error, term()}",
       description: "Raw total supply (use decimals/2 + Onchain.Decimal.to_decimal/2 to normalize)",
       example: "1000000000000"
@@ -228,9 +228,8 @@ defmodule Onchain.ERC20 do
     end
   end
 
-  # --- total_supply! ---
-
   api(:total_supply!, "Get the total supply of a token. Raises on error.",
+    # --- approve ---
     params: [
       token: [kind: :value, description: "ERC-20 token contract address"],
       opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
@@ -246,8 +245,6 @@ defmodule Onchain.ERC20 do
     end
   end
 
-  # --- approve ---
-
   api(:approve, "Approve a spender to transfer tokens on your behalf.",
     params: [
       token: [kind: :value, description: "ERC-20 token contract address"],
@@ -259,6 +256,9 @@ defmodule Onchain.ERC20 do
           "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :gas_limit, :max_fee_per_gas, :max_priority_fee_per_gas"
       ]
     ],
+
+    # --- approve! ---
+
     returns: %{
       type: "{:ok, String.t()} | {:error, term()}",
       description: "Transaction hash hex string"
@@ -269,12 +269,10 @@ defmodule Onchain.ERC20 do
           {:ok, String.t()} | {:error, term()}
   def approve(token, spender, amount, opts) do
     with {:ok, spender_bin} <- Address.validate(spender),
-         {:ok, calldata_hex} <- ABI.encode_hex_call("approve(address,uint256)", [spender_bin, amount]) do
+         {:ok, calldata_hex} <- Onchain.ABI.encode_hex_call("approve(address,uint256)", [spender_bin, amount]) do
       Signer.send_transaction(token, Hex.decode!(calldata_hex), opts)
     end
   end
-
-  # --- approve! ---
 
   api(:approve!, "Approve a spender to transfer tokens on your behalf. Raises on error.",
     params: [
@@ -282,6 +280,7 @@ defmodule Onchain.ERC20 do
       spender: [kind: :value, description: "Address to approve for spending"],
       amount: [kind: :value, description: "Amount to approve (raw integer, not decimal-adjusted)"],
       opts: [
+        # --- transfer ---
         kind: :value,
         description:
           "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :gas_limit, :max_fee_per_gas, :max_priority_fee_per_gas"
@@ -299,8 +298,6 @@ defmodule Onchain.ERC20 do
     end
   end
 
-  # --- transfer ---
-
   api(:transfer, "Transfer tokens to a recipient.",
     params: [
       token: [kind: :value, description: "ERC-20 token contract address"],
@@ -308,6 +305,7 @@ defmodule Onchain.ERC20 do
       amount: [kind: :value, description: "Amount to transfer (raw integer, not decimal-adjusted)"],
       opts: [
         kind: :value,
+        # --- transfer! ---
         description:
           "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :gas_limit, :max_fee_per_gas, :max_priority_fee_per_gas"
       ]
@@ -322,12 +320,10 @@ defmodule Onchain.ERC20 do
           {:ok, String.t()} | {:error, term()}
   def transfer(token, to, amount, opts) do
     with {:ok, to_bin} <- Address.validate(to),
-         {:ok, calldata_hex} <- ABI.encode_hex_call("transfer(address,uint256)", [to_bin, amount]) do
+         {:ok, calldata_hex} <- Onchain.ABI.encode_hex_call("transfer(address,uint256)", [to_bin, amount]) do
       Signer.send_transaction(token, Hex.decode!(calldata_hex), opts)
     end
   end
-
-  # --- transfer! ---
 
   api(:transfer!, "Transfer tokens to a recipient. Raises on error.",
     params: [
@@ -384,26 +380,26 @@ defmodule Onchain.ERC20 do
       exec_opts: [
         kind: :value,
         description:
-          "Execution options forwarded to `Cartouche.RPC.execute_trx/3`; `:errors` defaults to ERC-20 signatures when absent."
+          "Execution options forwarded to `Onchain.RPC.execute_trx/3`; `:errors` defaults to ERC-20 signatures when absent."
       ]
     ],
     returns: %{
       type: :rpc_result,
-      description: "Result returned by `Cartouche.RPC.execute_trx/3`, usually `{:ok, tx_hash}` or `{:error, reason}`."
+      description: "Result returned by `Onchain.RPC.execute_trx/3`, usually `{:ok, tx_hash}` or `{:error, reason}`."
     }
   )
 
   @doc ~S"""
   Executes a transaction against the given ERC-20 token, using the provided
   ABI-encoded `call_data`. The configured Cartouche signer signs and submits
-  the transaction; `exec_opts` is forwarded to `Cartouche.RPC.execute_trx/3`
+  the transaction; `exec_opts` is forwarded to `Onchain.RPC.execute_trx/3`
   with this module's known error signatures merged in.
   """
-  @spec exec_trx(Cartouche.contract(), binary(), exec_opts()) ::
+  @spec exec_trx(Onchain.Configuration.contract(), binary(), exec_opts()) ::
           {:ok, binary()} | {:error, term()}
   def exec_trx(token, call_data, exec_opts) do
-    Cartouche.RPC.execute_trx(
-      Cartouche.get_contract_address(token),
+    Onchain.RPC.execute_trx(
+      Onchain.Configuration.get_contract_address(token),
       call_data,
       Keyword.put_new(exec_opts, :errors, errors())
     )
@@ -422,12 +418,12 @@ defmodule Onchain.ERC20 do
       call_opts: [
         kind: :value,
         description:
-          "Call options forwarded to `Cartouche.RPC.call_trx/2`; `:errors` defaults to ERC-20 signatures when absent."
+          "Call options forwarded to `Onchain.RPC.call_trx/2`; `:errors` defaults to ERC-20 signatures when absent."
       ]
     ],
     returns: %{
       type: :rpc_result,
-      description: "Result returned by `Cartouche.RPC.call_trx/2`, decoded according to `call_opts[:decode]`."
+      description: "Result returned by `Onchain.RPC.call_trx/2`, decoded according to `call_opts[:decode]`."
     }
   )
 
@@ -435,15 +431,15 @@ defmodule Onchain.ERC20 do
   Performs an `eth_call` against the given ERC-20 token with the provided
   ABI-encoded `call_data` and zero value/gas. Returns the call's return data
   without sending a transaction. `call_opts` is forwarded to
-  `Cartouche.RPC.call_trx/2` with this module's known error signatures
+  `Onchain.RPC.call_trx/2` with this module's known error signatures
   merged in.
   """
-  @spec call_trx(Cartouche.contract(), binary(), call_opts()) :: term()
+  @spec call_trx(Onchain.Configuration.contract(), binary(), call_opts()) :: term()
   def call_trx(token, call_data, call_opts) do
     token
-    |> Cartouche.get_contract_address()
-    |> Cartouche.Transaction.build_trx(0, call_data, 0, 0, 0)
-    |> Cartouche.RPC.call_trx(Keyword.put_new(call_opts, :errors, errors()))
+    |> Onchain.Configuration.get_contract_address()
+    |> Onchain.Transaction.build_trx(0, call_data, 0, 0, 0)
+    |> Onchain.RPC.call_trx(Keyword.put_new(call_opts, :errors, errors()))
   end
 
   defmodule CallData do
@@ -471,12 +467,12 @@ defmodule Onchain.ERC20 do
 
     ## Examples
 
-        iex> Onchain.ERC20.CallData.balance_of(<<0xDD>>) |> Cartouche.Hex.encode_hex()
+        iex> Onchain.ERC20.CallData.balance_of(<<0xDD>>) |> Onchain.Hex.encode_hex()
         "0x"
     """
-    @spec balance_of(Cartouche.address()) :: binary()
+    @spec balance_of(Onchain.Configuration.address()) :: binary()
     def balance_of(address) do
-      ABI.encode("balanceOf(address)", [address])
+      Onchain.ABI.encode("balanceOf(address)", [address])
     end
 
     api(:transfer, "Encode ERC-20 `transfer(address,uint256)` calldata.",
@@ -502,12 +498,12 @@ defmodule Onchain.ERC20 do
     ## Examples
 
         iex> Onchain.ERC20.CallData.transfer(<<0xDD>>, 100_000)
-        ...> |> Cartouche.Hex.encode_hex()
+        ...> |> Onchain.Hex.encode_hex()
         "0x8035f0ce"
     """
-    @spec transfer(Cartouche.address(), non_neg_integer()) :: binary()
+    @spec transfer(Onchain.Configuration.address(), non_neg_integer()) :: binary()
     def transfer(destination, amount_wei) do
-      ABI.encode("transfer(address,uint256)", [destination, amount_wei])
+      Onchain.ABI.encode("transfer(address,uint256)", [destination, amount_wei])
     end
   end
 
@@ -548,7 +544,7 @@ defmodule Onchain.ERC20 do
         iex> Onchain.ERC20.Call.balance_of(<<0xCC>>, <<0xDD>>)
         {:ok, <<>>}
     """
-    @spec balance_of(Cartouche.contract(), Cartouche.address(), Onchain.ERC20.call_opts()) ::
+    @spec balance_of(Onchain.Configuration.contract(), Onchain.Configuration.address(), Onchain.ERC20.call_opts()) ::
             {:ok, number()} | {:error, term()}
     def balance_of(token, address, call_opts \\ []) do
       call_opts = Keyword.put(call_opts, :decode, :hex_unsigned)
@@ -590,8 +586,8 @@ defmodule Onchain.ERC20 do
         {:ok, <<>>}
     """
     @spec transfer(
-            Cartouche.contract(),
-            Cartouche.address(),
+            Onchain.Configuration.contract(),
+            Onchain.Configuration.address(),
             non_neg_integer(),
             Onchain.ERC20.call_opts()
           ) :: {:ok, binary()} | {:error, term()}

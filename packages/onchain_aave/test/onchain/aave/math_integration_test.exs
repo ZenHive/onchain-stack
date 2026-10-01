@@ -12,11 +12,11 @@ defmodule Onchain.Aave.Math.IntegrationTest do
       user = "0xF380B8F1e63e2BEd7CA329CA1FdDbC39B52cC0d3"
       {:ok, user_bin} = Onchain.Address.validate(user)
       {:ok, pool_addr} = Contracts.address(:pool)
-      {:ok, calldata} = ABI.encode_hex_call("getUserAccountData(address)", [user_bin])
+      {:ok, calldata} = Onchain.ABI.encode_hex_call("getUserAccountData(address)", [user_bin])
       {:ok, hex_result} = RPC.eth_call(pool_addr, calldata, Onchain.RPCCase.rpc_opts!())
 
       {:ok, [collateral, debt, _available, _liq_threshold, _ltv, health_factor]} =
-        ABI.decode_response("(uint256,uint256,uint256,uint256,uint256,uint256)", hex_result)
+        Onchain.ABI.decode_response("(uint256,uint256,uint256,uint256,uint256,uint256)", hex_result)
 
       collateral_usd = Math.to_usd(collateral)
       debt_usd = Math.to_usd(debt)
@@ -44,9 +44,9 @@ defmodule Onchain.Aave.Math.IntegrationTest do
       weth = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
       {:ok, weth_bin} = Onchain.Address.validate(weth)
       {:ok, oracle_addr} = Contracts.address(:oracle)
-      {:ok, calldata} = ABI.encode_hex_call("getAssetPrice(address)", [weth_bin])
+      {:ok, calldata} = Onchain.ABI.encode_hex_call("getAssetPrice(address)", [weth_bin])
       {:ok, hex_result} = RPC.eth_call(oracle_addr, calldata, Onchain.RPCCase.rpc_opts!())
-      {:ok, [raw_price]} = ABI.decode_response("(uint256)", hex_result)
+      {:ok, [raw_price]} = Onchain.ABI.decode_response("(uint256)", hex_result)
 
       price = Math.to_usd(raw_price)
 

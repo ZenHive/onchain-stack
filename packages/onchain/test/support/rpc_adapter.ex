@@ -1,4 +1,4 @@
-defmodule Cartouche.Test.RPCAdapter do
+defmodule Onchain.Test.RPCAdapter do
   @moduledoc false
 
   # Only the former Cartouche suite's default endpoint uses its canned RPC
@@ -9,7 +9,7 @@ defmodule Cartouche.Test.RPCAdapter do
     if request.url.host in ["mainnet.infura.io", "example.com"] and
          not Process.get(:onchain_real_rpc, false) and not Map.has_key?(request.options, :plug) do
       request
-      |> Req.Request.put_option(:plug, &Cartouche.Test.Client.call/1)
+      |> Req.Request.put_option(:plug, &Onchain.Test.Client.call/1)
       |> Req.Plug.run()
     else
       Req.Finch.run(request)

@@ -1,8 +1,8 @@
-defmodule Cartouche.Hex.ConvenienceTest do
+defmodule Onchain.Hex.ConvenienceTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hex
-  alias Cartouche.Hex.InvalidHex
+  alias Onchain.Hex
+  alias Onchain.Hex.InvalidHex
 
   describe "decode/1" do
     test "decodes hex with 0x prefix" do

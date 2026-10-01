@@ -14,7 +14,7 @@
 [
   %{
     id: "offset-word-zeroed",
-    file: "lib/abi/type_encoder.ex",
+    file: "lib/onchain/abi/type_encoder.ex",
     site: "encode_tuple_element/2 — the head slot of a dynamic element",
     mutation: "write a constant 0 instead of the running tail position",
     expect: :killed,
@@ -23,7 +23,7 @@
   },
   %{
     id: "offset-never-advances",
-    file: "lib/abi/type_encoder.ex",
+    file: "lib/onchain/abi/type_encoder.ex",
     site: "encode_tuple_element/2 — the tail-position accumulator",
     mutation: "drop `+ byte_size(el)`, so every dynamic element points at the first tail",
     expect: :killed,
@@ -32,7 +32,7 @@
   },
   %{
     id: "tail-start-off-by-one-word",
-    file: "lib/abi/type_encoder.ex",
+    file: "lib/onchain/abi/type_encoder.ex",
     site: "encode_type/2 for {:tuple, types} — where the tail begins",
     mutation: "start the tail one 32-byte word too late",
     expect: :killed,
@@ -41,7 +41,7 @@
   },
   %{
     id: "selector-slice-shifted",
-    file: "lib/abi.ex",
+    file: "lib/onchain/abi.ex",
     site: "method_id/1 — the 4-byte slice of the keccak digest",
     mutation: "take bytes 1..4 of the digest instead of 0..3",
     expect: :killed,
@@ -50,7 +50,7 @@
   },
   %{
     id: "keccak-digest-reversed",
-    file: "lib/abi/math.ex",
+    file: "lib/onchain/abi/math.ex",
     site: "kec/1 — the keccak-256 digest",
     mutation: "return the digest byte-reversed",
     expect: :killed,
@@ -59,7 +59,7 @@
   },
   %{
     id: "event-signature-annotates-indexed",
-    file: "lib/abi/event.ex",
+    file: "lib/onchain/abi/event.ex",
     site: "event_signature/1 — the canonical string that is hashed into topic0",
     mutation: "render the `indexed` keyword into the hashed signature",
     expect: :killed,
@@ -68,7 +68,7 @@
   },
   %{
     id: "indexed-tuple-not-hashed",
-    file: "lib/abi/event.ex",
+    file: "lib/onchain/abi/event.ex",
     site: "reference_type?/1 — the tuple clause",
     mutation: "delete the clause, so an indexed tuple is treated as a value type",
     expect: :killed,
@@ -77,7 +77,7 @@
   },
   %{
     id: "mod-negative-branch",
-    file: "lib/abi/math.ex",
+    file: "lib/onchain/abi/math.ex",
     site: "mod/2 — the negative-dividend branch",
     mutation: "return Erlang's `rem/2` (which keeps the sign) instead of a floored modulus",
     expect: :survivor,

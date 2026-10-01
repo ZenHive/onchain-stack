@@ -1,6 +1,6 @@
-alias ABI, as: Alloy
-alias ABI.Bench.Legacy
-alias ABI.FunctionSelector
+alias Onchain.ABI, as: Alloy
+alias Onchain.ABI.Bench.Legacy
+alias Onchain.ABI.FunctionSelector
 
 # ONCHAIN_BUILD=1 mix compile --force
 # mix run --no-start bench/abi.exs
@@ -21,7 +21,7 @@ nested_values = [
 ]
 
 transfer_event = FunctionSelector.decode("Transfer(address indexed from,address indexed to,uint256 value)")
-topic0 = ABI.Event.event_signature(transfer_event)
+topic0 = Onchain.ABI.Event.event_signature(transfer_event)
 logs = for i <- 1..10_000, do: {<<i::256>>, [topic0, <<i::256>>, <<i + 1::256>>]}
 
 workloads = %{
@@ -45,7 +45,7 @@ workloads = %{
   },
   "Transfer event decode (10000 logs)" => {
     fn -> Enum.map(logs, fn {data, topics} -> Legacy.decode_event(transfer_event, data, topics) end) end,
-    fn -> ABI.Event.decode_events(logs, transfer_event) end
+    fn -> Onchain.ABI.Event.decode_events(logs, transfer_event) end
   },
   "nested tuple/array encode" => {
     fn -> Legacy.encode(nested, nested_values) end,
@@ -83,7 +83,7 @@ compile_costs =
 
       {microseconds, _} =
         :timer.tc(fn ->
-          ABI.Native.compile(FunctionSelector.encode(%FunctionSelector{types: types}), <<>>)
+          Onchain.ABI.Native.compile(FunctionSelector.encode(%FunctionSelector{types: types}), <<>>)
         end)
 
       {name, %{one_time_compile_us: microseconds}}
@@ -115,11 +115,11 @@ phases =
       {"Transfer event decode (single log)", :event, event_types, {event_topics, event_data}}
     ],
     fn {name, operation, types, value} ->
-      resource = ABI.Alloy.schema(types)
+      resource = Onchain.ABI.Alloy.schema(types)
 
       samples =
         for _ <- 1..1000 do
-          {:ok, {_result, {input, alloy, output}}} = ABI.Native.abi(:profile, resource, {operation, value})
+          {:ok, {_result, {input, alloy, output}}} = Onchain.ABI.Native.abi(:profile, resource, {operation, value})
           {input, alloy, output}
         end
 

@@ -1,7 +1,7 @@
-defmodule Cartouche.RecursiveTypedTest do
+defmodule Onchain.RecursiveTypedTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Typed
+  alias Onchain.Typed
 
   @fixture Path.expand("support/fixtures/recursive_typed_before_alloy.json", __DIR__)
   @external_resource @fixture
@@ -30,11 +30,11 @@ defmodule Cartouche.RecursiveTypedTest do
       "Leaf" => %Typed.Type{fields: [{"weight", {:int, 8}}, {"branches", {:array, "Branch"}}]}
     }
 
-    empty_array = Cartouche.Hash.keccak(<<>>)
-    leaf = Cartouche.Hash.keccak(Typed.encode_type("Leaf", types))
-    leaf = Cartouche.Hash.keccak(leaf <> <<-1::signed-256>> <> empty_array)
-    nested = Cartouche.Hash.keccak(Cartouche.Hash.keccak(leaf))
-    expected = Cartouche.Hash.keccak(Cartouche.Hash.keccak(Typed.encode_type("Branch", types)) <> nested)
+    empty_array = Onchain.Hash.keccak(<<>>)
+    leaf = Onchain.Hash.keccak(Typed.encode_type("Leaf", types))
+    leaf = Onchain.Hash.keccak(leaf <> <<-1::signed-256>> <> empty_array)
+    nested = Onchain.Hash.keccak(Onchain.Hash.keccak(leaf))
+    expected = Onchain.Hash.keccak(Onchain.Hash.keccak(Typed.encode_type("Branch", types)) <> nested)
     value = %{"leaves" => [[%{"weight" => -1, "branches" => []}]]}
 
     assert Typed.hash_struct("Branch", value, types) == expected
@@ -52,25 +52,25 @@ defmodule Cartouche.RecursiveTypedTest do
       }
     }
 
-    type_hash = Cartouche.Hash.keccak(Typed.encode_type("Node", types))
-    empty = Cartouche.Hash.keccak(<<>>)
+    type_hash = Onchain.Hash.keccak(Typed.encode_type("Node", types))
+    empty = Onchain.Hash.keccak(<<>>)
 
     leaf =
-      Cartouche.Hash.keccak(
+      Onchain.Hash.keccak(
         type_hash <>
-          Cartouche.Hash.keccak("leaf") <>
+          Onchain.Hash.keccak("leaf") <>
           <<0::96, 2::160>> <>
-          Cartouche.Hash.keccak(<<>>) <>
+          Onchain.Hash.keccak(<<>>) <>
           empty
       )
 
     expected =
-      Cartouche.Hash.keccak(
+      Onchain.Hash.keccak(
         type_hash <>
-          Cartouche.Hash.keccak("root") <>
+          Onchain.Hash.keccak("root") <>
           <<0::96, 1::160>> <>
-          Cartouche.Hash.keccak(<<0xAB, 0xCD>>) <>
-          Cartouche.Hash.keccak(leaf)
+          Onchain.Hash.keccak(<<0xAB, 0xCD>>) <>
+          Onchain.Hash.keccak(leaf)
       )
 
     value = %{
@@ -90,9 +90,9 @@ defmodule Cartouche.RecursiveTypedTest do
     fields = [%{"name" => "children", "type" => "Node[][1]"}]
     data = put_in(data, ["types", "Node"], fields)
     data = Map.put(data, "message", %{"children" => [[]]})
-    type_hash = Cartouche.Hash.keccak("Node(Node[][1] children)")
-    children = Cartouche.Hash.keccak(Cartouche.Hash.keccak(<<>>))
-    expected = Cartouche.Hash.keccak(type_hash <> children)
+    type_hash = Onchain.Hash.keccak("Node(Node[][1] children)")
+    children = Onchain.Hash.keccak(Onchain.Hash.keccak(<<>>))
+    expected = Onchain.Hash.keccak(type_hash <> children)
 
     assert {:ok, ^expected} = native("hash_struct", data)
 
@@ -139,6 +139,6 @@ defmodule Cartouche.RecursiveTypedTest do
     |> Map.delete("value")
   end
 
-  defp native(operation, document), do: ABI.Native.consensus("typed", operation, document)
-  defp hex(key), do: Cartouche.Hex.decode_hex!(@oracle[key])
+  defp native(operation, document), do: Onchain.ABI.Native.consensus("typed", operation, document)
+  defp hex(key), do: Onchain.Hex.decode_hex!(@oracle[key])
 end

@@ -1,6 +1,6 @@
-defmodule Cartouche.RPC.DebugNamespaceTest do
+defmodule Onchain.RPC.DebugNamespaceTest do
   @moduledoc """
-  Live coverage for `Cartouche.RPC.debug_trace_call/2`.
+  Live coverage for `Onchain.RPC.debug_trace_call/2`.
 
   Carries its own `:debug_namespace` tag instead of `:integration`, and is
   excluded by default in `test/test_helper.exs`. Opt in explicitly:
@@ -31,18 +31,18 @@ defmodule Cartouche.RPC.DebugNamespaceTest do
   """
   use ExUnit.Case, async: true
 
-  import Cartouche.Test.Live, only: [live_opts: 0]
+  import Onchain.Test.Live, only: [live_opts: 0]
 
-  alias Cartouche.Transaction.V1
+  alias Onchain.Transaction.V1
 
   @moduletag :debug_namespace
 
   setup_all do
-    Cartouche.Test.Live.assert_node_available!()
+    Onchain.Test.Live.assert_node_available!()
     :ok
   end
 
-  # Anchors mirror `Cartouche.RPC.IntegrationTest` — mainnet is immutable, so
+  # Anchors mirror `Onchain.RPC.IntegrationTest` — mainnet is immutable, so
   # these assertions are deterministic forever.
   @weth9 <<0xC02AAA39B223FE8D0A0E5C4F27EAD9083C756CC2::160>>
   @weth9_anchor_block 18_000_000
@@ -53,7 +53,7 @@ defmodule Cartouche.RPC.DebugNamespaceTest do
     trx = V1.new(0, {0, :gwei}, 100_000, @weth9, 0, @weth9_total_supply_selector)
     opts = Keyword.put(live_opts(), :block_number, @weth9_anchor_block)
 
-    assert {:ok, %Cartouche.DebugTrace{} = dt} = Cartouche.RPC.debug_trace_call(trx, opts)
+    assert {:ok, %Onchain.DebugTrace{} = dt} = Onchain.RPC.debug_trace_call(trx, opts)
     assert dt.failed == false
     assert is_integer(dt.gas)
     assert dt.gas > 0
@@ -64,6 +64,6 @@ defmodule Cartouche.RPC.DebugNamespaceTest do
     # `test/debug_trace_atom_safety_test.exs`. The cons-pattern match below
     # both type-checks and pins non-emptiness in one line.
     assert is_list(dt.struct_logs)
-    assert [%Cartouche.DebugTrace.StructLog{} | _] = dt.struct_logs
+    assert [%Onchain.DebugTrace.StructLog{} | _] = dt.struct_logs
   end
 end

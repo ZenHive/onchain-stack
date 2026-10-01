@@ -59,16 +59,17 @@ defmodule Onchain.ENS do
 
   import Bitwise, only: [bor: 2]
 
-  alias Cartouche.Hex
-  alias Cartouche.RPC
   alias Onchain.Address
   alias Onchain.Contract
   alias Onchain.ENS.CCIP
   alias Onchain.ENS.Normalize
+  alias Onchain.Hex
+  alias Onchain.RPC
 
   @ens_registry "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
   @addr_reverse_suffix "addr.reverse"
   @zero_address <<0::160>>
+  # --- namehash ---
   @zero_node <<0::256>>
 
   # SLIP-44 coin type for Ethereum mainnet (ENSIP-9 default for addr/3).
@@ -78,16 +79,17 @@ defmodule Onchain.ENS do
   # ENSIP-11 derives an EVM chain's coin type from its chain id with this bit set.
   @evm_coin_type_flag 0x80000000
 
-  # HTTP plumbing for CCIP-Read gateway requests (mirrors Cartouche.RPC.batch/2).
+  # HTTP plumbing for CCIP-Read gateway requests (mirrors Onchain.RPC.batch/2).
   @default_gateway_timeout_ms 30_000
   @content_type_json {"Content-Type", "application/json"}
-
-  # --- namehash ---
 
   api(:namehash, "Compute the EIP-137 namehash for an ENS name.",
     params: [
       name: [kind: :value, description: "ENS name, e.g. \"vitalik.eth\""]
     ],
+
+    # --- namehash! ---
+
     returns: %{
       type: "{:ok, <<_::256>>} | {:error, term}",
       description: "32-byte keccak256 node hash per EIP-137"
@@ -102,7 +104,7 @@ defmodule Onchain.ENS do
     end
   end
 
-  # --- namehash! ---
+  # --- normalize ---
 
   api(:namehash!, "Compute the EIP-137 namehash. Raises on error.",
     params: [
@@ -119,7 +121,7 @@ defmodule Onchain.ENS do
     end
   end
 
-  # --- normalize ---
+  # --- normalize! ---
 
   api(:normalize, "Apply UTS-46 / ENSIP-15 normalization to an ENS name.",
     params: [
@@ -133,9 +135,8 @@ defmodule Onchain.ENS do
   )
 
   @spec normalize(String.t()) :: {:ok, String.t()} | {:error, {:invalid_name, term()}}
+  # --- dns_encode ---
   def normalize(name), do: Normalize.normalize(name)
-
-  # --- normalize! ---
 
   api(:normalize!, "Apply UTS-46 / ENSIP-15 normalization. Raises on error.",
     params: [
@@ -152,7 +153,7 @@ defmodule Onchain.ENS do
     end
   end
 
-  # --- dns_encode ---
+  # --- dns_encode! ---
 
   api(:dns_encode, "Encode an ENS name to DNS wire format (ENSIP-10).",
     params: [
@@ -168,11 +169,10 @@ defmodule Onchain.ENS do
   @spec dns_encode(String.t()) :: {:ok, binary()} | {:error, term()}
   def dns_encode(name) do
     with {:ok, normalized} <- Normalize.normalize(name) do
+      # --- evm_coin_type ---
       encode_dns_labels(normalized)
     end
   end
-
-  # --- dns_encode! ---
 
   api(:dns_encode!, "Encode an ENS name to DNS wire format. Raises on error.",
     params: [
@@ -185,11 +185,10 @@ defmodule Onchain.ENS do
   def dns_encode!(name) do
     case dns_encode(name) do
       {:ok, encoded} -> encoded
+      # --- resolver ---
       {:error, reason} -> raise "dns_encode failed: #{inspect(reason)}"
     end
   end
-
-  # --- evm_coin_type ---
 
   api(:evm_coin_type, "Derive an ENSIP-11 coin type from an EVM chain id.",
     params: [
@@ -207,8 +206,7 @@ defmodule Onchain.ENS do
     bor(@evm_coin_type_flag, chain_id)
   end
 
-  # --- resolver ---
-
+  # --- resolver! ---
   api(:resolver, "Look up the resolver contract address for an ENS name.",
     params: [
       name: [kind: :value, description: "ENS name (e.g., \"vitalik.eth\")"],
@@ -222,6 +220,7 @@ defmodule Onchain.ENS do
 
   @spec resolver(String.t(), keyword()) :: {:ok, String.t()} | {:error, term()}
   def resolver(name, opts \\ []) do
+    # --- resolve ---
     with {:ok, node} <- namehash(name),
          {:ok, resolver_addr} <- get_resolver(node, opts) do
       {:ok, resolver_addr}
@@ -230,8 +229,6 @@ defmodule Onchain.ENS do
       error -> error
     end
   end
-
-  # --- resolver! ---
 
   api(:resolver!, "Look up the resolver contract address. Raises on error.",
     params: [
@@ -249,7 +246,7 @@ defmodule Onchain.ENS do
     end
   end
 
-  # --- resolve ---
+  # --- resolve! ---
 
   api(:resolve, "Resolve an ENS name to an ETH address (forward resolution).",
     params: [
@@ -265,6 +262,7 @@ defmodule Onchain.ENS do
   @spec resolve(String.t(), keyword()) :: {:ok, String.t()} | {:error, term()}
   def resolve(name, opts \\ []) do
     with_resolver(name, "addr(bytes32)", [], "(address)", opts, fn [addr_bin] ->
+      # --- address (multi-coin, ENSIP-9/10/11 + EIP-3668) ---
       if addr_bin == @zero_address do
         {:error, {:no_address, name}}
       else
@@ -272,8 +270,6 @@ defmodule Onchain.ENS do
       end
     end)
   end
-
-  # --- resolve! ---
 
   api(:resolve!, "Resolve an ENS name to an ETH address. Raises on error.",
     params: [
@@ -291,8 +287,6 @@ defmodule Onchain.ENS do
     end
   end
 
-  # --- address (multi-coin, ENSIP-9/10/11 + EIP-3668) ---
-
   api(:address, "Resolve an ENS name to a chain-specific address (ENSIP-9 multi-coin).",
     params: [
       name: [kind: :value, description: "ENS name (e.g., \"vitalik.eth\")"],
@@ -306,6 +300,7 @@ defmodule Onchain.ENS do
     ],
     returns: %{
       type: "{:ok, binary()} | {:error, term()}",
+      # --- address! ---
       description:
         "Raw address bytes for the coin type (20 bytes for EVM chains). Resolution walks parent labels for a wildcard resolver (ENSIP-10) and follows EIP-3668 OffchainLookup reverts through the gateway when present."
     }
@@ -322,6 +317,7 @@ defmodule Onchain.ENS do
   """
   @spec address(String.t(), non_neg_integer(), keyword()) :: {:ok, binary()} | {:error, term()}
   def address(name, coin_type \\ @eth_coin_type, opts \\ []) when is_integer(coin_type) and coin_type >= 0 do
+    # --- reverse ---
     resolve_record(name, "addr(bytes32,uint256)", [coin_type], "(bytes)", opts, fn
       [addr_bytes] ->
         if addr_bytes == <<>> do
@@ -331,8 +327,6 @@ defmodule Onchain.ENS do
         end
     end)
   end
-
-  # --- address! ---
 
   api(:address!, "Resolve an ENS name to a chain-specific address. Raises on error.",
     params: [
@@ -351,8 +345,7 @@ defmodule Onchain.ENS do
     end
   end
 
-  # --- reverse ---
-
+  # --- reverse! ---
   api(:reverse, "Reverse-resolve an ETH address to an ENS name.",
     params: [
       address: [kind: :value, description: "ETH address as 0x hex string or 20-byte binary"],
@@ -369,6 +362,7 @@ defmodule Onchain.ENS do
     with {:ok, reverse} <- reverse_name(address),
          {:ok, node} <- namehash(reverse),
          {:ok, resolver_addr} <- get_resolver(node, opts),
+         # --- text ---
          {:ok, [name]} <-
            Contract.call(resolver_addr, "name(bytes32)", [node], "(string)", opts) do
       if name == "" do
@@ -382,8 +376,6 @@ defmodule Onchain.ENS do
     end
   end
 
-  # --- reverse! ---
-
   api(:reverse!, "Reverse-resolve an ETH address to an ENS name. Raises on error.",
     params: [
       address: [kind: :value, description: "ETH address as 0x hex string or 20-byte binary"],
@@ -393,14 +385,13 @@ defmodule Onchain.ENS do
   )
 
   @spec reverse!(String.t() | binary(), keyword()) :: String.t()
+  # --- text! ---
   def reverse!(address, opts \\ []) do
     case reverse(address, opts) do
       {:ok, name} -> name
       {:error, reason} -> raise "reverse failed: #{inspect(reason)}"
     end
   end
-
-  # --- text ---
 
   api(:text, "Retrieve a text record from an ENS name's resolver.",
     params: [
@@ -414,6 +405,8 @@ defmodule Onchain.ENS do
     }
   )
 
+  # --- contenthash ---
+
   @spec text(String.t(), String.t(), keyword()) :: {:ok, String.t()} | {:error, term()}
   def text(name, key, opts \\ []) do
     with_resolver(name, "text(bytes32,string)", [key], "(string)", opts, fn [value] ->
@@ -425,8 +418,6 @@ defmodule Onchain.ENS do
     end)
   end
 
-  # --- text! ---
-
   api(:text!, "Retrieve a text record. Raises on error.",
     params: [
       name: [kind: :value, description: "ENS name (e.g., \"vitalik.eth\")"],
@@ -436,6 +427,8 @@ defmodule Onchain.ENS do
     returns: %{type: "String.t()", description: "Text record value"}
   )
 
+  # --- contenthash! ---
+
   @spec text!(String.t(), String.t(), keyword()) :: String.t()
   def text!(name, key, opts \\ []) do
     case text(name, key, opts) do
@@ -444,8 +437,6 @@ defmodule Onchain.ENS do
     end
   end
 
-  # --- contenthash ---
-
   api(:contenthash, "Retrieve the contenthash record from an ENS name's resolver.",
     params: [
       name: [kind: :value, description: "ENS name (e.g., \"vitalik.eth\")"],
@@ -453,6 +444,7 @@ defmodule Onchain.ENS do
     ],
     returns: %{
       type: "{:ok, binary()} | {:error, term()}",
+      # --- pubkey ---
       description: "Raw contenthash bytes (ENSIP-7 encoded)"
     }
   )
@@ -468,8 +460,6 @@ defmodule Onchain.ENS do
     end)
   end
 
-  # --- contenthash! ---
-
   api(:contenthash!, "Retrieve the contenthash record. Raises on error.",
     params: [
       name: [kind: :value, description: "ENS name (e.g., \"vitalik.eth\")"],
@@ -478,6 +468,8 @@ defmodule Onchain.ENS do
     returns: %{type: "binary()", description: "Raw contenthash bytes"}
   )
 
+  # --- pubkey! ---
+
   @spec contenthash!(String.t(), keyword()) :: binary()
   def contenthash!(name, opts \\ []) do
     case contenthash(name, opts) do
@@ -485,8 +477,6 @@ defmodule Onchain.ENS do
       {:error, reason} -> raise "contenthash lookup failed: #{inspect(reason)}"
     end
   end
-
-  # --- pubkey ---
 
   api(:pubkey, "Retrieve the ECDSA public key from an ENS name's resolver.",
     params: [
@@ -497,6 +487,8 @@ defmodule Onchain.ENS do
       type: "{:ok, {binary(), binary()}} | {:error, term()}",
       description: "Tuple of {x, y} 32-byte coordinates"
     }
+
+    # --- abi ---
   )
 
   @spec pubkey(String.t(), keyword()) :: {:ok, {binary(), binary()}} | {:error, term()}
@@ -512,8 +504,6 @@ defmodule Onchain.ENS do
     end)
   end
 
-  # --- pubkey! ---
-
   api(:pubkey!, "Retrieve the ECDSA public key. Raises on error.",
     params: [
       name: [kind: :value, description: "ENS name (e.g., \"vitalik.eth\")"],
@@ -524,14 +514,14 @@ defmodule Onchain.ENS do
 
   @spec pubkey!(String.t(), keyword()) :: {binary(), binary()}
 
+  # --- abi! ---
+
   def pubkey!(name, opts \\ []) do
     case pubkey(name, opts) do
       {:ok, coords} -> coords
       {:error, reason} -> raise "pubkey lookup failed: #{inspect(reason)}"
     end
   end
-
-  # --- abi ---
 
   api(:abi, "Retrieve ABI data from an ENS name's resolver (ENSIP-7).",
     params: [
@@ -560,8 +550,6 @@ defmodule Onchain.ENS do
         end
     end)
   end
-
-  # --- abi! ---
 
   api(:abi!, "Retrieve ABI data. Raises on error.",
     params: [
@@ -709,12 +697,12 @@ defmodule Onchain.ENS do
           {:ok, term()} | {:error, term()}
   defp resolve_extended(resolver_addr, normalized, node, inner_sig, extra_args, return_type, opts, on_result) do
     with {:ok, dns} <- encode_dns_labels(normalized),
-         {:ok, inner_call} <- ABI.encode_hex_call(inner_sig, [node | extra_args]),
+         {:ok, inner_call} <- Onchain.ABI.encode_hex_call(inner_sig, [node | extra_args]),
          {:ok, inner_bytes} <- Hex.decode(inner_call),
-         {:ok, outer_call} <- ABI.encode_hex_call("resolve(bytes,bytes)", [dns, inner_bytes]),
+         {:ok, outer_call} <- Onchain.ABI.encode_hex_call("resolve(bytes,bytes)", [dns, inner_bytes]),
          {:ok, outer_hex} <- ccip_eth_call(resolver_addr, outer_call, opts),
-         {:ok, [inner_result]} <- ABI.decode_response("(bytes)", outer_hex),
-         {:ok, decoded} <- ABI.decode_response(return_type, Hex.encode(inner_result)) do
+         {:ok, [inner_result]} <- Onchain.ABI.decode_response("(bytes)", outer_hex),
+         {:ok, decoded} <- Onchain.ABI.decode_response(return_type, Hex.encode(inner_result)) do
       on_result.(decoded)
     end
   end
@@ -774,7 +762,7 @@ defmodule Onchain.ENS do
     end
   end
 
-  # Req transport (mirrors Cartouche.RPC.batch/2). normalize_response/1 already maps
+  # Req transport (mirrors Onchain.RPC.batch/2). normalize_response/1 already maps
   # 2xx -> {:ok, resp} and non-2xx -> {:error, resp}; retry: false keeps a single
   # gateway attempt so try_gateways/3 controls fallback across the URL list.
   @spec gateway_http(:get | :post, String.t(), binary() | nil, keyword()) ::
@@ -794,9 +782,9 @@ defmodule Onchain.ENS do
     ]
 
     __MODULE__
-    |> Cartouche.HTTP.req_options(base, opts)
+    |> Onchain.HTTP.req_options(base, opts)
     |> Req.request()
-    |> Cartouche.HTTP.normalize_response()
+    |> Onchain.HTTP.normalize_response()
     |> case do
       {:ok, %Req.Response{body: resp_body}} ->
         parse_gateway_body(resp_body)
@@ -851,10 +839,10 @@ defmodule Onchain.ENS do
     |> String.split(".")
     |> Enum.reverse()
     |> Enum.reduce(@zero_node, fn label, node ->
-      label_hash = Cartouche.Hash.keccak(label)
+      label_hash = Onchain.Hash.keccak(label)
       # Not string accumulation: node and label_hash are both fixed 32-byte keccak digests.
       # reach:disable-next-line string_building
-      Cartouche.Hash.keccak(node <> label_hash)
+      Onchain.Hash.keccak(node <> label_hash)
     end)
   end
 end

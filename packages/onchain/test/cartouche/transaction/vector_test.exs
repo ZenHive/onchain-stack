@@ -1,14 +1,14 @@
-defmodule Cartouche.Transaction.VectorTest do
+defmodule Onchain.Transaction.VectorTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hash
-  alias Cartouche.Hex
-  alias Cartouche.Transaction
-  alias Cartouche.Transaction.V1
-  alias Cartouche.Transaction.V2
-  alias Cartouche.Transaction.V3
-  alias Cartouche.Transaction.V4
-  alias Cartouche.Transaction.V_2930
+  alias Onchain.Hash
+  alias Onchain.Hex
+  alias Onchain.Transaction
+  alias Onchain.Transaction.V1
+  alias Onchain.Transaction.V2
+  alias Onchain.Transaction.V3
+  alias Onchain.Transaction.V4
+  alias Onchain.Transaction.V_2930
 
   @fixture_paths Path.wildcard(Path.expand("../../fixtures/vectors/*.json", __DIR__))
 

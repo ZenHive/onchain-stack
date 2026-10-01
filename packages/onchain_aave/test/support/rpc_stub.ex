@@ -60,7 +60,7 @@ defmodule Onchain.RPCStub do
   @doc false
   @spec selector(String.t(), list()) :: String.t()
   def selector(signature, params) do
-    {:ok, hex} = ABI.encode_hex_call(signature, params)
+    {:ok, hex} = Onchain.ABI.encode_hex_call(signature, params)
     String.slice(hex, @selector_start, @selector_length)
   end
 
@@ -75,7 +75,7 @@ defmodule Onchain.RPCStub do
   @doc false
   @spec encode_raw(list(), list()) :: binary()
   def encode_raw(types, data) do
-    ABI.encode(types, data)
+    Onchain.ABI.encode(types, data)
   end
 
   # A never-funded, well-known throwaway secp256k1 key (scalar 1). Present so

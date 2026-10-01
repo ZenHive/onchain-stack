@@ -2,8 +2,8 @@ defmodule Onchain.Tempo.Integration.SigningInvariantsTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
-  alias Cartouche.Hash
-  alias Cartouche.RPC
+  alias Onchain.Hash
+  alias Onchain.RPC
   alias Onchain.Tempo.Faucet
   alias Onchain.Tempo.RPC, as: TempoRPC
   alias Onchain.Tempo.Transaction

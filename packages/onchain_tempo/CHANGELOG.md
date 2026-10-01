@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased — v0.11.0
+## Unreleased — v0.12.0
+
+### Changed
+
+- Requires onchain `~> 0.16`, where `ABI.*` and `Cartouche.*` are renamed to `Onchain.*` (onchain's CHANGELOG has the full module map). Calls into the core now use the new names; this package's own public API is unchanged.
+- **0x76 transaction encoding runs in an onchain_tempo NIF built on `tempo-primitives`** (task 9033), with byte parity for `key_authorization`. The NIF ships precompiled through `Onchain.Precompiled`.
+
+## v0.11.0 (2026-09-29)
 
 ### Changed
 

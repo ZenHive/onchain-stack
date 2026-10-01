@@ -12,7 +12,7 @@
 #   * "unsafe atom creation" in lib/onchain/contract/generator.ex —
 #     `String.to_atom/1` creates the identifiers the generator emits.
 #     `String.to_existing_atom/1` is impossible for a not-yet-defined function.
-#   * Generated bindings under lib/cartouche/contract/** and the hand-written
+#   * Generated bindings under lib/onchain/contract/** and the hand-written
 #     test contracts that mimic that old surface.
 #
 [
@@ -25,12 +25,12 @@
     ignore: [
       paths: [
         "lib/onchain/contract/generator.ex",
-        "lib/cartouche/contract/**",
+        "lib/onchain/contract/sleuth.ex",
         "test/support/cartouche/contract/**"
       ]
     ],
     # The `{indexed, name, type}` map is the public ABI argument shape
-    # (`ABI.FunctionSelector` types and event filters), not an anonymous
+    # (`Onchain.ABI.FunctionSelector` types and event filters), not an anonymous
     # literal. Generated `IConsole` used to be the grouped site and was
     # excluded with the other contract bindings. These two hand-written
     # producers are the same contract. This exception applies solely to
@@ -38,8 +38,8 @@
     fixed_shape_map: [
       ignore: [
         paths: [
-          "lib/abi/function_selector.ex",
-          "lib/cartouche/filter.ex"
+          "lib/onchain/abi/function_selector.ex",
+          "lib/onchain/filter.ex"
         ]
       ]
     ]

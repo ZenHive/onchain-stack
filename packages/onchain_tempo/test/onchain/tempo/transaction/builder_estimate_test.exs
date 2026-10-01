@@ -1,8 +1,7 @@
 defmodule Onchain.Tempo.Transaction.BuilderEstimateTest do
-  # async: false — toggles the global `config :cartouche, Cartouche.RPC, plug: ...`
-  # seam to stub the eth_estimateGas transport (Onchain.RPC -> Cartouche.RPC.send_rpc
-  # -> Req). cartouche 0.5.0 replaced the removed `:cartouche, :client` Finch seam
-  # with this Req.Test plug seam.
+  # async: false — toggles the global `config :cartouche, Onchain.RPC, plug: ...`
+  # seam to stub the eth_estimateGas transport (Onchain.RPC.send_rpc -> Req).
+  # cartouche 0.5.0 replaced the removed `:cartouche, :client` Finch seam with this Req.Test plug seam.
   use ExUnit.Case, async: false
 
   alias Onchain.Tempo.Transaction
@@ -34,14 +33,14 @@ defmodule Onchain.Tempo.Transaction.BuilderEstimateTest do
   defp error_plug(conn), do: Req.Test.transport_error(conn, :timeout)
 
   defp with_plug(plug, fun) do
-    prev = Application.get_env(:cartouche, Cartouche.RPC)
-    Application.put_env(:cartouche, Cartouche.RPC, plug: plug)
+    prev = Application.get_env(:cartouche, Onchain.RPC)
+    Application.put_env(:cartouche, Onchain.RPC, plug: plug)
     on_exit(fn -> restore_plug(prev) end)
     fun.()
   end
 
-  defp restore_plug(nil), do: Application.delete_env(:cartouche, Cartouche.RPC)
-  defp restore_plug(prev), do: Application.put_env(:cartouche, Cartouche.RPC, prev)
+  defp restore_plug(nil), do: Application.delete_env(:cartouche, Onchain.RPC)
+  defp restore_plug(prev), do: Application.put_env(:cartouche, Onchain.RPC, prev)
 
   defp estimate_opts do
     [

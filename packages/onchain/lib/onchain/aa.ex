@@ -72,17 +72,20 @@ defmodule Onchain.AA do
 
   import Bitwise
 
-  alias Cartouche.Hash
-  alias Cartouche.Hex
-  alias Cartouche.RPC
-  alias Cartouche.Signer.Secp256k1, as: Secp256k1Signer
   alias Onchain.AA.UserOperation
   alias Onchain.Address
+  alias Onchain.Hash
+  alias Onchain.Hex
+  alias Onchain.RPC
+  alias Onchain.Signer.Secp256k1, as: Secp256k1Signer
 
   @entry_point_v0_6 "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"
   @entry_point_v0_7 "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
 
   @versions [:v0_6, :v0_7]
+
+  # --- entry_point ---
+
   @eip191_prefix "\x19Ethereum Signed Message:\n32"
   @tx_hash_hex_length 66
   @address_byte_size 20
@@ -91,11 +94,11 @@ defmodule Onchain.AA do
                      max_fee_per_gas max_priority_fee_per_gas)a
   @optional_uint128_fields ~w(paymaster_verification_gas_limit paymaster_post_op_gas_limit)a
 
+  # --- new ---
+
   @hex_fields ~w(init_code call_data paymaster_and_data signature)a
   @optional_hex_fields ~w(factory factory_data paymaster paymaster_data)a
   @known_keys [:sender | @uint256_fields ++ @optional_uint128_fields ++ @hex_fields ++ @optional_hex_fields]
-
-  # --- entry_point ---
 
   api(:entry_point, "Canonical EntryPoint contract address for a version.",
     params: [
@@ -108,8 +111,6 @@ defmodule Onchain.AA do
   def entry_point(:v0_6), do: @entry_point_v0_6
   def entry_point(:v0_7), do: @entry_point_v0_7
 
-  # --- new ---
-
   api(:new, "Build and validate a UserOperation from a map or keyword of fields.",
     params: [
       fields: [
@@ -120,6 +121,7 @@ defmodule Onchain.AA do
     ],
     returns: %{
       type: "{:ok, %Onchain.AA.UserOperation{}} | {:error, term}",
+      # --- user_op_hash ---
       description: "Validated UserOperation struct, or a validation error"
     }
   )
@@ -141,13 +143,12 @@ defmodule Onchain.AA do
 
   def new(other), do: {:error, {:invalid_fields, other}}
 
-  # --- user_op_hash ---
-
   api(:user_op_hash, "Compute the EntryPoint userOpHash for a UserOperation.",
     params: [
       user_op: [kind: :value, description: "%Onchain.AA.UserOperation{} struct"],
       entry_point: [kind: :value, description: "EntryPoint address (hex string or 20-byte binary)"],
       chain_id: [kind: :value, description: "Chain ID integer (1 = mainnet, 11155111 = Sepolia)"],
+      # --- sign_user_operation ---
       opts: [kind: :value, default: [], description: "Options: :version (:v0_6 | :v0_7, default :v0_7)"]
     ],
     returns: %{
@@ -172,8 +173,6 @@ defmodule Onchain.AA do
     end
   end
 
-  # --- sign_user_operation ---
-
   api(:sign_user_operation, "Sign a UserOperation and return it with :signature populated.",
     params: [
       user_op: [kind: :value, description: "%Onchain.AA.UserOperation{} struct"],
@@ -188,6 +187,7 @@ defmodule Onchain.AA do
       ]
     ],
     returns: %{
+      # --- to_rpc_params ---
       type: "{:ok, %Onchain.AA.UserOperation{}} | {:error, term}",
       description: "UserOperation with :signature set to a 65-byte r‖s‖v hex string"
     }
@@ -211,9 +211,9 @@ defmodule Onchain.AA do
          {:ok, sig_hex} <- sign_digest(digest, key_bin, signer_addr) do
       {:ok, %{user_op | signature: sig_hex}}
     end
-  end
 
-  # --- to_rpc_params ---
+    # --- send_user_operation ---
+  end
 
   api(:to_rpc_params, "Serialize a UserOperation to bundler JSON-RPC params.",
     params: [
@@ -235,9 +235,9 @@ defmodule Onchain.AA do
          {:ok, sender_bin} <- validate_address(user_op.sender, :sender) do
       rpc_map(user_op, Hex.encode(sender_bin), version)
     end
-  end
 
-  # --- send_user_operation ---
+    # --- estimate_user_operation_gas ---
+  end
 
   api(:send_user_operation, "Submit a UserOperation to a bundler (eth_sendUserOperation).",
     params: [
@@ -258,11 +258,10 @@ defmodule Onchain.AA do
   @spec send_user_operation(UserOperation.t(), String.t() | binary(), keyword()) ::
           {:ok, term()} | {:error, term()}
 
+  # --- get_user_operation_by_hash ---
   def send_user_operation(%UserOperation{} = user_op, entry_point, opts \\ []) do
     bundler_call("eth_sendUserOperation", user_op, entry_point, opts)
   end
-
-  # --- estimate_user_operation_gas ---
 
   api(:estimate_user_operation_gas, "Estimate gas for a UserOperation (eth_estimateUserOperationGas).",
     params: [
@@ -281,13 +280,13 @@ defmodule Onchain.AA do
     }
   )
 
+  # --- get_user_operation_receipt ---
+
   @spec estimate_user_operation_gas(UserOperation.t(), String.t() | binary(), keyword()) ::
           {:ok, term()} | {:error, term()}
   def estimate_user_operation_gas(%UserOperation{} = user_op, entry_point, opts \\ []) do
     bundler_call("eth_estimateUserOperationGas", user_op, entry_point, opts)
   end
-
-  # --- get_user_operation_by_hash ---
 
   api(:get_user_operation_by_hash, "Look up a UserOperation by its hash (eth_getUserOperationByHash).",
     params: [
@@ -300,6 +299,8 @@ defmodule Onchain.AA do
     }
   )
 
+  # --- supported_entry_points ---
+
   @spec get_user_operation_by_hash(String.t(), keyword()) :: {:ok, term()} | {:error, term()}
   def get_user_operation_by_hash(user_op_hash, opts \\ []) do
     with {:ok, hash} <- validate_hash(user_op_hash) do
@@ -307,13 +308,12 @@ defmodule Onchain.AA do
     end
   end
 
-  # --- get_user_operation_receipt ---
-
   api(:get_user_operation_receipt, "Fetch a UserOperation receipt (eth_getUserOperationReceipt).",
     params: [
       user_op_hash: [kind: :value, description: "0x-prefixed 32-byte userOpHash"],
       opts: [kind: :value, default: [], description: "Options: :bundler_url (or :rpc_url), :timeout"]
     ],
+    # --- Private: validation ---
     returns: %{
       type: "{:ok, map | nil} | {:error, term}",
       description: "Receipt map (success, actualGasUsed, logs, receipt, …), or nil if not yet mined"
@@ -326,8 +326,6 @@ defmodule Onchain.AA do
       RPC.call("eth_getUserOperationReceipt", [hash], bundler_opts(opts))
     end
   end
-
-  # --- supported_entry_points ---
 
   api(:supported_entry_points, "List EntryPoint addresses the bundler supports (eth_supportedEntryPoints).",
     params: [
@@ -343,8 +341,6 @@ defmodule Onchain.AA do
   def supported_entry_points(opts \\ []) do
     RPC.call("eth_supportedEntryPoints", [], bundler_opts(opts))
   end
-
-  # --- Private: validation ---
 
   defp reject_unknown_keys(fields) do
     case Map.keys(fields) -- @known_keys do
@@ -525,6 +521,8 @@ defmodule Onchain.AA do
     end
   end
 
+  # --- Private: signing ---
+
   defp derive_factory_fields(%UserOperation{factory: factory} = op) do
     with {:ok, factory_bin} <- validate_address(factory, :factory),
          {:ok, factory_data} <- decode_optional_hex(op.factory_data, :factory_data) do
@@ -566,6 +564,7 @@ defmodule Onchain.AA do
          {:ok, data} <- decode_optional_hex(op.paymaster_data, :paymaster_data) do
       {:ok, paymaster_bin <> ver_gas <> post_op_gas <> data,
        %{
+         # --- Private: RPC ---
          "paymaster" => Hex.encode(paymaster_bin),
          "paymasterVerificationGasLimit" => Hex.from_integer(op.paymaster_verification_gas_limit || 0),
          "paymasterPostOpGasLimit" => Hex.from_integer(op.paymaster_post_op_gas_limit || 0),
@@ -582,8 +581,6 @@ defmodule Onchain.AA do
 
   # Left-pad a 20-byte address to a 32-byte ABI word.
   defp word_address(<<addr::binary-size(@address_byte_size)>>), do: <<0::96, addr::binary-size(@address_byte_size)>>
-
-  # --- Private: signing ---
 
   defp signing_digest(hash_hex, :raw), do: Hex.decode(hash_hex)
 
@@ -614,7 +611,7 @@ defmodule Onchain.AA do
   end
 
   defp recover_address(sig, digest) do
-    Cartouche.Recover.recover_eth_from_digest(digest, sig)
+    Onchain.Recover.recover_eth_from_digest(digest, sig)
   end
 
   defp decode_private_key(input), do: Onchain.PrivateKey.decode(input)
@@ -625,8 +622,6 @@ defmodule Onchain.AA do
       {:error, _} -> {:error, {:invalid_private_key, original_input}}
     end
   end
-
-  # --- Private: RPC ---
 
   defp bundler_call(method, user_op, entry_point, opts) do
     version = Keyword.get(opts, :version, :v0_7)
@@ -639,7 +634,7 @@ defmodule Onchain.AA do
   end
 
   # Bundler URL may arrive as :bundler_url (preferred) or :rpc_url; map to the
-  # :rpc_url key Cartouche.RPC understands. :timeout passes through.
+  # :rpc_url key Onchain.RPC understands. :timeout passes through.
   defp bundler_opts(opts) do
     url = Keyword.get(opts, :bundler_url) || Keyword.get(opts, :rpc_url)
 

@@ -56,7 +56,7 @@ defmodule Onchain.TransferIntegrationTest do
         to_block: 18_000_009
       }
 
-      assert {:ok, logs} = Cartouche.RPC.eth_get_logs(filter, rpc_url: rpc_url)
+      assert {:ok, logs} = Onchain.RPC.eth_get_logs(filter, rpc_url: rpc_url)
       assert {:ok, transfers} = Transfer.parse_logs(logs)
 
       # Every parsed transfer should be ERC-20 (USDC is ERC-20)

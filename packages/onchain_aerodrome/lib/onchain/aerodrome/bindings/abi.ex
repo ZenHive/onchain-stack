@@ -2,13 +2,13 @@ defmodule Onchain.Aerodrome.Bindings.Abi do
   @moduledoc """
   Canonical signatures from the nine deployed ABI captures in `priv/abis`.
 
-  Decode positionally with `Cartouche.RPC.eth_call/3` followed by
-  `ABI.decode_response/2` and hand-written `from_raw/1` constructors,
+  Decode positionally with `Onchain.RPC.eth_call/3` followed by
+  `Onchain.ABI.decode_response/2` and hand-written `from_raw/1` constructors,
   matching onchain_aave. Named components are evidence for field-count and
   field-order drift tests, not instructions to decode maps.
 
   The decision was made against Hex onchain 0.13.0: `Onchain.Contract.call/5`
-  called the two-arity `ABI.decode_response/2` without forwarding
+  called the two-arity `Onchain.ABI.decode_response/2` without forwarding
   options, making hieroglyph 1.7.0's `decode_structs: true` unreachable through
   those wrappers. The monorepo's onchain 0.14.0 now forwards decode options,
   but map decoding still raises on un-interned field atoms. Positional decode
@@ -59,7 +59,7 @@ defmodule Onchain.Aerodrome.Bindings.Abi do
     with {:ok, {_name, signature, _return_type}} <- lookup(file, function), do: {:ok, signature}
   end
 
-  @doc "Returns the parenthesized output signature accepted by ABI.decode_response/2."
+  @doc "Returns the parenthesized output signature accepted by Onchain.ABI.decode_response/2."
   @spec return_type(String.t(), String.t()) :: {:ok, String.t()} | {:error, lookup_error()}
   def return_type(file, function) do
     with {:ok, {_name, _signature, return_type}} <- lookup(file, function), do: {:ok, return_type}

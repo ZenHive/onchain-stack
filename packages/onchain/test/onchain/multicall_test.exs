@@ -7,14 +7,14 @@ defmodule Onchain.MulticallTest do
 
   describe "aggregate3/2" do
     test "returns error for invalid address in call list" do
-      {:ok, calldata} = ABI.encode_hex_call("symbol()", [])
+      {:ok, calldata} = Onchain.ABI.encode_hex_call("symbol()", [])
       assert {:error, {:invalid_address, "bad"}} = Multicall.aggregate3([{"bad", true, calldata}])
     end
   end
 
   describe "aggregate3!/2" do
     test "raises on invalid address" do
-      {:ok, calldata} = ABI.encode_hex_call("symbol()", [])
+      {:ok, calldata} = Onchain.ABI.encode_hex_call("symbol()", [])
 
       assert_raise RuntimeError, ~r/aggregate3 failed/, fn ->
         Multicall.aggregate3!([{"bad", true, calldata}])

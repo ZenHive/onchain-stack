@@ -1,10 +1,10 @@
-defmodule Cartouche.DebugTraceTest do
+defmodule Onchain.DebugTraceTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.DebugTrace.StructLog
+  alias Onchain.DebugTrace.StructLog
 
-  doctest Cartouche.DebugTrace
+  doctest Onchain.DebugTrace
   doctest StructLog
 
   @base_struct_log %{

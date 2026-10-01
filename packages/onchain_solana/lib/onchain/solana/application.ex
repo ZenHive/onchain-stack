@@ -2,7 +2,7 @@ defmodule Onchain.Solana.Application do
   @moduledoc false
   use Application
 
-  alias Cartouche.Signer.Backend
+  alias Onchain.Signer.Backend
 
   @impl true
   @spec start(Application.start_type(), term()) :: Supervisor.on_start()
@@ -66,7 +66,7 @@ defmodule Onchain.Solana.Application do
       _ ->
         case Onchain.Solana.Base58.decode(key) do
           {:ok, <<decoded::binary-32>>} -> decoded
-          _ -> Cartouche.Hex.decode_hex_input!(key)
+          _ -> Onchain.Hex.decode_hex_input!(key)
         end
     end
   end

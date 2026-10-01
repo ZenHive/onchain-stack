@@ -24,13 +24,14 @@ defmodule Onchain.Multicall do
 
   use Descripex, namespace: "/multicall"
 
-  alias Cartouche.Hex
   alias Onchain.Address
   alias Onchain.Contract
 
-  @multicall3_address "0xcA11bde05977b3631167028862bE2a173976CA11"
-
   # --- aggregate3 ---
+
+  alias Onchain.Hex
+
+  @multicall3_address "0xcA11bde05977b3631167028862bE2a173976CA11"
 
   api(:aggregate3, "Batch raw contract calls via Multicall3 aggregate3.",
     params: [
@@ -56,14 +57,13 @@ defmodule Onchain.Multicall do
              "aggregate3((address,bool,bytes)[])",
              [encoded_calls],
              "((bool,bytes)[])",
+             # --- aggregate3! ---
              opts
            ) do
       parsed = Enum.map(results, fn {success, data} -> {success, Hex.encode(data)} end)
       {:ok, parsed}
     end
   end
-
-  # --- aggregate3! ---
 
   api(:aggregate3!, "Batch raw contract calls. Raises on error.",
     params: [
@@ -75,14 +75,14 @@ defmodule Onchain.Multicall do
 
   @spec aggregate3!([{String.t(), boolean(), String.t()}], keyword()) :: [{boolean(), binary()}]
 
+  # --- call_many ---
+
   def aggregate3!(calls, opts \\ []) do
     case aggregate3(calls, opts) do
       {:ok, results} -> results
       {:error, reason} -> raise "aggregate3 failed: #{inspect(reason)}"
     end
   end
-
-  # --- call_many ---
 
   api(:call_many, "Batch contract calls with automatic ABI encoding/decoding.",
     params: [
@@ -103,6 +103,7 @@ defmodule Onchain.Multicall do
   def call_many(calls, opts \\ []) when is_list(calls) do
     with {:ok, raw_calls} <- encode_call_many(calls),
          {:ok, results} <- aggregate3(raw_calls, opts) do
+      # --- call_many! ---
       decoded =
         calls
         |> Enum.zip(results)
@@ -111,8 +112,6 @@ defmodule Onchain.Multicall do
       {:ok, decoded}
     end
   end
-
-  # --- call_many! ---
 
   api(:call_many!, "Batch contract calls with encoding/decoding. Raises on error.",
     params: [
@@ -136,7 +135,7 @@ defmodule Onchain.Multicall do
   # Decodes a single multicall result against its call spec.
   @spec decode_result(tuple(), {boolean(), String.t()}) :: {:ok, list()} | {:error, term()}
   defp decode_result({_addr, _sig, _params, return_type}, {true, data_hex}) do
-    ABI.decode_response(return_type, data_hex)
+    Onchain.ABI.decode_response(return_type, data_hex)
   end
 
   defp decode_result(_call, {false, data_hex}), do: {:error, data_hex}
@@ -169,7 +168,7 @@ defmodule Onchain.Multicall do
     calls
     |> Enum.reduce_while({:ok, []}, fn {addr, signature, params, _return_type}, {:ok, acc} ->
       with {:ok, hex_addr} <- validate_and_hex(addr),
-           {:ok, calldata} <- ABI.encode_hex_call(signature, params) do
+           {:ok, calldata} <- Onchain.ABI.encode_hex_call(signature, params) do
         {:cont, {:ok, [{hex_addr, true, calldata} | acc]}}
       else
         error -> {:halt, error}

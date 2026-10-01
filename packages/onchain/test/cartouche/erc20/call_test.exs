@@ -1,6 +1,6 @@
 defmodule Onchain.ERC20.CallTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
   alias Onchain.ERC20, as: Erc20
 
@@ -30,11 +30,11 @@ defmodule Onchain.ERC20.CallTest do
   test "calldata helpers retain the binary ERC-20 encoding contract" do
     balance = Erc20.CallData.balance_of(@address)
     assert <<0x70, 0xA0, 0x82, 0x31, _::binary>> = balance
-    assert {:ok, [@address]} = ABI.decode_call("balanceOf(address)", balance)
+    assert {:ok, [@address]} = Onchain.ABI.decode_call("balanceOf(address)", balance)
 
     transfer = Erc20.CallData.transfer(@address, 100_000)
     assert <<0xA9, 0x05, 0x9C, 0xBB, _::binary>> = transfer
-    assert {:ok, [@address, 100_000]} = ABI.decode_call("transfer(address,uint256)", transfer)
+    assert {:ok, [@address, 100_000]} = Onchain.ABI.decode_call("transfer(address,uint256)", transfer)
   end
 
   test "configured signer execution remains available through exec_trx" do
@@ -46,12 +46,12 @@ defmodule Onchain.ERC20.CallTest do
 
       if request["method"] == "eth_sendRawTransaction" do
         [encoded] = request["params"]
-        assert {:ok, transaction} = encoded |> Cartouche.Hex.decode!() |> Cartouche.Transaction.V2.decode()
+        assert {:ok, transaction} = encoded |> Onchain.Hex.decode!() |> Onchain.Transaction.V2.decode()
         assert transaction.destination == @token
         assert transaction.data == calldata
-        Req.Test.json(conn, %{"jsonrpc" => "2.0", "id" => request["id"], "result" => Cartouche.Hex.encode(hash)})
+        Req.Test.json(conn, %{"jsonrpc" => "2.0", "id" => request["id"], "result" => Onchain.Hex.encode(hash)})
       else
-        Cartouche.Test.Client.call(conn)
+        Onchain.Test.Client.call(conn)
       end
     end
 

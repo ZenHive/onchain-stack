@@ -1,10 +1,11 @@
-defmodule Cartouche.TraceTest do
+defmodule Onchain.RPC.TraceTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Trace.Action
+  alias Onchain.RPC.Trace
+  alias Onchain.RPC.Trace.Action
 
-  doctest Cartouche.Trace
+  doctest Trace
   doctest Action
 
   defp base_trace_params do
@@ -25,14 +26,14 @@ defmodule Cartouche.TraceTest do
   describe "deserialize/1 — trace_address list shapes" do
     test "mixed-element list grounds the integer | <<_::160>> union" do
       params = Map.put(base_trace_params(), "traceAddress", [42, "0x1c39ba39e4735cb65978d4db400ddd70a72dc750"])
-      trace = Cartouche.Trace.deserialize(params)
+      trace = Trace.deserialize(params)
 
       assert trace.trace_address == [42, ~h[0x1c39ba39e4735cb65978d4db400ddd70a72dc750]]
     end
 
     test "empty trace address deserializes to []" do
       params = Map.put(base_trace_params(), "traceAddress", [])
-      trace = Cartouche.Trace.deserialize(params)
+      trace = Trace.deserialize(params)
 
       assert trace.trace_address == []
     end
@@ -44,7 +45,7 @@ defmodule Cartouche.TraceTest do
       refute Map.has_key?(params, "traceAddress")
 
       assert_raise ArgumentError, ~r/missing traceAddress/, fn ->
-        Cartouche.Trace.deserialize(params)
+        Trace.deserialize(params)
       end
     end
 
@@ -52,14 +53,14 @@ defmodule Cartouche.TraceTest do
       params = Map.put(base_trace_params(), "traceAddress", nil)
 
       assert_raise ArgumentError, ~r/missing traceAddress/, fn ->
-        Cartouche.Trace.deserialize(params)
+        Trace.deserialize(params)
       end
     end
   end
 
   describe "deserialize/1 — action optional field shape (Task 16/17/18)" do
     test "call action grounds present non-nil fields and zero-value boundaries" do
-      trace = base_trace_params() |> Map.put("traceAddress", []) |> Cartouche.Trace.deserialize()
+      trace = base_trace_params() |> Map.put("traceAddress", []) |> Trace.deserialize()
 
       assert %Action{
                call_type: "call",
@@ -85,7 +86,7 @@ defmodule Cartouche.TraceTest do
         })
         |> Map.merge(%{"traceAddress" => [0], "type" => "create"})
 
-      trace = Cartouche.Trace.deserialize(params)
+      trace = Trace.deserialize(params)
 
       assert %Action{
                call_type: nil,
@@ -109,7 +110,7 @@ defmodule Cartouche.TraceTest do
         })
         |> Map.merge(%{"traceAddress" => [1], "type" => "suicide"})
 
-      trace = Cartouche.Trace.deserialize(params)
+      trace = Trace.deserialize(params)
 
       assert %Action{
                call_type: nil,
@@ -159,7 +160,7 @@ defmodule Cartouche.TraceTest do
           "transactionPosition" => 0
         })
 
-      trace = Cartouche.Trace.deserialize(params)
+      trace = Trace.deserialize(params)
 
       assert trace.block_hash == ~h[0x7eb25504e4c202cf3d62fd585d3e238f592c780cca82dacb2ed3cb5b38883add]
       assert trace.block_number == 3_068_185
@@ -175,7 +176,7 @@ defmodule Cartouche.TraceTest do
       params =
         Map.merge(base_trace_params(), %{"error" => "contract address collision", "result" => nil, "traceAddress" => [0]})
 
-      trace = Cartouche.Trace.deserialize(params)
+      trace = Trace.deserialize(params)
 
       assert trace.block_hash == nil
       assert trace.block_number == nil
@@ -189,7 +190,7 @@ defmodule Cartouche.TraceTest do
     end
 
     test "absent error deserializes to nil while zero subtraces stays integer zero" do
-      trace = base_trace_params() |> Map.put("traceAddress", []) |> Cartouche.Trace.deserialize()
+      trace = base_trace_params() |> Map.put("traceAddress", []) |> Trace.deserialize()
 
       assert trace.error == nil
       assert trace.subtraces == 0
@@ -206,9 +207,9 @@ defmodule Cartouche.TraceTest do
       ]
 
       assert [
-               %Cartouche.Trace{trace_address: [0]},
-               %Cartouche.Trace{trace_address: [1, 2]}
-             ] = Cartouche.Trace.deserialize_many(input)
+               %Trace{trace_address: [0]},
+               %Trace{trace_address: [1, 2]}
+             ] = Trace.deserialize_many(input)
     end
   end
 end

@@ -1,11 +1,11 @@
-defmodule Cartouche.RPCTransportTest do
+defmodule Onchain.RPCTransportTest do
   use ExUnit.Case, async: false
 
   @retry [max_retries: 1, backoff_ms: 0]
   @url "http://stub.invalid"
 
   setup do
-    keys = [:ethereum_node, :req_options, Cartouche.RPC]
+    keys = [:ethereum_node, :req_options, Onchain.RPC]
     previous = Map.new(keys, &{&1, Application.fetch_env(:cartouche, &1)})
 
     on_exit(fn ->
@@ -22,29 +22,29 @@ defmodule Cartouche.RPCTransportTest do
 
   test "typed calls retry transport failures before decoding" do
     opts = options([{:transport_error, :closed}, {:result, "0x2a"}])
-    assert {:ok, 42} = Cartouche.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
+    assert {:ok, 42} = Onchain.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
     assert Process.get(:rpc_transport_responses) == []
   end
 
   test "typed calls preserve transport errors without opt-in and stop at the retry limit" do
     opts = options([{:transport_error, :closed}, {:result, "0x2a"}])
-    assert {:error, "[Cartouche] HTTP client error: :closed"} = Cartouche.RPC.eth_block_number(opts)
+    assert {:error, "[Cartouche] HTTP client error: :closed"} = Onchain.RPC.eth_block_number(opts)
     assert [{:result, "0x2a"}] = Process.get(:rpc_transport_responses)
 
     opts = options([{:transport_error, :closed}, {:transport_error, :timeout}])
 
     assert {:error, "[Cartouche] HTTP client error: :timeout"} =
-             Cartouche.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
+             Onchain.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
   end
 
   test "non-JSON gateway failures retry only when opted in" do
     opts = options([{:http_error, 503, "upstream unavailable"}, {:result, "0x2a"}])
-    assert {:ok, 42} = Cartouche.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
+    assert {:ok, 42} = Onchain.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
 
     opts = options([{:http_error, 503, "upstream unavailable"}, {:result, "0x2a"}])
 
     assert {:error, %Req.Response{status: 503, body: "upstream unavailable"}} =
-             Cartouche.RPC.eth_block_number(opts)
+             Onchain.RPC.eth_block_number(opts)
   end
 
   test "invalid retry policy returns an error without sending" do
@@ -52,7 +52,7 @@ defmodule Cartouche.RPCTransportTest do
 
     for policy <- [true, [max_retries: -1], [backoff_ms: -1]] do
       assert {:error, {:invalid_retry_policy, ^policy}} =
-               Cartouche.RPC.eth_block_number(Keyword.put(opts, :retry, policy))
+               Onchain.RPC.eth_block_number(Keyword.put(opts, :retry, policy))
     end
   end
 
@@ -60,7 +60,7 @@ defmodule Cartouche.RPCTransportTest do
     opts = options([{:result, "bad"}, {:result, "0x2a"}])
 
     assert {:error, _} =
-             Cartouche.RPC.send_rpc(
+             Onchain.RPC.send_rpc(
                "eth_blockNumber",
                [],
                opts ++ [retry: @retry, decode: fn _ -> raise "bad decode" end]
@@ -80,7 +80,7 @@ defmodule Cartouche.RPCTransportTest do
         opts = options([{:rpc_error, unquote(code), unquote(message), status}, {:result, "0x2a"}])
 
         assert {:error, {unquote(tag), %{code: unquote(code), message: unquote(message)}}} =
-                 Cartouche.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
+                 Onchain.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
 
         assert [{:result, "0x2a"}] = Process.get(:rpc_transport_responses)
       end
@@ -92,7 +92,7 @@ defmodule Cartouche.RPCTransportTest do
       opts = options([{:rpc_error, code, "unchanged", 200}, {:result, "0x2a"}])
 
       assert {:error, %{code: ^code, message: "unchanged"}} =
-               Cartouche.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
+               Onchain.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
 
       assert [{:result, "0x2a"}] = Process.get(:rpc_transport_responses)
     end
@@ -102,7 +102,7 @@ defmodule Cartouche.RPCTransportTest do
     opts = options([{:rpc_error, -32_602, "Invalid params", 400}, {:result, "0x2a"}])
 
     assert {:error, %Req.Response{status: 400}} =
-             Cartouche.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
+             Onchain.RPC.eth_block_number(Keyword.put(opts, :retry, @retry))
 
     assert [{:result, "0x2a"}] = Process.get(:rpc_transport_responses)
   end
@@ -131,7 +131,7 @@ defmodule Cartouche.RPCTransportTest do
   end
 
   test "mev preserves classified refusals and still wraps other JSON-RPC maps" do
-    Application.put_env(:cartouche, Cartouche.RPC, plug: &__MODULE__.mev_plug/1)
+    Application.put_env(:cartouche, Onchain.RPC, plug: &__MODULE__.mev_plug/1)
     raw_tx = "0x" <> String.duplicate("ab", 50)
 
     Process.put(:mev_rpc_error, {-32_601, "Method not found"})
@@ -166,7 +166,7 @@ defmodule Cartouche.RPCTransportTest do
     opts = options([{:rpc_error, -32_601, "Method not found", 200}, {:result, "0x2a"}])
 
     assert {:error, {:method_not_found, %{code: -32_601}}} =
-             Cartouche.RPC.send_batch([{"unknown", []}], Keyword.put(opts, :retry, @retry))
+             Onchain.RPC.send_batch([{"unknown", []}], Keyword.put(opts, :retry, @retry))
 
     assert [{:result, "0x2a"}] = Process.get(:rpc_transport_responses)
   end
@@ -189,7 +189,7 @@ defmodule Cartouche.RPCTransportTest do
     )
 
     Application.put_env(:cartouche, :ethereum_node, "http://configured.invalid")
-    Application.put_env(:cartouche, Cartouche.RPC, plug: fn _ -> flunk("global options must override owner") end)
+    Application.put_env(:cartouche, Onchain.RPC, plug: fn _ -> flunk("global options must override owner") end)
 
     Application.put_env(:cartouche, :req_options,
       plug: fn conn ->
@@ -198,10 +198,10 @@ defmodule Cartouche.RPCTransportTest do
       end
     )
 
-    assert {:ok, 42} = Cartouche.RPC.eth_block_number()
+    assert {:ok, 42} = Onchain.RPC.eth_block_number()
     assert {:ok, ["0x2a"]} = Onchain.RPC.batch([{"eth_blockNumber", []}])
 
-    for call <- [&Cartouche.RPC.eth_block_number/1, &Onchain.RPC.batch([{"eth_blockNumber", []}], &1)] do
+    for call <- [&Onchain.RPC.eth_block_number/1, &Onchain.RPC.batch([{"eth_blockNumber", []}], &1)] do
       opts = [
         rpc_url: @url,
         ethereum_node: "http://ignored.invalid",
@@ -219,7 +219,7 @@ defmodule Cartouche.RPCTransportTest do
 
   test "missing URL fails explicitly for both modules and batch" do
     Application.delete_env(:cartouche, :ethereum_node)
-    assert {:error, {:missing_option, :ethereum_node}} = Cartouche.RPC.eth_block_number()
+    assert {:error, {:missing_option, :ethereum_node}} = Onchain.RPC.eth_block_number()
     assert {:error, {:missing_option, :ethereum_node}} = Onchain.RPC.block_number()
     assert {:error, {:missing_option, :ethereum_node}} = Onchain.RPC.batch([{"eth_blockNumber", []}])
   end
@@ -231,7 +231,7 @@ defmodule Cartouche.RPCTransportTest do
     on_exit(fn -> :telemetry.detach(handler) end)
 
     for {method, call} <- [
-          {"eth_blockNumber", &Cartouche.RPC.eth_block_number/1},
+          {"eth_blockNumber", &Onchain.RPC.eth_block_number/1},
           {"batch", &Onchain.RPC.batch([{"eth_blockNumber", []}], &1)}
         ] do
       opts = options([{:transport_error, :closed}, {:result, "0x2a"}])

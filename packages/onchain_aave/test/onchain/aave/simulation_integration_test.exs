@@ -14,10 +14,10 @@ defmodule Onchain.Aave.SimulationIntegrationTest do
 
   use ExUnit.Case, async: false
 
-  alias Cartouche.Hex
   alias Onchain.Aave.Oracle
   alias Onchain.Aave.Types.UserAccountData
   alias Onchain.EVM
+  alias Onchain.Hex
   alias Onchain.RPC
   alias Onchain.RPCCase
 
@@ -62,9 +62,9 @@ defmodule Onchain.Aave.SimulationIntegrationTest do
       # getReserveNormalizedIncome runs MathUtils.calculateLinearInterest, which
       # subtracts the reserve's lastUpdateTimestamp from block.timestamp. A fork
       # left at a 1970 clock underflows here instead of returning an index.
-      {:ok, data} = ABI.encode_hex_call("getReserveNormalizedIncome(address)", [address_bin(@weth)])
+      {:ok, data} = Onchain.ABI.encode_hex_call("getReserveNormalizedIncome(address)", [address_bin(@weth)])
       {:ok, out} = EVM.simulate_call(@pool, data, [block: @block] ++ rpc_opts())
-      {:ok, [index]} = ABI.decode_types("(uint256)", out)
+      {:ok, [index]} = Onchain.ABI.decode_types("(uint256)", out)
 
       # Liquidity indices start at 1 ray and only grow.
       assert index >= 1_000_000_000_000_000_000_000_000_000
@@ -76,15 +76,15 @@ defmodule Onchain.Aave.SimulationIntegrationTest do
       overrides = %{@weth => %{"storage" => weth_balance_override(@supply_amount)}}
       opts = [block: @block, state_overrides: overrides] ++ rpc_opts()
 
-      {:ok, balance_data} = ABI.encode_hex_call("balanceOf(address)", [address_bin(@user)])
+      {:ok, balance_data} = Onchain.ABI.encode_hex_call("balanceOf(address)", [address_bin(@user)])
       {:ok, balance_out} = EVM.simulate_call(@weth, balance_data, opts)
-      {:ok, [balance]} = ABI.decode_types("(uint256)", balance_out)
+      {:ok, [balance]} = Onchain.ABI.decode_types("(uint256)", balance_out)
 
       assert balance == @supply_amount
 
       # The account still answers as WETH rather than as a code-less EOA.
       {:ok, decimals_out} = EVM.simulate_call(@weth, @decimals, opts)
-      {:ok, [decimals]} = ABI.decode_types("(uint8)", decimals_out)
+      {:ok, [decimals]} = Onchain.ABI.decode_types("(uint8)", decimals_out)
 
       assert decimals == 18
     end
@@ -92,17 +92,17 @@ defmodule Onchain.Aave.SimulationIntegrationTest do
 
   describe "Aave write paths on a fork" do
     test "approve, supply and read back the position on one fork" do
-      {:ok, approve} = ABI.encode_hex_call("approve(address,uint256)", [address_bin(@pool), @supply_amount])
+      {:ok, approve} = Onchain.ABI.encode_hex_call("approve(address,uint256)", [address_bin(@pool), @supply_amount])
 
       {:ok, supply} =
-        ABI.encode_hex_call("supply(address,uint256,address,uint16)", [
+        Onchain.ABI.encode_hex_call("supply(address,uint256,address,uint16)", [
           address_bin(@weth),
           @supply_amount,
           address_bin(@user),
           0
         ])
 
-      {:ok, query} = ABI.encode_hex_call("getUserAccountData(address)", [address_bin(@user)])
+      {:ok, query} = Onchain.ABI.encode_hex_call("getUserAccountData(address)", [address_bin(@user)])
 
       {:ok, [approve_result, supply_result, query_result]} =
         EVM.simulate_batch(
@@ -125,7 +125,7 @@ defmodule Onchain.Aave.SimulationIntegrationTest do
       assert Enum.any?(supply_result.logs, &mint_to_user?/1)
 
       {:ok, raw} =
-        ABI.decode_types("(uint256,uint256,uint256,uint256,uint256,uint256)", query_result.output)
+        Onchain.ABI.decode_types("(uint256,uint256,uint256,uint256,uint256,uint256)", query_result.output)
 
       account = UserAccountData.from_raw(raw)
 
@@ -151,7 +151,7 @@ defmodule Onchain.Aave.SimulationIntegrationTest do
   defp weth_balance_override(amount) do
     slot =
       (<<0::96>> <> address_bin(@user) <> <<@weth_balance_slot::256>>)
-      |> Cartouche.Hash.keccak()
+      |> Onchain.Hash.keccak()
       |> Hex.encode()
 
     JSON.encode!(%{slot => hex_uint(amount)})
@@ -159,13 +159,13 @@ defmodule Onchain.Aave.SimulationIntegrationTest do
 
   defp read_uint(selector) do
     {:ok, out} = EVM.simulate_call(@multicall3, selector, [block: @block] ++ rpc_opts())
-    {:ok, [value]} = ABI.decode_types("(uint256)", out)
+    {:ok, [value]} = Onchain.ABI.decode_types("(uint256)", out)
     value
   end
 
   defp read_address(selector) do
     {:ok, out} = EVM.simulate_call(@multicall3, selector, [block: @block] ++ rpc_opts())
-    {:ok, [value]} = ABI.decode_types("(address)", out)
+    {:ok, [value]} = Onchain.ABI.decode_types("(address)", out)
     value |> Hex.encode() |> String.downcase()
   end
 

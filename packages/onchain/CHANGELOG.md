@@ -4,7 +4,7 @@ Completed roadmap tasks.
 
 ---
 
-## Unreleased — v0.16.0
+## Unreleased — v0.16.0 (single breaking release: ABI.* and Cartouche.* become Onchain.*)
 
 ### Added
 
@@ -42,6 +42,122 @@ Completed roadmap tasks.
   Both take keys of 1 to 64 hex digits, as the beta.7 spec types them;
   `eth_get_proof/3` left-pads each key to 32 bytes. Historical availability is endpoint-specific. The 2026-10-01 probes are in
   `docs/state-read-portability.md`.
+
+### Migration: `ABI.*` and `Cartouche.*` become `Onchain.*`
+
+This is the one breaking release hieroglyph and cartouche users migrate
+through. hieroglyph and cartouche are retired on Hex in favour of `onchain`.
+
+- Replace `{:hieroglyph, _}` and `{:cartouche, _}` with `{:onchain, "~> 0.16"}`.
+- Every `ABI.*` module is now `Onchain.ABI.*`, and every `Cartouche.*` module is
+  now `Onchain.*`. Exceptions: the `Cartouche` root module (configuration and
+  discovery) is `Onchain.Configuration`; `Cartouche.Trace` is
+  `Onchain.RPC.Trace`, because onchain_evm already publishes `Onchain.Trace`;
+  the Mix task `mix hieroglyph.manifest` is `mix onchain.manifest`.
+- `Onchain.RPC` was a set of compatibility aliases for `Cartouche.RPC`. It is
+  now the RPC module itself, so both old names resolve to `Onchain.RPC` with
+  the same functions.
+- Entries elsewhere in this release name pre-rename survivors (for example
+  `Cartouche.Hex`). Read them through the table below.
+- **Application-env keys do not change.** `config :cartouche, ...` (for
+  example `:ethereum_node`, `:req_options`, signer and KMS keys) and
+  `config :onchain, ...` keep their names and meaning. Error strings such as
+  `"[Cartouche] HTTP client error: ..."` are unchanged as well.
+- The precompiled ABI NIF now registers as `Onchain.ABI.Native`, and its
+  checksum file is `checksum-Elixir.Onchain.ABI.Native.exs`.
+
+Behaviour changes a cartouche user was never told about:
+
+- **EIP-712 `bytesN` values are right-padded since cartouche 0.9.1.** Task
+  2133 (`8194455`) shipped in cartouche 0.9.1 without a changelog entry. A
+  `bytesN` value shorter than N bytes used to be left-padded and is now
+  right-padded, as EIP-712 and ethers specify. Struct hashes, digests and
+  signatures over such values differ, and nothing raises. Re-derive any
+  stored digest or signature that encoded a short `bytesN` value with cartouche
+  0.9.0 or earlier.
+- In the same release (`c3c6ff1`), a `bytesN` value longer than N bytes and a
+  `uintN` value outside `0..2^N-1` raise `ArgumentError` instead of being
+  encoded.
+
+Complete module map (74 modules):
+
+| 0.15.x module | 0.16.0 module |
+| --- | --- |
+| `ABI` | `Onchain.ABI` |
+| `ABI.Alloy` | `Onchain.ABI.Alloy` |
+| `ABI.AlloyEvents` | `Onchain.ABI.AlloyEvents` |
+| `ABI.Event` | `Onchain.ABI.Event` |
+| `ABI.FunctionSelector` | `Onchain.ABI.FunctionSelector` |
+| `ABI.Math` | `Onchain.ABI.Math` |
+| `ABI.Native` | `Onchain.ABI.Native` |
+| `ABI.Parser` | `Onchain.ABI.Parser` |
+| `ABI.TypeDecoder` | `Onchain.ABI.TypeDecoder` |
+| `ABI.TypeDecoder.StrictViolation` | `Onchain.ABI.TypeDecoder.StrictViolation` |
+| `ABI.TypeEncoder` | `Onchain.ABI.TypeEncoder` |
+| `ABI.Validation` | `Onchain.ABI.Validation` |
+| `Cartouche` | `Onchain.Configuration` |
+| `Cartouche.Application` | `Onchain.Application` |
+| `Cartouche.Block` | `Onchain.Block` |
+| `Cartouche.Block.Withdrawal` | `Onchain.Block.Withdrawal` |
+| `Cartouche.Chain` | `Onchain.Chain` |
+| `Cartouche.CloudKMS` | `Onchain.CloudKMS` |
+| `Cartouche.Contract.Sleuth` | `Onchain.Contract.Sleuth` |
+| `Cartouche.DebugTrace` | `Onchain.DebugTrace` |
+| `Cartouche.DebugTrace.StructLog` | `Onchain.DebugTrace.StructLog` |
+| `Cartouche.FeeHistory` | `Onchain.FeeHistory` |
+| `Cartouche.Filter` | `Onchain.Filter` |
+| `Cartouche.Filter.Log` | `Onchain.Filter.Log` |
+| `Cartouche.HTTP` | `Onchain.HTTP` |
+| `Cartouche.Hash` | `Onchain.Hash` |
+| `Cartouche.Hex` | `Onchain.Hex` |
+| `Cartouche.Hex.InvalidHex` | `Onchain.Hex.InvalidHex` |
+| `Cartouche.Keys` | `Onchain.Keys` |
+| `Cartouche.Manifest` | `Onchain.Manifest` |
+| `Cartouche.OpenChain` | `Onchain.OpenChain` |
+| `Cartouche.OpenChain.API` | `Onchain.OpenChain.API` |
+| `Cartouche.OpenChain.Signatures` | `Onchain.OpenChain.Signatures` |
+| `Cartouche.RPC` | `Onchain.RPC` |
+| `Cartouche.RPC.Capabilities` | `Onchain.RPC.Capabilities` |
+| `Cartouche.RPC.Capabilities.DeleteStrategy` | `Onchain.RPC.Capabilities.DeleteStrategy` |
+| `Cartouche.RPC.Capabilities.Head` | `Onchain.RPC.Capabilities.Head` |
+| `Cartouche.RPC.Capabilities.Resource` | `Onchain.RPC.Capabilities.Resource` |
+| `Cartouche.RPC.Configuration` | `Onchain.RPC.Configuration` |
+| `Cartouche.RPC.Configuration.BlobSchedule` | `Onchain.RPC.Configuration.BlobSchedule` |
+| `Cartouche.RPC.Configuration.Fork` | `Onchain.RPC.Configuration.Fork` |
+| `Cartouche.RPC.Proof` | `Onchain.RPC.Proof` |
+| `Cartouche.RPC.Proof.StorageProof` | `Onchain.RPC.Proof.StorageProof` |
+| `Cartouche.RPC.SyncStatus` | `Onchain.RPC.SyncStatus` |
+| `Cartouche.Receipt` | `Onchain.Receipt` |
+| `Cartouche.Recover` | `Onchain.Recover` |
+| `Cartouche.RecoveryBit` | `Onchain.RecoveryBit` |
+| `Cartouche.Signature` | `Onchain.Signature` |
+| `Cartouche.Signer` | `Onchain.Signer` |
+| `Cartouche.Signer.Backend` | `Onchain.Signer.Backend` |
+| `Cartouche.Signer.CloudKMS` | `Onchain.Signer.CloudKMS` |
+| `Cartouche.Signer.Secp256k1` | `Onchain.Signer.Secp256k1` |
+| `Cartouche.Sleuth` | `Onchain.Sleuth` |
+| `Cartouche.Trace` | `Onchain.RPC.Trace` |
+| `Cartouche.Trace.Action` | `Onchain.RPC.Trace.Action` |
+| `Cartouche.TraceCall` | `Onchain.TraceCall` |
+| `Cartouche.Transaction` | `Onchain.Transaction` |
+| `Cartouche.Transaction.Call` | `Onchain.Transaction.Call` |
+| `Cartouche.Transaction.Info` | `Onchain.Transaction.Info` |
+| `Cartouche.Transaction.JsonField` | `Onchain.Transaction.JsonField` |
+| `Cartouche.Transaction.Native` | `Onchain.Transaction.Native` |
+| `Cartouche.Transaction.Signature` | `Onchain.Transaction.Signature` |
+| `Cartouche.Transaction.TypedDecode` | `Onchain.Transaction.TypedDecode` |
+| `Cartouche.Transaction.V1` | `Onchain.Transaction.V1` |
+| `Cartouche.Transaction.V2` | `Onchain.Transaction.V2` |
+| `Cartouche.Transaction.V3` | `Onchain.Transaction.V3` |
+| `Cartouche.Transaction.V4` | `Onchain.Transaction.V4` |
+| `Cartouche.Transaction.V_2930` | `Onchain.Transaction.V_2930` |
+| `Cartouche.Typed` | `Onchain.Typed` |
+| `Cartouche.Typed.Domain` | `Onchain.Typed.Domain` |
+| `Cartouche.Typed.Native` | `Onchain.Typed.Native` |
+| `Cartouche.Typed.Type` | `Onchain.Typed.Type` |
+| `Cartouche.Wei` | `Onchain.Wei` |
+| `Mix.Tasks.Hieroglyph.Manifest` | `Mix.Tasks.Onchain.Manifest` |
+| `Onchain.RPC` (compatibility aliases) | removed — `Onchain.RPC` is now the former `Cartouche.RPC` |
 
 ### Breaking behaviour
 
@@ -264,7 +380,7 @@ Completed roadmap tasks.
   `Cartouche.Typed` raises `ArgumentError` with that reason, and the VM keeps
   running.
 
-## Unreleased — v0.15.0
+## v0.15.0 (2026-09-29)
 
 ### Changed
 

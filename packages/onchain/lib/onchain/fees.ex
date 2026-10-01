@@ -1,8 +1,8 @@
 defmodule Onchain.Fees do
   @moduledoc """
-  EIP-1559 fee suggestion math over `Cartouche.FeeHistory.t()`.
+  EIP-1559 fee suggestion math over `Onchain.FeeHistory.t()`.
 
-  Pure functions — no RPC, no I/O. Pair with `Cartouche.RPC.fee_history/2` to
+  Pure functions — no RPC, no I/O. Pair with `Onchain.RPC.fee_history/2` to
   fetch the input struct.
 
   ## Algorithm
@@ -46,11 +46,11 @@ defmodule Onchain.Fees do
 
   use Descripex, namespace: "/fees"
 
-  api(:suggest_fees, "Compute EIP-1559 fee recommendation from a Cartouche.FeeHistory struct.",
+  api(:suggest_fees, "Compute EIP-1559 fee recommendation from a Onchain.FeeHistory struct.",
     params: [
       history: [
         kind: :value,
-        description: "Cartouche.FeeHistory.t() — typically from Cartouche.RPC.fee_history/2"
+        description: "Onchain.FeeHistory.t() — typically from Onchain.RPC.fee_history/2"
       ],
       opts: [
         kind: :value,
@@ -65,9 +65,9 @@ defmodule Onchain.Fees do
     }
   )
 
-  @spec suggest_fees(Cartouche.FeeHistory.t(), keyword()) ::
+  @spec suggest_fees(Onchain.FeeHistory.t(), keyword()) ::
           {:ok, {non_neg_integer(), non_neg_integer(), non_neg_integer()}} | {:error, term()}
-  def suggest_fees(%Cartouche.FeeHistory{} = history, opts \\ []) do
+  def suggest_fees(%Onchain.FeeHistory{} = history, opts \\ []) do
     percentile_index = Keyword.get(opts, :percentile_index, 0)
     buffer = Keyword.get(opts, :buffer, 1.2)
 
@@ -92,7 +92,7 @@ defmodule Onchain.Fees do
 
   api(:suggest_fees!, "Compute EIP-1559 fee recommendation. Raises on error.",
     params: [
-      history: [kind: :value, description: "Cartouche.FeeHistory.t()"],
+      history: [kind: :value, description: "Onchain.FeeHistory.t()"],
       opts: [kind: :value, default: [], description: "Options: :percentile_index, :buffer"]
     ],
     returns: %{
@@ -101,7 +101,7 @@ defmodule Onchain.Fees do
     }
   )
 
-  @spec suggest_fees!(Cartouche.FeeHistory.t(), keyword()) ::
+  @spec suggest_fees!(Onchain.FeeHistory.t(), keyword()) ::
           {non_neg_integer(), non_neg_integer(), non_neg_integer()}
   def suggest_fees!(history, opts \\ []) do
     case suggest_fees(history, opts) do
@@ -113,7 +113,7 @@ defmodule Onchain.Fees do
   defp validate_buffer(n) when is_number(n) and n > 0, do: :ok
   defp validate_buffer(other), do: {:error, {:invalid_buffer, other}}
 
-  defp fetch_base_fee(%Cartouche.FeeHistory{base_fee_per_gas: list}) when is_list(list) do
+  defp fetch_base_fee(%Onchain.FeeHistory{base_fee_per_gas: list}) when is_list(list) do
     case List.last(list) do
       nil -> {:error, :no_base_fee_data}
       base_fee when is_number(base_fee) -> {:ok, base_fee}
@@ -121,11 +121,11 @@ defmodule Onchain.Fees do
     end
   end
 
-  defp fetch_base_fee(%Cartouche.FeeHistory{}), do: {:error, :no_base_fee_data}
+  defp fetch_base_fee(%Onchain.FeeHistory{}), do: {:error, :no_base_fee_data}
 
-  defp fetch_reward(%Cartouche.FeeHistory{reward: nil}), do: {:error, :no_reward_data}
-  defp fetch_reward(%Cartouche.FeeHistory{reward: []}), do: {:error, :no_reward_data}
-  defp fetch_reward(%Cartouche.FeeHistory{reward: reward}), do: {:ok, reward}
+  defp fetch_reward(%Onchain.FeeHistory{reward: nil}), do: {:error, :no_reward_data}
+  defp fetch_reward(%Onchain.FeeHistory{reward: []}), do: {:error, :no_reward_data}
+  defp fetch_reward(%Onchain.FeeHistory{reward: reward}), do: {:ok, reward}
 
   # The narrowest row bounds the valid index: `eth_feeHistory` is specified to return one
   # column per requested percentile, but a ragged row from a non-conforming node would

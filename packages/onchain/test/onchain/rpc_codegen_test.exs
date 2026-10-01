@@ -17,7 +17,7 @@ defmodule Onchain.RPCCodegenTest do
   end
 
   test "bang generation unwraps success and raises with the original error" do
-    assert Cartouche.RPC.chain_id!(
+    assert Onchain.RPC.chain_id!(
              req_options: [
                plug: fn conn ->
                  request = conn |> Req.Test.raw_body() |> IO.iodata_to_binary() |> Jason.decode!()
@@ -27,7 +27,7 @@ defmodule Onchain.RPCCodegenTest do
            ) == 1
 
     assert_raise RuntimeError, ~r/get_balance failed:.*invalid_address/, fn ->
-      Cartouche.RPC.get_balance!("bad address")
+      Onchain.RPC.get_balance!("bad address")
     end
   end
 end

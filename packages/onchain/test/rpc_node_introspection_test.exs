@@ -1,7 +1,7 @@
-defmodule Cartouche.RPCNodeIntrospectionTest do
+defmodule Onchain.RPCNodeIntrospectionTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.RPC.SyncStatus
+  alias Onchain.RPC.SyncStatus
 
   # execution-apis v1.0.0-beta.7 eth_syncing example
   # (src/eth/client.yaml): startingBlock 0x0, currentBlock 0x1518, highestBlock 0x9567a3.
@@ -21,9 +21,9 @@ defmodule Cartouche.RPCNodeIntrospectionTest do
              SyncStatus.deserialize(@spec_sync_object)
 
     assert {:ok, %SyncStatus{starting_block: 0, current_block: 0x1518, highest_block: 0x9567A3}} =
-             Cartouche.RPC.eth_syncing(rpc_opts(@spec_sync_object))
+             Onchain.RPC.eth_syncing(rpc_opts(@spec_sync_object))
 
-    assert {:ok, false} = Cartouche.RPC.eth_syncing(rpc_opts(false))
+    assert {:ok, false} = Onchain.RPC.eth_syncing(rpc_opts(false))
     assert_request("eth_syncing", [])
   end
 
@@ -31,42 +31,42 @@ defmodule Cartouche.RPCNodeIntrospectionTest do
     object = Map.put(@spec_sync_object, "syncedAccounts", "0x10")
 
     assert {:ok, %SyncStatus{starting_block: 0, current_block: 0x1518, highest_block: 0x9567A3}} =
-             Cartouche.RPC.eth_syncing(rpc_opts(object))
+             Onchain.RPC.eth_syncing(rpc_opts(object))
   end
 
   test "eth_syncing rejects a result outside the false-or-object union" do
-    assert {:error, message} = Cartouche.RPC.eth_syncing(rpc_opts(true))
+    assert {:error, message} = Onchain.RPC.eth_syncing(rpc_opts(true))
     assert message =~ "eth_syncing"
     assert message =~ "false or a sync-status object"
   end
 
   test "block transaction counts decode a quantity or null and reject a bad block" do
-    assert {:ok, 2} = Cartouche.RPC.eth_get_block_transaction_count_by_hash(@block_hash, rpc_opts("0x2"))
+    assert {:ok, 2} = Onchain.RPC.eth_get_block_transaction_count_by_hash(@block_hash, rpc_opts("0x2"))
     assert_request("eth_getBlockTransactionCountByHash", [@block_hash])
 
-    assert {:ok, 2} = Cartouche.RPC.eth_get_block_transaction_count_by_number(16, rpc_opts("0x2"))
+    assert {:ok, 2} = Onchain.RPC.eth_get_block_transaction_count_by_number(16, rpc_opts("0x2"))
     assert_request("eth_getBlockTransactionCountByNumber", ["0x10"])
 
-    assert {:ok, nil} = Cartouche.RPC.eth_get_block_transaction_count_by_number("latest", rpc_opts(nil))
+    assert {:ok, nil} = Onchain.RPC.eth_get_block_transaction_count_by_number("latest", rpc_opts(nil))
     assert_request("eth_getBlockTransactionCountByNumber", ["latest"])
 
     assert {:error, {:invalid_block_hash, "0xshort"}} =
-             Cartouche.RPC.eth_get_block_transaction_count_by_hash("0xshort")
+             Onchain.RPC.eth_get_block_transaction_count_by_hash("0xshort")
 
     assert {:error, {:invalid_block, :unknown}} =
-             Cartouche.RPC.eth_get_block_transaction_count_by_number(:unknown)
+             Onchain.RPC.eth_get_block_transaction_count_by_number(:unknown)
 
     assert {:error, message} =
-             Cartouche.RPC.eth_get_block_transaction_count_by_number(16, rpc_opts("not-a-quantity"))
+             Onchain.RPC.eth_get_block_transaction_count_by_number(16, rpc_opts("not-a-quantity"))
 
     assert message =~ "eth_getBlockTransactionCountByNumber"
   end
 
   test "untagged methods surface Alchemy's HTTP 400 refusal as method_not_found" do
     for {function, method} <- [
-          {&Cartouche.RPC.net_peer_count/1, "net_peerCount"},
-          {&Cartouche.RPC.net_listening/1, "net_listening"},
-          {&Cartouche.RPC.web3_client_version/1, "web3_clientVersion"}
+          {&Onchain.RPC.net_peer_count/1, "net_peerCount"},
+          {&Onchain.RPC.net_listening/1, "net_listening"},
+          {&Onchain.RPC.web3_client_version/1, "web3_clientVersion"}
         ] do
       assert {:error, {:method_not_found, %{code: -32_600, message: @alchemy_peer_count_refusal}}} =
                function.(http_error_opts(400, -32_600, @alchemy_peer_count_refusal))
@@ -76,10 +76,10 @@ defmodule Cartouche.RPCNodeIntrospectionTest do
   end
 
   test "net_listening and web3_clientVersion decode the values the hosted lanes returned" do
-    assert {:ok, true} = Cartouche.RPC.net_listening(rpc_opts(true))
+    assert {:ok, true} = Onchain.RPC.net_listening(rpc_opts(true))
 
     assert {:ok, "reth/v2.5.2-5a6940e/x86_64-unknown-linux-gnu"} =
-             Cartouche.RPC.web3_client_version(rpc_opts("reth/v2.5.2-5a6940e/x86_64-unknown-linux-gnu"))
+             Onchain.RPC.web3_client_version(rpc_opts("reth/v2.5.2-5a6940e/x86_64-unknown-linux-gnu"))
   end
 
   defp rpc_opts(result) do

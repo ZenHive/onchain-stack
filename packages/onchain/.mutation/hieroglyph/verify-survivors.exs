@@ -3,7 +3,7 @@
 # Why this exists (roadmap task 1046, 2026-08-27): muex picks the test files for
 # a mutation with Muex.DependencyAnalyzer, and that analyzer builds malformed
 # module atoms -- `Enum.join(["Elixir" | parts])` with no dot separator yields
-# :ElixirABITypeEncoder, never :"Elixir.ABI.TypeEncoder". Every lookup misses,
+# :ElixirABITypeEncoder, never :"Elixir.Onchain.ABI.TypeEncoder". Every lookup misses,
 # `fallback_to_all/2` fires, and the full suite runs. That accidental miss is
 # what makes most modules sound.
 #
@@ -11,7 +11,7 @@
 # which goes through a different branch and produces the WELL-FORMED atom, so
 # the lookup hits, the fallback never fires, and every mutation in lib/abi.ex
 # was graded against 2 of 15 test files. Verified by hand: replacing the body
-# of ABI.encode/2 with nil -- reported `survived` -- fails 60 of 460 tests.
+# of Onchain.ABI.encode/2 with nil -- reported `survived` -- fails 60 of 460 tests.
 #
 # A `killed` verdict from a subset is sound (some test really did fail). Only
 # `survived` is suspect, so only survivors are re-graded here.

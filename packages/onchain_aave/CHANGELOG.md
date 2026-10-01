@@ -4,6 +4,12 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## Unreleased — v0.7.0
+
+### Changed
+
+- Requires onchain `~> 0.16`, where `ABI.*` and `Cartouche.*` are renamed to `Onchain.*` (onchain's CHANGELOG has the full module map). Calls into the core now use the new names; this package's own public API is unchanged.
+
 ## v0.6.0 — Aave v3 Base Sepolia addresses (2026-09-23)
 
 ### Added

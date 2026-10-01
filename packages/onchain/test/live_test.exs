@@ -1,7 +1,7 @@
-defmodule Cartouche.Test.LiveTest do
+defmodule Onchain.Test.LiveTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.Test.Live
+  alias Onchain.Test.Live
 
   @envs ~w(CARTOUCHE_LIVE_NODE_URL ETHEREUM_ALCHEMY_URL ETHEREUM_INFURA_URL CLOUDFLARE_ETHEREUM_API_URL)
 
@@ -80,7 +80,7 @@ defmodule Cartouche.Test.LiveTest do
       System.put_env("ETHEREUM_ALCHEMY_URL", node_url("0x1", %{"error" => %{"code" => code, "message" => "refused"}}))
 
       assert [archive: {:ok, 42}, alchemy: {:error, ^refusal}] =
-               Live.assert_portability!(&Cartouche.RPC.base_fee/1,
+               Live.assert_portability!(&Onchain.RPC.base_fee/1,
                  archive: &match?({:ok, 42}, &1),
                  alchemy: &match?({:error, ^refusal}, &1)
                )
@@ -98,7 +98,7 @@ defmodule Cartouche.Test.LiveTest do
     end
 
     assert [archive: {:ok, 42}, alchemy: {:ok, 42}, infura: {:ok, 42}] =
-             Live.assert_portability!(&Cartouche.RPC.base_fee/1,
+             Live.assert_portability!(&Onchain.RPC.base_fee/1,
                archive: &match?({:ok, 42}, &1),
                alchemy: &match?({:ok, 42}, &1),
                infura: &match?({:ok, 42}, &1)

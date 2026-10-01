@@ -24,10 +24,10 @@ defmodule Onchain.Contract.ABITest do
     assert abi == Binding.__contract_abi__()
     assert %{state_mutability: "payable", inputs: [%{ty: "address", name: "owner"}]} = abi.constructor
     assert [%{name: "Changed", signature: "Changed(address,uint256)", topic: topic, inputs: inputs}] = abi.events
-    assert topic == Cartouche.Hex.encode(ExKeccak.hash_256("Changed(address,uint256)"))
+    assert topic == Onchain.Hex.encode(ExKeccak.hash_256("Changed(address,uint256)"))
     assert Enum.map(inputs, & &1.indexed) == [true, false]
     assert [%{signature: "Denied(address)", selector: selector}] = abi.errors
-    assert selector == Cartouche.Hex.encode(binary_part(ExKeccak.hash_256("Denied(address)"), 0, 4))
+    assert selector == Onchain.Hex.encode(binary_part(ExKeccak.hash_256("Denied(address)"), 0, 4))
   end
 
   test "tuple arguments and overloads compile and round-trip through a generated read" do
@@ -39,9 +39,9 @@ defmodule Onchain.Contract.ABITest do
       assert request["method"] == "eth_call"
       [call, "latest"] = request["params"]
       assert call["to"] == address
-      assert {:ok, expected} = ABI.encode_hex_call("echo((uint256,string))", [value])
+      assert {:ok, expected} = Onchain.ABI.encode_hex_call("echo((uint256,string))", [value])
       assert call["data"] == expected
-      result = "((uint256,string))" |> ABI.encode([{value}]) |> Cartouche.Hex.encode()
+      result = "((uint256,string))" |> Onchain.ABI.encode([{value}]) |> Onchain.Hex.encode()
 
       {req,
        Req.Response.new(
@@ -55,7 +55,7 @@ defmodule Onchain.Contract.ABITest do
     assert {:ok, [^value]} = Binding.echo_1(address, value, req_options: [adapter: Adapter])
     assert [^value] = Binding.echo_1!(address, value, req_options: [adapter: Adapter])
     assert {:ok, {^address, true, calldata}} = Binding.Multicall.echo_1(address, value)
-    assert {:ok, ^calldata} = ABI.encode_hex_call("echo((uint256,string))", [value])
+    assert {:ok, ^calldata} = Onchain.ABI.encode_hex_call("echo((uint256,string))", [value])
     assert function_exported?(Binding, :echo_0, 1)
     assert function_exported?(Binding.Multicall, :echo_0, 1)
   end

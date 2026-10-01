@@ -8,7 +8,7 @@ defmodule Onchain.Transfer do
 
   ## Does
 
-  - Parse raw log maps and `%Cartouche.Filter.Log{}` into `%Transfer{}` structs (`parse_log/1`, `parse_logs/1`)
+  - Parse raw log maps and `%Onchain.Filter.Log{}` into `%Transfer{}` structs (`parse_log/1`, `parse_logs/1`)
   - Fetch and parse transfer logs in one call (`fetch/2`)
   - Expose topic hashes for filter building (`transfer_topics/0`)
 
@@ -31,7 +31,7 @@ defmodule Onchain.Transfer do
   ## Error Format
 
   - Non-transfer log: `{:error, {:unknown_event, :not_a_transfer}}`
-  - Decode errors: propagated from `ABI.decode_event/3`
+  - Decode errors: propagated from `Onchain.ABI.decode_event/3`
 
   ## Functions
 
@@ -41,16 +41,16 @@ defmodule Onchain.Transfer do
   | `parse_log!/1` | Same, raises on error |
   | `parse_logs/1` | List of raw logs → Transfer structs (skips non-Transfer) |
   | `parse_logs!/1` | Same, raises on error |
-  | `fetch/2` | `Cartouche.RPC.eth_get_logs/2` + `parse_logs` convenience |
+  | `fetch/2` | `Onchain.RPC.eth_get_logs/2` + `parse_logs` convenience |
   | `fetch!/2` | Same, raises on error |
   | `transfer_topics/0` | The 3 topic0 hashes for filter building |
   """
 
   use Descripex, namespace: "/transfer"
 
-  alias Cartouche.Filter.Log, as: FilterLog
-  alias Cartouche.Hex
   alias Onchain.Address
+  alias Onchain.Filter.Log, as: FilterLog
+  alias Onchain.Hex
 
   require Logger
 
@@ -59,6 +59,8 @@ defmodule Onchain.Transfer do
   # ERC-20: Transfer(address indexed from, address indexed to, uint256 value)
   # ERC-721: Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
   # Both share the same canonical signature and topic hash.
+  # ERC-1155: TransferBatch(operator, from, to, ids[], values[])
+
   @transfer_sig "Transfer(address indexed from, address indexed to, uint256 value)"
   @transfer_721_sig "Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
 
@@ -66,17 +68,14 @@ defmodule Onchain.Transfer do
   @transfer_single_sig "TransferSingle(address indexed operator, address indexed from, " <>
                          "address indexed to, uint256 id, uint256 value)"
 
-  # ERC-1155: TransferBatch(operator, from, to, ids[], values[])
-
+  # --- Struct ---
   @transfer_batch_sig "TransferBatch(address indexed operator, address indexed from, " <>
                         "address indexed to, uint256[] ids, uint256[] values)"
 
   # Precomputed topic hashes (compile-time)
-  @transfer_topic Hex.encode(Cartouche.Hash.keccak("Transfer(address,address,uint256)"))
-  @transfer_single_topic Hex.encode(Cartouche.Hash.keccak("TransferSingle(address,address,address,uint256,uint256)"))
-  @transfer_batch_topic Hex.encode(Cartouche.Hash.keccak("TransferBatch(address,address,address,uint256[],uint256[])"))
-
-  # --- Struct ---
+  @transfer_topic Hex.encode(Onchain.Hash.keccak("Transfer(address,address,uint256)"))
+  @transfer_single_topic Hex.encode(Onchain.Hash.keccak("TransferSingle(address,address,address,uint256,uint256)"))
+  @transfer_batch_topic Hex.encode(Onchain.Hash.keccak("TransferBatch(address,address,address,uint256[],uint256[])"))
 
   @enforce_keys [:from, :to, :token, :token_standard, :block_number, :transaction_hash, :log_index]
 
@@ -96,6 +95,7 @@ defmodule Onchain.Transfer do
   @type t :: %__MODULE__{
           from: String.t(),
           to: String.t(),
+          # --- transfer_topics ---
           token: String.t(),
           token_standard: :erc20 | :erc721 | :erc1155,
           amount: non_neg_integer() | nil,
@@ -106,10 +106,9 @@ defmodule Onchain.Transfer do
           log_index: non_neg_integer()
         }
 
-  # --- transfer_topics ---
-
   api(:transfer_topics, "Returns the 3 topic0 hashes for ERC-20/721/1155 Transfer events.",
     params: [],
+    # --- parse_log ---
     returns: %{
       type: "[String.t()]",
       description: "List of 0x-prefixed keccak256 hashes: [Transfer, TransferSingle, TransferBatch]"
@@ -119,15 +118,13 @@ defmodule Onchain.Transfer do
   @spec transfer_topics() :: [String.t()]
   def transfer_topics, do: [@transfer_topic, @transfer_single_topic, @transfer_batch_topic]
 
-  # --- parse_log ---
-
   api(:parse_log, "Parse a single raw log into Transfer struct(s).",
     params: [
       log: [
         kind: :value,
         description:
           "Hex-string log map (`:topics`, `:data`, `:address`, `:block_number`, " <>
-            "`:transaction_hash`, `:log_index`) or a `%Cartouche.Filter.Log{}`"
+            "`:transaction_hash`, `:log_index`) or a `%Onchain.Filter.Log{}`"
       ]
     ],
     returns: %{
@@ -150,6 +147,8 @@ defmodule Onchain.Transfer do
     do_parse_erc721(log)
   end
 
+  # --- parse_log! ---
+
   # ERC-1155 TransferSingle: 4 topics [topic0, operator, from, to] + (id, value) in data
   def parse_log(%{topics: [topic0, _, _, _]} = log) when topic0 == @transfer_single_topic do
     do_parse_erc1155_single(log)
@@ -162,12 +161,13 @@ defmodule Onchain.Transfer do
 
   def parse_log(_), do: {:error, {:unknown_event, :not_a_transfer}}
 
-  # --- parse_log! ---
-
   api(:parse_log!, "Parse a single raw log into Transfer struct(s). Raises on error.",
     params: [
-      log: [kind: :value, description: "Hex-string log map or `%Cartouche.Filter.Log{}` (see parse_log/1)"]
+      log: [kind: :value, description: "Hex-string log map or `%Onchain.Filter.Log{}` (see parse_log/1)"]
     ],
+
+    # --- parse_logs ---
+
     returns: %{type: "t() | [t()]", description: "Transfer struct(s)"}
   )
 
@@ -179,11 +179,9 @@ defmodule Onchain.Transfer do
     end
   end
 
-  # --- parse_logs ---
-
   api(:parse_logs, "Parse a list of raw logs, skipping non-Transfer events.",
     params: [
-      logs: [kind: :value, description: "Raw log maps or `%Cartouche.Filter.Log{}` values from eth_getLogs"]
+      logs: [kind: :value, description: "Raw log maps or `%Onchain.Filter.Log{}` values from eth_getLogs"]
     ],
     returns: %{
       type: "{:ok, [t()]}",
@@ -212,10 +210,10 @@ defmodule Onchain.Transfer do
         end
       end)
 
+    # --- parse_logs! ---
+
     {:ok, transfers}
   end
-
-  # --- parse_logs! ---
 
   api(:parse_logs!, "Parse a list of raw logs, skipping non-Transfer events. Raises on error.",
     params: [
@@ -225,19 +223,20 @@ defmodule Onchain.Transfer do
   )
 
   @spec parse_logs!([map()]) :: [t()]
+
+  # --- fetch ---
+
   def parse_logs!(logs) do
     {:ok, result} = parse_logs(logs)
     result
   end
-
-  # --- fetch ---
 
   api(:fetch, "Fetch transfer logs from chain and parse into structs.",
     params: [
       filter: [
         kind: :value,
         description:
-          "Filter map for Cartouche.RPC.eth_get_logs/2 (e.g. %{from_block: 18_000_000, to_block: 18_000_100, address: \"0x...\"})"
+          "Filter map for Onchain.RPC.eth_get_logs/2 (e.g. %{from_block: 18_000_000, to_block: 18_000_100, address: \"0x...\"})"
       ],
       opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
     ],
@@ -254,12 +253,12 @@ defmodule Onchain.Transfer do
 
     filter = Map.put_new(filter, :topics, [transfer_topics()])
 
-    with {:ok, logs} <- Cartouche.RPC.eth_get_logs(filter, opts) do
+    # --- fetch! ---
+
+    with {:ok, logs} <- Onchain.RPC.eth_get_logs(filter, opts) do
       parse_logs(logs)
     end
   end
-
-  # --- fetch! ---
 
   api(:fetch!, "Fetch transfer logs from chain and parse into structs. Raises on error.",
     params: [
@@ -271,14 +270,13 @@ defmodule Onchain.Transfer do
 
   @spec fetch!(map(), keyword()) :: [t()]
 
+  # --- Private parsers ---
   def fetch!(filter, opts \\ []) do
     case fetch(filter, opts) do
       {:ok, result} -> result
       {:error, reason} -> raise "fetch failed: #{inspect(reason)}"
     end
   end
-
-  # --- Private parsers ---
 
   @spec filter_log_to_map(FilterLog.t()) :: map()
   defp filter_log_to_map(%FilterLog{} = log) do
@@ -297,7 +295,7 @@ defmodule Onchain.Transfer do
   @spec decode_event(map(), String.t()) :: {:ok, map()} | {:error, term()}
   defp decode_event(%{data: data, topics: topics}, signature) when is_binary(data) do
     with {:ok, bytes} <- Hex.decode(data),
-         {:ok, _name, decoded} <- ABI.decode_event(signature, bytes, Enum.map(topics, &Hex.decode!/1)) do
+         {:ok, _name, decoded} <- Onchain.ABI.decode_event(signature, bytes, Enum.map(topics, &Hex.decode!/1)) do
       {:ok, decoded}
     end
   end

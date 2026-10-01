@@ -1,4 +1,4 @@
-defmodule Cartouche.Transaction.MutationGapTest do
+defmodule Onchain.Transaction.MutationGapTest do
   @moduledoc false
   # Paths the ROADMAP task 114 mutation campaign reported as never executed by any
   # test — mutants there were not "surviving", they were never attempted, which is
@@ -7,9 +7,9 @@ defmodule Cartouche.Transaction.MutationGapTest do
 
   use ExUnit.Case, async: false
 
-  alias Cartouche.Signer
-  alias Cartouche.Transaction.V3
-  alias Cartouche.Transaction.V4
+  alias Onchain.Signer
+  alias Onchain.Transaction.V3
+  alias Onchain.Transaction.V4
 
   @blob_versioned_hash <<0x01>> <> :binary.copy(<<0xFF>>, 31)
   @authorization {1, <<2::160>>, 7, false, <<1::256>>, <<2::256>>}

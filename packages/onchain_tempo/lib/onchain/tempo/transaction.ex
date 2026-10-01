@@ -1,7 +1,7 @@
 defmodule Onchain.Tempo.Transaction do
   @moduledoc "Tempo transaction decoding, payment matching, and fee payer co-signing."
 
-  alias Cartouche.Signer.Secp256k1, as: Secp256k1Signer
+  alias Onchain.Signer.Secp256k1, as: Secp256k1Signer
   alias Onchain.Tempo.Codec
   alias Onchain.Tempo.TIP20
 

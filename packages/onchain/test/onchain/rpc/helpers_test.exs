@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.HelpersTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hex
+  alias Onchain.Hex
   alias Onchain.RPC.Helpers
 
   describe "normalize_block_number/1" do

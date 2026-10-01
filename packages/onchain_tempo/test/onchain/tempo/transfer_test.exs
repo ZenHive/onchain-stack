@@ -38,7 +38,7 @@ defmodule Onchain.Tempo.TransferTest do
     memo = :binary.copy(<<0xAB>>, 32)
 
     topics = [
-      ABI.event_signature(Transfer.transfer_with_memo_sig()),
+      Onchain.ABI.event_signature(Transfer.transfer_with_memo_sig()),
       <<0::96, from::binary>>,
       <<0::96, to::binary>>,
       memo
@@ -46,8 +46,8 @@ defmodule Onchain.Tempo.TransferTest do
 
     log = %{
       address: "0x20c0000000000000000000000000000000000000",
-      topics: Enum.map(topics, &Cartouche.Hex.encode/1),
-      data: Cartouche.Hex.encode(<<42::256>>)
+      topics: Enum.map(topics, &Onchain.Hex.encode/1),
+      data: Onchain.Hex.encode(<<42::256>>)
     }
 
     assert [%{from: decoded_from, to: decoded_to, amount: 42, memo: decoded_memo, token: token}] =
@@ -55,12 +55,12 @@ defmodule Onchain.Tempo.TransferTest do
 
     assert decoded_from == Onchain.Address.checksum!(from)
     assert decoded_to == Onchain.Address.checksum!(to)
-    assert decoded_memo == Cartouche.Hex.encode(memo)
+    assert decoded_memo == Onchain.Hex.encode(memo)
     assert token == log.address
   end
 
   test "missing and malformed event data are skipped" do
-    topic = Cartouche.Hex.encode(ABI.event_signature(Transfer.transfer_with_memo_sig()))
+    topic = Onchain.Hex.encode(Onchain.ABI.event_signature(Transfer.transfer_with_memo_sig()))
 
     for data <- [nil, "0xzz"] do
       assert [] = Transfer.parse_transfer_with_memo_logs([%{topics: [topic], data: data}])

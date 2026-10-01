@@ -1,9 +1,9 @@
-defmodule Cartouche.RPC.EthGetLogsLiveTest do
+defmodule Onchain.RPC.EthGetLogsLiveTest do
   use ExUnit.Case, async: false
 
-  import Cartouche.Test.Live
+  import Onchain.Test.Live
 
-  alias Cartouche.Filter.Log
+  alias Onchain.Filter.Log
 
   @moduletag :integration
 
@@ -32,14 +32,14 @@ defmodule Cartouche.RPC.EthGetLogsLiveTest do
                        "Upgrade to PAYG for expanded block range."
 
   test "one-block USDC logs succeed on archive and Alchemy" do
-    assert_portability!(fn opts -> Cartouche.RPC.eth_get_logs(@one_block, opts) end,
+    assert_portability!(fn opts -> Onchain.RPC.eth_get_logs(@one_block, opts) end,
       archive: &known_usdc_transfer?/1,
       alchemy: &known_usdc_transfer?/1
     )
   end
 
   test "an 11-block USDC range succeeds on archive and records Alchemy's block-range cap" do
-    assert_portability!(fn opts -> Cartouche.RPC.eth_get_logs(@over_cap, opts) end,
+    assert_portability!(fn opts -> Onchain.RPC.eth_get_logs(@over_cap, opts) end,
       archive: &archive_range_logs?/1,
       alchemy: &alchemy_range_cap?/1
     )

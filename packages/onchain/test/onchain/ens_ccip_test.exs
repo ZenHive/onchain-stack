@@ -1,8 +1,8 @@
 defmodule Onchain.ENS.CCIPTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hex
   alias Onchain.ENS.CCIP
+  alias Onchain.Hex
 
   @sender "0xC1735677a60884ABbCF72295E88d47764BeDa282"
   @callback_selector <<0xAA, 0xBB, 0xCC, 0xDD>>
@@ -15,7 +15,7 @@ defmodule Onchain.ENS.CCIPTest do
     sender_bin = Hex.decode!(@sender)
 
     args =
-      ABI.encode(
+      Onchain.ABI.encode(
         "(address,string[],bytes,bytes4,bytes)",
         [{sender_bin, urls, @call_data, @callback_selector, @extra_data}]
       )
@@ -99,7 +99,7 @@ defmodule Onchain.ENS.CCIPTest do
 
       assert <<selector::binary-4, args::binary>> = calldata
       assert selector == @callback_selector
-      assert [^response, @extra_data] = ABI.decode("(bytes,bytes)", args)
+      assert [^response, @extra_data] = Onchain.ABI.decode("(bytes,bytes)", args)
     end
   end
 
@@ -127,7 +127,7 @@ defmodule Onchain.ENS.CCIPTest do
           assert String.downcase(to) == String.downcase(@sender)
           {:ok, callback_args} = Hex.decode(data)
           assert <<@callback_selector::binary, encoded::binary>> = callback_args
-          assert [^response, @extra_data] = ABI.decode("(bytes,bytes)", encoded)
+          assert [^response, @extra_data] = Onchain.ABI.decode("(bytes,bytes)", encoded)
           {:ok, final_hex}
         end
       end

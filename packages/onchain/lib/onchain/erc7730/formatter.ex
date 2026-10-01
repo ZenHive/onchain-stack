@@ -37,11 +37,11 @@ defmodule Onchain.ERC7730.Formatter do
 
   use Descripex, namespace: "/erc7730/formatter"
 
-  alias Cartouche.Hex
   alias Onchain.Address
   alias Onchain.Decimal, as: OnchainDecimal
   alias Onchain.ERC20
   alias Onchain.ERC7730.Descriptor
+  alias Onchain.Hex
 
   @native_markers [
     "0x0000000000000000000000000000000000000000",
@@ -83,6 +83,8 @@ defmodule Onchain.ERC7730.Formatter do
       {nil, _type} ->
         {:error, {:unresolved_path, field.path}}
 
+      # --- path resolution ---
+
       {value, type} ->
         raw = coerce(value, type)
 
@@ -95,8 +97,6 @@ defmodule Onchain.ERC7730.Formatter do
          }}
     end
   end
-
-  # --- path resolution ---
 
   defp resolve_path("$." <> rest, _resolution, descriptor) do
     {get_in_raw(descriptor.raw, String.split(rest, ".")), nil}
@@ -117,6 +117,7 @@ defmodule Onchain.ERC7730.Formatter do
 
     case rest do
       [] -> {value, type}
+      # --- coercion: any source value -> canonical raw ---
       keys -> {get_in_raw(value, keys), nil}
     end
   end
@@ -135,18 +136,20 @@ defmodule Onchain.ERC7730.Formatter do
   defp get_in_raw(map, [key | rest]) when is_map(map), do: get_in_raw(Map.get(map, key), rest)
   defp get_in_raw(_value, _keys), do: nil
 
-  # --- coercion: any source value -> canonical raw ---
-
   defp coerce(value, :address), do: to_address_binary(value)
   defp coerce(value, {:uint, _}), do: to_int(value)
   defp coerce(value, {:int, _}), do: to_int(value)
   defp coerce(value, :bool) when is_boolean(value), do: value
   defp coerce(value, {:bytes, _}), do: to_bytes(value)
 
+  # --- normalization: canonical raw -> JSON-friendly value ---
+
   defp coerce(value, :bytes), do: to_bytes(value)
   defp coerce(value, _type), do: value
 
   defp to_address_binary(<<_::160>> = bin), do: bin
+
+  # --- format rendering ---
 
   defp to_address_binary(value) when is_binary(value) do
     case Address.validate(value) do
@@ -175,14 +178,10 @@ defmodule Onchain.ERC7730.Formatter do
 
   defp to_bytes(value), do: value
 
-  # --- normalization: canonical raw -> JSON-friendly value ---
-
   defp normalize(<<_::160>> = address, :address), do: Address.checksum!(address)
   defp normalize(value, {:bytes, _}) when is_binary(value), do: Hex.encode(value)
   defp normalize(value, :bytes) when is_binary(value), do: Hex.encode(value)
   defp normalize(value, _type), do: value
-
-  # --- format rendering ---
 
   defp render(:amount, raw, _type, _params, _resolution, _descriptor, opts) when is_integer(raw) do
     decimals = Keyword.get(opts, :native_decimals, 18)
@@ -200,6 +199,8 @@ defmodule Onchain.ERC7730.Formatter do
         format_token_amount(raw, decimals, symbol)
     end
   end
+
+  # --- token amount helpers ---
 
   defp render(:address_name, <<_::160>> = raw, _type, _params, _resolution, _descriptor, opts) do
     checksummed = Address.checksum!(raw)
@@ -244,8 +245,6 @@ defmodule Onchain.ERC7730.Formatter do
   # plain rendering of the canonical value.
   defp render(_format, raw, _type, _params, _resolution, _descriptor, _opts), do: to_display(raw)
 
-  # --- token amount helpers ---
-
   defp threshold_message(raw, params) do
     with threshold when not is_nil(threshold) <- Map.get(params, "threshold"),
          message when not is_nil(message) <- Map.get(params, "message"),
@@ -281,6 +280,7 @@ defmodule Onchain.ERC7730.Formatter do
   defp resolve_ref("$." <> _ = ref, resolution, descriptor), do: elem(resolve_path(ref, resolution, descriptor), 0)
   defp resolve_ref("@." <> _ = ref, resolution, descriptor), do: elem(resolve_path(ref, resolution, descriptor), 0)
 
+  # --- generic rendering helpers ---
   defp resolve_ref(literal, _resolution, _descriptor), do: literal
 
   defp native_token?(token) do
@@ -339,8 +339,6 @@ defmodule Onchain.ERC7730.Formatter do
         end
     end
   end
-
-  # --- generic rendering helpers ---
 
   defp resolve_enum_ref("$." <> _ = ref, descriptor), do: elem(resolve_path(ref, %{}, descriptor), 0)
   defp resolve_enum_ref(_ref, _descriptor), do: nil

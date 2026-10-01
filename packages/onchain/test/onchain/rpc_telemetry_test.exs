@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.TelemetryTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   @event_prefix [:onchain, :rpc, :request]
   @start_event @event_prefix ++ [:start]

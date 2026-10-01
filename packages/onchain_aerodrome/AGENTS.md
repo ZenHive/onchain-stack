@@ -622,7 +622,7 @@ The **deployed ABI is the only authority.** Sugar's own `readme.md` in `velodrom
 
 - ABIs live in `priv/abis/`, captured from **Sourcify v2** (`https://sourcify.dev/server/v2/contract/8453/<addr>?fields=abi`) because it serves the *deployed* ABI **with named tuple components** — the source for per-struct field-count and field-order drift tests. `priv/abis/README.md` records address, match type, fetch date, and the exact `curl` per file.
 - After any Sugar redeploy: re-capture from Sourcify, re-run the golden decode suite, and re-run the live probes in `priv/abis/README.md`. Positional decoding cannot detect reordered fields by itself; ABI field-order tests must guard that drift.
-- Decode positionally: `Onchain.RPC.eth_call/3` → `ABI.decode_response/2` → hand-written `from_raw/1` constructors, matching onchain_aave. Do not use `decode_structs: true`: it raises on un-interned field atoms. Literal defstruct fields need no dynamic atom lookup. `Bindings.Abi` records the wrapper-version evidence and derives signatures from the captures.
+- Decode positionally: `Onchain.RPC.eth_call/3` → `Onchain.ABI.decode_response/2` → hand-written `from_raw/1` constructors, matching onchain_aave. Do not use `decode_structs: true`: it raises on un-interned field atoms. Literal defstruct fields need no dynamic atom lookup. `Bindings.Abi` records the wrapper-version evidence and derives signatures from the captures.
 
 ## 🚨 Pagination — never terminate on a short page
 
@@ -632,7 +632,7 @@ The **deployed ABI is the only authority.** Sugar's own `readme.md` in `velodrom
 - Hard per-call caps compiled into the contracts: `MAX_LPS = 500`, `MAX_POSITIONS = 200`, `MAX_TOKENS = 2000`. `limit: 500` is verified working against the public Base RPC — so the real shape is ~71 sequential pages.
 - **Multicall3 does not help the page loop.** One `all(500, …)` already returns ~1.1 MB and dominates the `eth_call` budget. `Onchain.Multicall.aggregate3/2` is for *per-pool enrichment*, not for parallelising pagination.
 - **The trap generalizes beyond `all/3` — "no filter argument" does NOT imply short-page-safe.** `positions`/`positionsByFactory`/`positionsUnstakedConcentrated`, `forSwaps`, `TokenSugar.tokens`, `epochsLatest`, `rewards` and `VeSugar.all` offset over a *scanned* index space (pool index or token ids) that is not the returned-row space; upstream filtering, dedup, dead gauges and burned ids make short pages the normal mid-enumeration case. Only `epochsByAddress` (one row per epoch) is genuinely short-page-terminal. Verified against the Sugar Vyper sources, 2026-08-26.
-- Batching, multicall and retries are **already provided by `onchain` core** — `Onchain.Multicall.aggregate3/2` and `call_many/2`, `Onchain.RPC.batch/2` (JSON-RPC array batch), a per-call `retry: [max_retries:, backoff_ms:]` option, and transport config under `config :cartouche` (`:ethereum_node` for the URL, `Cartouche.RPC` for retry/transport defaults, `:req_options` for global Req options such as a Finch pool); `config :onchain, :req_options` is only the CCIP-Read seam. Do not reimplement them here.
+- Batching, multicall and retries are **already provided by `onchain` core** — `Onchain.Multicall.aggregate3/2` and `call_many/2`, `Onchain.RPC.batch/2` (JSON-RPC array batch), a per-call `retry: [max_retries:, backoff_ms:]` option, and transport config under `config :cartouche` (`:ethereum_node` for the URL, `Onchain.RPC` for retry/transport defaults, `:req_options` for global Req options such as a Finch pool); `config :onchain, :req_options` is only the CCIP-Read seam. Do not reimplement them here.
 
 ## 🚨 APR denominators — fee and emission APRs are never summed
 
@@ -755,9 +755,9 @@ before those modules land.
 | `Onchain.RPC` | `eth_call`, `batch/2`, per-call retry |
 | `Onchain.Multicall` | `aggregate3/2`, `call_many/2` — per-pool enrichment |
 | `Onchain.Contract` | Generic contract call |
-| `Cartouche.Signer` | Transaction signing (opt-in write path only) |
+| `Onchain.Signer` | Transaction signing (opt-in write path only) |
 | `Onchain.Address` | Validation, checksumming |
-| `Cartouche.Hex` | Hex encoding/decoding |
+| `Onchain.Hex` | Hex encoding/decoding |
 | `Onchain.Decimal` | Decimal math (ratios) |
 
 `Onchain.Solidity.parse_abi_file/1` (ABI parsing over `priv/abis/`) and

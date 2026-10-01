@@ -27,8 +27,8 @@ Maintain this policy in `~/.claude/includes/verification-policy.md`. Import it f
 
 Since **2026-08-27** the onchain library packages live in this one repo,
 `packages/<name>/`, absorbed with full git history from their former standalone
-checkouts. There are now seven packages: hieroglyph and cartouche were folded into onchain
-with the `ABI.*` and `Cartouche.*` namespaces unchanged. Each remaining package is its own Hex package with its own version,
+checkouts. There are now seven packages: hieroglyph and cartouche were folded into onchain,
+and onchain 0.16.0 renamed their `ABI.*` and `Cartouche.*` modules to `Onchain.*`. Each remaining package is its own Hex package with its own version,
 `CHANGELOG.md`, and publish cycle — the repo boundary changed, the release unit
 did not.
 
@@ -66,7 +66,7 @@ gotchas. Everything family-wide lives here, once.
 
 | Package (`packages/…`) | Hex package | Role | Native |
 |---|---|---|---|
-| onchain | `onchain` | Core primitives: RPC, ABI (`ABI.*`), ERC, signing (`Cartouche.*`) | Rust ABI/transaction/EIP-712 NIF; crypto NIF dependencies |
+| onchain | `onchain` | Core primitives: RPC, ABI (`Onchain.ABI.*`), ERC, signing | Rust ABI/transaction/EIP-712 NIF; crypto NIF dependencies |
 | onchain_aave | `onchain_aave` | Aave V3 + V4 wrappers | — |
 | onchain_aerodrome | `onchain_aerodrome` | Aerodrome Finance (Base) bindings, Sugar-backed reads + analytics | — |
 | onchain_evm | `onchain_evm` | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
@@ -151,9 +151,10 @@ zen_websocket ─┴→ onchain ─┬→ onchain_aave
                            └→ onchain_tempo → mpp (standalone)
 ```
 
-`onchain` owns the original `ABI.*` and `Cartouche.*` modules, including shared
-HTTP, KMS and signer backends used by `onchain_solana`. Publish onchain first.
-Module names and `:cartouche` configuration keys remain unchanged.
+`onchain` owns the former `ABI.*` and `Cartouche.*` modules, renamed to
+`Onchain.*` in 0.16.0, including shared HTTP, KMS and signer backends used by
+`onchain_solana`. Publish onchain first. The `:cartouche` configuration keys
+remain unchanged; onchain's CHANGELOG has the full module map.
 
 Edges (the `sibling/3` calls in each `mix.exs` remain the source of truth):
 

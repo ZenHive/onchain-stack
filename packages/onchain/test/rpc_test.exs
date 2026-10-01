@@ -1,19 +1,20 @@
-defmodule Cartouche.RPCTest do
+defmodule Onchain.RPC.TransportTest do
   use ExUnit.Case, async: false
-  use Cartouche.Hex
+  use Onchain.Hex
 
   import ExUnit.CaptureLog
 
-  alias Cartouche.Filter.Log
-  alias Cartouche.RPC.Capabilities
-  alias Cartouche.RPC.Configuration
-  alias Cartouche.Test.Signer
-  alias Cartouche.Transaction.Call
-  alias Cartouche.Transaction.V1
-  alias Cartouche.Transaction.V2
-  alias Cartouche.Transaction.V_2930
+  alias Onchain.Filter.Log
+  alias Onchain.RPC.Capabilities
+  alias Onchain.RPC.Configuration
+  alias Onchain.RPC.TransportTest
+  alias Onchain.Test.Signer
+  alias Onchain.Transaction.Call
+  alias Onchain.Transaction.V1
+  alias Onchain.Transaction.V2
+  alias Onchain.Transaction.V_2930
 
-  doctest Cartouche.RPC
+  doctest Onchain.RPC
 
   defmodule UnencodableStruct do
     @moduledoc false
@@ -44,11 +45,11 @@ defmodule Cartouche.RPCTest do
   defp assert_signs_back_to_signer(filled, attach, recover, sign_opts \\ []) do
     signer_proc = Signer.start_signer()
 
-    {:ok, signature} = Cartouche.Signer.sign(Cartouche.Transaction.encode(filled), signer_proc, sign_opts)
+    {:ok, signature} = Onchain.Signer.sign(Onchain.Transaction.encode(filled), signer_proc, sign_opts)
     assert {:ok, recovered} = recover.(attach.(signature))
 
-    assert Cartouche.Hex.to_address(recovered) ==
-             Cartouche.Hex.to_address(Cartouche.Signer.address(signer_proc))
+    assert Onchain.Hex.to_address(recovered) ==
+             Onchain.Hex.to_address(Onchain.Signer.address(signer_proc))
   end
 
   defp unsigned_filled_v2_json do
@@ -82,13 +83,13 @@ defmodule Cartouche.RPCTest do
 
   defmodule CaptureClient do
     @moduledoc false
-    # Delegates to `Cartouche.Test.Client` so doctest fixtures still work,
+    # Delegates to `Onchain.Test.Client` so doctest fixtures still work,
     # and `send`s the decoded JSON-RPC request body back to the test pid
     # registered as `:cartouche_rpc_capture` for wire-format assertions.
     def call(conn) do
       decoded = conn |> Req.Test.raw_body() |> IO.iodata_to_binary() |> Jason.decode!()
       send(:cartouche_rpc_capture, {:rpc_request, decoded})
-      Cartouche.Test.Client.call(conn)
+      Onchain.Test.Client.call(conn)
     end
   end
 
@@ -98,7 +99,7 @@ defmodule Cartouche.RPCTest do
     @panic_data "0x" <> Base.encode16(<<0x4E487B71::32, 0::248, 0x11>>)
 
     def call(conn) do
-      id = Cartouche.RPCTest.decode_id(conn)
+      id = TransportTest.decode_id(conn)
 
       Req.Test.json(conn, %{
         "jsonrpc" => "2.0",
@@ -112,7 +113,7 @@ defmodule Cartouche.RPCTest do
     @moduledoc false
 
     def call(conn) do
-      id = Cartouche.RPCTest.decode_id(conn)
+      id = TransportTest.decode_id(conn)
       panic_code = Process.get(:panic_code)
       panic_data = "0x" <> Base.encode16(<<0x4E487B71::32, 0::248, panic_code>>)
 
@@ -128,7 +129,7 @@ defmodule Cartouche.RPCTest do
     @moduledoc false
 
     def call(conn) do
-      id = Cartouche.RPCTest.decode_id(conn)
+      id = TransportTest.decode_id(conn)
 
       Req.Test.json(conn, %{
         "jsonrpc" => "2.0",
@@ -141,10 +142,10 @@ defmodule Cartouche.RPCTest do
   defmodule OverloadedErrorClient do
     @moduledoc false
 
-    @revert_data "0x" <> Base.encode16(ABI.encode("Overloaded(address)", [<<1::160>>]))
+    @revert_data "0x" <> Base.encode16(Onchain.ABI.encode("Overloaded(address)", [<<1::160>>]))
 
     def call(conn) do
-      id = Cartouche.RPCTest.decode_id(conn)
+      id = TransportTest.decode_id(conn)
 
       Req.Test.json(conn, %{
         "jsonrpc" => "2.0",
@@ -158,7 +159,7 @@ defmodule Cartouche.RPCTest do
     @moduledoc false
 
     def call(conn) do
-      id = Cartouche.RPCTest.decode_id(conn)
+      id = TransportTest.decode_id(conn)
       Req.Test.json(conn, %{"jsonrpc" => "2.0", "unexpected" => nil, "id" => id})
     end
   end
@@ -173,7 +174,7 @@ defmodule Cartouche.RPCTest do
     @moduledoc false
 
     def call(conn) do
-      id = Cartouche.RPCTest.decode_id(conn)
+      id = TransportTest.decode_id(conn)
 
       # Observed on Infura mainnet on 2026-10-01; docs/base-fee-portability.md.
       Req.Test.json(conn, %{
@@ -187,44 +188,44 @@ defmodule Cartouche.RPCTest do
   describe "block-param wire encoding" do
     setup do
       Process.register(self(), :cartouche_rpc_capture)
-      prev = Application.get_env(:cartouche, Cartouche.RPC)
-      Application.put_env(:cartouche, Cartouche.RPC, plug: &CaptureClient.call/1)
-      on_exit(fn -> Application.put_env(:cartouche, Cartouche.RPC, prev) end)
+      prev = Application.get_env(:cartouche, Onchain.RPC)
+      Application.put_env(:cartouche, Onchain.RPC, plug: &CaptureClient.call/1)
+      on_exit(fn -> Application.put_env(:cartouche, Onchain.RPC, prev) end)
       :ok
     end
 
     test "get_block_by_number/2 encodes integer as lowercase quantity string" do
-      {:ok, %Cartouche.Block{}} = Cartouche.RPC.get_block_by_number(55)
+      {:ok, %Onchain.Block{}} = Onchain.RPC.get_block_by_number(55)
 
       assert_received {:rpc_request, %{"method" => "eth_getBlockByNumber", "params" => ["0x37", false]}}
     end
 
     test "get_block_by_number/2 passes string tag through unchanged" do
-      {:ok, %Cartouche.Block{}} = Cartouche.RPC.get_block_by_number("latest")
+      {:ok, %Onchain.Block{}} = Onchain.RPC.get_block_by_number("latest")
       assert_received {:rpc_request, %{"params" => ["latest", false]}}
     end
 
     test "get_block_by_number/2 passes hex string through unchanged" do
-      {:ok, %Cartouche.Block{}} = Cartouche.RPC.get_block_by_number("0x37")
+      {:ok, %Onchain.Block{}} = Onchain.RPC.get_block_by_number("0x37")
       assert_received {:rpc_request, %{"params" => ["0x37", false]}}
     end
 
     test "get_balance/2 normalizes integer :block_number opt" do
       addr = ~h[0x407d73d8a49eeb85d32cf465507dd71d507100c1]
-      {:ok, _} = Cartouche.RPC.get_balance(addr, block_number: 55)
+      {:ok, _} = Onchain.RPC.get_balance(addr, block_number: 55)
 
       assert_received {:rpc_request, %{"method" => "eth_getBalance", "params" => [_addr_hex, "0x37"]}}
     end
 
     test "get_nonce/2 normalizes integer :block_number opt zero to '0x0'" do
       addr = ~h[0x407d73d8a49eeb85d32cf465507dd71d507100c1]
-      {:ok, _} = Cartouche.RPC.get_nonce(addr, block_number: 0)
+      {:ok, _} = Onchain.RPC.get_nonce(addr, block_number: 0)
 
       assert_received {:rpc_request, %{"method" => "eth_getTransactionCount", "params" => [_addr_hex, "0x0"]}}
     end
 
     test "fee_history/1 normalizes integer :newest_block opt" do
-      {:ok, %Cartouche.FeeHistory{}} = Cartouche.RPC.fee_history(newest_block: 55)
+      {:ok, %Onchain.FeeHistory{}} = Onchain.RPC.fee_history(newest_block: 55)
 
       assert_received {:rpc_request, %{"method" => "eth_feeHistory", "params" => ["0x1", "0x37", []]}}
     end
@@ -233,7 +234,7 @@ defmodule Cartouche.RPCTest do
       call = Call.new(<<1::160>>, <<0, 1>>, from: <<4::160>>, gas: 21_000, value: 7)
 
       assert {:ok, %{access_list: [{<<1::160>>, [<<2::256>>]}], gas_used: 26_026} = result} =
-               Cartouche.RPC.create_access_list(call, from: <<5::160>>, block_number: 55)
+               Onchain.RPC.create_access_list(call, from: <<5::160>>, block_number: 55)
 
       assert_received {:rpc_request,
                        %{
@@ -259,7 +260,7 @@ defmodule Cartouche.RPCTest do
       call = Call.new(<<1::160>>, <<>>)
 
       for {block_number, expected} <- [{:latest, "latest"}, {"0x37", "0x37"}] do
-        assert {:ok, %{gas_used: 26_026}} = Cartouche.RPC.create_access_list(call, block_number: block_number)
+        assert {:ok, %{gas_used: 26_026}} = Onchain.RPC.create_access_list(call, block_number: block_number)
         assert_received {:rpc_request, %{"method" => "eth_createAccessList", "params" => [_call, ^expected]}}
       end
     end
@@ -272,23 +273,23 @@ defmodule Cartouche.RPCTest do
                 access_list: [{<<1::160>>, [<<2::256>>]}],
                 gas_used: 24_043,
                 error: "execution reverted"
-              }} = Cartouche.RPC.create_access_list(call)
+              }} = Onchain.RPC.create_access_list(call)
     end
 
     test "fee reads use their spec method names and decode quantities" do
-      assert {:ok, 42} = Cartouche.RPC.blob_base_fee()
+      assert {:ok, 42} = Onchain.RPC.blob_base_fee()
       assert_received {:rpc_request, %{"method" => "eth_blobBaseFee", "params" => []}}
     end
 
     test "node introspection reads deserialize their structured results" do
-      assert {:ok, %Configuration{} = config} = Cartouche.RPC.eth_config()
+      assert {:ok, %Configuration{} = config} = Onchain.RPC.eth_config()
       assert config.current.chain_id == 1
       assert config.current.fork_id == <<0x07C9462E::32>>
       assert config.current.blob_schedule.base_fee_update_fraction == 11_684_671
       assert config.current.precompiles["P256VERIFY"] == <<0x100::160>>
       assert_received {:rpc_request, %{"method" => "eth_config", "params" => []}}
 
-      assert {:ok, %Capabilities{} = capabilities} = Cartouche.RPC.eth_capabilities()
+      assert {:ok, %Capabilities{} = capabilities} = Onchain.RPC.eth_capabilities()
       assert capabilities.head.number == 42
       assert capabilities.head.hash == <<1::256>>
       assert capabilities.blocks.disabled == false
@@ -354,22 +355,22 @@ defmodule Cartouche.RPCTest do
   describe "send_rpc/3 response handling" do
     setup do
       Process.register(self(), :cartouche_rpc_capture)
-      prev = Application.get_env(:cartouche, Cartouche.RPC)
-      Application.put_env(:cartouche, Cartouche.RPC, plug: &CaptureClient.call/1)
-      on_exit(fn -> Application.put_env(:cartouche, Cartouche.RPC, prev) end)
+      prev = Application.get_env(:cartouche, Onchain.RPC)
+      Application.put_env(:cartouche, Onchain.RPC, plug: &CaptureClient.call/1)
+      on_exit(fn -> Application.put_env(:cartouche, Onchain.RPC, prev) end)
       :ok
     end
 
     test "invalid JSON-RPC responses return the sentinel error" do
       assert {:error, %{code: -999, message: "invalid JSON-RPC response"}} =
-               Cartouche.RPC.send_rpc("net_version", [], req_options: [plug: &InvalidJsonRpcClient.call/1])
+               Onchain.RPC.send_rpc("net_version", [], req_options: [plug: &InvalidJsonRpcClient.call/1])
     end
 
     test "invalid hex results return :invalid_hex" do
       assert :invalid_hex =
-               Cartouche.RPC.send_rpc("net_version", [],
+               Onchain.RPC.send_rpc("net_version", [],
                  decode: :hex,
-                 req_options: [plug: &Cartouche.Test.InvalidHexResultClient.call/1]
+                 req_options: [plug: &Onchain.Test.InvalidHexResultClient.call/1]
                )
     end
 
@@ -379,7 +380,7 @@ defmodule Cartouche.RPCTest do
           assert {:error, %{code: -32_602, message: "Failed to decode transaction"}} =
                    1
                    |> V1.new({100, :gwei}, 100_000, <<13::160>>, {2, :wei}, <<1, 2, 3>>)
-                   |> Cartouche.RPC.call_trx()
+                   |> Onchain.RPC.call_trx()
         end)
 
       assert log =~ "Invalid JSON-PRC request"
@@ -388,7 +389,7 @@ defmodule Cartouche.RPCTest do
 
     test "known Panic(uint256) revert data is decoded without custom ABI metadata" do
       assert {:error, %{code: 3, message: "execution reverted", revert: <<0x4E487B71::32, 0::248, 0x11>>} = error} =
-               Cartouche.RPC.call_trx(
+               Onchain.RPC.call_trx(
                  V1.new(1, {100, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>),
                  req_options: [plug: &PanicClient.call/1]
                )
@@ -400,12 +401,12 @@ defmodule Cartouche.RPCTest do
       assert {:error, %{error_abi: "Cool(uint256,string)", error_params: [1, "cat"]}} =
                1
                |> V1.new({100, :gwei}, 100_000, <<11::160>>, {2, :wei}, <<1, 2, 3>>)
-               |> Cartouche.RPC.call_trx(errors: ["Cool(uint256,string)"])
+               |> Onchain.RPC.call_trx(errors: ["Cool(uint256,string)"])
     end
 
     test "overloaded custom errors map decoded names back by selector" do
       assert {:error, %{error_abi: "Overloaded(address)", error_params: [<<1::160>>]}} =
-               Cartouche.RPC.call_trx(
+               Onchain.RPC.call_trx(
                  V1.new(1, {100, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>),
                  req_options: [plug: &OverloadedErrorClient.call/1],
                  errors: ["Overloaded(uint256)", "Overloaded(address)"]
@@ -417,7 +418,7 @@ defmodule Cartouche.RPCTest do
         Process.put(:panic_code, code)
 
         assert {:error, %{revert: <<0x4E487B71::32, 0::248, ^code>>} = error} =
-                 Cartouche.RPC.call_trx(
+                 Onchain.RPC.call_trx(
                    V1.new(1, {100, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>),
                    req_options: [plug: &PanicCodeClient.call/1]
                  )
@@ -427,7 +428,7 @@ defmodule Cartouche.RPCTest do
     end
 
     test "Panic(uint256) private descriptions match Solidity panic codes" do
-      source = File.read!("lib/cartouche/rpc.ex")
+      source = File.read!("lib/onchain/rpc.ex")
 
       assert source =~
                ~s|defp classify_decoded_error("Panic", [0x12], _errors, _data), do: {:ok, "division or modulo by zero", nil}|
@@ -438,7 +439,7 @@ defmodule Cartouche.RPCTest do
 
     test "non-hex revert data keeps only the base RPC error fields" do
       assert {:error, %{code: 3, message: "execution reverted"} = error} =
-               Cartouche.RPC.call_trx(
+               Onchain.RPC.call_trx(
                  V1.new(1, {100, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>),
                  req_options: [plug: &NonHexRevertClient.call/1]
                )
@@ -449,13 +450,13 @@ defmodule Cartouche.RPCTest do
 
     test "transport errors are normalized before JSON-RPC decoding" do
       assert {:error, "[Cartouche] HTTP client error: :closed"} =
-               Cartouche.RPC.send_rpc("net_version", [], req_options: [plug: &TransportErrorClient.call/1])
+               Onchain.RPC.send_rpc("net_version", [], req_options: [plug: &TransportErrorClient.call/1])
     end
 
     test "an unsupported fee method tags the node refusal and preserves its details" do
       assert {:error,
               {:method_not_found, %{code: -32_601, message: "The method eth_baseFee does not exist/is not available"}}} =
-               Cartouche.RPC.send_rpc("eth_baseFee", [], req_options: [plug: &UnsupportedBaseFeeClient.call/1])
+               Onchain.RPC.send_rpc("eth_baseFee", [], req_options: [plug: &UnsupportedBaseFeeClient.call/1])
     end
   end
 
@@ -474,7 +475,7 @@ defmodule Cartouche.RPCTest do
       end
 
       assert {:ok, 0x4001897} =
-               Cartouche.RPC.base_fee(
+               Onchain.RPC.base_fee(
                  block_count: 5,
                  newest_block: "pending",
                  reward_percentiles: [50],
@@ -492,7 +493,7 @@ defmodule Cartouche.RPCTest do
           respond_with_result(conn, %{"oldestBlock" => "0x1", "baseFeePerGas" => fees, "gasUsedRatio" => [0.0]})
         end
 
-        assert Cartouche.RPC.base_fee(req_options: [plug: plug]) == expected
+        assert Onchain.RPC.base_fee(req_options: [plug: plug]) == expected
       end
     end
 
@@ -506,37 +507,37 @@ defmodule Cartouche.RPCTest do
       end
 
       assert {:error, %{code: -32_602, message: "invalid params"}} =
-               Cartouche.RPC.base_fee(req_options: [plug: plug])
+               Onchain.RPC.base_fee(req_options: [plug: plug])
     end
   end
 
   describe "send_rpc/3 invalid params" do
     test "returns invalid_params for non-UTF-8 binary method" do
-      assert {:error, {:invalid_params, %Jason.EncodeError{}}} = Cartouche.RPC.send_rpc(<<255>>, [])
+      assert {:error, {:invalid_params, %Jason.EncodeError{}}} = Onchain.RPC.send_rpc(<<255>>, [])
     end
 
     test "returns invalid_params for tuple params" do
       assert {:error, {:invalid_params, %Protocol.UndefinedError{}}} =
-               Cartouche.RPC.send_rpc("net_version", [{:tuple, :param}])
+               Onchain.RPC.send_rpc("net_version", [{:tuple, :param}])
     end
 
     test "returns invalid_params for atom-keyed map params with non-JSON values" do
       assert {:error, {:invalid_params, %Protocol.UndefinedError{}}} =
-               Cartouche.RPC.send_rpc("net_version", [%{not_a_json_key: self()}])
+               Onchain.RPC.send_rpc("net_version", [%{not_a_json_key: self()}])
     end
 
     test "returns invalid_params for custom structs without Jason encoders" do
       assert {:error, {:invalid_params, %Protocol.UndefinedError{}}} =
-               Cartouche.RPC.send_rpc("net_version", [%UnencodableStruct{value: 1}])
+               Onchain.RPC.send_rpc("net_version", [%UnencodableStruct{value: 1}])
     end
   end
 
   describe "call params and tracing helpers" do
     setup do
       Process.register(self(), :cartouche_rpc_capture)
-      prev = Application.get_env(:cartouche, Cartouche.RPC)
-      Application.put_env(:cartouche, Cartouche.RPC, plug: &CaptureClient.call/1)
-      on_exit(fn -> Application.put_env(:cartouche, Cartouche.RPC, prev) end)
+      prev = Application.get_env(:cartouche, Onchain.RPC)
+      Application.put_env(:cartouche, Onchain.RPC, plug: &CaptureClient.call/1)
+      on_exit(fn -> Application.put_env(:cartouche, Onchain.RPC, prev) end)
       :ok
     end
 
@@ -544,7 +545,7 @@ defmodule Cartouche.RPCTest do
       trx = V1.new(1, {100, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>)
       from = <<2::160>>
 
-      assert {:ok, [_trace | _]} = Cartouche.RPC.trace_call_many([{trx, from}], block_number: 55)
+      assert {:ok, [_trace | _]} = Onchain.RPC.trace_call_many([{trx, from}], block_number: 55)
 
       assert_received {:rpc_request,
                        %{
@@ -564,7 +565,7 @@ defmodule Cartouche.RPCTest do
     test "trace_call_many/2 uses the shared :from option for bare transactions" do
       trx = V1.new(1, {100, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>)
 
-      assert {:ok, [_trace | _]} = Cartouche.RPC.trace_call_many([trx], from: <<3::160>>)
+      assert {:ok, [_trace | _]} = Onchain.RPC.trace_call_many([trx], from: <<3::160>>)
 
       assert_received {:rpc_request,
                        %{
@@ -584,7 +585,7 @@ defmodule Cartouche.RPCTest do
     test "debug_trace_call/2 normalizes integer block params" do
       trx = V1.new(1, {100, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>)
 
-      assert {:ok, %Cartouche.DebugTrace{}} = Cartouche.RPC.debug_trace_call(trx, block_number: 55)
+      assert {:ok, %Onchain.DebugTrace{}} = Onchain.RPC.debug_trace_call(trx, block_number: 55)
 
       assert_received {:rpc_request, %{"method" => "debug_traceCall", "params" => [_call, "0x37"]}}
     end
@@ -592,7 +593,7 @@ defmodule Cartouche.RPCTest do
     test "call_trx/2 sends Call params without transaction fee fields" do
       call = Call.new(<<1::160>>, <<0, 1>>, from: <<4::160>>, gas: 21_000, value: 7)
 
-      assert {:ok, <<0xCC>>} = Cartouche.RPC.call_trx(call, from: <<5::160>>, block_number: 55)
+      assert {:ok, <<0xCC>>} = Onchain.RPC.call_trx(call, from: <<5::160>>, block_number: 55)
 
       assert_received {:rpc_request,
                        %{
@@ -614,14 +615,14 @@ defmodule Cartouche.RPCTest do
       assert {:error, %{code: 3, message: "execution reverted", revert: <<61, 115, 139, 46>>, trace: _}} =
                1
                |> V1.new({100, :gwei}, 100_000, <<10::160>>, {2, :wei}, <<1, 2, 3>>)
-               |> Cartouche.RPC.call_trx(trace_reverts: true)
+               |> Onchain.RPC.call_trx(trace_reverts: true)
     end
 
     test "call_trx/2 uses debug tracing when requested" do
-      assert {:error, %{code: 3, message: "execution reverted", trace: %Cartouche.DebugTrace{}}} =
+      assert {:error, %{code: 3, message: "execution reverted", trace: %Onchain.DebugTrace{}}} =
                1
                |> V1.new({100, :gwei}, 100_000, <<10::160>>, {2, :wei}, <<1, 2, 3>>)
-               |> Cartouche.RPC.call_trx(trace_reverts: true, debug_trace: true)
+               |> Onchain.RPC.call_trx(trace_reverts: true, debug_trace: true)
     end
   end
 
@@ -630,7 +631,7 @@ defmodule Cartouche.RPCTest do
       signer_proc = Signer.start_signer()
 
       assert {:ok, trx_id} =
-               Cartouche.RPC.execute_trx(<<1::160>>, <<>>,
+               Onchain.RPC.execute_trx(<<1::160>>, <<>>,
                  gas_price: {50, :gwei},
                  gas_limit: 100_000,
                  value: 0,
@@ -644,7 +645,7 @@ defmodule Cartouche.RPCTest do
 
     test "mismatched explicit transaction type and gas options raise" do
       assert_raise RuntimeError, "mismatched transaction type and gas price settings", fn ->
-        Cartouche.RPC.prepare_trx(<<1::160>>, <<>>, trx_type: :v1, base_fee: {1, :gwei})
+        Onchain.RPC.prepare_trx(<<1::160>>, <<>>, trx_type: :v1, base_fee: {1, :gwei})
       end
     end
 
@@ -653,13 +654,13 @@ defmodule Cartouche.RPCTest do
         @moduledoc false
 
         def call(conn) do
-          id = Cartouche.RPCTest.decode_id(conn)
+          id = TransportTest.decode_id(conn)
           Req.Test.json(conn, %{"jsonrpc" => "2.0", "result" => %{}, "id" => id})
         end
       end
 
       assert_raise FunctionClauseError, fn ->
-        Cartouche.RPC.prepare_trx(<<1::160>>, <<>>, req_options: [plug: &MissingFeeHistoryClient.call/1])
+        Onchain.RPC.prepare_trx(<<1::160>>, <<>>, req_options: [plug: &MissingFeeHistoryClient.call/1])
       end
     end
   end
@@ -673,28 +674,28 @@ defmodule Cartouche.RPCTest do
       assert {:error, %{error_abi: "Error(string)", error_params: ["Dai/insufficient-balance"]}} =
                1
                |> V1.new({100, :gwei}, 100_000, <<14::160>>, {2, :wei}, <<1, 2, 3>>)
-               |> Cartouche.RPC.call_trx(errors: ["Cool(uint256,string)"])
+               |> Onchain.RPC.call_trx(errors: ["Cool(uint256,string)"])
     end
 
     test "an Error(string) revert is decoded with no caller-supplied :errors" do
       assert {:error, %{error_abi: "Error(string)", error_params: ["Dai/insufficient-balance"]}} =
                1
                |> V1.new({100, :gwei}, 100_000, <<14::160>>, {2, :wei}, <<1, 2, 3>>)
-               |> Cartouche.RPC.call_trx()
+               |> Onchain.RPC.call_trx()
     end
 
     test "a custom error still maps to its own ABI entry" do
       assert {:error, %{error_abi: "Cool(uint256,string)", error_params: [1, "cat"]}} =
                1
                |> V1.new({100, :gwei}, 100_000, <<11::160>>, {2, :wei}, <<1, 2, 3>>)
-               |> Cartouche.RPC.call_trx(errors: ["Cool(uint256,string)"])
+               |> Onchain.RPC.call_trx(errors: ["Cool(uint256,string)"])
     end
 
     test "an unlisted custom-error selector is not attributed to an unrelated entry" do
       assert {:error, revert_error} =
                1
                |> V1.new({100, :gwei}, 100_000, <<10::160>>, {2, :wei}, <<1, 2, 3>>)
-               |> Cartouche.RPC.call_trx(errors: ["Cool(uint256,string)"])
+               |> Onchain.RPC.call_trx(errors: ["Cool(uint256,string)"])
 
       refute Map.has_key?(revert_error, :error_abi)
       refute Map.has_key?(revert_error, :error_params)
@@ -719,7 +720,7 @@ defmodule Cartouche.RPCTest do
               }} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(req_options: [plug: plug])
     end
 
     test "fill_transaction keeps the chain id in an unsigned legacy signature triple" do
@@ -737,14 +738,14 @@ defmodule Cartouche.RPCTest do
               } = transaction} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(req_options: [plug: plug])
 
       assert {:error, "transaction missing signature"} = V1.get_signature(transaction)
 
       # The point of keeping `chainId` in `v`: what a caller signs next must be
       # the EIP-155 `[chain_id, 0, 0]` payload, not the `[0, 0, 0]` one — a
       # signature over the latter recovers to the wrong address.
-      assert Cartouche.Transaction.encode(transaction) ==
+      assert Onchain.Transaction.encode(transaction) ==
                V1.encode(V1.new(9, {100, :gwei}, 21_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>, 42))
     end
 
@@ -755,7 +756,7 @@ defmodule Cartouche.RPCTest do
       assert {:error, message} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(req_options: [plug: plug])
 
       assert message =~ "failed to decode `eth_fillTransaction` response"
       assert message =~ "no usable `chainId`"
@@ -787,7 +788,7 @@ defmodule Cartouche.RPCTest do
           ])
 
       result = %{
-        "raw" => Cartouche.Hex.encode_hex(geth_typed_raw),
+        "raw" => Onchain.Hex.encode_hex(geth_typed_raw),
         "tx" => Map.merge(unsigned_filled_v2_json(), %{"yParity" => "0x0", "r" => "0x0", "s" => "0x0"})
       }
 
@@ -796,7 +797,7 @@ defmodule Cartouche.RPCTest do
       assert {:ok, %V2{nonce: 7, signature_y_parity: nil, signature_r: nil, signature_s: nil} = filled} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(req_options: [plug: plug])
 
       # The oracle: what the caller signs must be the unsigned payload, so the
       # recovered address is the signer's. Decoding geth's `raw` instead yields
@@ -812,7 +813,7 @@ defmodule Cartouche.RPCTest do
       geth_legacy_raw = ExRLP.encode([9, 100_000_000_000, 21_000, <<1::160>>, 2, <<1, 2, 3>>, 0, 0, 0])
 
       result = %{
-        "raw" => Cartouche.Hex.encode_hex(geth_legacy_raw),
+        "raw" => Onchain.Hex.encode_hex(geth_legacy_raw),
         "tx" => Map.delete(unsigned_filled_v1_json(), "chainId")
       }
 
@@ -821,7 +822,7 @@ defmodule Cartouche.RPCTest do
       assert {:ok, %V1{v: 42, r: 0, s: 0} = filled} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(chain_id: 42, req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(chain_id: 42, req_options: [plug: plug])
 
       assert_signs_back_to_signer(
         filled,
@@ -831,7 +832,7 @@ defmodule Cartouche.RPCTest do
       )
     end
 
-    # `Cartouche.Chain.parse_id/1` passes every integer through, so a zero or
+    # `Onchain.Chain.parse_id/1` passes every integer through, so a zero or
     # negative option would reach `v` and produce the same `[0, 0, 0]` payload
     # the response-side check refuses. Chain id 0 is not signable here either
     # way: `Signer` maps it to a pre-EIP-155 `v` of 27/28 while `V1.encode/1`
@@ -844,7 +845,7 @@ defmodule Cartouche.RPCTest do
         assert {:error, message} =
                  <<1::160>>
                  |> Call.new(<<1, 2, 3>>)
-                 |> Cartouche.RPC.fill_transaction(chain_id: chain_id, req_options: [plug: plug])
+                 |> Onchain.RPC.fill_transaction(chain_id: chain_id, req_options: [plug: plug])
 
         assert message =~ "`chain_id:` must be a positive chain id"
       end
@@ -857,7 +858,7 @@ defmodule Cartouche.RPCTest do
       assert {:error, message} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(req_options: [plug: plug])
 
       assert message =~ "no usable `chainId`"
     end
@@ -873,14 +874,14 @@ defmodule Cartouche.RPCTest do
         assert {:error, message} =
                  <<1::160>>
                  |> Call.new(<<1, 2, 3>>)
-                 |> Cartouche.RPC.fill_transaction(chain_id: 42, req_options: [plug: plug])
+                 |> Onchain.RPC.fill_transaction(chain_id: 42, req_options: [plug: plug])
 
         assert message =~ "malformed `chainId`"
       end
     end
 
     # `unsigned_filled_v1_json/0` names chain 42. A caller that also names one
-    # is stating which chain it will sign for, and `Cartouche.Signer` takes the
+    # is stating which chain it will sign for, and `Onchain.Signer` takes the
     # chain id from that caller rather than from the struct — so a disagreement
     # signs the EIP-155 digest for one chain over a payload encoding another,
     # and recovery lands on an address that never signed it. Taking either side
@@ -892,7 +893,7 @@ defmodule Cartouche.RPCTest do
       assert {:error, message} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(chain_id: 1, req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(chain_id: 1, req_options: [plug: plug])
 
       assert message =~ "returned `chainId` 42 but `chain_id:` was 1"
     end
@@ -904,10 +905,10 @@ defmodule Cartouche.RPCTest do
       assert {:ok, %V1{v: 42, r: 0, s: 0}} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(chain_id: 42, req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(chain_id: 42, req_options: [plug: plug])
     end
 
-    # `Cartouche.Chain.parse_id/1` is `Map.fetch!/2` for atoms, so an unknown
+    # `Onchain.Chain.parse_id/1` is `Map.fetch!/2` for atoms, so an unknown
     # chain atom used to escape as a `KeyError` and be reported as a failure to
     # decode the response — blaming the node for the caller's typo.
     test "fill_transaction refuses an unknown chain atom by naming the option" do
@@ -917,7 +918,7 @@ defmodule Cartouche.RPCTest do
       assert {:error, message} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(chain_id: :not_a_chain, req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(chain_id: :not_a_chain, req_options: [plug: plug])
 
       assert message =~ "`chain_id:` must be a positive chain id"
       assert message =~ ":not_a_chain"
@@ -930,12 +931,12 @@ defmodule Cartouche.RPCTest do
       # v = 37 is an EIP-155 mainnet signature, so the envelope decodes (alloy rejects
       # an undecodable legacy v before this check) and must still be refused as signed.
       malformed = ExRLP.encode([9, 100_000_000_000, 21_000, <<1::160>>, 2, <<1, 2, 3>>, 37, 1, 2])
-      plug = fn conn -> respond_with_result(conn, %{"raw" => Cartouche.Hex.encode_hex(malformed)}) end
+      plug = fn conn -> respond_with_result(conn, %{"raw" => Onchain.Hex.encode_hex(malformed)}) end
 
       assert {:error, message} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(req_options: [plug: plug])
 
       assert message =~ "not unambiguously unsigned"
     end
@@ -951,7 +952,7 @@ defmodule Cartouche.RPCTest do
         assert {:error, message} =
                  <<1::160>>
                  |> Call.new(<<1, 2, 3>>)
-                 |> Cartouche.RPC.fill_transaction(req_options: [plug: plug])
+                 |> Onchain.RPC.fill_transaction(req_options: [plug: plug])
 
         assert message =~ "malformed signature quantities"
         assert message =~ field
@@ -965,20 +966,20 @@ defmodule Cartouche.RPCTest do
       assert {:error, message} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(req_options: [plug: plug])
 
       assert message =~ "returned a signed `tx` object"
     end
 
     test "fill_transaction rejects geth's all-zero legacy raw when no tx accompanies it" do
       geth_raw = ExRLP.encode([9, 100_000_000_000, 21_000, <<1::160>>, 2, <<1, 2, 3>>, 0, 0, 0])
-      result = %{"raw" => Cartouche.Hex.encode_hex(geth_raw)}
+      result = %{"raw" => Onchain.Hex.encode_hex(geth_raw)}
       plug = fn conn -> respond_with_result(conn, result) end
 
       assert {:error, message} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(req_options: [plug: plug])
 
       assert message =~ "not unambiguously unsigned"
     end
@@ -989,13 +990,13 @@ defmodule Cartouche.RPCTest do
       assert {:error, message} =
                <<1::160>>
                |> Call.new(<<1, 2, 3>>)
-               |> Cartouche.RPC.fill_transaction(req_options: [plug: plug])
+               |> Onchain.RPC.fill_transaction(req_options: [plug: plug])
 
       assert message =~ "neither a `tx` object nor a `raw` field"
     end
 
     test "get_filter_logs decodes the same Log shape as filter changes" do
-      assert {:ok, [log]} = Cartouche.RPC.get_filter_logs("0xf11735")
+      assert {:ok, [log]} = Onchain.RPC.get_filter_logs("0xf11735")
       assert %Log{} = log
       assert byte_size(log.address) == 20
     end
@@ -1026,7 +1027,7 @@ defmodule Cartouche.RPCTest do
       topic = "0x" <> String.duplicate("ab", 32)
 
       assert {:ok, [log]} =
-               Cartouche.RPC.eth_get_logs(
+               Onchain.RPC.eth_get_logs(
                  %{"fromBlock" => 16, address: [<<1::160>>], topics: [nil, topic]},
                  req_options: [plug: plug]
                )

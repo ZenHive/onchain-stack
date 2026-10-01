@@ -3,7 +3,7 @@ defmodule Onchain.Subscription.Parser do
 
   # Pure parsing functions for eth_subscribe notification payloads.
   # Heads and pending-transaction hashes stay maps and hex strings.
-  # Log notifications decode to `%Cartouche.Filter.Log{}`.
+  # Log notifications decode to `%Onchain.Filter.Log{}`.
   # No WebSocket dependency — all functions are pure and testable in isolation.
 
   import Onchain.RPC.Helpers, only: [parse_hex_integer: 1, parse_address: 1]
@@ -40,7 +40,7 @@ defmodule Onchain.Subscription.Parser do
     cond do
       not String.starts_with?(hash, "0x") -> {:error, {:invalid_tx_hash, hash}}
       byte_size(hash) != @tx_hash_hex_length -> {:error, {:invalid_tx_hash, hash}}
-      not Cartouche.Hex.valid?(hash) -> {:error, {:invalid_tx_hash, hash}}
+      not Onchain.Hex.valid?(hash) -> {:error, {:invalid_tx_hash, hash}}
       true -> {:ok, hash}
     end
   end
@@ -48,7 +48,7 @@ defmodule Onchain.Subscription.Parser do
   def parse_event(:pending_transactions, other), do: {:error, {:invalid_tx_hash, other}}
 
   def parse_event(:logs, raw) when is_map(raw) do
-    {:ok, Cartouche.Filter.Log.deserialize(raw)}
+    {:ok, Onchain.Filter.Log.deserialize(raw)}
   rescue
     exception -> {:error, {:invalid_log, exception}}
   end

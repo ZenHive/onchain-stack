@@ -1,12 +1,12 @@
-defmodule Cartouche.SignerTest do
+defmodule Onchain.SignerTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Signer
-  alias Cartouche.Signer.Secp256k1
-  alias Cartouche.SignerTest.Ed25519Backend
-  alias Cartouche.SignerTest.FixedSignature
-  alias Cartouche.SignerTest.HighSBackend
+  alias Onchain.Signer
+  alias Onchain.Signer.Secp256k1
+  alias Onchain.SignerTest.Ed25519Backend
+  alias Onchain.SignerTest.FixedSignature
+  alias Onchain.SignerTest.HighSBackend
 
   doctest Signer
 
@@ -17,7 +17,7 @@ defmodule Cartouche.SignerTest do
 
   describe "address/0 and chain_id/0 default name" do
     # The application supervises a signer under the default
-    # `Cartouche.Signer.Default` name (config :cartouche, :signer), so the
+    # `Onchain.Signer.Default` name (config :cartouche, :signer), so the
     # arg-less `address/0` and `chain_id/0` clauses resolve against it.
     test "address/0 returns a 20-byte address using the default name" do
       assert <<_::160>> = Signer.address()
@@ -37,7 +37,7 @@ defmodule Cartouche.SignerTest do
       for chain_id <- [0, 1, 8453] do
         assert {:ok, signature} = Signer.sign_direct(message, @address, {Secp256k1, @priv_key}, chain_id)
         assert {:ok, ^signature} = Signer.sign_direct(message, @address, mfa, chain_id)
-        assert Cartouche.Recover.recover_eth(message, signature) == @address
+        assert Onchain.Recover.recover_eth(message, signature) == @address
       end
     end
 
@@ -55,7 +55,7 @@ defmodule Cartouche.SignerTest do
                Signer.sign_direct("test", @address, mfa, 0)
 
       assert byte_size(sig) == 65
-      assert Cartouche.Recover.recover_eth("test", sig) == @address
+      assert Onchain.Recover.recover_eth("test", sig) == @address
     end
 
     test "canonicalizes a high-s MFA signature so the packed s is at most n/2" do
@@ -68,7 +68,7 @@ defmodule Cartouche.SignerTest do
                Signer.sign_direct("test", @address, mfa, 0)
 
       assert s <= @secp256k1_half_n
-      assert Cartouche.Recover.recover_eth("test", packed) == @address
+      assert Onchain.Recover.recover_eth("test", packed) == @address
     end
   end
 
@@ -90,7 +90,7 @@ defmodule Cartouche.SignerTest do
     test "sign/2 produces a signature recoverable to the address", %{signer: signer} do
       assert {:ok, sig} = Signer.sign("test", signer)
       assert byte_size(sig) == 65
-      assert Cartouche.Recover.recover_eth("test", sig) == @address
+      assert Onchain.Recover.recover_eth("test", sig) == @address
     end
 
     test "sign/3 on Base packs multi-byte EIP-155 v and normalize_signature/2 accepts it", %{
@@ -103,19 +103,19 @@ defmodule Cartouche.SignerTest do
       v = :binary.decode_unsigned(v_bin)
       assert (v - (8453 * 2 + 35)) in [0, 1]
 
-      normalized = Cartouche.RecoveryBit.normalize_signature(sig, :base, 8453)
+      normalized = Onchain.RecoveryBit.normalize_signature(sig, :base, 8453)
       assert byte_size(normalized) == 65
       <<_::binary-size(64), base>> = normalized
       assert base in [0, 1]
 
-      assert Cartouche.Recover.recover_eth("test", sig) == @address
+      assert Onchain.Recover.recover_eth("test", sig) == @address
     end
 
     test "sign/2 uses the cached address on a subsequent call", %{signer: signer} do
       assert {:ok, sig1} = Signer.sign("test", signer)
       assert {:ok, sig2} = Signer.sign("test", signer)
       assert sig1 == sig2
-      assert Cartouche.Recover.recover_eth("test", sig2) == @address
+      assert Onchain.Recover.recover_eth("test", sig2) == @address
     end
 
     test "canonicalizes a high-s backend signature so the packed s is at most n/2" do
@@ -127,7 +127,7 @@ defmodule Cartouche.SignerTest do
 
       assert {:ok, <<_r::256, s::256, _v::binary>> = packed} = Signer.sign("test", pid)
       assert s <= @secp256k1_half_n
-      assert Cartouche.Recover.recover_eth("test", packed) == @address
+      assert Onchain.Recover.recover_eth("test", packed) == @address
     end
   end
 
@@ -137,7 +137,7 @@ defmodule Cartouche.SignerTest do
 
       assert Signer.address(pid) == @address
       assert {:ok, sig} = Signer.sign("test", pid)
-      assert Cartouche.Recover.recover_eth("test", sig) == @address
+      assert Onchain.Recover.recover_eth("test", sig) == @address
     end
 
     test "canonicalizes a high-s MFA signature started through start_link/1" do
@@ -149,7 +149,7 @@ defmodule Cartouche.SignerTest do
     end
   end
 
-  @spec high_s_signature(binary()) :: Cartouche.Signature.t()
+  @spec high_s_signature(binary()) :: Onchain.Signature.t()
   defp high_s_signature(message) do
     {:ok, sig} = Secp256k1.sign(message, @priv_key)
     %{sig | s: @secp256k1_n - sig.s, recid: nil}

@@ -179,8 +179,8 @@ defmodule Onchain.Trace do
           {:ok, String.t()}
           | {:error, {:invalid_address, term()} | {:invalid_slot, term()} | {:invalid_block, term()} | rpc_error()}
   def storage_at(address, slot, opts \\ []) do
-    case Cartouche.RPC.eth_get_storage_at(address, slot, opts) do
-      {:ok, word} -> {:ok, Cartouche.Hex.encode(word)}
+    case Onchain.RPC.eth_get_storage_at(address, slot, opts) do
+      {:ok, word} -> {:ok, Onchain.Hex.encode(word)}
       {:error, %{} = map} -> {:error, {:rpc_error, maybe_put_revert_data_hex(map)}}
       {:error, message} when is_binary(message) -> {:error, {:rpc_error, %{message: inspect(message)}}}
       error -> error

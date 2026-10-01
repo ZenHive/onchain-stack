@@ -1,24 +1,29 @@
-defmodule ABI.AgentEconomyTest do
+defmodule Onchain.ABI.AgentEconomyTest do
   use ExUnit.Case, async: true
 
-  alias Mix.Tasks.Hieroglyph.Manifest
+  alias Mix.Tasks.Onchain.Manifest
+  alias Onchain.ABI.Event
+  alias Onchain.ABI.FunctionSelector
+  alias Onchain.ABI.Math
+  alias Onchain.ABI.TypeDecoder
+  alias Onchain.ABI.TypeEncoder
 
   @annotated_modules [
-    ABI,
-    ABI.Event,
-    ABI.FunctionSelector,
-    ABI.TypeEncoder,
-    ABI.TypeDecoder,
-    ABI.Math
+    Onchain.ABI,
+    Event,
+    FunctionSelector,
+    TypeEncoder,
+    TypeDecoder,
+    Math
   ]
 
   # These are `@doc false` internal helpers, deliberately not in the API
   # surface. The cross-check below skips them so they don't trip the
   # "exported but not declared with api()" guard.
   @doc_false_exports MapSet.new([
-                       {ABI.FunctionSelector, :dynamic?, 1},
-                       {ABI.FunctionSelector, :get_function_type, 1},
-                       {ABI.FunctionSelector, :get_state_mutability, 1}
+                       {FunctionSelector, :dynamic?, 1},
+                       {FunctionSelector, :get_function_type, 1},
+                       {FunctionSelector, :get_state_mutability, 1}
                      ])
 
   describe "api() annotations" do
@@ -70,9 +75,9 @@ defmodule ABI.AgentEconomyTest do
     end
   end
 
-  describe "Discoverable (ABI.describe/0-2)" do
+  describe "Discoverable (Onchain.ABI.describe/0-2)" do
     test "describe/0 returns overview of all annotated modules" do
-      overview = ABI.describe()
+      overview = Onchain.ABI.describe()
 
       assert is_list(overview)
       assert length(overview) == length(@annotated_modules)
@@ -80,12 +85,12 @@ defmodule ABI.AgentEconomyTest do
       module_names = Enum.map(overview, & &1.module)
 
       for mod <- @annotated_modules do
-        assert mod in module_names, "#{inspect(mod)} missing from ABI.describe()"
+        assert mod in module_names, "#{inspect(mod)} missing from Onchain.ABI.describe()"
       end
     end
 
     test "describe/1 with short name returns function list" do
-      functions = ABI.describe(:abi)
+      functions = Onchain.ABI.describe(:abi)
 
       assert is_list(functions)
       func_names = Enum.map(functions, & &1.name)
@@ -95,7 +100,7 @@ defmodule ABI.AgentEconomyTest do
     end
 
     test "describe/1 with full module name works" do
-      functions = ABI.describe(ABI.Math)
+      functions = Onchain.ABI.describe(Math)
 
       assert is_list(functions)
       func_names = Enum.map(functions, & &1.name)
@@ -104,7 +109,7 @@ defmodule ABI.AgentEconomyTest do
     end
 
     test "describe/2 returns full function detail" do
-      detail = ABI.describe(:abi, :encode)
+      detail = Onchain.ABI.describe(:abi, :encode)
 
       assert is_map(detail)
       assert detail.name == :encode
@@ -112,23 +117,23 @@ defmodule ABI.AgentEconomyTest do
     end
 
     test "describe/2 returns nil for unknown function" do
-      assert ABI.describe(:abi, :nonexistent) == nil
+      assert Onchain.ABI.describe(:abi, :nonexistent) == nil
     end
 
     test "__descripex_modules__/0 returns the module list" do
-      modules = ABI.__descripex_modules__()
+      modules = Onchain.ABI.__descripex_modules__()
       assert modules == @annotated_modules
     end
   end
 
   describe "namespace assignment" do
     test "ABI top-level has /abi namespace" do
-      {:docs_v1, _, _, _, _moduledoc, meta, _} = Code.fetch_docs(ABI)
+      {:docs_v1, _, _, _, _moduledoc, meta, _} = Code.fetch_docs(Onchain.ABI)
       assert meta[:namespace] == "/abi"
     end
 
     test "selector modules have /selector namespace" do
-      for mod <- [ABI.Event, ABI.FunctionSelector] do
+      for mod <- [Event, FunctionSelector] do
         {:docs_v1, _, _, _, _, meta, _} = Code.fetch_docs(mod)
 
         assert meta[:namespace] == "/selector",
@@ -137,7 +142,7 @@ defmodule ABI.AgentEconomyTest do
     end
 
     test "codec modules have /codec namespace" do
-      for mod <- [ABI.TypeEncoder, ABI.TypeDecoder] do
+      for mod <- [TypeEncoder, TypeDecoder] do
         {:docs_v1, _, _, _, _, meta, _} = Code.fetch_docs(mod)
 
         assert meta[:namespace] == "/codec",
@@ -146,12 +151,12 @@ defmodule ABI.AgentEconomyTest do
     end
 
     test "Math has /math namespace" do
-      {:docs_v1, _, _, _, _, meta, _} = Code.fetch_docs(ABI.Math)
+      {:docs_v1, _, _, _, _, meta, _} = Code.fetch_docs(Math)
       assert meta[:namespace] == "/math"
     end
   end
 
-  describe "mix hieroglyph.manifest" do
+  describe "mix onchain.manifest" do
     test "writes descripex JSON to a custom output path" do
       out = tmp_manifest()
 
@@ -159,7 +164,7 @@ defmodule ABI.AgentEconomyTest do
         Manifest.run([out])
 
         assert %{"modules" => modules} = Jason.decode!(File.read!(out))
-        assert Enum.any?(modules, &(&1["module"] == "ABI"))
+        assert Enum.any?(modules, &(&1["module"] == "Onchain.ABI"))
       after
         File.rm(out)
       end

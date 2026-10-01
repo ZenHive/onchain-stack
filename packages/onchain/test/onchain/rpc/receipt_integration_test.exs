@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.ReceiptIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   @moduletag :integration
 
@@ -54,7 +54,7 @@ defmodule Onchain.RPC.ReceiptIntegrationTest do
       {:ok, receipt} = RPC.get_transaction_receipt(tx_hash, rpc_opts())
 
       for log <- receipt.logs do
-        assert %Cartouche.Filter.Log{} = log
+        assert %Onchain.Filter.Log{} = log
         assert is_binary(log.address)
         assert byte_size(log.address) == 20
         assert is_list(log.topics)
@@ -73,13 +73,13 @@ defmodule Onchain.RPC.ReceiptIntegrationTest do
 
       log = Enum.find(receipt.logs, &(&1.log_index == 8))
 
-      assert log.address == Cartouche.Hex.from_hex!("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+      assert log.address == Onchain.Hex.from_hex!("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
 
       assert hd(log.topics) ==
-               Cartouche.Hex.from_hex!("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+               Onchain.Hex.from_hex!("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
 
       assert log.block_number == 18_000_000
-      assert log.transaction_hash == Cartouche.Hex.from_hex!(tx_hash)
+      assert log.transaction_hash == Onchain.Hex.from_hex!(tx_hash)
       assert log.removed == false
       assert is_binary(log.data)
       assert is_integer(log.transaction_index)

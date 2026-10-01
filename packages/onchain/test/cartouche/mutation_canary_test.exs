@@ -1,4 +1,4 @@
-defmodule Cartouche.MutationCanaryTest do
+defmodule Onchain.MutationCanaryTest do
   @moduledoc false
   # Deliberate-fault canaries for the mutation-adequacy campaign (ROADMAP task 114).
   #
@@ -13,12 +13,12 @@ defmodule Cartouche.MutationCanaryTest do
 
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hash
-  alias Cartouche.Recover
-  alias Cartouche.Signer
-  alias Cartouche.Signer.Secp256k1
-  alias Cartouche.Test.HighSSignerBackend
-  alias Cartouche.Transaction.V1
+  alias Onchain.Hash
+  alias Onchain.Recover
+  alias Onchain.Signer
+  alias Onchain.Signer.Secp256k1
+  alias Onchain.Test.HighSSignerBackend
+  alias Onchain.Transaction.V1
 
   @private_key Base.decode16!("800509FA3E80882AD0BE77C27505BDC91380F800D51ED80897D22F9FCC75F4BF")
   @signer_address Base.decode16!("63CC7C25E0CDB121ABB0FE477A6B9901889F99A7")
@@ -28,9 +28,9 @@ defmodule Cartouche.MutationCanaryTest do
   @message "mutation canary"
 
   describe "canary: low-s normalization deleted from the emission funnel" do
-    # Mutant: `Cartouche.Signer.emit_signature/4` with the
+    # Mutant: `Onchain.Signer.emit_signature/4` with the
     # `Recover.normalize_low_s/1` call removed (statement_deletion / function_call
-    # on lib/cartouche/signer.ex). A high-s backend then emits a malleable
+    # on lib/onchain/signer.ex). A high-s backend then emits a malleable
     # signature, violating EIP-2.
 
     test "the unmutated funnel canonicalizes a high-s backend signature" do
@@ -61,8 +61,8 @@ defmodule Cartouche.MutationCanaryTest do
   end
 
   describe "canary: wrong chain id in the EIP-155 v byte" do
-    # Mutant: `Cartouche.Signer.encode_eip155/3` computing v from `chain_id + 1`
-    # (arithmetic / literal on lib/cartouche/signer.ex).
+    # Mutant: `Onchain.Signer.encode_eip155/3` computing v from `chain_id + 1`
+    # (arithmetic / literal on lib/onchain/signer.ex).
 
     test "the unmutated signer packs v = chain_id * 2 + 35 + parity" do
       assert {:ok, <<_r::256, _s::256, v::8>>} =
@@ -86,7 +86,7 @@ defmodule Cartouche.MutationCanaryTest do
   end
 
   describe "canary: wrong chain id in the V1 signing hash domain" do
-    # Mutant: `Cartouche.Transaction.V1.recover_signer/2` (or the symmetric signing
+    # Mutant: `Onchain.Transaction.V1.recover_signer/2` (or the symmetric signing
     # path) re-encoding the EIP-155 payload under the wrong chain id. Here the chain
     # id is inside the digest, so the failure mode is the opposite of the v-byte case.
 

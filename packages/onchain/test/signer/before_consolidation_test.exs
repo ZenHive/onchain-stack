@@ -1,16 +1,16 @@
-defmodule Cartouche.Signer.BeforeConsolidationTest do
+defmodule Onchain.Signer.BeforeConsolidationTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Signer
-  alias Cartouche.Transaction.V2
+  alias Onchain.Signer
+  alias Onchain.Transaction.V2
 
   @fixture Path.expand("../support/fixtures/signers_before_consolidation.etf", __DIR__)
   @external_resource @fixture
-  @records @fixture |> File.read!() |> :erlang.binary_to_term()
+  @records @fixture |> File.read!() |> :erlang.binary_to_term() |> Onchain.Test.LegacyModuleNames.translate()
 
   test "every captured signer fixture retains its exact signed bytes" do
     assert Enum.frequencies_by(@records, fn {mod, fun, _, _} -> {mod, fun} end) == %{
-             {Onchain.Signer, :sign_transaction} => 10,
+             {Signer, :sign_transaction} => 10,
              {Signer, :sign_direct} => 74,
              {Signer, :backend_sign} => 353
            }

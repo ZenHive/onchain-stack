@@ -2,11 +2,11 @@ defmodule Onchain.RPC.EstimateGasTest do
   # Mutates global cartouche client config; cannot run async with other RPC tests.
   use ExUnit.Case, async: false
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   # Req function plug returning canned JSON-RPC responses from a queued payload,
   # capturing the decoded request so tests can assert on the serialized call
-  # object. Injected via cartouche's `config :cartouche, Cartouche.RPC, plug:`.
+  # object. Injected via cartouche's `config :cartouche, Onchain.RPC, plug:`.
   defmodule StubClient do
     @moduledoc false
 

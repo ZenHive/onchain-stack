@@ -153,7 +153,7 @@ defmodule Onchain.Aave.V4.OracleTest do
   end
 
   defp calldata(signature, params) do
-    {:ok, hex} = ABI.encode_hex_call(signature, params)
+    {:ok, hex} = Onchain.ABI.encode_hex_call(signature, params)
     String.downcase(hex)
   end
 

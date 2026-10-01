@@ -1,11 +1,11 @@
 defmodule Onchain.Aave.V4.PositionManagerTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.Signer
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.V4.PositionManager
   alias Onchain.Address
   alias Onchain.RPCStub
+  alias Onchain.Signer
 
   @spoke "0x94e7A5dCbE816e498b89aB752661904E2F56c485"
   @owner "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
@@ -485,7 +485,7 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
 
   describe "decode_revert/1" do
     test "decodes InsufficientBorrowAllowance from its custom-error selector" do
-      {:ok, revert} = ABI.encode_hex_call("InsufficientBorrowAllowance(uint256,uint256)", [@allowance, @required])
+      {:ok, revert} = Onchain.ABI.encode_hex_call("InsufficientBorrowAllowance(uint256,uint256)", [@allowance, @required])
 
       assert {:error, {:insufficient_borrow_allowance, @allowance, @required}} =
                PositionManager.decode_revert(revert)
@@ -493,15 +493,15 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
 
     test "decodes InsufficientWithdrawAllowance from its custom-error selector" do
       {:ok, revert} =
-        ABI.encode_hex_call("InsufficientWithdrawAllowance(uint256,uint256)", [@allowance, @required])
+        Onchain.ABI.encode_hex_call("InsufficientWithdrawAllowance(uint256,uint256)", [@allowance, @required])
 
       assert {:error, {:insufficient_withdraw_allowance, @allowance, @required}} =
                PositionManager.decode_revert(revert)
     end
 
     test "decodes raw revert bytes the same as 0x hex" do
-      {:ok, hex} = ABI.encode_hex_call("InsufficientBorrowAllowance(uint256,uint256)", [1, 2])
-      {:ok, raw} = Cartouche.Hex.decode(hex)
+      {:ok, hex} = Onchain.ABI.encode_hex_call("InsufficientBorrowAllowance(uint256,uint256)", [1, 2])
+      {:ok, raw} = Onchain.Hex.decode(hex)
 
       assert PositionManager.decode_revert(raw) == PositionManager.decode_revert(hex)
     end
@@ -515,7 +515,7 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
   describe "Taker write reverts" do
     test "borrow surfaces InsufficientBorrowAllowance from gas estimation" do
       {:ok, revert} =
-        ABI.encode_hex_call("InsufficientBorrowAllowance(uint256,uint256)", [@allowance, @required])
+        Onchain.ABI.encode_hex_call("InsufficientBorrowAllowance(uint256,uint256)", [@allowance, @required])
 
       url = start_rpc_stub(fn _body -> {:rpc_error, revert_error(revert)} end)
 
@@ -525,7 +525,7 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
 
     test "withdraw surfaces InsufficientWithdrawAllowance from gas estimation" do
       {:ok, revert} =
-        ABI.encode_hex_call("InsufficientWithdrawAllowance(uint256,uint256)", [@allowance, @required])
+        Onchain.ABI.encode_hex_call("InsufficientWithdrawAllowance(uint256,uint256)", [@allowance, @required])
 
       url = start_rpc_stub(fn _body -> {:rpc_error, revert_error(revert)} end)
 
@@ -690,7 +690,7 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
   defp bool_word(false), do: 0
 
   defp selector(signature) do
-    binary_part(Cartouche.Hash.keccak(signature), 0, 4)
+    binary_part(Onchain.Hash.keccak(signature), 0, 4)
   end
 
   defp pad_left(bin) when byte_size(bin) <= 32 do
@@ -702,10 +702,12 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
     {:ok, spoke_bin} = Address.validate(@spoke)
     {:ok, owner_bin} = Address.validate(@owner)
     {:ok, spender_bin} = Address.validate(@spender)
-    {:ok, borrow_err} = ABI.encode_hex_call("InsufficientBorrowAllowance(uint256,uint256)", [@allowance, @required])
+
+    {:ok, borrow_err} =
+      Onchain.ABI.encode_hex_call("InsufficientBorrowAllowance(uint256,uint256)", [@allowance, @required])
 
     {:ok, withdraw_err} =
-      ABI.encode_hex_call("InsufficientWithdrawAllowance(uint256,uint256)", [@allowance, @required])
+      Onchain.ABI.encode_hex_call("InsufficientWithdrawAllowance(uint256,uint256)", [@allowance, @required])
 
     unknown = "0x" <> String.duplicate("aa", 4) <> String.duplicate("00", 64)
 
@@ -724,7 +726,7 @@ defmodule Onchain.Aave.V4.PositionManagerTest do
   end
 
   defp calldata(signature, params) do
-    {:ok, hex} = ABI.encode_hex_call(signature, params)
+    {:ok, hex} = Onchain.ABI.encode_hex_call(signature, params)
     String.downcase(hex)
   end
 

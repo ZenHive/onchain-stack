@@ -31,18 +31,18 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
 
   use ExUnit.Case, async: false
 
-  alias Cartouche.Hex
-  alias Cartouche.Signer
-  alias Cartouche.Transaction
-  alias Cartouche.Transaction.V2
   alias Onchain.Aave.V4.Hub
   alias Onchain.Aave.V4.Oracle
   alias Onchain.Aave.V4.PositionManager
   alias Onchain.Aave.V4.Spoke
   alias Onchain.Aave.V4.TokenizationSpoke
   alias Onchain.EVM
+  alias Onchain.Hex
   alias Onchain.RPCCase
   alias Onchain.RPCStub
+  alias Onchain.Signer
+  alias Onchain.Transaction
+  alias Onchain.Transaction.V2
 
   @moduletag :integration
 
@@ -521,7 +521,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
           {12, [true, false, true]},
           {16, [true, false, false]}
         ] do
-      assert {:ok, ^expected} = ABI.decode_types("(bool,bool,bool)", Enum.at(results, index).output)
+      assert {:ok, ^expected} = Onchain.ABI.decode_types("(bool,bool,bool)", Enum.at(results, index).output)
     end
   end
 
@@ -641,7 +641,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
   defp fork_opts(rpc_url) do
     balance_slot =
       (<<0::96>> <> address_bin(@fork_user) <> <<@weth_balance_slot::256>>)
-      |> Cartouche.Hash.keccak()
+      |> Onchain.Hash.keccak()
       |> Hex.encode()
 
     [
@@ -666,31 +666,31 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
 
   @spec encoded_call(String.t(), String.t(), [term()]) :: {String.t(), String.t()}
   defp encoded_call(address, signature, args) do
-    assert {:ok, data} = ABI.encode_hex_call(signature, args)
+    assert {:ok, data} = Onchain.ABI.encode_hex_call(signature, args)
     {address, data}
   end
 
   @spec decode_uint!(EVM.tx_result()) :: non_neg_integer()
   defp decode_uint!(%{output: output}) do
-    assert {:ok, [value]} = ABI.decode_types("(uint256)", output)
+    assert {:ok, [value]} = Onchain.ABI.decode_types("(uint256)", output)
     value
   end
 
   @spec decode_pair!(EVM.tx_result()) :: {non_neg_integer(), non_neg_integer()}
   defp decode_pair!(%{output: output}) do
-    assert {:ok, [first, second]} = ABI.decode_types("(uint256,uint256)", output)
+    assert {:ok, [first, second]} = Onchain.ABI.decode_types("(uint256,uint256)", output)
     {first, second}
   end
 
   @spec decode_bool!(EVM.tx_result()) :: boolean()
   defp decode_bool!(%{output: output}) do
-    assert {:ok, [value]} = ABI.decode_types("(bool)", output)
+    assert {:ok, [value]} = Onchain.ABI.decode_types("(bool)", output)
     value
   end
 
   @spec decode_status!(EVM.tx_result()) :: {boolean(), boolean()}
   defp decode_status!(%{output: output}) do
-    assert {:ok, [using_as_collateral, borrowing]} = ABI.decode_types("(bool,bool)", output)
+    assert {:ok, [using_as_collateral, borrowing]} = Onchain.ABI.decode_types("(bool,bool)", output)
     {using_as_collateral, borrowing}
   end
 

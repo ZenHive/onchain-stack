@@ -1,6 +1,6 @@
 # MIX_ENV=test mix run --no-start bench/capture_abi.exs
 # Run only against the handwritten implementation, before replacing it.
-defmodule ABI.Bench.Capture do
+defmodule Onchain.ABI.Bench.Capture do
   @moduledoc false
 
   @spec loop(map(), MapSet.t()) :: term()
@@ -27,9 +27,9 @@ defmodule ABI.Bench.Capture do
   end
 end
 
-modules = [ABI, ABI.TypeEncoder, ABI.TypeDecoder, ABI.FunctionSelector, ABI.Event, ABI.Parser]
+modules = [Onchain.ABI, Onchain.ABI.TypeEncoder, Onchain.ABI.TypeDecoder, Onchain.ABI.FunctionSelector, Onchain.ABI.Event, Onchain.ABI.Parser]
 Enum.each(modules, &Code.ensure_loaded!/1)
-tracer = spawn(fn -> ABI.Bench.Capture.loop(%{}, MapSet.new()) end)
+tracer = spawn(fn -> Onchain.ABI.Bench.Capture.loop(%{}, MapSet.new()) end)
 
 Enum.each(modules, fn mod ->
   for {fun, arity} <- mod.__info__(:functions),

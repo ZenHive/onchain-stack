@@ -4,6 +4,12 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## Unreleased — v0.5.0
+
+### Changed
+
+- Requires onchain `~> 0.16`, where `ABI.*` and `Cartouche.*` are renamed to `Onchain.*` (onchain's CHANGELOG has the full module map). Calls into the core now use the new names; this package's own public API is unchanged.
+
 ## v0.4.0 — descripex 1.0 floor + monorepo (2026-08-27)
 
 No public API or runtime behaviour changed.

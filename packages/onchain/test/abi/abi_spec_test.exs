@@ -1,4 +1,4 @@
-defmodule ABI.SpecTest do
+defmodule Onchain.ABI.SpecTest do
   @moduledoc """
   Spec-anchored assertions: each one pins a byte pattern that the Solidity ABI
   specification states outright, so the run fails when hieroglyph drifts from
@@ -10,8 +10,8 @@ defmodule ABI.SpecTest do
   `docs/abi-verification-ledger.md`.
 
   One assertion is deliberately self-referential and is called out here so the
-  claim above stays exact: the selector test compares `ABI.method_id/1` against
-  a slice of `ABI.Math.kec/1`, which is this library's own digest and is itself
+  claim above stays exact: the selector test compares `Onchain.ABI.method_id/1` against
+  a slice of `Onchain.ABI.Math.kec/1`, which is this library's own digest and is itself
   a mutation site. That comparison pins the slice *position* (the leading four
   bytes, not some other window); what pins the digest itself is the external
   literal `0xa9059cbb` on the following line, and that literal is what kills
@@ -19,7 +19,7 @@ defmodule ABI.SpecTest do
 
   These close the three round-trip blind spots named in roadmap task 44:
 
-    * the *value* of a dynamic head/tail offset, which `ABI.TypeDecoder` never
+    * the *value* of a dynamic head/tail offset, which `Onchain.ABI.TypeDecoder` never
       reads back (it consumes the tail sequentially), so a wrong offset is
       invisible to `decode(encode(x))`;
     * the length word that prefixes `bytes`, `string` and dynamic arrays;
@@ -28,11 +28,11 @@ defmodule ABI.SpecTest do
   """
 
   use ExUnit.Case, async: true
-  use ABI.Hex
+  use Onchain.ABI.Hex
 
-  alias ABI.EthersCorpus, as: Corpus
-  alias ABI.FunctionSelector
-  alias ABI.Math
+  alias Onchain.ABI.EthersCorpus, as: Corpus
+  alias Onchain.ABI.FunctionSelector
+  alias Onchain.ABI.Math
 
   # https://docs.soliditylang.org/en/latest/abi-spec.html
   #   #formal-specification-of-the-encoding
@@ -197,7 +197,7 @@ defmodule ABI.SpecTest do
       selector =
         FunctionSelector.decode("E((uint256,bool) indexed p, uint256 q)")
 
-      assert [topic0, topic1] = ABI.encode_event_topics(selector, [{42, true}])
+      assert [topic0, topic1] = Onchain.ABI.encode_event_topics(selector, [{42, true}])
 
       assert Corpus.to_hex(topic0) == "0x702837e4d0bfe8e8da17be1b373139053d5199535e67afc3ea1eea255a6e332e"
       assert Corpus.to_hex(topic1) == "0xd9ae7388d2083c2e208c0dfdf9b10bc72bbfb00d63d88b3c7fd7c315bfc1cf40"
@@ -221,21 +221,21 @@ defmodule ABI.SpecTest do
 
       who = ~h[0x1eb324b9959c03d9b256267c353894aaafc0929c]
 
-      assert [topic] = ABI.encode_event_topics(selector, [who])
+      assert [topic] = Onchain.ABI.encode_event_topics(selector, [who])
       assert topic == ~h[0x0000000000000000000000001eb324b9959c03d9b256267c353894aaafc0929c]
 
-      # A hand-written single-word payload, not `ABI.encode/2` output: this file
+      # A hand-written single-word payload, not `Onchain.ABI.encode/2` output: this file
       # must not take its expected bytes from the library under test.
       data = ~h[0x000000000000000000000000000000000000000000000000000000000000002a]
 
-      assert ABI.decode_event(selector, data, [topic]) ==
+      assert Onchain.ABI.decode_event(selector, data, [topic]) ==
                {:ok, "Anon", %{"who" => who, "amount" => 42}}
     end
 
     test "an indexed static array is hashed too, despite being ABI-static" do
       selector = FunctionSelector.decode("E(uint256[2] indexed p, uint256 q)")
 
-      assert [topic0, topic1] = ABI.encode_event_topics(selector, [[7, 8]])
+      assert [topic0, topic1] = Onchain.ABI.encode_event_topics(selector, [[7, 8]])
 
       assert Corpus.to_hex(topic0) == "0x83109997aaecafb126f0131ce59ffe4636eaa4122c42b22b985401932bbd493a"
       assert Corpus.to_hex(topic1) == "0x24cd397636bedc6cf9b490d0edd57c769c19b367fb7d5c2344ae1ddc7d21c144"
@@ -251,7 +251,7 @@ defmodule ABI.SpecTest do
       digest = Math.kec("transfer(address,uint256)")
 
       assert <<expected::binary-size(4), _rest::binary>> = digest
-      assert ABI.method_id("transfer(address,uint256)") == expected
+      assert Onchain.ABI.method_id("transfer(address,uint256)") == expected
       assert Corpus.to_hex(expected) == "0xa9059cbb"
     end
   end
@@ -259,7 +259,7 @@ defmodule ABI.SpecTest do
   @spec words(String.t(), [tuple()]) :: [String.t()]
   defp words(signature, args) do
     signature
-    |> ABI.encode(args)
+    |> Onchain.ABI.encode(args)
     |> Base.encode16(case: :lower)
     |> String.to_charlist()
     |> Enum.chunk_every(64)

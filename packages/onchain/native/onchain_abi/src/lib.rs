@@ -904,4 +904,4 @@ fn abi_small<'a>(env: Env<'a>, operation: Term<'a>, types: Term<'a>, value: Term
     }
 }
 
-rustler::init!("Elixir.ABI.Native");
+rustler::init!("Elixir.Onchain.ABI.Native");

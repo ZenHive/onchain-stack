@@ -1,8 +1,9 @@
-defmodule Cartouche.Test.SleuthHandler do
+defmodule Onchain.Test.SleuthHandler do
   @moduledoc false
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Contract.BlockNumber
+  alias Onchain.ABI.FunctionSelector
+  alias Onchain.Contract.BlockNumber
 
   @block_number_query BlockNumber.bytecode()
 
@@ -56,19 +57,19 @@ defmodule Cartouche.Test.SleuthHandler do
          }}
 
       true ->
-        [query, calldata] = ABI.decode("query(bytes,bytes)", binary_part(data, 4, byte_size(data) - 4))
+        [query, calldata] = Onchain.ABI.decode("query(bytes,bytes)", binary_part(data, 4, byte_size(data) - 4))
 
         Base.encode16(handle_call(query, calldata))
     end
   end
 
-  @spec encode_sleuth(ABI.FunctionSelector.t(), tuple()) :: binary()
+  @spec encode_sleuth(FunctionSelector.t(), tuple()) :: binary()
   defp encode_sleuth(query_selector, values) do
-    return_selector = %ABI.FunctionSelector{
+    return_selector = %FunctionSelector{
       types: [%{type: {:tuple, query_selector.returns}}]
     }
 
-    query_resp = ABI.TypeEncoder.encode([values], return_selector)
-    ABI.encode("(bytes)", [{query_resp}])
+    query_resp = Onchain.ABI.TypeEncoder.encode([values], return_selector)
+    Onchain.ABI.encode("(bytes)", [{query_resp}])
   end
 end

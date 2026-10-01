@@ -1,6 +1,7 @@
 defmodule Onchain.CorePrecompiledTest do
   use ExUnit.Case, async: false
 
+  alias Onchain.ABI.Native
   alias Onchain.Precompiled
 
   setup do
@@ -11,8 +12,9 @@ defmodule Onchain.CorePrecompiledTest do
     :ok
   end
 
+  # spec-tags: DIST-4
   test "core source-builds with committed checksums in the monorepo" do
-    assert File.exists?("checksum-Elixir.ABI.Native.exs")
+    assert File.exists?("checksum-Elixir.Onchain.ABI.Native.exs")
     assert Precompiled.opts("onchain_abi")[:force_build]
     assert {:rustler, "~> 0.38", options} = List.keyfind(Onchain.MixProject.project()[:deps], :rustler, 0)
     refute options[:optional]
@@ -39,6 +41,7 @@ defmodule Onchain.CorePrecompiledTest do
     assert output =~ "{:rustler, \"~> 0.38\", [optional: true, runtime: false]}"
   end
 
+  # spec-tags: DIST-7
   test "build overrides are scoped to their crates" do
     System.put_env("ONCHAIN_PUBLISH", "1")
     System.put_env("ONCHAIN_EVM_BUILD", "1")
@@ -79,6 +82,7 @@ defmodule Onchain.CorePrecompiledTest do
     end
   end
 
+  # spec-tags: DIST-6
   test "unsupported hosts reject core even with an override and keep EVM source builds" do
     for target <- [nil, "x86_64-pc-windows-msvc", "aarch64-unknown-linux-musl"],
         source <- [:hex, :checkout, :monorepo],
@@ -91,16 +95,17 @@ defmodule Onchain.CorePrecompiledTest do
     end
   end
 
+  # spec-tags: DIST-2
   @tag :tmp_dir
   test "missing and mismatched ABI checksums fail integrity checks", %{tmp_dir: dir} do
     path = Path.join(dir, Precompiled.artifact_filename("onchain_abi", "0.15.0", "aarch64-apple-darwin"))
     File.write!(path, "tampered")
 
-    assert {:error, missing} = RustlerPrecompiled.check_integrity_from_map(%{}, path, ABI.Native)
+    assert {:error, missing} = RustlerPrecompiled.check_integrity_from_map(%{}, path, Native)
     assert missing =~ "does not exist in the checksum file"
 
     checksums = %{Path.basename(path) => "sha256:#{String.duplicate("0", 64)}"}
-    assert {:error, mismatch} = RustlerPrecompiled.check_integrity_from_map(checksums, path, ABI.Native)
+    assert {:error, mismatch} = RustlerPrecompiled.check_integrity_from_map(checksums, path, Native)
     assert mismatch =~ "checksum of files does not match"
   end
 

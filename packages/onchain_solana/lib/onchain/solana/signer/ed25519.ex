@@ -3,7 +3,7 @@ defmodule Onchain.Solana.Signer.Ed25519 do
   Ed25519 signing backend using a local private key seed.
 
   Uses OTP `:crypto` directly (available since OTP 24). This is the Solana
-  equivalent of `Cartouche.Signer.Secp256k1` for Ethereum.
+  equivalent of `Onchain.Signer.Secp256k1` for Ethereum.
 
   ## Examples
 
@@ -12,7 +12,7 @@ defmodule Onchain.Solana.Signer.Ed25519 do
       iex> byte_size(sig)
       64
   """
-  @behaviour Cartouche.Signer.Backend
+  @behaviour Onchain.Signer.Backend
 
   @impl true
   @spec algorithm(<<_::256>>) :: :ed25519

@@ -1,18 +1,18 @@
-defmodule Cartouche.RPCStateReadsLiveTest do
+defmodule Onchain.RPCStateReadsLiveTest do
   use ExUnit.Case, async: false
 
-  import Cartouche.Test.Live
+  import Onchain.Test.Live
 
-  alias Cartouche.RPC
-  alias Cartouche.RPC.Proof
-  alias Cartouche.RPC.Proof.StorageProof
+  alias Onchain.RPC
+  alias Onchain.RPC.Proof
+  alias Onchain.RPC.Proof.StorageProof
 
   @moduletag :integration
   @address "0x6b175474e89094c44da98b954eedeac495271d0f"
   @key "0x" <> String.duplicate("0", 63) <> "1"
   @historical_value 0xC989643A2D611A5D119644B
-  @code_hash Cartouche.Hex.decode_word!("0x4e36f96ee1667a663dfaac57c4d185a0e369a3a217e0079d49620f34f85d1ac7")
-  @storage_hash Cartouche.Hex.decode_word!("0x0733ee23add2327c86b8510fd171124e97aaabce36d8d91eedbc9c61bb801880")
+  @code_hash Onchain.Hex.decode_word!("0x4e36f96ee1667a663dfaac57c4d185a0e369a3a217e0079d49620f34f85d1ac7")
+  @storage_hash Onchain.Hex.decode_word!("0x0733ee23add2327c86b8510fd171124e97aaabce36d8d91eedbc9c61bb801880")
 
   setup do
     # Unlike the seam's legacy localhost default, this suite requires explicit configuration.
@@ -92,7 +92,7 @@ defmodule Cartouche.RPCStateReadsLiveTest do
             storage_proof: [%StorageProof{key: 1, value: value, proof: nodes}]
           } = proof}
        ) do
-    proof.address == Cartouche.Hex.decode_address!(@address) and
+    proof.address == Onchain.Hex.decode_address!(@address) and
       byte_size(proof.storage_hash) == 32 and value > 0 and nodes != [] and proof.account_proof != []
   end
 

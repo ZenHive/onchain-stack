@@ -140,7 +140,7 @@ defmodule Onchain.Tempo.Verification.PropertyTest do
       assert {:ok, sender} = Transaction.sender(tx)
 
       {:ok, expected} =
-        Cartouche.Signer.Secp256k1.get_address(Base.decode16!(String.trim_leading(@priv, "0x"), case: :lower))
+        Onchain.Signer.Secp256k1.get_address(Base.decode16!(String.trim_leading(@priv, "0x"), case: :lower))
 
       assert sender == expected
       assert tx.chain_id == 42_431

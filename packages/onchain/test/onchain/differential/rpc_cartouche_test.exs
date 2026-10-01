@@ -1,8 +1,8 @@
 defmodule Onchain.RPC.Differential.CartoucheTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.Filter.Log
-  alias Cartouche.RPC
+  alias Onchain.Filter.Log
+  alias Onchain.RPC
 
   # Task 65 requested signet as the first oracle. The project has since migrated
   # from signet to cartouche (see CHANGELOG Task 67), so this uses the current
@@ -89,7 +89,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   end
 
   test "eth_call map params and block id match the oracle", %{rpc_url: rpc_url} do
-    {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
+    {:ok, calldata} = Onchain.ABI.encode_hex_call("totalSupply()", [])
     opts = onchain_opts(rpc_url, block: @test_block)
 
     assert {:ok, actual} = RPC.eth_call(@weth_address, calldata, opts)
@@ -177,7 +177,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
     assert actual == expected
   end
 
-  # Task 2129: this read returns `%Cartouche.Transaction.Info{}`. Full block
+  # Task 2129: this read returns `%Onchain.Transaction.Info{}`. Full block
   # transactions still use the sparse map from `expected_transaction/1`.
   test "eth_getTransactionByHash decodes to the same envelope as the oracle JSON", %{
     rpc_url: rpc_url,
@@ -187,7 +187,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
              RPC.eth_get_transaction_by_hash(tx_hash, ethereum_node: rpc_url, timeout: @rpc_timeout_ms)
 
     raw = reference!("eth_getTransactionByHash", [tx_hash], rpc_url)
-    assert {:ok, ^actual} = Cartouche.Transaction.Info.decode(raw)
+    assert {:ok, ^actual} = Onchain.Transaction.Info.decode(raw)
   end
 
   test "eth_getTransactionReceipt sparse fields match the oracle", %{rpc_url: rpc_url, tx_hash: tx_hash} do
@@ -214,13 +214,13 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
       "eth_feeHistory"
       |> reference!(
         [
-          Cartouche.Hex.from_integer(@fee_history_block_count),
+          Onchain.Hex.from_integer(@fee_history_block_count),
           @test_block_hex,
           @fee_history_reward_percentiles
         ],
         rpc_url
       )
-      |> Cartouche.FeeHistory.deserialize()
+      |> Onchain.FeeHistory.deserialize()
 
     assert actual == expected
   end
@@ -321,7 +321,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   defp expected_block(nil), do: nil
 
   defp expected_block(raw) do
-    %Cartouche.Block{
+    %Onchain.Block{
       number: hex_to_integer(raw["number"]),
       hash: decode_bytes(raw["hash"]),
       parent_hash: decode_bytes(raw["parentHash"]),
@@ -359,7 +359,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
 
   defp expected_withdrawals(withdrawals) when is_list(withdrawals) do
     Enum.map(withdrawals, fn withdrawal ->
-      %Cartouche.Block.Withdrawal{
+      %Onchain.Block.Withdrawal{
         index: hex_to_integer(withdrawal["index"]),
         validator_index: hex_to_integer(withdrawal["validatorIndex"]),
         address: decode_bytes(withdrawal["address"]),
@@ -393,7 +393,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   defp expected_receipt(nil), do: nil
 
   defp expected_receipt(receipt) do
-    %Cartouche.Receipt{
+    %Onchain.Receipt{
       transaction_hash: decode_bytes(receipt["transactionHash"]),
       transaction_index: hex_to_integer(receipt["transactionIndex"]),
       block_hash: decode_bytes(receipt["blockHash"]),
@@ -428,22 +428,22 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   end
 
   defp expected_proof(proof) do
-    %Cartouche.RPC.Proof{
-      address: Cartouche.Hex.decode!(proof["address"]),
+    %Onchain.RPC.Proof{
+      address: Onchain.Hex.decode!(proof["address"]),
       balance: hex_to_integer(proof["balance"]),
       nonce: hex_to_integer(proof["nonce"]),
-      code_hash: Cartouche.Hex.decode!(proof["codeHash"]),
-      storage_hash: Cartouche.Hex.decode!(proof["storageHash"]),
-      account_proof: Enum.map(proof["accountProof"], &Cartouche.Hex.decode!/1),
+      code_hash: Onchain.Hex.decode!(proof["codeHash"]),
+      storage_hash: Onchain.Hex.decode!(proof["storageHash"]),
+      account_proof: Enum.map(proof["accountProof"], &Onchain.Hex.decode!/1),
       storage_proof: Enum.map(proof["storageProof"], &expected_storage_proof_entry/1)
     }
   end
 
   defp expected_storage_proof_entry(entry) do
-    %Cartouche.RPC.Proof.StorageProof{
+    %Onchain.RPC.Proof.StorageProof{
       key: hex_to_integer(entry["key"]),
       value: hex_to_integer(entry["value"]),
-      proof: Enum.map(entry["proof"], &Cartouche.Hex.decode!/1)
+      proof: Enum.map(entry["proof"], &Onchain.Hex.decode!/1)
     }
   end
 end

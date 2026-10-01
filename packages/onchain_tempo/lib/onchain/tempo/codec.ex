@@ -1,7 +1,7 @@
 defmodule Onchain.Tempo.Codec do
   @moduledoc false
 
-  alias Cartouche.Signer.Secp256k1
+  alias Onchain.Signer.Secp256k1
   alias Onchain.Tempo.Native
 
   @doc false
@@ -30,7 +30,7 @@ defmodule Onchain.Tempo.Codec do
   def integer("0x" <> hex), do: String.to_integer(hex, 16)
 
   @doc false
-  @spec signature(Cartouche.Signature.t()) :: String.t()
+  @spec signature(Onchain.Signature.t()) :: String.t()
   def signature(sig), do: hex(<<sig.r::256, sig.s::256, sig.recid + 27>>)
 
   @doc false

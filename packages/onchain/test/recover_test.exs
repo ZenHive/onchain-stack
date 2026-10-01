@@ -1,9 +1,9 @@
-defmodule Cartouche.RecoverTest do
+defmodule Onchain.RecoverTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Recover
-  alias Cartouche.Signer.Secp256k1
+  alias Onchain.Recover
+  alias Onchain.Signer.Secp256k1
 
   doctest Recover
 
@@ -16,7 +16,7 @@ defmodule Cartouche.RecoverTest do
   describe "normalize_low_s/1" do
     test "flips a high-s signature to its low-s counterpart and clears recid" do
       high_s = @secp256k1_n - 1
-      sig = %Cartouche.Signature{r: 123, s: high_s, recid: 1}
+      sig = %Onchain.Signature{r: 123, s: high_s, recid: 1}
 
       normalized = Recover.normalize_low_s(sig)
 
@@ -27,12 +27,12 @@ defmodule Cartouche.RecoverTest do
     end
 
     test "leaves an already-low-s signature unchanged" do
-      sig = %Cartouche.Signature{r: 7, s: 9, recid: 0}
+      sig = %Onchain.Signature{r: 7, s: 9, recid: 0}
       assert Recover.normalize_low_s(sig) == sig
     end
 
     test "is idempotent" do
-      sig = %Cartouche.Signature{r: 7, s: @secp256k1_n - 5, recid: 1}
+      sig = %Onchain.Signature{r: 7, s: @secp256k1_n - 5, recid: 1}
       once = Recover.normalize_low_s(sig)
       assert Recover.normalize_low_s(once) == once
     end
@@ -42,7 +42,7 @@ defmodule Cartouche.RecoverTest do
     setup do
       # Sign over a real keccak digest so the digest-native and message-based
       # paths can be cross-checked.
-      digest = Cartouche.Hash.keccak("test")
+      digest = Onchain.Hash.keccak("test")
       {:ok, sig} = Secp256k1.sign_payload(digest, @priv_key)
       {:ok, recid} = Recover.find_recid_from_digest(digest, sig, @address)
       %{digest: digest, sig: %{sig | recid: recid}, recid: recid}
@@ -92,7 +92,7 @@ defmodule Cartouche.RecoverTest do
   describe "complement-s recovery" do
     test "digest and message recovery preserve the signer for both signature forms" do
       message = "high-s recovery regression"
-      digest = Cartouche.Hash.keccak(message)
+      digest = Onchain.Hash.keccak(message)
       {:ok, public_key} = Secp256k1.public_key(@priv_key)
 
       for signature <- equivalent_signatures(message) do
@@ -111,12 +111,12 @@ defmodule Cartouche.RecoverTest do
     end
 
     test "legacy transaction recovery accepts the complement-s envelope" do
-      alias Cartouche.Transaction.V1
+      alias Onchain.Transaction.V1
 
       transaction = V1.new(1, {1, :gwei}, 21_000, @address, {1, :wei}, <<>>, 1)
       encoded = V1.encode(transaction)
       backend = {Secp256k1, :sign, [@priv_key]}
-      assert {:ok, <<r::256, s::256, v>>} = Cartouche.Signer.sign_direct(encoded, @address, backend, 1)
+      assert {:ok, <<r::256, s::256, v>>} = Onchain.Signer.sign_direct(encoded, @address, backend, 1)
       assert s <= div(@secp256k1_n, 2)
       # Mainnet EIP-155 v is 37/38; flip parity without changing the chain.
       complement_v = 37 + Bitwise.bxor(v - 37, 1)
@@ -189,13 +189,13 @@ defmodule Cartouche.RecoverTest do
   end
 end
 
-defmodule Cartouche.RecoverHighRecidTest do
+defmodule Onchain.RecoverHighRecidTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Recover
+  alias Onchain.Recover
 
   test "invalid scalars cannot recover or match an address" do
-    signature = %Cartouche.Signature{r: 0, s: 1, recid: 0}
+    signature = %Onchain.Signature{r: 0, s: 1, recid: 0}
 
     assert_raise ArgumentError, ~r/Invalid secp256k1 signature/, fn ->
       Recover.recover_eth_from_digest(<<1::256>>, signature)
@@ -208,7 +208,7 @@ defmodule Cartouche.RecoverHighRecidTest do
   test "find_recid_from_digest rejects a real overflow-only recovery" do
     digest = <<1::256>>
     # r=2 permits x=n+2, exercising k256's real recovery-ID overflow branch.
-    signature = %Cartouche.Signature{r: 2, s: 1, recid: 2}
+    signature = %Onchain.Signature{r: 2, s: 1, recid: 2}
     address = Recover.recover_eth_from_digest(digest, signature)
 
     assert {:error, "too high recovery bit 2"} =

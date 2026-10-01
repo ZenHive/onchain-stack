@@ -83,14 +83,14 @@ defmodule Onchain.Aave.Math.V4RevmTest do
         ]) :: non_neg_integer()
   defp call_liquidation_bonus(ctx, args) do
     calldata =
-      ABI.encode_hex_call!(
+      Onchain.ABI.encode_hex_call!(
         "calculateLiquidationBonus(uint256,uint256,uint256,uint256)",
         args
       )
 
     case EVM.simulate_call(@liquidation_logic_address, calldata, ctx.opts) do
       {:ok, hex} ->
-        [value] = ABI.decode_response!("(uint256)", hex)
+        [value] = Onchain.ABI.decode_response!("(uint256)", hex)
         value
 
       {:error, reason} ->

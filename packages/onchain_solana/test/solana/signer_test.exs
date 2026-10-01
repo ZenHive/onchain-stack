@@ -233,7 +233,7 @@ defmodule Onchain.Solana.SignerTest do
     @priv_key Base.decode16!("800509FA3E80882AD0BE77C27505BDC91380F800D51ED80897D22F9FCC75F4BF")
 
     test "rejects a secp256k1 backend under the Solana signer" do
-      {:ok, pid} = Signer.start_link(mfa: {Cartouche.Signer.Secp256k1, @priv_key}, name: nil)
+      {:ok, pid} = Signer.start_link(mfa: {Onchain.Signer.Secp256k1, @priv_key}, name: nil)
 
       assert {:error, {:algorithm_mismatch, :ed25519, :secp256k1}} = Signer.sign("test", pid)
     end

@@ -20,10 +20,10 @@ defmodule Onchain.Aave.DebtToken do
   |--------|-------------|
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
   | `Onchain.Aave.Contracts.address/2` | `{:error, {:unsupported_network, network}}` |
-  | `ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
-  | `Cartouche.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
-  | `ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
-  | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
+  | `Onchain.ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
+  | `Onchain.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
+  | `Onchain.ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
+  | `Onchain.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
   | Interest rate mode validation | `{:error, {:invalid_interest_rate_mode, value}}`, `{:error, {:unsupported_interest_rate_mode, :stable}}` |
 
   ## Functions
@@ -37,13 +37,14 @@ defmodule Onchain.Aave.DebtToken do
 
   use Descripex, namespace: "/aave/debt_token"
 
-  alias Cartouche.Hex
-  alias Cartouche.Signer
   alias Onchain.Aave.Pool
   alias Onchain.Address
-  alias Onchain.Contract
 
   # --- debt_token_address ---
+
+  alias Onchain.Contract
+  alias Onchain.Hex
+  alias Onchain.Signer
 
   api(:debt_token_address, "Resolve the variable debt token address for an asset.",
     params: [
@@ -66,6 +67,7 @@ defmodule Onchain.Aave.DebtToken do
 
   @spec debt_token_address(String.t() | binary(), :variable, keyword()) ::
           {:ok, String.t()} | {:error, term()}
+  # --- approve_delegation ---
   def debt_token_address(asset, rate_mode, opts \\ []) do
     case rate_mode do
       :variable -> Pool.get_reserve_variable_debt_token(asset, opts)
@@ -73,8 +75,6 @@ defmodule Onchain.Aave.DebtToken do
       other -> {:error, {:invalid_interest_rate_mode, other}}
     end
   end
-
-  # --- approve_delegation ---
 
   api(:approve_delegation, "Approve or revoke credit delegation on a debt token.",
     params: [
@@ -97,16 +97,15 @@ defmodule Onchain.Aave.DebtToken do
 
   @spec approve_delegation(String.t() | binary(), String.t() | binary(), non_neg_integer(), keyword()) ::
           {:ok, String.t()} | {:error, term()}
+  # --- borrow_allowance ---
   def approve_delegation(debt_token, delegatee, amount, opts) do
     with {:ok, _debt_token_bin} <- Address.validate(debt_token),
          {:ok, delegatee_bin} <- Address.validate(delegatee),
          {:ok, calldata_hex} <-
-           ABI.encode_hex_call("approveDelegation(address,uint256)", [delegatee_bin, amount]) do
+           Onchain.ABI.encode_hex_call("approveDelegation(address,uint256)", [delegatee_bin, amount]) do
       Signer.send_transaction(debt_token, Hex.decode!(calldata_hex), opts)
     end
   end
-
-  # --- borrow_allowance ---
 
   api(:borrow_allowance, "Read the delegated borrow allowance between two addresses.",
     params: [

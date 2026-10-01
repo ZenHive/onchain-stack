@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.IntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   @moduletag :integration
 
@@ -39,7 +39,7 @@ defmodule Onchain.RPC.IntegrationTest do
 
   describe "eth_call/3" do
     test "WETH totalSupply returns non-empty hex" do
-      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
+      {:ok, calldata} = Onchain.ABI.encode_hex_call("totalSupply()", [])
       assert {:ok, hex_result} = RPC.eth_call(@weth_address, calldata, rpc_opts())
       assert is_binary(hex_result)
       assert String.starts_with?(hex_result, "0x")
@@ -48,7 +48,7 @@ defmodule Onchain.RPC.IntegrationTest do
     end
 
     test "call to EOA returns 0x (not an error)" do
-      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
+      {:ok, calldata} = Onchain.ABI.encode_hex_call("totalSupply()", [])
       assert {:ok, "0x"} = RPC.eth_call(@eoa_address, calldata, rpc_opts())
     end
   end
@@ -56,8 +56,8 @@ defmodule Onchain.RPC.IntegrationTest do
   describe "eth_estimate_gas/2" do
     test "sizes a WETH transfer within a sane range" do
       {:ok, calldata} =
-        ABI.encode_hex_call("transfer(address,uint256)", [
-          Cartouche.Hex.decode!(@eoa_address),
+        Onchain.ABI.encode_hex_call("transfer(address,uint256)", [
+          Onchain.Hex.decode!(@eoa_address),
           1
         ])
 
@@ -133,7 +133,7 @@ defmodule Onchain.RPC.IntegrationTest do
 
   describe "eth_call!/3" do
     test "returns hex result directly" do
-      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
+      {:ok, calldata} = Onchain.ABI.encode_hex_call("totalSupply()", [])
       hex = RPC.eth_call!(@weth_address, calldata, rpc_opts())
       assert is_binary(hex)
       assert String.starts_with?(hex, "0x")
@@ -166,11 +166,11 @@ defmodule Onchain.RPC.IntegrationTest do
   end
 
   describe "eth_get_logs/2" do
-    test "returns Cartouche.Filter.Log structs for a one-block filter" do
+    test "returns Onchain.Filter.Log structs for a one-block filter" do
       assert {:ok, logs} =
                RPC.eth_get_logs(%{from_block: 20_000_000, to_block: 20_000_000}, rpc_opts())
 
-      assert [%Cartouche.Filter.Log{} | _] = logs
+      assert [%Onchain.Filter.Log{} | _] = logs
     end
   end
 
@@ -216,11 +216,11 @@ defmodule Onchain.RPC.IntegrationTest do
     end
   end
 
-  describe "pipeline: ABI.encode_hex_call → RPC.eth_call → ABI.decode_response" do
+  describe "pipeline: Onchain.ABI.encode_hex_call → RPC.eth_call → Onchain.ABI.decode_response" do
     test "WETH totalSupply roundtrip returns decoded integer > 0" do
-      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
+      {:ok, calldata} = Onchain.ABI.encode_hex_call("totalSupply()", [])
       {:ok, hex_result} = RPC.eth_call(@weth_address, calldata, rpc_opts())
-      {:ok, [total_supply]} = ABI.decode_response("(uint256)", hex_result)
+      {:ok, [total_supply]} = Onchain.ABI.decode_response("(uint256)", hex_result)
 
       assert is_integer(total_supply)
       assert total_supply > 0
@@ -238,7 +238,7 @@ defmodule Onchain.RPC.IntegrationTest do
                  rpc_url: Onchain.RPCCase.rpc_url!()
                )
 
-      assert %Cartouche.FeeHistory{} = history
+      assert %Onchain.FeeHistory{} = history
       # base_fee_per_gas has block_count + 1 entries (next-block fee at index 0)
       assert length(history.base_fee_per_gas) == block_count + 1
       assert Enum.all?(history.base_fee_per_gas, &(is_integer(&1) and &1 > 0))
@@ -272,7 +272,7 @@ defmodule Onchain.RPC.IntegrationTest do
 
   describe "fee_history!/2" do
     test "returns struct directly on success" do
-      assert %Cartouche.FeeHistory{} = RPC.fee_history!(3, rpc_opts())
+      assert %Onchain.FeeHistory{} = RPC.fee_history!(3, rpc_opts())
     end
   end
 
@@ -289,7 +289,7 @@ defmodule Onchain.RPC.IntegrationTest do
       assert proof.storage_proof == []
 
       # Addresses decode to raw bytes.
-      assert proof.address == Cartouche.Hex.decode!(@eoa_address)
+      assert proof.address == Onchain.Hex.decode!(@eoa_address)
     end
 
     test "returns storage_proof entry for a known proxy storage slot" do
@@ -298,7 +298,7 @@ defmodule Onchain.RPC.IntegrationTest do
 
       assert match?([_ | _], proof.account_proof)
       assert [%{key: key, value: value, proof: storage_proof_nodes}] = proof.storage_proof
-      assert key == Cartouche.Hex.decode_hex_number!(@eip1967_impl_slot)
+      assert key == Onchain.Hex.decode_hex_number!(@eip1967_impl_slot)
       assert is_integer(value)
       assert is_list(storage_proof_nodes)
 

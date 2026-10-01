@@ -3,7 +3,7 @@ defmodule Onchain.Solana.Signer do
   GenServer that wraps Ed25519 signing backends for Solana.
 
   Follows the same MFA (module, function, args) backend pattern as the
-  Ethereum `Cartouche.Signer`, but much simpler: no recovery bit brute-force,
+  Ethereum `Onchain.Signer`, but much simpler: no recovery bit brute-force,
   no chain ID encoding.
 
   Delegates to a backend module (e.g., `Onchain.Solana.Signer.Ed25519` for
@@ -27,7 +27,7 @@ defmodule Onchain.Solana.Signer do
   use Descripex, namespace: "/solana/signer"
   use GenServer
 
-  alias Cartouche.Signer.Backend
+  alias Onchain.Signer.Backend
   alias Onchain.Solana.Signer.Default
 
   require Logger
@@ -182,7 +182,7 @@ defmodule Onchain.Solana.Signer do
   # --- Backend dispatch (pure-payload contract) ---
   #
   # The runtime carries a backend as either the new `{backend_module, config}`
-  # pair (`Cartouche.Signer.Backend`) or, for back-compat, a legacy
+  # pair (`Onchain.Signer.Backend`) or, for back-compat, a legacy
   # `{module, function, args}` MFA. Ed25519 signs raw message bytes, so there is
   # no digest/recid/chain-id step.
 

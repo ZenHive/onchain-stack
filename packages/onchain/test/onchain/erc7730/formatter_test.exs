@@ -1,9 +1,9 @@
 defmodule Onchain.ERC7730.FormatterTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hex
   alias Onchain.ERC7730.Descriptor
   alias Onchain.ERC7730.Formatter
+  alias Onchain.Hex
 
   @recipient "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
   @recipient_bin Hex.decode!("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed")

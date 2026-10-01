@@ -1,9 +1,11 @@
 defmodule SleuthTest do
   use ExUnit.Case
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Contract.BlockNumber
-  alias Cartouche.Sleuth
+  alias Onchain.ABI.FunctionSelector
+  alias Onchain.ABI.TypeEncoder
+  alias Onchain.Contract.BlockNumber
+  alias Onchain.Sleuth
 
   # Req function plug (`fun(conn) -> conn`), running in the test process that
   # issues the `eth_call`. Returns whatever the current test stashed under
@@ -81,18 +83,18 @@ defmodule SleuthTest do
     test "name_keyword collapses nil/empty names to :__unnamed__ via to_named_pair" do
       # Exercises the `name_keyword(nil)` and `name_keyword("")` clauses
       # without minting any atom.
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         types: [%{type: {:uint, 256}}, %{type: {:uint, 256}}],
         returns: [%{name: nil, type: {:uint, 256}}, %{name: "", type: {:uint, 256}}]
       }
 
-      set_sleuth_result(ABI.TypeEncoder.encode([7, 8], selector))
+      set_sleuth_result(TypeEncoder.encode([7, 8], selector))
 
       assert {:ok, [__unnamed__: 7, __unnamed__: 8]} =
                Sleuth.query_v2(
                  BlockNumber.bytecode(),
                  BlockNumber.encode_query(),
-                 %ABI.FunctionSelector{returns: selector.returns},
+                 %FunctionSelector{returns: selector.returns},
                  req_options: [plug: &StaticEthCallClient.call/1],
                  named_returns: true
                )
@@ -101,7 +103,7 @@ defmodule SleuthTest do
 
   describe "Phase A — postprocess fallback branches (coverage)" do
     test "query/4 returns [] when selector returns are empty" do
-      selector = %ABI.FunctionSelector{returns: []}
+      selector = %FunctionSelector{returns: []}
       set_sleuth_result(<<>>)
 
       assert {:ok, []} ==
@@ -115,18 +117,18 @@ defmodule SleuthTest do
 
     test "query/4 collapses a single nil-named return to the scalar value" do
       # Exercises the `[{nil, result}] -> result` branch in be_obvious: false.
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         types: [%{type: {:uint, 256}}],
         returns: [%{name: nil, type: {:uint, 256}}]
       }
 
-      set_sleuth_result(ABI.TypeEncoder.encode([7], selector))
+      set_sleuth_result(TypeEncoder.encode([7], selector))
 
       assert {:ok, 7} ==
                Sleuth.query(
                  BlockNumber.bytecode(),
                  BlockNumber.encode_query(),
-                 %ABI.FunctionSelector{returns: selector.returns},
+                 %FunctionSelector{returns: selector.returns},
                  req_options: [plug: &StaticEthCallClient.call/1]
                )
     end
@@ -144,7 +146,7 @@ defmodule SleuthTest do
     test "preintern_decode_struct_atoms tolerates non-list selector.returns" do
       # selector.returns = nil -> preintern_decode_struct_atoms fall-through.
       # Decode then fails (not a list), surfaces structured error.
-      selector = %ABI.FunctionSelector{returns: nil}
+      selector = %FunctionSelector{returns: nil}
       set_sleuth_result(<<>>)
 
       assert {:error, "error decoding: " <> _} =
@@ -216,12 +218,12 @@ defmodule SleuthTest do
 
       refute existing_atom?(cold_field_atom_name)
 
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         types: [%{type: {:uint, 256}}],
         returns: [%{name: cold_field_name, type: {:uint, 256}}]
       }
 
-      set_sleuth_result(ABI.TypeEncoder.encode([7], selector))
+      set_sleuth_result(TypeEncoder.encode([7], selector))
 
       assert {:error, error} =
                Sleuth.query_v2(
@@ -244,12 +246,12 @@ defmodule SleuthTest do
       # Pre-intern the field atom so the symmetric happy-path works.
       _ = String.to_atom("hot_named_return_field")
 
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         types: [%{type: {:uint, 256}}],
         returns: [%{name: "hotNamedReturnField", type: {:uint, 256}}]
       }
 
-      set_sleuth_result(ABI.TypeEncoder.encode([42], selector))
+      set_sleuth_result(TypeEncoder.encode([42], selector))
 
       assert {:ok, [hot_named_return_field: 42]} =
                Sleuth.query_v2(
@@ -268,13 +270,13 @@ defmodule SleuthTest do
       address = "0x" <> String.duplicate("11", 20)
 
       assert {:ok, {^address, true, data}} =
-               Cartouche.Contract.Sleuth.Multicall.query_2(address, <<2, 3>>, <<4, 5>>)
+               Onchain.Contract.Sleuth.Multicall.query_2(address, <<2, 3>>, <<4, 5>>)
 
-      assert {:ok, ^data} = ABI.encode_hex_call("query(bytes,bytes)", [<<2, 3>>, <<4, 5>>])
+      assert {:ok, ^data} = Onchain.ABI.encode_hex_call("query(bytes,bytes)", [<<2, 3>>, <<4, 5>>])
       set_sleuth_result(<<7, 8>>)
 
       assert {:ok, [<<7, 8>>]} =
-               Cartouche.Contract.Sleuth.query_2(address, <<2, 3>>, <<4, 5>>,
+               Onchain.Contract.Sleuth.query_2(address, <<2, 3>>, <<4, 5>>,
                  req_options: [plug: &StaticEthCallClient.call/1]
                )
     end
@@ -587,7 +589,7 @@ defmodule SleuthTest do
   describe "decode failures and return postprocessing" do
     test "query_v2/4 rejects cold runtime return-field atoms before struct decode" do
       suffix = System.unique_integer([:positive])
-      module_name = Module.concat(Cartouche.Contract, "ColdLoadProbe#{suffix}")
+      module_name = Module.concat(Onchain.Contract, "ColdLoadProbe#{suffix}")
       field_name = "coldLoadReturnField#{suffix}"
       field_atom_name = Macro.underscore(field_name)
 
@@ -600,7 +602,7 @@ defmodule SleuthTest do
         def encode_query, do: <<>>
 
         def query_selector do
-          %ABI.FunctionSelector{
+          %Onchain.ABI.FunctionSelector{
             returns: [%{name: #{inspect(field_name)}, type: {:uint, 256}}]
           }
         end
@@ -611,12 +613,12 @@ defmodule SleuthTest do
       refute existing_atom?(field_atom_name)
 
       selector = module_name.query_selector()
-      set_sleuth_result(ABI.TypeEncoder.encode([7], %ABI.FunctionSelector{types: selector.returns}))
+      set_sleuth_result(TypeEncoder.encode([7], %FunctionSelector{types: selector.returns}))
 
       assert_raise ArgumentError, ~r/requires the snake_case field atom/, fn ->
-        ABI.decode(
-          %ABI.FunctionSelector{types: selector.returns},
-          ABI.TypeEncoder.encode([7], %ABI.FunctionSelector{types: selector.returns}),
+        Onchain.ABI.decode(
+          %FunctionSelector{types: selector.returns},
+          TypeEncoder.encode([7], %FunctionSelector{types: selector.returns}),
           decode_structs: true
         )
       end
@@ -638,11 +640,11 @@ defmodule SleuthTest do
     end
 
     test "query_v2/4 decodes runtime selectors when field atoms already exist" do
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         returns: [%{name: "items", type: {:uint, 256}}]
       }
 
-      set_sleuth_result(ABI.TypeEncoder.encode([7], %ABI.FunctionSelector{types: selector.returns}))
+      set_sleuth_result(TypeEncoder.encode([7], %FunctionSelector{types: selector.returns}))
 
       assert {:ok, [items: 7]} =
                Sleuth.query_v2(
@@ -659,7 +661,7 @@ defmodule SleuthTest do
       nested_field_name = "coldNestedReturnField#{suffix}"
       nested_atom_name = Macro.underscore(nested_field_name)
 
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         returns: [
           %{
             name: "items",
@@ -705,89 +707,89 @@ defmodule SleuthTest do
     test "postprocesses empty and unnamed returns" do
       assert {:ok, []} = query_static(<<>>, [])
 
-      selector = %ABI.FunctionSelector{types: [%{type: {:uint, 256}}], returns: [%{name: nil, type: {:uint, 256}}]}
-      assert {:ok, [7]} = query_static(ABI.TypeEncoder.encode([7], selector), selector.returns)
+      selector = %FunctionSelector{types: [%{type: {:uint, 256}}], returns: [%{name: nil, type: {:uint, 256}}]}
+      assert {:ok, [7]} = query_static(TypeEncoder.encode([7], selector), selector.returns)
     end
 
     test "postprocesses fixed bytes and scalar values when binary decoding is disabled" do
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         returns: [%{name: "fixed", type: {:bytes, 3}}, %{name: "n", type: {:uint, 256}}]
       }
 
       query_result =
-        ABI.TypeEncoder.encode([{<<1, 2, 3>>, 7}], %ABI.FunctionSelector{types: [%{type: {:tuple, selector.returns}}]})
+        TypeEncoder.encode([{<<1, 2, 3>>, 7}], %FunctionSelector{types: [%{type: {:tuple, selector.returns}}]})
 
       assert {:ok, [fixed: "0x010203", n: 7]} =
                query_static(query_result, selector.returns, decode_binaries: false, named_returns: true)
     end
 
     test "query/4 falls back to indexed names for multiple unnamed returns" do
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         types: [%{type: {:uint, 256}}, %{type: {:uint, 256}}],
         returns: [%{name: nil, type: {:uint, 256}}, %{name: nil, type: {:uint, 256}}]
       }
 
-      set_sleuth_result(ABI.TypeEncoder.encode([7, 8], selector))
+      set_sleuth_result(TypeEncoder.encode([7, 8], selector))
 
       assert {:ok, %{"var0" => 7, "var1" => 8}} =
                Sleuth.query(
                  BlockNumber.bytecode(),
                  BlockNumber.encode_query(),
-                 %ABI.FunctionSelector{returns: selector.returns},
+                 %FunctionSelector{returns: selector.returns},
                  req_options: [plug: &StaticEthCallClient.call/1]
                )
     end
 
     test "postprocesses fixed-size arrays" do
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         types: [%{type: {:array, {:uint, 256}, 2}}],
         returns: [%{name: "items", type: {:array, {:uint, 256}, 2}}]
       }
 
       assert {:ok, [items: [7, 8]]} =
-               query_static(ABI.TypeEncoder.encode([[7, 8]], selector), selector.returns, named_returns: true)
+               query_static(TypeEncoder.encode([[7, 8]], selector), selector.returns, named_returns: true)
     end
 
     test "query_v2/4 preserves empty string return names when named returns are disabled" do
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         types: [%{type: {:uint, 256}}],
         returns: [%{name: "", type: {:uint, 256}}]
       }
 
-      assert {:ok, [7]} = query_static(ABI.TypeEncoder.encode([7], selector), selector.returns)
+      assert {:ok, [7]} = query_static(TypeEncoder.encode([7], selector), selector.returns)
     end
 
     test "query/4 collapses an empty string single return to the scalar value" do
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         types: [%{type: {:uint, 256}}],
         returns: [%{name: "", type: {:uint, 256}}]
       }
 
-      set_sleuth_result(ABI.TypeEncoder.encode([7], selector))
+      set_sleuth_result(TypeEncoder.encode([7], selector))
 
       assert {:ok, 7} =
                Sleuth.query(
                  BlockNumber.bytecode(),
                  BlockNumber.encode_query(),
-                 %ABI.FunctionSelector{returns: selector.returns},
+                 %FunctionSelector{returns: selector.returns},
                  req_options: [plug: &StaticEthCallClient.call/1]
                )
     end
   end
-
-  # ---------------------------------------------------------------------------
-  # Phase B+C — preintern edge cases (INE-43 / Task 48)
-  # ---------------------------------------------------------------------------
-  #
-  # These tests cover atom-hardening paths introduced in Phase B+C that are not
-  # exercised by the Phase A/B blocks above: fixed-size arrays, non-list returns
-  # fall-throughs, empty/nil name pass-throughs, and error-message formatting.
 
   describe "Phase C — preintern_type_atoms fixed-size array cold-atom rejection" do
     test "query_v2/4 rejects cold atom inside a fixed-size array element type" do
       # {:array, type, size} -- the _size variant -- wraps a named tuple type.
       # preintern_type_atoms/1 must recurse into fixed-size arrays the same way
       # it recurses into dynamic arrays.
+      # ---------------------------------------------------------------------------
+      # Phase B+C — preintern edge cases (INE-43 / Task 48)
+      # ---------------------------------------------------------------------------
+      #
+      # These tests cover atom-hardening paths introduced in Phase B+C that are not
+      # exercised by the Phase A/B blocks above: fixed-size arrays, non-list returns
+      # fall-throughs, empty/nil name pass-throughs, and error-message formatting.
+
       suffix = System.unique_integer([:positive])
       cold_field = "coldFixedArrayField#{suffix}"
       cold_atom = Macro.underscore(cold_field)
@@ -795,7 +797,7 @@ defmodule SleuthTest do
       refute existing_atom?(cold_atom)
 
       # Nested: outer return is a fixed-size array of a named tuple
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         returns: [
           %{
             name: "items",
@@ -819,9 +821,9 @@ defmodule SleuthTest do
     test "query_v2/4 with non-list returns and named_returns: true surfaces a decode error, not crash" do
       # preintern_named_return_atoms/1 has a fall-through clause for non-list
       # returns (e.g. nil). When `named_returns: true`, the preintern step
-      # silently passes, then `try_decode/4` fails when ABI.decode gets a
+      # silently passes, then `try_decode/4` fails when Onchain.ABI.decode gets a
       # nil types list — the overall call must return {:error, ...}, not raise.
-      selector = %ABI.FunctionSelector{returns: nil}
+      selector = %FunctionSelector{returns: nil}
       set_sleuth_result(<<>>)
 
       result =
@@ -842,14 +844,14 @@ defmodule SleuthTest do
     test "query_v2/4 decode_structs: true tolerates a return field with empty string name" do
       # preintern_name_atom/1 has a guard `when name != ""` —
       # empty string passes through without atom lookup.
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         types: [%{type: {:uint, 256}}],
         returns: [%{name: "", type: {:uint, 256}}]
       }
 
       assert {:ok, [7]} =
                query_static(
-                 ABI.TypeEncoder.encode([7], %ABI.FunctionSelector{types: selector.returns}),
+                 TypeEncoder.encode([7], %FunctionSelector{types: selector.returns}),
                  selector.returns,
                  decode_structs: true
                )
@@ -857,14 +859,14 @@ defmodule SleuthTest do
 
     test "query_v2/4 decode_structs: true tolerates a return field with nil name" do
       # preintern_name_atom/1 has a catch-all clause for non-binary names.
-      selector = %ABI.FunctionSelector{
+      selector = %FunctionSelector{
         types: [%{type: {:uint, 256}}],
         returns: [%{name: nil, type: {:uint, 256}}]
       }
 
       assert {:ok, [7]} =
                query_static(
-                 ABI.TypeEncoder.encode([7], %ABI.FunctionSelector{types: selector.returns}),
+                 TypeEncoder.encode([7], %FunctionSelector{types: selector.returns}),
                  selector.returns,
                  decode_structs: true
                )
@@ -919,7 +921,7 @@ defmodule SleuthTest do
 
   defp query_static(query_result, returns, opts \\ []) do
     set_sleuth_result(query_result)
-    selector = %ABI.FunctionSelector{returns: returns}
+    selector = %FunctionSelector{returns: returns}
 
     Sleuth.query_v2(
       BlockNumber.bytecode(),
@@ -930,7 +932,7 @@ defmodule SleuthTest do
   end
 
   defp set_sleuth_result(query_result) do
-    Process.put(:sleuth_eth_call_result, Base.encode16(ABI.encode("(bytes)", [{query_result}])))
+    Process.put(:sleuth_eth_call_result, Base.encode16(Onchain.ABI.encode("(bytes)", [{query_result}])))
   end
 
   defp existing_atom?(name) do
@@ -947,7 +949,7 @@ defmodule SleuthTest do
     end
 
     test "returns {:encode_error, _} when ctor args don't match types" do
-      # uint8 overflow is a deterministic ABI.encode failure — no RPC hit.
+      # uint8 overflow is a deterministic Onchain.ABI.encode failure — no RPC hit.
       assert {:error, {:encode_error, _msg}} =
                Sleuth.deploy_query("0x6080", "(uint8)", {9999}, "(uint256)")
     end

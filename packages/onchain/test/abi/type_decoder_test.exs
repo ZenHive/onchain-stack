@@ -1,8 +1,8 @@
-defmodule ABI.TypeDecoderTest do
+defmodule Onchain.ABI.TypeDecoderTest do
   use ExUnit.Case, async: true
 
-  alias ABI.TypeDecoder
-  alias ABI.TypeEncoder
+  alias Onchain.ABI.TypeDecoder
+  alias Onchain.ABI.TypeEncoder
 
   doctest TypeDecoder
 

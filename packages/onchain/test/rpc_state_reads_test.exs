@@ -1,9 +1,9 @@
-defmodule Cartouche.RPCStateReadsTest do
+defmodule Onchain.RPCStateReadsTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.RPC
-  alias Cartouche.RPC.Proof
-  alias Cartouche.RPC.Proof.StorageProof
+  alias Onchain.RPC
+  alias Onchain.RPC.Proof
+  alias Onchain.RPC.Proof.StorageProof
 
   @address "0x6b175474e89094c44da98b954eedeac495271d0f"
   @key "0x" <> String.duplicate("0", 63) <> "1"
@@ -39,14 +39,14 @@ defmodule Cartouche.RPCStateReadsTest do
     key2 = "0x" <> String.duplicate("AB", 32)
     assert {:ok, %Proof{} = proof} = RPC.eth_get_proof(@address, [key2, @key], opts(result, block: "safe"))
     assert_request("eth_getProof", [@address, [String.downcase(key2), @key], "safe"])
-    assert proof.address == Cartouche.Hex.decode_address!(@address)
+    assert proof.address == Onchain.Hex.decode_address!(@address)
     assert proof.balance == 0
     assert proof.nonce == 1
-    assert proof.code_hash == Cartouche.Hex.decode_word!(result["codeHash"])
-    assert proof.storage_hash == Cartouche.Hex.decode_word!(result["storageHash"])
-    assert proof.account_proof == Enum.map(result["accountProof"], &Cartouche.Hex.decode_hex!/1)
+    assert proof.code_hash == Onchain.Hex.decode_word!(result["codeHash"])
+    assert proof.storage_hash == Onchain.Hex.decode_word!(result["storageHash"])
+    assert proof.account_proof == Enum.map(result["accountProof"], &Onchain.Hex.decode_hex!/1)
     assert [%StorageProof{key: 1, value: @value, proof: nodes}] = proof.storage_proof
-    assert nodes == Enum.map(hd(result["storageProof"])["proof"], &Cartouche.Hex.decode_hex!/1)
+    assert nodes == Enum.map(hd(result["storageProof"])["proof"], &Onchain.Hex.decode_hex!/1)
   end
 
   test "proof keys of 1..64 hex digits are left-padded to 32 bytes; others are rejected" do

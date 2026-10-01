@@ -92,9 +92,9 @@ defmodule Onchain.Aave.Pool.WriteIntegrationTest do
         |> Keyword.put(:value, amount)
 
       {:ok, tx_hash} =
-        Cartouche.Signer.send_transaction(
+        Onchain.Signer.send_transaction(
           @aave_sepolia_weth,
-          {:raw, Cartouche.Hex.decode!("0xd0e30db0")},
+          {:raw, Onchain.Hex.decode!("0xd0e30db0")},
           opts
         )
 

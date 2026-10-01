@@ -5,8 +5,8 @@ Application.load(:onchain)
 
 modules =
   Enum.filter(modules, fn module ->
-    String.starts_with?(Atom.to_string(module), "Elixir.Cartouche.Signer") and
-      String.contains?(to_string(module.module_info(:compile)[:source]), "/lib/cartouche/")
+    String.starts_with?(Atom.to_string(module), "Elixir.Onchain.Signer") and
+      String.contains?(to_string(module.module_info(:compile)[:source]), "/lib/onchain/")
   end)
 
 {:ok, _} = :cover.start()

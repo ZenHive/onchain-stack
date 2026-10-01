@@ -2,7 +2,7 @@ defmodule Onchain.Aerodrome.Bindings.LpSugar do
   @moduledoc """
   Positional bindings for the deployed Base LpSugar read surface.
 
-  Options are forwarded to `Cartouche.RPC.eth_call/3`. `:network` selects the
+  Options are forwarded to `Onchain.RPC.eth_call/3`. `:network` selects the
   contract registry (default `:base`); configure a Base endpoint through
   `:rpc_url` or the core RPC configuration. Pin `:block` across an enumeration
   for a consistent snapshot; historical blocks require an archive-capable
@@ -12,7 +12,6 @@ defmodule Onchain.Aerodrome.Bindings.LpSugar do
   Elixir names use snake_case (for example `for_swaps/3` calls `forSwaps`).
   """
 
-  alias Cartouche.RPC
   alias Onchain.Address
   alias Onchain.Aerodrome.Bindings.Abi
   alias Onchain.Aerodrome.Contracts
@@ -20,6 +19,7 @@ defmodule Onchain.Aerodrome.Bindings.LpSugar do
   alias Onchain.Aerodrome.Types.Position
   alias Onchain.Aerodrome.Types.Swap
   alias Onchain.Aerodrome.Types.Token
+  alias Onchain.RPC
 
   @doc "Returns the size of the unfiltered global pool index space."
   @spec count(keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
@@ -188,9 +188,9 @@ defmodule Onchain.Aerodrome.Bindings.LpSugar do
     with {:ok, address} <- Contracts.address(:lp_sugar, opts),
          {:ok, signature} <- Abi.signature("lp_sugar.json", function),
          {:ok, return_type} <- Abi.return_type("lp_sugar.json", function),
-         {:ok, calldata} <- ABI.encode_hex_call(signature, args),
+         {:ok, calldata} <- Onchain.ABI.encode_hex_call(signature, args),
          {:ok, response} <- RPC.eth_call(address, calldata, opts) do
-      ABI.decode_response(return_type, response)
+      Onchain.ABI.decode_response(return_type, response)
     end
   end
 

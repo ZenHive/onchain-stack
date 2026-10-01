@@ -279,7 +279,7 @@ defmodule Onchain.Aerodrome.Bindings.LpSugarTest do
   defp arguments(function, "0x" <> <<_selector::binary-size(8), payload::binary>>) do
     {:ok, signature} = Abi.signature("lp_sugar.json", function)
     types = String.replace_prefix(signature, function, "")
-    assert {:ok, args} = ABI.decode_response(types, "0x" <> payload)
+    assert {:ok, args} = Onchain.ABI.decode_response(types, "0x" <> payload)
     args
   end
 
@@ -314,7 +314,10 @@ defmodule Onchain.Aerodrome.Bindings.LpSugarTest do
 
   defp encode_return(function, values) do
     {:ok, types} = Abi.return_type("lp_sugar.json", function)
-    {:ok, "0x" <> <<_selector::binary-size(8), payload::binary>>} = ABI.encode_hex_call("fixture" <> types, values)
+
+    {:ok, "0x" <> <<_selector::binary-size(8), payload::binary>>} =
+      Onchain.ABI.encode_hex_call("fixture" <> types, values)
+
     "0x" <> payload
   end
 end

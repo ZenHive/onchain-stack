@@ -1,7 +1,7 @@
-defmodule CartoucheTest do
+defmodule Onchain.ConfigurationTest do
   use ExUnit.Case, async: false
 
-  doctest Cartouche
+  doctest Onchain.Configuration
 
   # `normalize_descripex_summary/1`'s catch-all is only reachable when
   # `Descripex.Describe.describe/1` yields an entry that is not a `%{module: _}`
@@ -15,7 +15,7 @@ defmodule CartoucheTest do
     end)
 
     try do
-      assert Cartouche.describe() == ["not a summary map", %{short_name: :orphan}]
+      assert Onchain.Configuration.describe() == ["not a summary map", %{short_name: :orphan}]
     after
       :meck.unload(Descripex.Describe)
     end

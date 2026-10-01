@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.BlockReadsTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   @block_number 16
   @block_hash "0x" <> String.duplicate("cd", 32)

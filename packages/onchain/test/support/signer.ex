@@ -1,15 +1,15 @@
-defmodule Cartouche.Test.Signer do
+defmodule Onchain.Test.Signer do
   @moduledoc false
 
-  use Cartouche.Hex
+  use Onchain.Hex
 
   @doc false
   @spec start_signer(atom() | nil) :: GenServer.server()
   def start_signer(name \\ nil) do
     priv_key = ~h[0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf]
 
-    [mfa: {Cartouche.Signer.Secp256k1, :sign, [priv_key]}, name: name]
-    |> Cartouche.Signer.start_link()
+    [mfa: {Onchain.Signer.Secp256k1, :sign, [priv_key]}, name: name]
+    |> Onchain.Signer.start_link()
     |> signer_server(name)
   end
 

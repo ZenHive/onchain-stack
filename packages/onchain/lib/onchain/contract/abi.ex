@@ -5,7 +5,7 @@ defmodule Onchain.Contract.ABI do
 
   @doc "Parses a standard JSON array of ABI entries."
   @spec parse_abi_json(String.t()) :: {:ok, parsed_abi()} | {:error, {:parse_error, String.t()}}
-  defdelegate parse_abi_json(json), to: ABI.Native
+  defdelegate parse_abi_json(json), to: Onchain.ABI.Native
 
   @doc "Parses ABI JSON, raising on malformed input."
   @spec parse_abi_json!(String.t()) :: parsed_abi()

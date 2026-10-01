@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.TransactionCountIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   @moduletag :integration
 

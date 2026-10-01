@@ -1,7 +1,7 @@
-defmodule Cartouche.DebugTraceAtomSafetyTest do
+defmodule Onchain.DebugTraceAtomSafetyTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.DebugTrace.StructLog
+  alias Onchain.DebugTrace.StructLog
 
   @base_struct_log %{
     "depth" => 1,

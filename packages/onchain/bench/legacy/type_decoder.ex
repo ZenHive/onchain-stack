@@ -1,6 +1,6 @@
-defmodule ABI.Bench.Legacy.TypeDecoder do
+defmodule Onchain.ABI.Bench.Legacy.TypeDecoder do
   @moduledoc """
-  `ABI.Bench.Legacy.TypeDecoder` is responsible for decoding types to the format
+  `Onchain.ABI.Bench.Legacy.TypeDecoder` is responsible for decoding types to the format
   expected by Solidity. We generally take a function selector and binary
   data and decode that into the original arguments according to the
   specification.
@@ -8,8 +8,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
   use Descripex, namespace: "/codec"
 
-  alias ABI.FunctionSelector
-  alias ABI.Math
+  alias Onchain.ABI.FunctionSelector
+  alias Onchain.ABI.Math
 
   @word_size_bytes 32
   @word_size_bits @word_size_bytes * 8
@@ -62,8 +62,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "00000000000000000000000000000000000000000000000000000000000000450000000000000000000000000000000000000000000000000000000000000001"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: "baz",
       ...>        types: [
       ...>          %{type: {:uint, 32}},
@@ -76,8 +76,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: :string}
@@ -88,8 +88,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:tuple, [%{type: {:uint, 32}, name: "a"}, %{type: :bool, name: "b"}]}}
@@ -100,8 +100,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:tuple, [%{type: {:uint, 32}, name: "a"}, %{type: :bool, name: "b"}]}}
@@ -113,8 +113,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:tuple, [%{type: {:uint, 32}}, %{type: :bool}]}}
@@ -125,8 +125,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:array, {:uint, 32}, 2}}
@@ -137,8 +137,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:array, {:uint, 32}}}
@@ -149,8 +149,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "0000000000000000000000000000000000000000000000000000000000000011000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000011020000000000000000000000000000000000000000000000000000000000000"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:array, {:uint, 32}, 2}},
@@ -163,8 +163,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000007617765736f6d6500000000000000000000000000000000000000000000000000"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:tuple, [%{type: :string}, %{type: :bool}]}}
@@ -175,8 +175,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:tuple, [%{type: {:array, :address}}]}}
@@ -187,8 +187,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000c556e617574686f72697a656400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000204a2bf2ff0a4eaf1890c8d8679eaa446fb852c4000000000000000000000000861d9af488d5fa485bb08ab6912fff4f7450849a"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [%{type: {:tuple,[
       ...>          %{type: :string},
@@ -206,8 +206,8 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
 
       iex> "000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000034241540000000000000000000000000000000000000000000000000000000000"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: "price",
       ...>        types: [
       ...>          %{type: :string}
@@ -253,14 +253,14 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
   )
 
   @doc """
-  Similar to `ABI.Bench.Legacy.TypeDecoder.decode/2` except accepts a list of types instead
+  Similar to `Onchain.ABI.Bench.Legacy.TypeDecoder.decode/2` except accepts a list of types instead
   of a function selector.
 
   ## Examples
 
       iex> "000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000007617765736f6d6500000000000000000000000000000000000000000000000000"
       ...> |> Base.decode16!(case: :lower)
-      ...> |> ABI.Bench.Legacy.TypeDecoder.decode_raw([%{type: {:tuple, [%{type: :string}, %{type: :bool}]}}])
+      ...> |> Onchain.ABI.Bench.Legacy.TypeDecoder.decode_raw([%{type: {:tuple, [%{type: :string}, %{type: :bool}]}}])
       [{"awesome", true}]
   """
   @spec decode_raw(binary(), [FunctionSelector.argument_type()], keyword()) ::
@@ -423,7 +423,7 @@ defmodule ABI.Bench.Legacy.TypeDecoder do
   arbitrary sources.
 
   Used internally by `decode_type({:tuple, types}, ...)` to render the
-  second-pass result; exposed because event-log decoding in `ABI.Bench.Legacy.Event`
+  second-pass result; exposed because event-log decoding in `Onchain.ABI.Bench.Legacy.Event`
   reuses the same shape.
   """
   @spec tuple_value(

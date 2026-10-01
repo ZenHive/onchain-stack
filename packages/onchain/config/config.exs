@@ -1,6 +1,6 @@
 import Config
 
-# HTTP transport is Req (`Cartouche.HTTP` + each RPC module). Production needs no
+# HTTP transport is Req (`Onchain.HTTP` + each RPC module). Production needs no
 # config — Req manages its own Finch pool (`Req.Finch`). To customise the pipeline
 # (a tuned Finch pool, retries, proxies, telemetry, plugs), set a global keyword
 # merged into every `Req.request/1` call:
@@ -10,6 +10,6 @@ import Config
 # Per-transport overrides are keyed by the calling module and take precedence over
 # the global seam — used mainly to inject a stub in tests, e.g.
 #
-#     config :cartouche, Cartouche.RPC, plug: {Req.Test, Cartouche.RPC}
+#     config :cartouche, Onchain.RPC, plug: {Req.Test, Onchain.RPC}
 
 import_config "#{Mix.env()}.exs"

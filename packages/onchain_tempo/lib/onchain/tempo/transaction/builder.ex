@@ -1,6 +1,6 @@
 defmodule Onchain.Tempo.Transaction.Builder do
   @moduledoc "Builds and signs Tempo transactions using tempo-primitives for encoding."
-  alias Cartouche.Signer.Secp256k1
+  alias Onchain.Signer.Secp256k1
   alias Onchain.Tempo.Codec
   alias Onchain.Tempo.TIP20
 
@@ -256,7 +256,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
     case Keyword.fetch(opts, :nonce) do
       :error ->
         sender_hex = "0x" <> Base.encode16(sender_address, case: :lower)
-        Cartouche.RPC.get_transaction_count(sender_hex, rpc_url: rpc_url)
+        Onchain.RPC.get_transaction_count(sender_hex, rpc_url: rpc_url)
 
       {:ok, nonce} ->
         validate_uint(:nonce, nonce)
@@ -290,7 +290,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
         value: :binary.decode_unsigned(value)
       }
 
-      case Cartouche.RPC.eth_estimate_gas(params, rpc_url: rpc_url) do
+      case Onchain.RPC.eth_estimate_gas(params, rpc_url: rpc_url) do
         {:ok, gas} -> {:cont, {:ok, acc + gas}}
         {:error, _} = error -> {:halt, error}
       end

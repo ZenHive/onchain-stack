@@ -10,7 +10,7 @@ defmodule Onchain.MEV do
 
   ## Endpoint and auth are caller-supplied
 
-  Unlike `Cartouche.RPC`, there is **no fallback to the configured public node**.
+  Unlike `Onchain.RPC`, there is **no fallback to the configured public node**.
   Silently leaking a would-be-private transaction to the public RPC defeats the
   entire purpose, so the relay URL is a required `:endpoint` option — omitting it
   returns `{:error, :missing_endpoint}` rather than broadcasting.
@@ -162,14 +162,14 @@ defmodule Onchain.MEV do
 
   # --- RPC dispatch ---
 
-  # Cartouche.RPC.send_rpc/3 narrowly types errors, but runtime transport errors
+  # Onchain.RPC.send_rpc/3 narrowly types errors, but runtime transport errors
   # (Req transport failures — timeouts, connection refused) surface non-map
   # values. Mirror the suppression used in Onchain.RPC.Helpers.do_rpc/3.
   @dialyzer {:no_match, do_mev_rpc: 3}
   @spec do_mev_rpc(String.t(), [map()], keyword()) :: {:ok, term()} | {:error, term()}
   defp do_mev_rpc(method, params, opts) do
     with {:ok, rpc_opts} <- build_rpc_opts(opts) do
-      case Cartouche.RPC.send_rpc(method, params, rpc_opts) do
+      case Onchain.RPC.send_rpc(method, params, rpc_opts) do
         {:ok, result} ->
           {:ok, result}
 

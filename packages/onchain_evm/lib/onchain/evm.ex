@@ -183,7 +183,7 @@ defmodule Onchain.EVM do
       ],
       data: [
         kind: :value,
-        description: "0x-prefixed hex-encoded calldata (from ABI.encode_call)"
+        description: "0x-prefixed hex-encoded calldata (from Onchain.ABI.encode_call)"
       ],
       opts: [
         kind: :value,
@@ -194,7 +194,7 @@ defmodule Onchain.EVM do
     ],
     returns: %{
       type: "{:ok, hex_string} | {:error, evm_error()}",
-      description: "Raw 0x-prefixed hex output, compatible with ABI.decode_response/2"
+      description: "Raw 0x-prefixed hex output, compatible with Onchain.ABI.decode_response/2"
     }
   )
 

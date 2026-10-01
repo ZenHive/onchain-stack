@@ -14,7 +14,7 @@ end
 defmodule OnchainAerodrome.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.3.0"
   @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
@@ -75,7 +75,7 @@ defmodule OnchainAerodrome.MixProject do
 
   defp deps do
     [
-      sibling(:onchain, "~> 0.13"),
+      sibling(:onchain, "~> 0.16"),
       # Widened to `~> 1.0` family-wide: descripex 1.0.0 is behaviourally equal
       # to 0.13.0 (its own CHANGELOG: "No behavioural change over 0.13.0"), and
       # hieroglyph already declares `~> 1.0`. With hieroglyph in the graph as a

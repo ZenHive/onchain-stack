@@ -4,7 +4,7 @@ defmodule Onchain.EthCallStub do
   # Shared eth_call success-response stub for unit tests that need a real
   # ABI-encoded eth_call result without a live RPC endpoint. Injects a Req plug
   # at cartouche's transport seam — single-call RPC flows through
-  # Cartouche.RPC.send_rpc/3, so `config :cartouche, Cartouche.RPC, plug:` is
+  # Onchain.RPC.send_rpc/3, so `config :cartouche, Onchain.RPC, plug:` is
   # the seam (mirrors Onchain.RPC.RevertTest's inline StubClient).
   #
   # Usage: `use Onchain.EthCallStub` inside an `async: false` ExUnit.Case, then
@@ -15,13 +15,13 @@ defmodule Onchain.EthCallStub do
   defmacro __using__(_opts) do
     quote do
       setup_all do
-        previous = Application.get_env(:cartouche, Cartouche.RPC)
-        Application.put_env(:cartouche, Cartouche.RPC, plug: &Onchain.EthCallStub.call/1)
+        previous = Application.get_env(:cartouche, Onchain.RPC)
+        Application.put_env(:cartouche, Onchain.RPC, plug: &Onchain.EthCallStub.call/1)
 
         on_exit(fn ->
           case previous do
-            nil -> Application.delete_env(:cartouche, Cartouche.RPC)
-            config -> Application.put_env(:cartouche, Cartouche.RPC, config)
+            nil -> Application.delete_env(:cartouche, Onchain.RPC)
+            config -> Application.put_env(:cartouche, Onchain.RPC, config)
           end
         end)
 
@@ -45,11 +45,11 @@ defmodule Onchain.EthCallStub do
   # Builds an eth_call-shaped result hex by ABI-encoding `value` against a
   # throwaway `stub(<type>)` selector and stripping the 4-byte function
   # selector — the parameter encoding for a call and for a `(type)` return
-  # tuple are byte-identical, so this yields exactly what `ABI.decode_response/3`
+  # tuple are byte-identical, so this yields exactly what `Onchain.ABI.decode_response/3`
   # expects from a real eth_call result.
   @spec queue_response(String.t(), term()) :: :ok
   def queue_response(type, value) do
-    calldata = ABI.encode_hex_call!("stub(#{type})", [value])
+    calldata = Onchain.ABI.encode_hex_call!("stub(#{type})", [value])
     <<"0x", _selector::binary-size(8), rest::binary>> = calldata
     Process.put(@stub_key, "0x" <> rest)
     :ok

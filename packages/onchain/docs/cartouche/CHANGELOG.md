@@ -14,16 +14,26 @@ All notable changes to this project will be documented in this file.
 <a id="phase-11-hieroglyph-1-0-0-1-4-0-adoption-advisory"></a>
 <a id="phase-12-agent-economy-descripex-adoption"></a>
 
-## [Unreleased]
+## After 0.10.0 — not released as cartouche
 
-### Breaking — 0.10.0
+cartouche is retired on Hex after 0.10.0. These changes ship in onchain 0.16.0,
+where every `Cartouche.*` module is renamed to `Onchain.*` (see onchain's
+CHANGELOG for the full module map).
+
+### Breaking
+
+* **Solana support moved out of cartouche into the new `onchain_solana` package.** `Cartouche.Solana.*` and `Cartouche.Base58` are removed, along with the `:solana_*` discovery aliases on `Cartouche.describe/1` and the Solana signer startup in `Cartouche.Application`. Behaviour is unchanged in the new package.
+* **Migration (Solana):** add `{:onchain_solana, "~> 0.1"}`, then replace `Cartouche.Solana.*` with `Onchain.Solana.*`, `Cartouche.Base58` with `Onchain.Solana.Base58`, and `Cartouche.describe(:solana_*)` with `Onchain.Solana.describe(:solana_*)`. The `config :cartouche, :solana_*` keys keep working; per-module keys move to the `Onchain.Solana` module names. See `packages/onchain_solana/README.md`.
+
+## [0.10.0] — 2026-09-29
+
+### Breaking
 
 * **secp256k1 signing and recovery now run on `ex_secp256k1` (RustCrypto `k256`, precompiled Rustler NIF); `curvy` is no longer a dependency.** curvy 0.3.1 is pure Elixir, unaudited, and makes no constant-time guarantee. k256 is the curve implementation alloy-signer uses. RFC 6979 signatures are byte-identical to curvy 0.3.1 for the pinned vectors (`test/fixtures/curvy-0.3.1.json`), and emitted signatures stay EIP-2 low-`s`.
 * **New type `Cartouche.Signature` (`r`, `s`, `recid`) replaces `Curvy.Signature`** in every public spec: `Cartouche.Signer.Backend.sign_payload/2`, `Cartouche.Recover.*`, and `Cartouche.Signer.CloudKMS`. KMS DER parsing is `Cartouche.Signature.from_der/1`; `Cartouche.Signature.normalize/1` flips high-`s` together with the recovery bit.
 * **`Cartouche.Signer.Curvy` is renamed to `Cartouche.Signer.Secp256k1`** — no deprecated alias is kept. Invalid private keys now return `{:error, _}` tuples instead of raising.
 * **Migration:** replace `Cartouche.Signer.Curvy` with `Cartouche.Signer.Secp256k1`, and `%Curvy.Signature{crv: :secp256k1, r: r, s: s, recid: recid}` with `%Cartouche.Signature{r: r, s: s, recid: recid}`. Packed Ethereum signatures and transaction encodings are unchanged. The standalone `mpp` app pattern-matches the old struct and must migrate before adopting 0.10.
-* **Solana support moved out of cartouche into the new `onchain_solana` package.** `Cartouche.Solana.*` and `Cartouche.Base58` are removed, along with the `:solana_*` discovery aliases on `Cartouche.describe/1` and the Solana signer startup in `Cartouche.Application`. Behaviour is unchanged in the new package.
-* **Migration (Solana):** add `{:onchain_solana, "~> 0.1"}`, then replace `Cartouche.Solana.*` with `Onchain.Solana.*`, `Cartouche.Base58` with `Onchain.Solana.Base58`, and `Cartouche.describe(:solana_*)` with `Onchain.Solana.describe(:solana_*)`. The `config :cartouche, :solana_*` keys keep working; per-module keys move to the `Onchain.Solana` module names. See `packages/onchain_solana/README.md`.
+* Cartouche 0.10.0 still contains `Cartouche.Solana.*` and `Cartouche.Base58`; the Solana split landed after it was published (see above).
 
 ### Documentation
 

@@ -1,5 +1,5 @@
 defmodule Onchain.ERC721Test do
-  # async: false — EthCallStub mutates global :cartouche, Cartouche.RPC config
+  # async: false — EthCallStub mutates global :cartouche, Onchain.RPC config
   use ExUnit.Case, async: false
   use Onchain.EthCallStub
 

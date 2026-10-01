@@ -1,11 +1,11 @@
-defmodule ABI.EventTest do
+defmodule Onchain.ABI.EventTest do
   use ExUnit.Case, async: true
-  use ABI.Hex
+  use Onchain.ABI.Hex
 
-  alias ABI.Event
-  alias ABI.FunctionSelector
-  alias ABI.Math
-  alias ABI.TypeEncoder
+  alias Onchain.ABI.Event
+  alias Onchain.ABI.FunctionSelector
+  alias Onchain.ABI.Math
+  alias Onchain.ABI.TypeEncoder
 
   doctest Event
 
@@ -14,7 +14,7 @@ defmodule ABI.EventTest do
       from = ~h[0xb2b7c1795f19fbc28fda77a95e59edbb8b3709c8]
 
       topics =
-        ABI.encode_event_topics(
+        Onchain.ABI.encode_event_topics(
           "Transfer(address indexed from,address indexed to,uint256 amount)",
           [from, :any]
         )
@@ -32,7 +32,7 @@ defmodule ABI.EventTest do
       selector = FunctionSelector.decode("Named(string indexed who,bytes indexed payload,uint256 amount)")
       payload = <<0xDE, 0xAD, 0xBE, 0xEF>>
 
-      assert ABI.encode_event_topics(selector, ["alice", payload]) == [
+      assert Onchain.ABI.encode_event_topics(selector, ["alice", payload]) == [
                Event.event_signature(selector),
                Math.kec("alice"),
                Math.kec(payload)
@@ -48,9 +48,9 @@ defmodule ABI.EventTest do
           %{type: {:array, {:uint, 256}, 2}}
         ])
 
-      point_encoding = ABI.encode("(uint256,uint256)", [{3, 4}])
+      point_encoding = Onchain.ABI.encode("(uint256,uint256)", [{3, 4}])
 
-      assert ABI.encode_event_topics(selector, [[1, 2], {3, 4}]) == [
+      assert Onchain.ABI.encode_event_topics(selector, [[1, 2], {3, 4}]) == [
                Event.event_signature(selector),
                Math.kec(pair_encoding),
                Math.kec(point_encoding)
@@ -68,13 +68,13 @@ defmodule ABI.EventTest do
           "type" => "event"
         })
 
-      assert ABI.encode_event_topics(selector, [<<1::160>>]) == [
+      assert Onchain.ABI.encode_event_topics(selector, [<<1::160>>]) == [
                ~h[0x0000000000000000000000000000000000000000000000000000000000000001]
              ]
     end
 
     test "api metadata composes with decode_event and event_signature" do
-      entry = Enum.find(ABI.__api__(), &(&1.name == :encode_event_topics))
+      entry = Enum.find(Onchain.ABI.__api__(), &(&1.name == :encode_event_topics))
 
       assert entry.hints.composes_with == [:decode_event, :event_signature]
     end
@@ -85,7 +85,7 @@ defmodule ABI.EventTest do
       selector = FunctionSelector.decode("Transfer(address indexed from,address indexed to,uint256 amount)")
 
       assert_raise ArgumentError, ~r/got 3 indexed values for 2 indexed event parameters/, fn ->
-        ABI.encode_event_topics(selector, [<<1::160>>, <<2::160>>, <<3::160>>])
+        Onchain.ABI.encode_event_topics(selector, [<<1::160>>, <<2::160>>, <<3::160>>])
       end
     end
 
@@ -93,7 +93,7 @@ defmodule ABI.EventTest do
       selector = FunctionSelector.decode("Shaped(uint256[2] indexed pair)")
 
       assert_raise ArgumentError, ~r/array size mismatch: expected 2, got 3/, fn ->
-        ABI.encode_event_topics(selector, [[1, 2, 3]])
+        Onchain.ABI.encode_event_topics(selector, [[1, 2, 3]])
       end
     end
 
@@ -101,15 +101,15 @@ defmodule ABI.EventTest do
       selector = FunctionSelector.decode("Placed((uint256,uint256) indexed point)")
 
       assert_raise ArgumentError, ~r/tuple size mismatch: expected 2, got 3/, fn ->
-        ABI.encode_event_topics(selector, [{1, 2, 3}])
+        Onchain.ABI.encode_event_topics(selector, [{1, 2, 3}])
       end
     end
 
     test "accepts an indexed tuple given as a list, identically to a tuple" do
       selector = FunctionSelector.decode("Placed((uint256,uint256) indexed point)")
 
-      assert ABI.encode_event_topics(selector, [[3, 4]]) ==
-               ABI.encode_event_topics(selector, [{3, 4}])
+      assert Onchain.ABI.encode_event_topics(selector, [[3, 4]]) ==
+               Onchain.ABI.encode_event_topics(selector, [{3, 4}])
     end
   end
 
@@ -140,7 +140,7 @@ defmodule ABI.EventTest do
       preimage = "abc" <> <<0::size(29 * 8)>> <> <<7::256>>
       assert byte_size(preimage) == 64
 
-      assert ABI.encode_event_topics(selector, [{"abc", 7}]) == [
+      assert Onchain.ABI.encode_event_topics(selector, [{"abc", 7}]) == [
                Event.event_signature(selector),
                Math.kec(preimage)
              ]
@@ -156,7 +156,7 @@ defmodule ABI.EventTest do
       preimage = "a" <> <<0::size(31 * 8)>> <> "bb" <> <<0::size(30 * 8)>>
       assert byte_size(preimage) == 64
 
-      assert ABI.encode_event_topics(selector, [["a", "bb"]]) == [
+      assert Onchain.ABI.encode_event_topics(selector, [["a", "bb"]]) == [
                Event.event_signature(selector),
                Math.kec(preimage)
              ]
@@ -183,7 +183,7 @@ defmodule ABI.EventTest do
       indexed_topic = <<0::96, 1::160>>
 
       assert {:ok, "Dup", %{"x" => 99}} =
-               ABI.decode_event(selector, <<99::256>>, [topic0, indexed_topic])
+               Onchain.ABI.decode_event(selector, <<99::256>>, [topic0, indexed_topic])
     end
   end
 
@@ -400,7 +400,7 @@ defmodule ABI.EventTest do
       # Solidity's own ABI JSON always emits `name` (possibly ""), but
       # hand-written or partial JSON can omit the key entirely.
       [selector] =
-        ABI.parse_specification([
+        Onchain.ABI.parse_specification([
           %{
             "type" => "event",
             "name" => "Ping",

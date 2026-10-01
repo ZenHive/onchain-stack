@@ -1,8 +1,8 @@
 defmodule Onchain.Tempo.Verification.DifferentialTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hash
-  alias Cartouche.Signer.Secp256k1
+  alias Onchain.Hash
+  alias Onchain.Signer.Secp256k1
   alias Onchain.Tempo.TIP20
   alias Onchain.Tempo.Transaction
   alias Onchain.Tempo.Transaction.Builder

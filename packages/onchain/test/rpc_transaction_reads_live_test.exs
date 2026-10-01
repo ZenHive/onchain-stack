@@ -1,14 +1,14 @@
-defmodule Cartouche.RPCTransactionReadsLiveTest do
+defmodule Onchain.RPCTransactionReadsLiveTest do
   use ExUnit.Case, async: false
 
-  import Cartouche.Test.Live
+  import Onchain.Test.Live
 
-  alias Cartouche.Hex
-  alias Cartouche.Receipt
-  alias Cartouche.RPC
-  alias Cartouche.Transaction.Info
-  alias Cartouche.Transaction.V1
-  alias Cartouche.Transaction.V2
+  alias Onchain.Hex
+  alias Onchain.Receipt
+  alias Onchain.RPC
+  alias Onchain.Transaction.Info
+  alias Onchain.Transaction.V1
+  alias Onchain.Transaction.V2
 
   @moduletag :integration
 

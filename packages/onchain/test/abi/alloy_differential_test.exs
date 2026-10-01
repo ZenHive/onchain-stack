@@ -2,10 +2,14 @@ for file <- ~w(type_encoder type_decoder event abi) do
   Code.require_file("../../bench/legacy/#{file}.ex", __DIR__)
 end
 
-defmodule ABI.AlloyDifferentialTest do
+defmodule Onchain.ABI.AlloyDifferentialTest do
   use ExUnit.Case, async: true
 
-  alias ABI.Bench.Legacy
+  alias Onchain.ABI.Bench.Legacy
+  alias Onchain.ABI.Event
+  alias Onchain.ABI.FunctionSelector
+  alias Onchain.ABI.TypeDecoder
+  alias Onchain.ABI.TypeEncoder
 
   # spec-tags: NIF-4, NIF-5
   test "malformed decode inputs preserve legacy outcome classes" do
@@ -22,28 +26,28 @@ defmodule ABI.AlloyDifferentialTest do
     ]
 
     for {data, types} <- cases, opts <- [[], [strict: true]] do
-      assert outcome(fn -> ABI.TypeDecoder.decode_raw(data, types, opts) end) ==
+      assert outcome(fn -> TypeDecoder.decode_raw(data, types, opts) end) ==
                outcome(fn -> Legacy.TypeDecoder.decode_raw(data, types, opts) end)
     end
   end
 
   test "declaration-order tails win when offset words disagree" do
     types = [%{type: {:tuple, [%{type: :bytes}, %{type: :bytes}]}}]
-    payload = ABI.TypeEncoder.encode_raw([{"hello", "world"}], types)
+    payload = TypeEncoder.encode_raw([{"hello", "world"}], types)
     <<_offset::256, rest::binary>> = payload
     corrupted = <<0::256, rest::binary>>
 
-    assert ABI.TypeDecoder.decode_raw(corrupted, types) == [{"hello", "world"}]
+    assert TypeDecoder.decode_raw(corrupted, types) == [{"hello", "world"}]
 
-    assert ABI.TypeDecoder.decode_raw(corrupted, types) ==
+    assert TypeDecoder.decode_raw(corrupted, types) ==
              Legacy.TypeDecoder.decode_raw(corrupted, types)
 
     array = [%{type: {:array, {:tuple, [%{type: :bool}, %{type: :bytes}]}}}]
-    encoded = ABI.TypeEncoder.encode_raw([[{true, "ab"}, {false, "cd"}]], array)
+    encoded = TypeEncoder.encode_raw([[{true, "ab"}, {false, "cd"}]], array)
     <<count::256, _element_offset::256, tail::binary>> = encoded
     shifted = <<count::256, 0::256, tail::binary>>
 
-    assert ABI.TypeDecoder.decode_raw(shifted, array) ==
+    assert TypeDecoder.decode_raw(shifted, array) ==
              Legacy.TypeDecoder.decode_raw(shifted, array)
   end
 
@@ -54,7 +58,7 @@ defmodule ABI.AlloyDifferentialTest do
           {[%{type: {:array, {:uint, 256}, 2}}], [[1]]},
           {[%{type: {:array, {:uint, 256}, 2}}], [[1, 2, 3]]}
         ] do
-      assert raw_outcome(fn -> ABI.TypeEncoder.encode_raw(values, types) end) ==
+      assert raw_outcome(fn -> TypeEncoder.encode_raw(values, types) end) ==
                raw_outcome(fn -> Legacy.TypeEncoder.encode_raw(values, types) end)
     end
   end
@@ -69,23 +73,23 @@ defmodule ABI.AlloyDifferentialTest do
     for n <- [0, 19, 21, 32] do
       data = [:binary.copy(<<1>>, n)]
 
-      assert outcome(fn -> ABI.encode_packed("f(address)", data) end) ==
+      assert outcome(fn -> Onchain.ABI.encode_packed("f(address)", data) end) ==
                outcome(fn -> Legacy.encode_packed("f(address)", data) end)
     end
   end
 
   test "a non-indexed field can use the internal signature-marker name" do
-    selector = ABI.FunctionSelector.decode("Marked(uint256 __abi__topic)")
-    topics = [ABI.Event.event_signature(selector)]
+    selector = FunctionSelector.decode("Marked(uint256 __abi__topic)")
+    topics = [Event.event_signature(selector)]
     expected = Legacy.Event.decode_event(<<42::256>>, topics, selector)
     assert expected == {:ok, "Marked", %{"__abi__topic" => 42}}
-    assert ABI.Event.decode_event(<<42::256>>, topics, selector) == expected
-    assert ABI.Event.decode_events([{<<42::256>>, topics}], selector) == [expected]
+    assert Event.decode_event(<<42::256>>, topics, selector) == expected
+    assert Event.decode_events([{<<42::256>>, topics}], selector) == [expected]
   end
 
   test "batch event decoding preserves input order and per-log outcomes" do
-    selector = ABI.FunctionSelector.decode("Transfer(address indexed from,address indexed to,uint256 value)")
-    topic = ABI.Event.event_signature(selector)
+    selector = FunctionSelector.decode("Transfer(address indexed from,address indexed to,uint256 value)")
+    topic = Event.event_signature(selector)
 
     logs = [
       {<<1::256>>, [topic, <<2::256>>, <<3::256>>]},
@@ -95,7 +99,7 @@ defmodule ABI.AlloyDifferentialTest do
     ]
 
     for opts <- [[], [strict: true]] do
-      assert ABI.Event.decode_events(logs, selector, opts) ==
+      assert Event.decode_events(logs, selector, opts) ==
                Enum.map(logs, fn {data, topics} -> Legacy.Event.decode_event(data, topics, selector, opts) end)
     end
   end
@@ -103,7 +107,7 @@ defmodule ABI.AlloyDifferentialTest do
   defp outcome(fun) do
     {:ok, fun.()}
   rescue
-    e in [ABI.TypeDecoder.StrictViolation, Legacy.TypeDecoder.StrictViolation] ->
+    e in [Onchain.ABI.TypeDecoder.StrictViolation, Legacy.TypeDecoder.StrictViolation] ->
       {:error, {:strict_violation, e.detail}}
 
     e ->

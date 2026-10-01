@@ -2,12 +2,12 @@ import Config
 
 # Per-transport HTTP stubs. Each transport routes its `Req.request/1` through a
 # default function plug (`fun(conn)`), so zero-arg doctests and the spawned
-# `Cartouche.Filter` GenServer reach the mock with no Req.Test process-ownership
+# `Onchain.Filter` GenServer reach the mock with no Req.Test process-ownership
 # ceremony (a function plug runs in the caller process). Tests override per
 # describe-block via `Application.put_env(:cartouche, <Transport>, plug: ...)` or
 # per call via `req_options: [plug: ...]`.
-config :cartouche, Cartouche.OpenChain.API, plug: &Cartouche.OpenChainTest.TestClient.call/1
-config :cartouche, Cartouche.RPC, adapter: Cartouche.Test.RPCAdapter
+config :cartouche, Onchain.OpenChain.API, plug: &Onchain.OpenChainTest.TestClient.call/1
+config :cartouche, Onchain.RPC, adapter: Onchain.Test.RPCAdapter
 config :cartouche, :chain_id, :goerli
 config :cartouche, :ethereum_node, "https://example.com"
 config :cartouche, :open_chain_base_url, "https://example.com/open-chain"

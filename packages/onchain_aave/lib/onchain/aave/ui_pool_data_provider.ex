@@ -19,9 +19,9 @@ defmodule Onchain.Aave.UiPoolDataProvider do
   | Source | Error Shape |
   |--------|-------------|
   | `Onchain.Aave.Contracts.address/2` | `{:error, {:unsupported_network, network}}` |
-  | `ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
-  | `Cartouche.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
-  | `ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
+  | `Onchain.ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
+  | `Onchain.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
+  | `Onchain.ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
 
   ## Functions
@@ -38,16 +38,17 @@ defmodule Onchain.Aave.UiPoolDataProvider do
 
   use Descripex, namespace: "/aave/ui-pool-data-provider"
 
-  alias Cartouche.RPC
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.Opts
   alias Onchain.Aave.Types.AggregatedReserveData
   alias Onchain.Aave.Types.BaseCurrencyInfo
   alias Onchain.Aave.Types.UserReserveData
   alias Onchain.Address
+  alias Onchain.RPC
 
   @reserves_list_response "(address[])"
 
+  # --- get_reserves_list ---
   @reserves_data_response "((" <>
                             "address,string,string,uint256," <>
                             "uint256,uint256,uint256,uint256," <>
@@ -68,8 +69,6 @@ defmodule Onchain.Aave.UiPoolDataProvider do
 
   @user_reserves_data_response "((address,uint256,bool,uint256)[],uint8)"
 
-  # --- get_reserves_list ---
-
   api(:get_reserves_list, "Fetch the list of reserve token addresses from the Aave V3 pool.",
     params: [
       opts: [
@@ -86,19 +85,19 @@ defmodule Onchain.Aave.UiPoolDataProvider do
 
   @spec get_reserves_list(keyword()) :: {:ok, [String.t()]} | {:error, term()}
 
+  # --- get_reserves_list! ---
+
   def get_reserves_list(opts \\ []) do
     {network_opts, rpc_opts} = Opts.split_network(opts)
 
     with {:ok, ui_addr} <- Contracts.address(:ui_pool_data_provider, network_opts),
          {:ok, provider_bin} <- provider_address(network_opts),
-         {:ok, calldata} <- ABI.encode_hex_call("getReservesList(address)", [provider_bin]),
+         {:ok, calldata} <- Onchain.ABI.encode_hex_call("getReservesList(address)", [provider_bin]),
          {:ok, hex_result} <- RPC.eth_call(ui_addr, calldata, rpc_opts),
-         {:ok, [addresses]} <- ABI.decode_response(@reserves_list_response, hex_result) do
+         {:ok, [addresses]} <- Onchain.ABI.decode_response(@reserves_list_response, hex_result) do
       {:ok, Enum.map(addresses, &Address.checksum!/1)}
     end
   end
-
-  # --- get_reserves_list! ---
 
   api(:get_reserves_list!, "Fetch the list of reserve token addresses. Raises on error.",
     params: [
@@ -108,6 +107,9 @@ defmodule Onchain.Aave.UiPoolDataProvider do
         description: "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
       ]
     ],
+
+    # --- get_reserves_data ---
+
     returns: %{type: "[String.t()]", description: "List of checksummed reserve token addresses"}
   )
 
@@ -118,8 +120,6 @@ defmodule Onchain.Aave.UiPoolDataProvider do
       {:error, reason} -> raise "get_reserves_list failed: #{inspect(reason)}"
     end
   end
-
-  # --- get_reserves_data ---
 
   api(:get_reserves_data, "Fetch per-reserve aggregated data and base currency info.",
     params: [
@@ -137,22 +137,21 @@ defmodule Onchain.Aave.UiPoolDataProvider do
 
   @spec get_reserves_data(keyword()) ::
           {:ok, {[AggregatedReserveData.t()], BaseCurrencyInfo.t()}} | {:error, term()}
+  # --- get_reserves_data! ---
   def get_reserves_data(opts \\ []) do
     {network_opts, rpc_opts} = Opts.split_network(opts)
 
     with {:ok, ui_addr} <- Contracts.address(:ui_pool_data_provider, network_opts),
          {:ok, provider_bin} <- provider_address(network_opts),
-         {:ok, calldata} <- ABI.encode_hex_call("getReservesData(address)", [provider_bin]),
+         {:ok, calldata} <- Onchain.ABI.encode_hex_call("getReservesData(address)", [provider_bin]),
          {:ok, hex_result} <- RPC.eth_call(ui_addr, calldata, rpc_opts),
          {:ok, [reserves_raw, base_raw]} <-
-           ABI.decode_response(@reserves_data_response, hex_result) do
+           Onchain.ABI.decode_response(@reserves_data_response, hex_result) do
       reserves = Enum.map(reserves_raw, &AggregatedReserveData.from_raw/1)
       base = BaseCurrencyInfo.from_raw(base_raw)
       {:ok, {reserves, base}}
     end
   end
-
-  # --- get_reserves_data! ---
 
   api(:get_reserves_data!, "Fetch per-reserve aggregated data and base currency info. Raises on error.",
     params: [
@@ -162,6 +161,7 @@ defmodule Onchain.Aave.UiPoolDataProvider do
         description: "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
       ]
     ],
+    # --- get_user_reserves_data ---
     returns: %{
       type: "{[AggregatedReserveData.t()], BaseCurrencyInfo.t()}",
       description: "Tuple of reserve data list and base currency info"
@@ -175,8 +175,6 @@ defmodule Onchain.Aave.UiPoolDataProvider do
       {:error, reason} -> raise "get_reserves_data failed: #{inspect(reason)}"
     end
   end
-
-  # --- get_user_reserves_data ---
 
   api(:get_user_reserves_data, "Fetch per-user reserve balances and e-mode category.",
     params: [
@@ -199,6 +197,8 @@ defmodule Onchain.Aave.UiPoolDataProvider do
   @spec get_user_reserves_data(String.t() | binary(), keyword()) ::
           {:ok, {[UserReserveData.t()], non_neg_integer()}} | {:error, term()}
 
+  # --- get_user_reserves_data! ---
+
   def get_user_reserves_data(user_address, opts \\ []) do
     {network_opts, rpc_opts} = Opts.split_network(opts)
 
@@ -206,16 +206,14 @@ defmodule Onchain.Aave.UiPoolDataProvider do
          {:ok, ui_addr} <- Contracts.address(:ui_pool_data_provider, network_opts),
          {:ok, provider_bin} <- provider_address(network_opts),
          {:ok, calldata} <-
-           ABI.encode_hex_call("getUserReservesData(address,address)", [provider_bin, user_bin]),
+           Onchain.ABI.encode_hex_call("getUserReservesData(address,address)", [provider_bin, user_bin]),
          {:ok, hex_result} <- RPC.eth_call(ui_addr, calldata, rpc_opts),
          {:ok, [reserves_raw, e_mode_id]} <-
-           ABI.decode_response(@user_reserves_data_response, hex_result) do
+           Onchain.ABI.decode_response(@user_reserves_data_response, hex_result) do
       reserves = Enum.map(reserves_raw, &UserReserveData.from_raw/1)
       {:ok, {reserves, e_mode_id}}
     end
   end
-
-  # --- get_user_reserves_data! ---
 
   api(:get_user_reserves_data!, "Fetch per-user reserve balances and e-mode category. Raises on error.",
     params: [
@@ -229,6 +227,9 @@ defmodule Onchain.Aave.UiPoolDataProvider do
         description: "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
       ]
     ],
+
+    # --- Private helpers ---
+
     returns: %{
       type: "{[UserReserveData.t()], non_neg_integer()}",
       description: "Tuple of user reserve data list and e-mode category ID"
@@ -243,8 +244,6 @@ defmodule Onchain.Aave.UiPoolDataProvider do
       {:error, reason} -> raise "get_user_reserves_data failed: #{inspect(reason)}"
     end
   end
-
-  # --- Private helpers ---
 
   @doc false
   # Resolves the PoolAddressesProvider binary address for ABI encoding.

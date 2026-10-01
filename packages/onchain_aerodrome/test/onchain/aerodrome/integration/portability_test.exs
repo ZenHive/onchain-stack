@@ -21,7 +21,7 @@ defmodule Onchain.Aerodrome.Integration.PortabilityTest do
     address = Contracts.address!(:lp_sugar)
     {:ok, signature} = Abi.signature("lp_sugar.json", "all")
     {:ok, return_type} = Abi.return_type("lp_sugar.json", "all")
-    {:ok, calldata} = ABI.encode_hex_call(signature, [@limit, @offset, @filter])
+    {:ok, calldata} = Onchain.ABI.encode_hex_call(signature, [@limit, @offset, @filter])
 
     # Pin both calls to one block so a latest-block race cannot look like
     # endpoint disagreement. The second unprivileged endpoint is what the
@@ -55,7 +55,7 @@ defmodule Onchain.Aerodrome.Integration.PortabilityTest do
 
     case RPC.eth_call(address, calldata, opts) do
       {:ok, hex} ->
-        case ABI.decode_response(return_type, hex) do
+        case Onchain.ABI.decode_response(return_type, hex) do
           {:ok, decoded} -> decoded
           {:error, reason} -> flunk("LpSugar.all(500, 0, 0) decode failed: #{inspect(reason)}")
         end

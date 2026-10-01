@@ -1,9 +1,10 @@
-defmodule Cartouche.Transaction.NativeTest do
+defmodule Onchain.Transaction.NativeTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  alias Cartouche.Transaction
-  alias Cartouche.Transaction.V1
+  alias Onchain.ABI.Native
+  alias Onchain.Transaction
+  alias Onchain.Transaction.V1
 
   @fixture Path.expand("../../fixtures/vectors/ethers-6.17.0.json", __DIR__)
   @external_resource @fixture
@@ -19,7 +20,7 @@ defmodule Cartouche.Transaction.NativeTest do
     }
 
     for {name, vector} <- @vectors, {index, width} <- Map.fetch!(positions, name) do
-      raw = Cartouche.Hex.decode_hex!(vector["unsigned_serialized"])
+      raw = Onchain.Hex.decode_hex!(vector["unsigned_serialized"])
       {prefix, body} = if name == "v1", do: {<<>>, raw}, else: :erlang.split_binary(raw, 1)
       fields = body |> ExRLP.decode() |> List.replace_at(index, Integer.pow(2, width))
       assert {:error, reason} = Transaction.decode(prefix <> ExRLP.encode(fields))
@@ -50,16 +51,16 @@ defmodule Cartouche.Transaction.NativeTest do
       "to" => "0x3535353535353535353535353535353535353535"
     }
 
-    assert {:error, "gas_price must be in 0..2^128-1"} = ABI.Native.consensus("transaction", "encode", tx)
+    assert {:error, "gas_price must be in 0..2^128-1"} = Native.consensus("transaction", "encode", tx)
   end
 
   test "native boundary rejects excessive input, nesting and schema expansion" do
     assert {:error, "payload_limit"} =
-             ABI.Native.consensus("transaction", "decode", :binary.copy(<<0>>, 16 * 1024 * 1024 + 1))
+             Native.consensus("transaction", "decode", :binary.copy(<<0>>, 16 * 1024 * 1024 + 1))
 
     # Build nested lists as terms so each level is a list, not a byte string.
     nested = 1..66 |> Enum.reduce([], fn _, inner -> [inner] end) |> ExRLP.encode()
-    assert {:error, "depth_limit"} = ABI.Native.consensus("transaction", "decode", nested)
+    assert {:error, "depth_limit"} = Native.consensus("transaction", "decode", nested)
 
     types =
       0..20
@@ -69,8 +70,8 @@ defmodule Cartouche.Transaction.NativeTest do
       |> Map.put("T21", [%{"name" => "end", "type" => "uint256"}])
 
     data = %{"domain" => %{}, "types" => types, "primaryType" => "T0", "message" => %{}}
-    assert {:error, "value_limit"} = ABI.Native.consensus("typed", "hash", data)
-    assert {:error, _} = ABI.Native.consensus("typed", "hash", "not JSON")
+    assert {:error, "value_limit"} = Native.consensus("typed", "hash", data)
+    assert {:error, _} = Native.consensus("typed", "hash", "not JSON")
   end
 
   # spec-tags: NIF-1, NIF-2
@@ -91,15 +92,15 @@ defmodule Cartouche.Transaction.NativeTest do
     ]
 
     for input <- malformed, {family, operation} <- [{"transaction", "encode"}, {"typed", "hash"}] do
-      assert {:error, reason} = ABI.Native.consensus(family, operation, input)
+      assert {:error, reason} = Native.consensus(family, operation, input)
       refute reason == "native_panic"
     end
 
-    assert {:error, "invalid_term"} = ABI.Native.consensus(nil, "encode", %{})
-    assert {:error, "invalid_term"} = ABI.Native.consensus("transaction", nil, %{})
+    assert {:error, "invalid_term"} = Native.consensus(nil, "encode", %{})
+    assert {:error, "invalid_term"} = Native.consensus("transaction", nil, %{})
 
-    raw = Cartouche.Hex.decode_hex!(@vectors["v2"]["serialized"])
-    assert {:ok, %{"type" => "0x2"}} = ABI.Native.consensus("transaction", "decode", raw)
+    raw = Onchain.Hex.decode_hex!(@vectors["v2"]["serialized"])
+    assert {:ok, %{"type" => "0x2"}} = Native.consensus("transaction", "decode", raw)
     assert {:ok, tx} = Transaction.decode(raw)
     assert Transaction.encode(tx) == raw
   end
@@ -116,16 +117,16 @@ defmodule Cartouche.Transaction.NativeTest do
           {%{:binary.copy("x", 16 * 1024 * 1024 + 1) => nil}, "payload_limit"}
         ],
         family <- ["transaction", "typed"] do
-      assert {:error, ^expected} = ABI.Native.consensus(family, "encode", input)
+      assert {:error, ^expected} = Native.consensus(family, "encode", input)
     end
 
     assert {:ok, _} =
-             ABI.Native.consensus("transaction", "decode", Cartouche.Hex.decode_hex!(@vectors["v2"]["serialized"]))
+             Native.consensus("transaction", "decode", Onchain.Hex.decode_hex!(@vectors["v2"]["serialized"]))
   end
 
   test "valid envelopes reject trailing bytes and truncation" do
     for {_, vector} <- @vectors do
-      raw = Cartouche.Hex.decode_hex!(vector["serialized"])
+      raw = Onchain.Hex.decode_hex!(vector["serialized"])
       assert {:error, _} = Transaction.decode(raw <> <<0>>)
       assert {:error, _} = Transaction.decode(binary_part(raw, 0, byte_size(raw) - 1))
     end
@@ -141,20 +142,20 @@ defmodule Cartouche.Transaction.NativeTest do
   end
 
   test "EIP-712 domain chain IDs retain U256 precision" do
-    typed = %Cartouche.Typed{
-      domain: %Cartouche.Typed.Domain{chain_id: Integer.pow(2, 200) + 1},
-      types: %{"Message" => %Cartouche.Typed.Type{fields: [{"value", {:uint, 256}}]}},
+    typed = %Onchain.Typed{
+      domain: %Onchain.Typed.Domain{chain_id: Integer.pow(2, 200) + 1},
+      types: %{"Message" => %Onchain.Typed.Type{fields: [{"value", {:uint, 256}}]}},
       value: %{"value" => 1}
     }
 
-    <<0x19, 0x01, separator::binary-size(32), _::binary-size(32)>> = Cartouche.Typed.encode(typed)
-    assert separator == Cartouche.Typed.domain_seperator(typed)
-    assert Cartouche.Typed.Native.signing_hash(typed) == Cartouche.Hash.keccak(Cartouche.Typed.encode(typed))
+    <<0x19, 0x01, separator::binary-size(32), _::binary-size(32)>> = Onchain.Typed.encode(typed)
+    assert separator == Onchain.Typed.domain_seperator(typed)
+    assert Onchain.Typed.Native.signing_hash(typed) == Onchain.Hash.keccak(Onchain.Typed.encode(typed))
   end
 
   property "arbitrary wire input never crashes the native boundary" do
     check all(raw <- StreamData.binary(max_length: 512), max_runs: 500) do
-      native = ABI.Native.consensus("transaction", "decode", raw)
+      native = Native.consensus("transaction", "decode", raw)
       assert {tag, _} = native
       assert tag in [:ok, :error]
       refute native == {:error, "native_panic"}

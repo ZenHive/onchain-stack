@@ -1,8 +1,10 @@
-defmodule Cartouche.TraceCallTest do
+defmodule Onchain.TraceCallTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  doctest Cartouche.TraceCall
+  alias Onchain.RPC.Trace
+
+  doctest Onchain.TraceCall
 
   defp single_trace_map do
     %{
@@ -24,7 +26,7 @@ defmodule Cartouche.TraceCallTest do
     test "empty trace list deserializes to []" do
       input = %{"output" => "0x", "trace" => []}
 
-      assert %Cartouche.TraceCall{output: "", trace: []} = Cartouche.TraceCall.deserialize(input)
+      assert %Onchain.TraceCall{output: "", trace: []} = Onchain.TraceCall.deserialize(input)
     end
   end
 
@@ -37,7 +39,7 @@ defmodule Cartouche.TraceCallTest do
         "vmTrace" => %{"ignored" => true}
       }
 
-      trace_call = Cartouche.TraceCall.deserialize(input)
+      trace_call = Onchain.TraceCall.deserialize(input)
 
       assert trace_call.output == ~h[0x01020304]
       assert trace_call.state_diff == nil
@@ -47,7 +49,7 @@ defmodule Cartouche.TraceCallTest do
     test "empty output hex decodes to an empty binary" do
       input = %{"output" => "0x", "trace" => []}
 
-      trace_call = Cartouche.TraceCall.deserialize(input)
+      trace_call = Onchain.TraceCall.deserialize(input)
 
       assert trace_call.output == ""
     end
@@ -55,10 +57,10 @@ defmodule Cartouche.TraceCallTest do
     test "embedded Trace structs retain nil fields from trace_callMany payloads" do
       input = %{"output" => "0x", "trace" => [single_trace_map()]}
 
-      trace_call = Cartouche.TraceCall.deserialize(input)
+      trace_call = Onchain.TraceCall.deserialize(input)
 
       assert [
-               %Cartouche.Trace{
+               %Trace{
                  block_hash: nil,
                  block_number: nil,
                  transaction_hash: nil,
@@ -76,14 +78,14 @@ defmodule Cartouche.TraceCallTest do
       ]
 
       assert [
-               %Cartouche.TraceCall{trace: [%Cartouche.Trace{trace_address: [0]}]},
-               %Cartouche.TraceCall{
+               %Onchain.TraceCall{trace: [%Trace{trace_address: [0]}]},
+               %Onchain.TraceCall{
                  trace: [
-                   %Cartouche.Trace{trace_address: [0]},
-                   %Cartouche.Trace{trace_address: [0]}
+                   %Trace{trace_address: [0]},
+                   %Trace{trace_address: [0]}
                  ]
                }
-             ] = Cartouche.TraceCall.deserialize_many(input)
+             ] = Onchain.TraceCall.deserialize_many(input)
     end
   end
 end

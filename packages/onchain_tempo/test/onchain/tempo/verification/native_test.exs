@@ -1,7 +1,7 @@
 defmodule Onchain.Tempo.Verification.NativeTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hash
+  alias Onchain.Hash
   alias Onchain.Tempo.Codec
   alias Onchain.Tempo.Native
   alias Onchain.Tempo.Transaction

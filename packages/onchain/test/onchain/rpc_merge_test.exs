@@ -1,13 +1,13 @@
 defmodule Onchain.RPCMergeTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
   alias Onchain.RPC.Helpers
 
   test "block reads retain the requests hash and nullable pending fields" do
     raw = %{"number" => nil, "hash" => nil, "requestsHash" => "0x" <> String.duplicate("ab", 32)}
     opts = result_opts(raw)
-    assert {:ok, %Cartouche.Block{} = block} = RPC.get_block_by_number("pending", opts)
+    assert {:ok, %Onchain.Block{} = block} = RPC.get_block_by_number("pending", opts)
     assert is_nil(block.number)
     assert is_nil(block.hash)
     assert block.requests_hash == :binary.copy(<<0xAB>>, 32)
@@ -42,8 +42,7 @@ defmodule Onchain.RPCMergeTest do
     assert_receive {:wire, %{"params" => ["0x1", "latest", [50]]}}
   end
 
-  test "Onchain.RPC is aliases only and forwards block_number" do
-    assert Code.ensure_loaded?(Onchain.RPC)
+  test "Onchain.RPC is the single RPC module after the 0.16.0 rename" do
     assert Code.ensure_loaded?(RPC)
     assert Code.ensure_loaded?(Helpers)
 
@@ -64,15 +63,14 @@ defmodule Onchain.RPCMergeTest do
           {:call, 3},
           {:batch, 2}
         ] do
-      assert function_exported?(Onchain.RPC, name, arity)
       assert function_exported?(RPC, name, arity)
     end
 
-    refute Code.ensure_loaded?(Cartouche.RPC.DSL)
+    refute Code.ensure_loaded?(Module.concat(["Cartouche", "RPC"]))
+    refute Code.ensure_loaded?(Onchain.RPC.DSL)
     refute function_exported?(Helpers, :parse_log, 1)
-    refute function_exported?(Onchain.RPC, :send_rpc, 3)
 
-    assert {:ok, 42} = Onchain.RPC.block_number(result_opts("0x2a"))
+    assert {:ok, 42} = RPC.block_number(result_opts("0x2a"))
     assert_receive {:wire, %{"method" => "eth_blockNumber", "params" => []}}
   end
 

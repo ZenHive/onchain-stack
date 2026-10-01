@@ -110,11 +110,11 @@ defmodule Onchain.Aave.MathOracle do
           {:ok, non_neg_integer()} | {:error, term()}
   def call_revm(protocol, op, args, opts) do
     address = wrapper_address(protocol)
-    calldata = ABI.encode_hex_call!(signature(protocol, op), args)
+    calldata = Onchain.ABI.encode_hex_call!(signature(protocol, op), args)
 
     case EVM.simulate_call(address, calldata, opts) do
       {:ok, hex} ->
-        [value] = ABI.decode_response!("(uint256)", hex)
+        [value] = Onchain.ABI.decode_response!("(uint256)", hex)
         {:ok, value}
 
       {:error, reason} ->

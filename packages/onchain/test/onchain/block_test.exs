@@ -1,9 +1,9 @@
-defmodule Cartouche.Block.QueryTest do
+defmodule Onchain.Block.QueryTest do
   use ExUnit.Case, async: true
 
   import Onchain.TypeEvasion, only: [untyped: 1]
 
-  alias Cartouche.Block
+  alias Onchain.Block
 
   # --- Unit tests: input validation (no network calls) ---
 
@@ -42,12 +42,12 @@ defmodule Cartouche.Block.QueryTest do
     plug = fn conn ->
       request = conn |> Req.Test.raw_body() |> IO.iodata_to_binary() |> Jason.decode!()
       [number, false] = request["params"]
-      n = Cartouche.Hex.to_integer!(number)
+      n = Onchain.Hex.to_integer!(number)
 
       block = %{
         "number" => number,
-        "timestamp" => Cartouche.Hex.from_integer(n * 10),
-        "hash" => Cartouche.Hex.encode(<<n::256>>),
+        "timestamp" => Onchain.Hex.from_integer(n * 10),
+        "hash" => Onchain.Hex.encode(<<n::256>>),
         "gasLimit" => "0x100",
         "transactions" => [],
         "withdrawals" => []

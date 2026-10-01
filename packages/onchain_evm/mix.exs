@@ -90,7 +90,7 @@ defmodule OnchainEvm.MixProject do
       # onchain 0.11.0 -> zen_websocket 0.4.2, whose looser gun bound only
       # happens to have landed on a fixed 2.5.0. onchain 0.12.0 also narrows
       # `descripex` to `~> 0.12.0`, matching what this package declares below.
-      sibling(:onchain, "~> 0.12"),
+      sibling(:onchain, "~> 0.16"),
       # Two-segment on purpose: the three-segment cap turned every descripex
       # minor into a forced nine-repo release cascade, while the committed
       # `mix.lock` already blocks a silent in-family upgrade — a new descripex

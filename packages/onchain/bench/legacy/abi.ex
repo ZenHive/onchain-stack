@@ -1,4 +1,4 @@
-defmodule ABI.Bench.Legacy do
+defmodule Onchain.ABI.Bench.Legacy do
   @moduledoc """
   Documentation for ABI, the function interface language for Solidity.
   Generally, the ABI describes how to take binary Ethereum and transform
@@ -6,15 +6,15 @@ defmodule ABI.Bench.Legacy do
 
   ## Agent Discovery
 
-  Use `ABI.describe/0..2` for progressive API discovery:
+  Use `Onchain.ABI.describe/0..2` for progressive API discovery:
 
-      ABI.describe()                    # Level 1: all annotated modules
-      ABI.describe(:abi)                # Level 2: functions in this module
-      ABI.describe(:abi, :encode)       # Level 3: full contract for encode/2
+      Onchain.ABI.describe()                    # Level 1: all annotated modules
+      Onchain.ABI.describe(:abi)                # Level 2: functions in this module
+      Onchain.ABI.describe(:abi, :encode)       # Level 3: full contract for encode/2
 
   A static `api_manifest.json` covering every public function is emitted by
   `mix descripex.manifest --app hieroglyph` (a dedicated `mix
-  hieroglyph.manifest` wrapper ships in 1.2.0 alongside Phase 3 of the agent
+  onchain.manifest` wrapper ships in 1.2.0 alongside Phase 3 of the agent
   economy work — see CHANGELOG). Downstream consumers may diff that manifest
   across hieroglyph version bumps as a contract-stability check.
   """
@@ -23,28 +23,28 @@ defmodule ABI.Bench.Legacy do
 
   use Descripex.Discoverable,
     modules: [
-      ABI,
-      ABI.Bench.Legacy.Event,
-      ABI.FunctionSelector,
-      ABI.Bench.Legacy.TypeEncoder,
-      ABI.Bench.Legacy.TypeDecoder,
-      ABI.Math
+      Onchain.ABI.Bench.Legacy,
+      Onchain.ABI.Bench.Legacy.Event,
+      Onchain.ABI.FunctionSelector,
+      Onchain.ABI.Bench.Legacy.TypeEncoder,
+      Onchain.ABI.Bench.Legacy.TypeDecoder,
+      Onchain.ABI.Math
     ]
 
-  alias ABI.Bench.Legacy.Event
-  alias ABI.Bench.Legacy.TypeDecoder
-  alias ABI.Bench.Legacy.TypeDecoder.StrictViolation
-  alias ABI.Bench.Legacy.TypeEncoder
-  alias ABI.FunctionSelector
-  alias ABI.Math
-  alias ABI.Parser
+  alias Onchain.ABI.Bench.Legacy.Event
+  alias Onchain.ABI.Bench.Legacy.TypeDecoder
+  alias Onchain.ABI.Bench.Legacy.TypeDecoder.StrictViolation
+  alias Onchain.ABI.Bench.Legacy.TypeEncoder
+  alias Onchain.ABI.FunctionSelector
+  alias Onchain.ABI.Math
+  alias Onchain.ABI.Parser
 
   api(:encode, "Encodes the given data into the function signature or tuple signature.",
     params: [
       function_signature: [
         kind: :value,
         description:
-          "Either a raw signature string (for example, transfer(address,uint256)) or a pre-parsed ABI.FunctionSelector struct."
+          "Either a raw signature string (for example, transfer(address,uint256)) or a pre-parsed Onchain.ABI.FunctionSelector struct."
       ],
       data: [
         kind: :value,
@@ -61,50 +61,50 @@ defmodule ABI.Bench.Legacy do
   @doc """
   Encodes the given data into the function signature or tuple signature.
 
-  In place of a signature, you can also pass one of the `ABI.FunctionSelector` structs returned from `parse_specification/1`.
+  In place of a signature, you can also pass one of the `Onchain.ABI.FunctionSelector` structs returned from `parse_specification/1`.
 
   ## Examples
 
-      iex> ABI.encode("(uint256)", [{10}])
+      iex> Onchain.ABI.encode("(uint256)", [{10}])
       ...> |> Base.encode16(case: :lower)
       "000000000000000000000000000000000000000000000000000000000000000a"
 
-      iex> ABI.encode("baz(uint,address)", [50, <<1::160>>])
+      iex> Onchain.ABI.encode("baz(uint,address)", [50, <<1::160>>])
       ...> |> Base.encode16(case: :lower)
       "a291add600000000000000000000000000000000000000000000000000000000000000320000000000000000000000000000000000000000000000000000000000000001"
 
-      iex> ABI.encode("price(string)", ["BAT"])
+      iex> Onchain.ABI.encode("price(string)", ["BAT"])
       ...> |> Base.encode16(case: :lower)
       "fe2c6198000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000034241540000000000000000000000000000000000000000000000000000000000"
 
-      iex> ABI.encode("baz(uint8)", [9999])
+      iex> Onchain.ABI.encode("baz(uint8)", [9999])
       ** (RuntimeError) Data overflow encoding uint, data `9999` cannot fit in 8 bits
 
-      iex> ABI.encode("(uint,address)", [{50, <<1::160>>}])
+      iex> Onchain.ABI.encode("(uint,address)", [{50, <<1::160>>}])
       ...> |> Base.encode16(case: :lower)
       "00000000000000000000000000000000000000000000000000000000000000320000000000000000000000000000000000000000000000000000000000000001"
 
-      iex> ABI.encode("(string)", [{"Ether Token"}])
+      iex> Onchain.ABI.encode("(string)", [{"Ether Token"}])
       ...> |> Base.encode16(case: :lower)
       "0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000"
 
-      iex> ABI.encode("((uint256,uint256),string)", [{{0x11, 0x22}, "Ether Token"}])
+      iex> Onchain.ABI.encode("((uint256,uint256),string)", [{{0x11, 0x22}, "Ether Token"}])
       ...> |> Base.encode16(case: :lower)
       "000000000000000000000000000000000000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000220000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000"
 
-      iex> ABI.encode("((uint256,(uint256,uint256)),string)", [{{0x11, {0x22, 0x33}}, "Ether Token"}])
+      iex> Onchain.ABI.encode("((uint256,(uint256,uint256)),string)", [{{0x11, {0x22, 0x33}}, "Ether Token"}])
       ...> |> Base.encode16(case: :lower)
       "0000000000000000000000000000000000000000000000000000000000000011000000000000000000000000000000000000000000000000000000000000002200000000000000000000000000000000000000000000000000000000000000330000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000"
 
-      iex> ABI.encode("(string)", [{String.duplicate("1234567890", 10)}])
+      iex> Onchain.ABI.encode("(string)", [{String.duplicate("1234567890", 10)}])
       ...> |> Base.encode16(case: :lower)
       "000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000643132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393000000000000000000000000000000000000000000000000000000000"
 
       iex> File.read!("priv/dog.abi.json")
       ...> |> Jason.decode!
-      ...> |> ABI.parse_specification
+      ...> |> Onchain.ABI.parse_specification
       ...> |> Enum.find(&(&1.function == "bark")) # bark(address,bool)
-      ...> |> ABI.encode([<<1::160>>, true])
+      ...> |> Onchain.ABI.encode([<<1::160>>, true])
       ...> |> Base.encode16(case: :lower)
       "b85d0bd200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001"
   """
@@ -121,7 +121,7 @@ defmodule ABI.Bench.Legacy do
     params: [
       signature_or_selector: [
         kind: :value,
-        description: "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct."
+        description: "Either a raw signature string or a pre-parsed Onchain.ABI.FunctionSelector struct."
       ],
       data: [
         kind: :value,
@@ -143,16 +143,16 @@ defmodule ABI.Bench.Legacy do
   Encodes args into selector-prefixed calldata for a named function.
 
   This is the encode-side counterpart to `decode_call/3`: pass a signature or
-  `ABI.FunctionSelector`, plus the argument list, and receive the full
+  `Onchain.ABI.FunctionSelector`, plus the argument list, and receive the full
   transaction calldata blob.
 
   ## Examples
 
-      iex> ABI.encode_call("transfer(address,uint256)", [<<1::160>>, 100])
+      iex> Onchain.ABI.encode_call("transfer(address,uint256)", [<<1::160>>, 100])
       ...> |> Base.encode16(case: :lower)
       "a9059cbb00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000064"
 
-      iex> ABI.encode_call(%ABI.FunctionSelector{function: nil, types: []}, [])
+      iex> Onchain.ABI.encode_call(%Onchain.ABI.FunctionSelector{function: nil, types: []}, [])
       ** (ArgumentError) encode_call/3 requires a function name; use encode/2 for payload-only data
   """
   @spec encode_call(binary() | FunctionSelector.t(), [any()], keyword()) ::
@@ -179,7 +179,7 @@ defmodule ABI.Bench.Legacy do
       selector: [
         kind: :value,
         description:
-          "A pre-parsed ABI.FunctionSelector with function_type: :constructor (constructors have no name, so no signature-string form is accepted). Typically obtained from parse_specification/1 by finding the :constructor entry."
+          "A pre-parsed Onchain.ABI.FunctionSelector with function_type: :constructor (constructors have no name, so no signature-string form is accepted). Typically obtained from parse_specification/1 by finding the :constructor entry."
       ],
       data: [
         kind: :value,
@@ -202,7 +202,7 @@ defmodule ABI.Bench.Legacy do
   (unlike `encode_call/3`). The caller concatenates the bytecode. Mirrors viem's
   `encodeDeployData`, scoped to just the args blob.
 
-  Only accepts a `%ABI.FunctionSelector{function_type: :constructor}` — pass the
+  Only accepts a `%Onchain.ABI.FunctionSelector{function_type: :constructor}` — pass the
   `:constructor` entry from `parse_specification/1`. A non-constructor selector
   raises `ArgumentError`. Round-trips through `decode/3` against the
   constructor's parsed types.
@@ -210,21 +210,21 @@ defmodule ABI.Bench.Legacy do
   ## Examples
 
       iex> [selector] =
-      ...>   ABI.parse_specification([%{
+      ...>   Onchain.ABI.parse_specification([%{
       ...>     "type" => "constructor",
       ...>     "stateMutability" => "nonpayable",
       ...>     "inputs" => [%{"name" => "supply", "type" => "uint256"}]
       ...>   }])
-      iex> ABI.encode_constructor(selector, [1000])
+      iex> Onchain.ABI.encode_constructor(selector, [1000])
       ...> |> Base.encode16(case: :lower)
       "00000000000000000000000000000000000000000000000000000000000003e8"
 
-      iex> selector = %ABI.FunctionSelector{function_type: :constructor, types: []}
-      iex> ABI.encode_constructor(selector, [])
+      iex> selector = %Onchain.ABI.FunctionSelector{function_type: :constructor, types: []}
+      iex> Onchain.ABI.encode_constructor(selector, [])
       ""
 
-      iex> selector = %ABI.FunctionSelector{function: "transfer", function_type: :function, types: []}
-      iex> ABI.encode_constructor(selector, [])
+      iex> selector = %Onchain.ABI.FunctionSelector{function: "transfer", function_type: :function, types: []}
+      iex> Onchain.ABI.encode_constructor(selector, [])
       ** (ArgumentError) encode_constructor/2 requires a constructor selector (function_type: :constructor)
   """
   @spec encode_constructor(FunctionSelector.t(), [any()]) :: binary()
@@ -244,7 +244,7 @@ defmodule ABI.Bench.Legacy do
       signature: [
         kind: :value,
         description:
-          "Either a raw signature string (for example, transfer(address,uint256)) or a pre-parsed ABI.FunctionSelector struct."
+          "Either a raw signature string (for example, transfer(address,uint256)) or a pre-parsed Onchain.ABI.FunctionSelector struct."
       ]
     ],
     returns: %{
@@ -264,16 +264,16 @@ defmodule ABI.Bench.Legacy do
 
   ## Examples
 
-      iex> ABI.Bench.Legacy.method_id("transfer(address,uint256)") |> Base.encode16(case: :lower)
+      iex> Onchain.ABI.Bench.Legacy.method_id("transfer(address,uint256)") |> Base.encode16(case: :lower)
       "a9059cbb"
 
-      iex> ABI.Bench.Legacy.method_id("deposit()") |> Base.encode16(case: :lower)
+      iex> Onchain.ABI.Bench.Legacy.method_id("deposit()") |> Base.encode16(case: :lower)
       "d0e30db0"
 
-      iex> ABI.Bench.Legacy.method_id(%ABI.FunctionSelector{function: "deposit", types: []}) |> Base.encode16(case: :lower)
+      iex> Onchain.ABI.Bench.Legacy.method_id(%Onchain.ABI.FunctionSelector{function: "deposit", types: []}) |> Base.encode16(case: :lower)
       "d0e30db0"
 
-      iex> ABI.Bench.Legacy.method_id(%ABI.FunctionSelector{function: nil, types: [%{type: {:uint, 256}}]})
+      iex> Onchain.ABI.Bench.Legacy.method_id(%Onchain.ABI.FunctionSelector{function: nil, types: [%{type: {:uint, 256}}]})
       ""
   """
   @spec method_id(binary() | FunctionSelector.t()) :: binary()
@@ -296,7 +296,7 @@ defmodule ABI.Bench.Legacy do
     params: [
       function_signature: [
         kind: :value,
-        description: "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct."
+        description: "Either a raw signature string or a pre-parsed Onchain.ABI.FunctionSelector struct."
       ],
       data: [
         kind: :value,
@@ -320,7 +320,7 @@ defmodule ABI.Bench.Legacy do
   Decodes the given data based on the function or tuple
   signature.
 
-  In place of a signature, you can also pass one of the `ABI.FunctionSelector` structs returned from `parse_specification/1`.
+  In place of a signature, you can also pass one of the `Onchain.ABI.FunctionSelector` structs returned from `parse_specification/1`.
 
   ## Options
 
@@ -337,32 +337,32 @@ defmodule ABI.Bench.Legacy do
 
   ## Examples
 
-      iex> ABI.decode("baz(uint,address)", "00000000000000000000000000000000000000000000000000000000000000320000000000000000000000000000000000000000000000000000000000000001" |> Base.decode16!(case: :lower))
+      iex> Onchain.ABI.decode("baz(uint,address)", "00000000000000000000000000000000000000000000000000000000000000320000000000000000000000000000000000000000000000000000000000000001" |> Base.decode16!(case: :lower))
       [50, <<1::160>>]
 
-      iex> ABI.decode("(address[])", "00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000" |> Base.decode16!(case: :lower))
+      iex> Onchain.ABI.decode("(address[])", "00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000" |> Base.decode16!(case: :lower))
       [[]]
 
-      iex> ABI.decode("(uint256)", "000000000000000000000000000000000000000000000000000000000000000a" |> Base.decode16!(case: :lower))
+      iex> Onchain.ABI.decode("(uint256)", "000000000000000000000000000000000000000000000000000000000000000a" |> Base.decode16!(case: :lower))
       [10]
 
-      iex> ABI.decode("(string)", "0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000" |> Base.decode16!(case: :lower))
+      iex> Onchain.ABI.decode("(string)", "0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000" |> Base.decode16!(case: :lower))
       ["Ether Token"]
 
-      iex> ABI.decode("((uint256,uint256),string)", "000000000000000000000000000000000000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000220000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000" |> Base.decode16!(case: :lower))
+      iex> Onchain.ABI.decode("((uint256,uint256),string)", "000000000000000000000000000000000000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000220000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000" |> Base.decode16!(case: :lower))
       [{0x11, 0x22}, "Ether Token"]
 
-      iex> ABI.decode("((uint256,(uint256,uint256)),string)", "0000000000000000000000000000000000000000000000000000000000000011000000000000000000000000000000000000000000000000000000000000002200000000000000000000000000000000000000000000000000000000000000330000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000" |> Base.decode16!(case: :lower))
+      iex> Onchain.ABI.decode("((uint256,(uint256,uint256)),string)", "0000000000000000000000000000000000000000000000000000000000000011000000000000000000000000000000000000000000000000000000000000002200000000000000000000000000000000000000000000000000000000000000330000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000b457468657220546f6b656e000000000000000000000000000000000000000000" |> Base.decode16!(case: :lower))
       [{0x11, {0x22, 0x33}}, "Ether Token"]
 
       iex> File.read!("priv/dog.abi.json")
       ...> |> Jason.decode!
-      ...> |> ABI.parse_specification
+      ...> |> Onchain.ABI.parse_specification
       ...> |> Enum.find(&(&1.function == "bark")) # bark(address,bool)
-      ...> |> ABI.decode("00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001" |> Base.decode16!(case: :lower))
+      ...> |> Onchain.ABI.decode("00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001" |> Base.decode16!(case: :lower))
       [<<1::160>>, true]
 
-      iex> ABI.decode("(uint256 a,bool b)", "000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000001" |> Base.decode16!(case: :lower), decode_structs: true)
+      iex> Onchain.ABI.decode("(uint256 a,bool b)", "000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000001" |> Base.decode16!(case: :lower), decode_structs: true)
       %{a: 10, b: true}
   """
   @spec decode(binary() | FunctionSelector.t(), binary(), keyword()) ::
@@ -392,7 +392,7 @@ defmodule ABI.Bench.Legacy do
       signature_or_selector: [
         kind: :value,
         description:
-          "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct. The first 4 bytes of calldata are checked against this selector."
+          "Either a raw signature string or a pre-parsed Onchain.ABI.FunctionSelector struct. The first 4 bytes of calldata are checked against this selector."
       ],
       calldata: [
         kind: :value,
@@ -445,20 +445,20 @@ defmodule ABI.Bench.Legacy do
 
   ## Examples
 
-      iex> calldata = ABI.encode("transfer(address,uint256)", [<<1::160>>, 100])
-      iex> ABI.decode_call("transfer(address,uint256)", calldata)
+      iex> calldata = Onchain.ABI.encode("transfer(address,uint256)", [<<1::160>>, 100])
+      iex> Onchain.ABI.decode_call("transfer(address,uint256)", calldata)
       {:ok, [<<1::160>>, 100]}
 
-      iex> ABI.decode_call("deposit()", <<0xd0, 0xe3, 0x0d, 0xb0>>)
+      iex> Onchain.ABI.decode_call("deposit()", <<0xd0, 0xe3, 0x0d, 0xb0>>)
       {:ok, []}
 
-      iex> ABI.decode_call("transfer(address,uint256)", <<0xde, 0xad, 0xbe, 0xef>>)
+      iex> Onchain.ABI.decode_call("transfer(address,uint256)", <<0xde, 0xad, 0xbe, 0xef>>)
       {:error, :selector_mismatch}
 
-      iex> ABI.decode_call("transfer(address,uint256)", <<0xa9, 0x05>>)
+      iex> Onchain.ABI.decode_call("transfer(address,uint256)", <<0xa9, 0x05>>)
       {:error, :calldata_too_short}
 
-      iex> ABI.decode_call(%ABI.FunctionSelector{function: nil, types: []}, <<0::32>>)
+      iex> Onchain.ABI.decode_call(%Onchain.ABI.FunctionSelector{function: nil, types: []}, <<0::32>>)
       {:error, :no_function_name}
   """
   @typep decode_call_error ::
@@ -501,7 +501,7 @@ defmodule ABI.Bench.Legacy do
     params: [
       signature_or_selector: [
         kind: :value,
-        description: "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct."
+        description: "Either a raw signature string or a pre-parsed Onchain.ABI.FunctionSelector struct."
       ],
       data: [
         kind: :value,
@@ -523,15 +523,15 @@ defmodule ABI.Bench.Legacy do
   Encodes args into selector-prefixed revert data for a Solidity 0.8.4+ custom error.
 
   This is the encode-side counterpart to `decode_error/2`: pass an error signature or
-  `ABI.FunctionSelector`, plus the argument list, and receive the full revert data blob.
+  `Onchain.ABI.FunctionSelector`, plus the argument list, and receive the full revert data blob.
 
   ## Examples
 
-      iex> ABI.encode_error("InsufficientBalance(uint256,uint256)", [10, 100])
+      iex> Onchain.ABI.encode_error("InsufficientBalance(uint256,uint256)", [10, 100])
       ...> |> Base.encode16(case: :lower)
       "cf479181000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000064"
 
-      iex> ABI.encode_error(%ABI.FunctionSelector{function: nil, types: []}, [])
+      iex> Onchain.ABI.encode_error(%Onchain.ABI.FunctionSelector{function: nil, types: []}, [])
       ** (ArgumentError) encode_error/3 requires a function name; use encode/2 for payload-only data
   """
   @spec encode_error(binary() | FunctionSelector.t(), [any()], keyword()) ::
@@ -563,7 +563,7 @@ defmodule ABI.Bench.Legacy do
       error_definitions: [
         kind: :value,
         description:
-          "List of candidate error signatures, each either a raw signature string (\"InsufficientBalance(uint256,uint256)\") or a pre-parsed ABI.FunctionSelector. The first definition whose 4-byte selector matches revert_data[0..3] is used to decode the payload. The built-in Error(string) (0x08c379a0) and Panic(uint256) (0x4e487b71) errors are recognized implicitly as a fallback, so they resolve even when this list is empty; a user definition colliding with a built-in selector still wins."
+          "List of candidate error signatures, each either a raw signature string (\"InsufficientBalance(uint256,uint256)\") or a pre-parsed Onchain.ABI.FunctionSelector. The first definition whose 4-byte selector matches revert_data[0..3] is used to decode the payload. The built-in Error(string) (0x08c379a0) and Panic(uint256) (0x4e487b71) errors are recognized implicitly as a fallback, so they resolve even when this list is empty; a user definition colliding with a built-in selector still wins."
       ],
       opts: [
         kind: :value,
@@ -640,29 +640,29 @@ defmodule ABI.Bench.Legacy do
 
   ## Examples
 
-      iex> revert_data = ABI.encode("InsufficientBalance(uint256,uint256)", [10, 100])
-      iex> ABI.decode_error(revert_data, ["InsufficientBalance(uint256,uint256)"])
+      iex> revert_data = Onchain.ABI.encode("InsufficientBalance(uint256,uint256)", [10, 100])
+      iex> Onchain.ABI.decode_error(revert_data, ["InsufficientBalance(uint256,uint256)"])
       {:ok, %{error: "InsufficientBalance", args: [10, 100]}}
 
-      iex> revert_data = ABI.encode("Unauthorized(address)", [<<1::160>>])
-      iex> ABI.decode_error(revert_data, [
+      iex> revert_data = Onchain.ABI.encode("Unauthorized(address)", [<<1::160>>])
+      iex> Onchain.ABI.decode_error(revert_data, [
       ...>   "InsufficientBalance(uint256,uint256)",
       ...>   "Unauthorized(address)"
       ...> ])
       {:ok, %{error: "Unauthorized", args: [<<1::160>>]}}
 
-      iex> revert_data = ABI.encode("Error(string)", ["insufficient balance"])
-      iex> ABI.decode_error(revert_data, [])
+      iex> revert_data = Onchain.ABI.encode("Error(string)", ["insufficient balance"])
+      iex> Onchain.ABI.decode_error(revert_data, [])
       {:ok, %{error: "Error", args: ["insufficient balance"]}}
 
-      iex> revert_data = ABI.encode("Panic(uint256)", [0x11])
-      iex> ABI.decode_error(revert_data, [])
+      iex> revert_data = Onchain.ABI.encode("Panic(uint256)", [0x11])
+      iex> Onchain.ABI.decode_error(revert_data, [])
       {:ok, %{error: "Panic", args: [17]}}
 
-      iex> ABI.decode_error(<<0xde, 0xad, 0xbe, 0xef>>, ["NotFound()"])
+      iex> Onchain.ABI.decode_error(<<0xde, 0xad, 0xbe, 0xef>>, ["NotFound()"])
       {:error, :no_match}
 
-      iex> ABI.decode_error(<<0xa9, 0x05>>, ["NotFound()"])
+      iex> Onchain.ABI.decode_error(<<0xa9, 0x05>>, ["NotFound()"])
       {:error, :calldata_too_short}
   """
   @typep decode_error_error ::
@@ -775,15 +775,15 @@ defmodule ABI.Bench.Legacy do
 
   ## Examples
 
-      iex> ABI.encode_packed("foo(int16,bytes1,uint16,string)", [-1, <<0x42>>, 3, "Hello, world!"])
+      iex> Onchain.ABI.encode_packed("foo(int16,bytes1,uint16,string)", [-1, <<0x42>>, 3, "Hello, world!"])
       ...> |> Base.encode16(case: :lower)
       "ffff42000348656c6c6f2c20776f726c6421"
 
-      iex> ABI.encode_packed("leaf(address,uint256)", [<<1::160>>, 100])
+      iex> Onchain.ABI.encode_packed("leaf(address,uint256)", [<<1::160>>, 100])
       ...> |> Base.encode16(case: :lower)
       "00000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000064"
 
-      iex> ABI.encode_packed("foo(uint8[])", [[1, 2, 3]])
+      iex> Onchain.ABI.encode_packed("foo(uint8[])", [[1, 2, 3]])
       ...> |> Base.encode16(case: :lower)
       "000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003"
   """
@@ -802,7 +802,7 @@ defmodule ABI.Bench.Legacy do
     params: [
       function_signature: [
         kind: :value,
-        description: "Either a raw event signature string or a pre-parsed ABI.FunctionSelector struct."
+        description: "Either a raw event signature string or a pre-parsed Onchain.ABI.FunctionSelector struct."
       ],
       data: [
         kind: :value,
@@ -851,7 +851,7 @@ defmodule ABI.Bench.Legacy do
 
   ## Examples
 
-      iex> ABI.decode_event(
+      iex> Onchain.ABI.decode_event(
       ...>   "Transfer(address indexed from, address indexed to, uint256 amount)",
       ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],
       ...>   [
@@ -867,7 +867,7 @@ defmodule ABI.Bench.Legacy do
           "to" => ~h[0x7795126b3ae468f44c901287de98594198ce38ea]
       }}
 
-      iex> ABI.decode_event(
+      iex> Onchain.ABI.decode_event(
       ...>   "Transfer(address indexed from, address indexed to, uint256 amount)",
       ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],
       ...>   [
@@ -883,8 +883,8 @@ defmodule ABI.Bench.Legacy do
           "to" => ~h[0x7795126b3ae468f44c901287de98594198ce38ea]
       }}
 
-      iex> ABI.decode_event(
-      ...>   %ABI.FunctionSelector{
+      iex> Onchain.ABI.decode_event(
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
       ...>       %{type: :address, name: "from", indexed: true},
@@ -926,7 +926,7 @@ defmodule ABI.Bench.Legacy do
     params: [
       function_signature: [
         kind: :value,
-        description: "Either a raw event signature string or a pre-parsed ABI.FunctionSelector struct."
+        description: "Either a raw event signature string or a pre-parsed Onchain.ABI.FunctionSelector struct."
       ],
       indexed_values: [
         kind: :value,
@@ -951,7 +951,7 @@ defmodule ABI.Bench.Legacy do
 
   ## Examples
 
-      iex> ABI.encode_event_topics(
+      iex> Onchain.ABI.encode_event_topics(
       ...>   "Transfer(address indexed from,address indexed to,uint256 amount)",
       ...>   [~h[0xb2b7c1795f19fbc28fda77a95e59edbb8b3709c8], :any]
       ...> )
@@ -975,7 +975,7 @@ defmodule ABI.Bench.Legacy do
     params: [
       function_signature: [
         kind: :value,
-        description: "Either a raw event signature string or a pre-parsed ABI.FunctionSelector struct."
+        description: "Either a raw event signature string or a pre-parsed Onchain.ABI.FunctionSelector struct."
       ]
     ],
     returns: %{
@@ -990,7 +990,7 @@ defmodule ABI.Bench.Legacy do
 
   ## Examples
 
-      iex> ABI.event_signature("Transfer(address indexed from, address indexed to, uint256 amount)")
+      iex> Onchain.ABI.event_signature("Transfer(address indexed from, address indexed to, uint256 amount)")
       ...> |> Base.encode16(case: :lower)
       "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
   """
@@ -1010,7 +1010,7 @@ defmodule ABI.Bench.Legacy do
       function_selector: [
         kind: :value,
         description:
-          "A pre-parsed ABI.FunctionSelector struct — a function, error, event, or anonymous (constructor/fallback) fragment."
+          "A pre-parsed Onchain.ABI.FunctionSelector struct — a function, error, event, or anonymous (constructor/fallback) fragment."
       ]
     ],
     returns: %{
@@ -1022,11 +1022,11 @@ defmodule ABI.Bench.Legacy do
   )
 
   @doc """
-  Renders an `ABI.FunctionSelector` as its canonical Solidity signature string.
+  Renders an `Onchain.ABI.FunctionSelector` as its canonical Solidity signature string.
 
   This is the general-purpose formatter behind `method_id/1` and
   `event_signature/1` (both hash this exact string): it reuses
-  `ABI.FunctionSelector.encode/1` — the shared sig-builder — so the formatted
+  `Onchain.ABI.FunctionSelector.encode/1` — the shared sig-builder — so the formatted
   output can never drift from what gets hashed. First consumers are the
   `api_manifest.json` CI artifact and error/log messages that would otherwise
   inspect raw structs.
@@ -1039,12 +1039,12 @@ defmodule ABI.Bench.Legacy do
 
   ## Examples
 
-      iex> ABI.parse_specification([%{"type" => "function", "name" => "transfer", "inputs" => [%{"name" => "to", "type" => "address"}, %{"name" => "amount", "type" => "uint256"}]}])
+      iex> Onchain.ABI.parse_specification([%{"type" => "function", "name" => "transfer", "inputs" => [%{"name" => "to", "type" => "address"}, %{"name" => "amount", "type" => "uint256"}]}])
       ...> |> hd()
-      ...> |> ABI.format_abi_item()
+      ...> |> Onchain.ABI.format_abi_item()
       "transfer(address,uint256)"
 
-      iex> ABI.format_abi_item(%ABI.FunctionSelector{
+      iex> Onchain.ABI.format_abi_item(%Onchain.ABI.FunctionSelector{
       ...>   function: "swap",
       ...>   types: [
       ...>     %{type: {:tuple, [%{type: :address}, %{type: {:uint, 256}}]}},
@@ -1054,7 +1054,7 @@ defmodule ABI.Bench.Legacy do
       ...> })
       "swap((address,uint256),uint256[],address[3])"
 
-      iex> ABI.format_abi_item(%ABI.FunctionSelector{function: nil, function_type: :constructor, types: [%{type: {:uint, 8}}]})
+      iex> Onchain.ABI.format_abi_item(%Onchain.ABI.FunctionSelector{function: nil, function_type: :constructor, types: [%{type: {:uint, 8}}]})
       "(uint8)"
   """
   @spec format_abi_item(FunctionSelector.t()) :: String.t()
@@ -1105,28 +1105,28 @@ defmodule ABI.Bench.Legacy do
   ## Examples
 
       iex> abi =
-      ...>   ABI.parse_specification([
+      ...>   Onchain.ABI.parse_specification([
       ...>     %{"type" => "function", "name" => "transfer", "inputs" => [
       ...>       %{"type" => "address"},
       ...>       %{"type" => "uint256"}
       ...>     ]}
       ...>   ])
-      iex> {:ok, %ABI.FunctionSelector{function: "transfer"}} = ABI.get_abi_item(abi, "transfer", nil)
+      iex> {:ok, %Onchain.ABI.FunctionSelector{function: "transfer"}} = Onchain.ABI.get_abi_item(abi, "transfer", nil)
 
       iex> abi =
-      ...>   ABI.parse_specification([
+      ...>   Onchain.ABI.parse_specification([
       ...>     %{"type" => "function", "name" => "pick", "inputs" => [%{"type" => "uint256"}]},
       ...>     %{"type" => "function", "name" => "pick", "inputs" => [
       ...>       %{"type" => "uint256"},
       ...>       %{"type" => "address"}
       ...>     ]}
       ...>   ])
-      iex> {:error, {:ambiguous, _}} = ABI.get_abi_item(abi, "pick", nil)
-      iex> {:ok, %ABI.FunctionSelector{types: [%{type: {:uint, 256}}, %{type: :address}]}} =
-      ...>   ABI.get_abi_item(abi, "pick", [{:uint, 256}, :address])
+      iex> {:error, {:ambiguous, _}} = Onchain.ABI.get_abi_item(abi, "pick", nil)
+      iex> {:ok, %Onchain.ABI.FunctionSelector{types: [%{type: {:uint, 256}}, %{type: :address}]}} =
+      ...>   Onchain.ABI.get_abi_item(abi, "pick", [{:uint, 256}, :address])
 
-      iex> abi = ABI.parse_specification([%{"type" => "function", "name" => "only", "inputs" => []}])
-      iex> ABI.get_abi_item(abi, "missing", nil)
+      iex> abi = Onchain.ABI.parse_specification([%{"type" => "function", "name" => "only", "inputs" => []}])
+      iex> Onchain.ABI.get_abi_item(abi, "missing", nil)
       {:error, :not_found}
   """
   @spec get_abi_item([FunctionSelector.t()], String.t(), [FunctionSelector.type()] | nil) ::
@@ -1159,7 +1159,7 @@ defmodule ABI.Bench.Legacy do
 
   api(
     :parse_specification,
-    "Parses an ABI specification document into a list of ABI.FunctionSelector structs.",
+    "Parses an ABI specification document into a list of Onchain.ABI.FunctionSelector structs.",
     params: [
       doc: [
         kind: :value,
@@ -1169,12 +1169,12 @@ defmodule ABI.Bench.Legacy do
     ],
     returns: %{
       type: :list,
-      description: "List of ABI.FunctionSelector structs — one per entry in the input doc, regardless of :function_type."
+      description: "List of Onchain.ABI.FunctionSelector structs — one per entry in the input doc, regardless of :function_type."
     }
   )
 
   @doc """
-  Parses the given ABI specification document into an array of `ABI.FunctionSelector`s.
+  Parses the given ABI specification document into an array of `Onchain.ABI.FunctionSelector`s.
 
   Every entry in the document is parsed — including constructor, fallback,
   receive, error, and event entries — and returned with its `function_type`
@@ -1187,9 +1187,9 @@ defmodule ABI.Bench.Legacy do
 
       iex> File.read!("priv/dog.abi.json")
       ...> |> Jason.decode!
-      ...> |> ABI.parse_specification
-      [%ABI.FunctionSelector{function: "bark", function_type: :function, state_mutability: :nonpayable, returns: [], types: [%{name: "at", type: :address}, %{name: "loudly", type: :bool}]},
-       %ABI.FunctionSelector{function: "rollover", function_type: :function, state_mutability: :nonpayable, returns: [%{name: "is_a_good_boy", type: :bool}], types: []}]
+      ...> |> Onchain.ABI.parse_specification
+      [%Onchain.ABI.FunctionSelector{function: "bark", function_type: :function, state_mutability: :nonpayable, returns: [], types: [%{name: "at", type: :address}, %{name: "loudly", type: :bool}]},
+       %Onchain.ABI.FunctionSelector{function: "rollover", function_type: :function, state_mutability: :nonpayable, returns: [%{name: "is_a_good_boy", type: :bool}], types: []}]
 
       iex> [%{
       ...>   "constant" => true,
@@ -1203,9 +1203,9 @@ defmodule ABI.Bench.Legacy do
       ...>   "stateMutability" => "pure",
       ...>   "type" => "function"
       ...> }]
-      ...> |> ABI.parse_specification
+      ...> |> Onchain.ABI.parse_specification
       [
-        %ABI.FunctionSelector{function: "bark", function_type: :function, state_mutability: :pure, returns: [], types: [
+        %Onchain.ABI.FunctionSelector{function: "bark", function_type: :function, state_mutability: :pure, returns: [], types: [
           %{type: :address, name: "at"},
           %{type: :bool, name: "loudly"}
         ]}
@@ -1219,10 +1219,10 @@ defmodule ABI.Bench.Legacy do
       ...>   "stateMutability" => "nonpayable",
       ...>   "type" => "constructor"
       ...> }]
-      ...> |> ABI.parse_specification
-      [%ABI.FunctionSelector{function: nil, function_type: :constructor, state_mutability: :nonpayable, types: [%{name: "_numProposals", type: {:uint, 8}}], returns: nil}]
+      ...> |> Onchain.ABI.parse_specification
+      [%Onchain.ABI.FunctionSelector{function: nil, function_type: :constructor, state_mutability: :nonpayable, types: [%{name: "_numProposals", type: {:uint, 8}}], returns: nil}]
 
-      iex> ABI.decode("(string)", "000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000643132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393000000000000000000000000000000000000000000000000000000000" |> Base.decode16!(case: :lower))
+      iex> Onchain.ABI.decode("(string)", "000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000643132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393000000000000000000000000000000000000000000000000000000000" |> Base.decode16!(case: :lower))
       [String.duplicate("1234567890", 10)]
 
       iex> [%{
@@ -1230,8 +1230,8 @@ defmodule ABI.Bench.Legacy do
       ...>   "stateMutability" => "nonpayable",
       ...>   "type" => "fallback"
       ...> }]
-      ...> |> ABI.parse_specification
-      [%ABI.FunctionSelector{function: nil, function_type: :fallback, state_mutability: :nonpayable, returns: nil, types: []}]
+      ...> |> Onchain.ABI.parse_specification
+      [%Onchain.ABI.FunctionSelector{function: nil, function_type: :fallback, state_mutability: :nonpayable, returns: nil, types: []}]
   """
   @spec parse_specification([map()]) :: [FunctionSelector.t()]
   def parse_specification(doc) do

@@ -128,7 +128,7 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
 
   defp required_address!(opts, key) do
     case Onchain.Address.validate(opts[key]) do
-      {:ok, address} -> Cartouche.Hex.encode(address)
+      {:ok, address} -> Onchain.Hex.encode(address)
       {:error, _} -> Mix.raise("--#{cli_name(key)} must be an explicit address for --nonempty")
     end
   end
@@ -174,8 +174,8 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
         Keyword.get(opts, :raw_call, fn address, data, pinned ->
           live_eth_call(address, data, pinned, rpc_opts)
         end),
-      chain_id: Keyword.get(opts, :chain_id, fn -> Cartouche.RPC.chain_id(rpc_opts) end),
-      get_block: Keyword.get(opts, :get_block, fn n -> Cartouche.RPC.get_block_by_number(n, rpc_opts) end)
+      chain_id: Keyword.get(opts, :chain_id, fn -> Onchain.RPC.chain_id(rpc_opts) end),
+      get_block: Keyword.get(opts, :get_block, fn n -> Onchain.RPC.get_block_by_number(n, rpc_opts) end)
     }
   end
 
@@ -294,7 +294,7 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
     case nfts do
       [nft | _] when is_tuple(nft) and tuple_size(nft) >= 2 ->
         id = elem(nft, 0)
-        account_hex = Cartouche.Hex.encode(elem(nft, 1))
+        account_hex = Onchain.Hex.encode(elem(nft, 1))
 
         ctx
         |> Map.merge(%{venft_id: id, account: account_hex})
@@ -376,19 +376,19 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
     Mix.shell().info("no ALM wrapper in first #{length(ctx.lps)} LPs; reading alm_core.managedPositionAt(1)")
 
     factory = Contracts.address!(:alm_factory)
-    {:ok, core_call} = ABI.encode_hex_call("core()", [])
+    {:ok, core_call} = Onchain.ABI.encode_hex_call("core()", [])
 
     with {:ok, core_hex} <- ctx.raw_call.(factory, core_call, ctx.block),
-         {:ok, [core]} <- ABI.decode_response("(address)", core_hex),
-         {:ok, at_call} <- ABI.encode_hex_call("managedPositionAt(uint256)", [1]),
-         {:ok, at_hex} <- ctx.raw_call.(Cartouche.Hex.encode(core), at_call, ctx.block),
+         {:ok, [core]} <- Onchain.ABI.decode_response("(address)", core_hex),
+         {:ok, at_call} <- Onchain.ABI.encode_hex_call("managedPositionAt(uint256)", [1]),
+         {:ok, at_hex} <- ctx.raw_call.(Onchain.Hex.encode(core), at_call, ctx.block),
          {:ok, [pos]} <-
-           ABI.decode_response(
+           Onchain.ABI.decode_response(
              "((uint32,uint24,address,address,uint256[],bytes,bytes,bytes))",
              at_hex
            ),
          owner when owner != @empty <- elem(pos, 2) do
-      Cartouche.Hex.encode(owner)
+      Onchain.Hex.encode(owner)
     else
       _other -> nil
     end
@@ -452,7 +452,7 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
     abi_file = "#{contract}.json"
     {:ok, signature} = Abi.signature(abi_file, function)
     {:ok, return_type} = Abi.return_type(abi_file, function)
-    {:ok, calldata} = ABI.encode_hex_call(signature, Enum.map(args, &abi_arg/1))
+    {:ok, calldata} = Onchain.ABI.encode_hex_call(signature, Enum.map(args, &abi_arg/1))
 
     Mix.shell().info("#{id_hint(contract, function, args)} block=#{ctx.block}")
 
@@ -463,7 +463,7 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
       end
 
     decoded =
-      case ABI.decode_response(return_type, hex) do
+      case Onchain.ABI.decode_response(return_type, hex) do
         {:ok, values} -> values
         {:error, reason} -> Mix.raise("decode #{signature} failed: #{inspect(reason)}")
       end
@@ -502,7 +502,7 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
   defp row_count(_decoded), do: nil
 
   defp abi_arg(n) when is_integer(n), do: n
-  defp abi_arg(<<"0x", _::binary>> = hex), do: Cartouche.Hex.decode!(hex)
+  defp abi_arg(<<"0x", _::binary>> = hex), do: Onchain.Hex.decode!(hex)
   defp abi_arg(list) when is_list(list), do: Enum.map(list, &abi_arg/1)
 
   defp lp_hex(rows, index) do
@@ -510,7 +510,7 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
       row when is_tuple(row) and tuple_size(row) > index ->
         case elem(row, index) do
           @empty -> nil
-          <<_::binary-size(20)>> = addr -> Cartouche.Hex.encode(addr)
+          <<_::binary-size(20)>> = addr -> Onchain.Hex.encode(addr)
           _other -> nil
         end
 
@@ -529,7 +529,7 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
 
   defp live_eth_call(address, data, block, rpc_opts) do
     retry_transient(
-      fn -> Cartouche.RPC.eth_call(address, data, Keyword.put(rpc_opts, :block, block)) end,
+      fn -> Onchain.RPC.eth_call(address, data, Keyword.put(rpc_opts, :block, block)) end,
       8
     )
   end

@@ -2,13 +2,13 @@ defmodule Onchain.Address do
   @moduledoc """
   Ethereum address validation, checksumming, and comparison.
 
-  Curated 7-function API wrapping `Cartouche.Hex` with flexible input handling
+  Curated 7-function API wrapping `Onchain.Hex` with flexible input handling
   (hex strings or 20-byte binaries) and normalized error tuples.
 
   ## Error Format
 
   All failable functions return `{:error, {:invalid_address, input}}` where `input`
-  is the original value that failed validation. Bang variants raise `Cartouche.Hex.InvalidHex`.
+  is the original value that failed validation. Bang variants raise `Onchain.Hex.InvalidHex`.
 
   ## Functions
 
@@ -78,7 +78,7 @@ defmodule Onchain.Address do
   @spec checksum(term()) :: {:ok, String.t()} | {:error, {:invalid_address, term()}}
   def checksum(input) do
     case to_binary(input) do
-      {:ok, binary} -> {:ok, Cartouche.Hex.checksum_address(binary)}
+      {:ok, binary} -> {:ok, Onchain.Hex.checksum_address(binary)}
       :error -> {:error, {:invalid_address, input}}
     end
   end
@@ -99,8 +99,8 @@ defmodule Onchain.Address do
   @spec checksum!(term()) :: String.t()
   def checksum!(input) do
     case to_binary(input) do
-      {:ok, binary} -> Cartouche.Hex.checksum_address(binary)
-      :error -> raise Cartouche.Hex.InvalidHex, "invalid address: #{inspect(input)}"
+      {:ok, binary} -> Onchain.Hex.checksum_address(binary)
+      :error -> raise Onchain.Hex.InvalidHex, "invalid address: #{inspect(input)}"
     end
   end
 
@@ -120,7 +120,7 @@ defmodule Onchain.Address do
   @spec normalize(term()) :: {:ok, String.t()} | {:error, {:invalid_address, term()}}
   def normalize(input) do
     case to_binary(input) do
-      {:ok, binary} -> {:ok, Cartouche.Hex.encode(binary)}
+      {:ok, binary} -> {:ok, Onchain.Hex.encode(binary)}
       :error -> {:error, {:invalid_address, input}}
     end
   end
@@ -168,7 +168,7 @@ defmodule Onchain.Address do
   end
 
   defp to_binary(hex) when is_binary(hex) do
-    case Cartouche.Hex.decode(hex) do
+    case Onchain.Hex.decode(hex) do
       {:ok, bin} when byte_size(bin) == @address_size -> {:ok, bin}
       _ -> :error
     end
@@ -194,16 +194,16 @@ defmodule Onchain.Address do
 
   ## Examples
 
-      iex> use Cartouche.Hex
+      iex> use Onchain.Hex
       iex> public_key = ~h[0x0422]
       iex> Onchain.Address.from_public_key(public_key)
-      ...> |> Cartouche.Hex.encode_hex()
+      ...> |> Onchain.Hex.encode_hex()
       "0x759f1afdc24aba433a3e18b683f8c04a6eaa69f0"
   """
   @spec from_public_key(binary()) :: <<_::160>>
   def from_public_key(public_key) do
     <<4, public_key_raw::binary>> = public_key
-    <<_::bitstring-size(96), address::bitstring-size(160)>> = Cartouche.Hash.keccak(public_key_raw)
+    <<_::bitstring-size(96), address::bitstring-size(160)>> = Onchain.Hash.keccak(public_key_raw)
 
     address
   end

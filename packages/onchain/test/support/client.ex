@@ -1,12 +1,12 @@
-defmodule Cartouche.Test.Client do
+defmodule Onchain.Test.Client do
   @moduledoc false
   # credo:disable-for-this-file Credo.Check.Readability.FunctionNames
   # Every `eth_*` / `trace_*` / `debug_*` function mirrors an Ethereum JSON-RPC
   # method name verbatim. Renaming would break the parity that's the whole point.
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Transaction.V1
-  alias Cartouche.Transaction.V2
+  alias Onchain.Transaction.V1
+  alias Onchain.Transaction.V2
 
   @spec parse_request(map()) :: {String.t(), list(), term()}
   defp parse_request(body) do
@@ -792,7 +792,7 @@ defmodule Cartouche.Test.Client do
     {:error,
      %{
        "code" => 3,
-       "data" => to_hex(ABI.encode("Cool(uint256,string)", [1, "cat"])),
+       "data" => to_hex(Onchain.ABI.encode("Cool(uint256,string)", [1, "cat"])),
        "message" => "execution reverted"
      }}
   end
@@ -803,7 +803,7 @@ defmodule Cartouche.Test.Client do
     {:error,
      %{
        "code" => 3,
-       "data" => to_hex(ABI.encode("Error(string)", ["Dai/insufficient-balance"])),
+       "data" => to_hex(Onchain.ABI.encode("Error(string)", ["Dai/insufficient-balance"])),
        "message" => "execution reverted"
      }}
   end
@@ -831,7 +831,7 @@ defmodule Cartouche.Test.Client do
   # Sleuth call - Facts Query
   def eth_call(%{"to" => address, "data" => _data} = trx, block)
       when address in ["0xFD946BF25C47A1BFF567B28BA78A961BF78FF9D2", "0xfd946bf25c47a1bff567b28ba78a961bf78ff9d2"] do
-    Cartouche.Test.SleuthHandler.eth_call(trx, block)
+    Onchain.Test.SleuthHandler.eth_call(trx, block)
   end
 
   # Call that works v1
@@ -851,11 +851,11 @@ defmodule Cartouche.Test.Client do
   def eth_call(%{"to" => "0x00000000000000000000000000000000000000CC"} = trx, _block) do
     case trx["data"] do
       "0x8035F0CE" ->
-        # String.slice(to_hex(Cartouche.Hash.keccak("push()")), 0, 10) ->
+        # String.slice(to_hex(Onchain.Hash.keccak("push()")), 0, 10) ->
         "0x"
 
       "0x8D4D94A6" <> _ ->
-        # String.slice(to_hex(Cartouche.Hash.keccak("withdraw(uint256,address,uint256,bytes32,bytes[])")), 0, 10)
+        # String.slice(to_hex(Onchain.Hash.keccak("withdraw(uint256,address,uint256,bytes32,bytes[])")), 0, 10)
         "0x"
 
       _ ->
@@ -1135,7 +1135,7 @@ defmodule Cartouche.Test.Client do
   def eth_blockNumber, do: "0x44"
 end
 
-defmodule Cartouche.Test.InvalidHexResultClient do
+defmodule Onchain.Test.InvalidHexResultClient do
   @moduledoc false
 
   @doc false

@@ -1,8 +1,8 @@
-defmodule Cartouche.Signer.TransactionTest do
+defmodule Onchain.Signer.TransactionTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Signer
-  alias Cartouche.Transaction.V2
+  alias Onchain.Signer
+  alias Onchain.Transaction.V2
 
   # Deterministic test keypair from cartouche docs
   @test_key_hex "0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf"
@@ -143,9 +143,9 @@ defmodule Cartouche.Signer.TransactionTest do
     end
 
     test "accepts ABI-encoded calldata via Hex.decode!" do
-      # ABI.encode_call returns hex; callers decode to raw binary before passing
-      {:ok, hex_calldata} = ABI.encode_hex_call("totalSupply()", [])
-      raw_calldata = Cartouche.Hex.decode!(hex_calldata)
+      # Onchain.ABI.encode_call returns hex; callers decode to raw binary before passing
+      {:ok, hex_calldata} = Onchain.ABI.encode_hex_call("totalSupply()", [])
+      raw_calldata = Onchain.Hex.decode!(hex_calldata)
 
       assert {:ok, %V2{} = trx} =
                Signer.build_transaction(@dummy_to, raw_calldata, nonce: 0, chain_id: @test_chain_id)
@@ -154,7 +154,7 @@ defmodule Cartouche.Signer.TransactionTest do
     end
 
     test "rejects hex string calldata with helpful error" do
-      {:ok, hex_calldata} = ABI.encode_hex_call("totalSupply()", [])
+      {:ok, hex_calldata} = Onchain.ABI.encode_hex_call("totalSupply()", [])
 
       assert {:error, {:hex_calldata, ^hex_calldata, msg}} =
                Signer.build_transaction(@dummy_to, hex_calldata, nonce: 0, chain_id: @test_chain_id)
@@ -258,7 +258,7 @@ defmodule Cartouche.Signer.TransactionTest do
 
     test "encoded transaction is decodable back via V2.decode", %{signed: signed} do
       {:ok, hex} = Signer.encode_transaction(signed)
-      raw = Cartouche.Hex.decode!(hex)
+      raw = Onchain.Hex.decode!(hex)
       assert {:ok, %V2{}} = V2.decode(raw)
     end
   end
@@ -274,7 +274,7 @@ defmodule Cartouche.Signer.TransactionTest do
       {:ok, hex} = Signer.encode_transaction(signed)
 
       # Decode back
-      raw = Cartouche.Hex.decode!(hex)
+      raw = Onchain.Hex.decode!(hex)
       {:ok, decoded} = V2.decode(raw)
 
       # Recover signer
@@ -285,8 +285,8 @@ defmodule Cartouche.Signer.TransactionTest do
     end
 
     test "roundtrip with ABI-encoded calldata preserves correct data" do
-      {:ok, hex_calldata} = ABI.encode_hex_call("totalSupply()", [])
-      raw_calldata = Cartouche.Hex.decode!(hex_calldata)
+      {:ok, hex_calldata} = Onchain.ABI.encode_hex_call("totalSupply()", [])
+      raw_calldata = Onchain.Hex.decode!(hex_calldata)
 
       {:ok, unsigned} =
         Signer.build_transaction(@dummy_to, raw_calldata, nonce: 1, chain_id: @test_chain_id)
@@ -295,7 +295,7 @@ defmodule Cartouche.Signer.TransactionTest do
       {:ok, encoded_hex} = Signer.encode_transaction(signed)
 
       # Decode and verify data is raw binary (4-byte selector), not hex string
-      raw = Cartouche.Hex.decode!(encoded_hex)
+      raw = Onchain.Hex.decode!(encoded_hex)
       {:ok, decoded} = V2.decode(raw)
       assert byte_size(decoded.data) == 4
     end

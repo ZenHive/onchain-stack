@@ -10,8 +10,8 @@ defmodule Onchain.Wallet do
   ## Does Not
 
   - Track token balances (see `Onchain.ERC20`)
-  - Manage keys or signing (see `Cartouche.Signer`)
-  - Parse transactions or receipts (see `Cartouche.RPC`)
+  - Manage keys or signing (see `Onchain.Signer`)
+  - Parse transactions or receipts (see `Onchain.RPC`)
 
   ## Functions
 
@@ -25,7 +25,7 @@ defmodule Onchain.Wallet do
 
   use Descripex, namespace: "/wallet"
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   # --- classify ---
 

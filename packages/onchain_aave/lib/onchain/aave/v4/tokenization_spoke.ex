@@ -49,13 +49,15 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
 
   use Descripex, namespace: "/aave/v4/tokenization_spoke"
 
-  alias Cartouche.Hex
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.Opts
   alias Onchain.Address
   alias Onchain.Contract
+  alias Onchain.Hex
 
   @type hub :: atom()
+
+  # --- lookup ---
 
   @opts_desc "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
   @spoke_desc "Tokenization Spoke address as 0x hex string or 20-byte binary"
@@ -64,14 +66,15 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
   @account_desc "Account address as 0x hex string or 20-byte binary"
   @bytes32_size 32
 
-  # --- lookup ---
-
   api(:lookup, "Resolve a configured V4 Tokenization Spoke by {hub, asset}.",
     params: [
       hub: [kind: :value, description: @hub_desc],
       asset: [kind: :value, description: @asset_desc],
       opts: [kind: :value, default: [], description: "Options: [network: :ethereum]"]
     ],
+
+    # --- asset ---
+
     returns: %{
       type: "{:ok, String.t()} | {:error, term()}",
       description: "Checksummed Tokenization Spoke address",
@@ -84,9 +87,8 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     Contracts.v4_tokenization_spoke(hub, asset, opts)
   end
 
-  # --- asset ---
-
   api(:asset, "Underlying ERC-20 of a Tokenization Spoke.",
+    # --- total_assets ---
     params: [
       spoke: [kind: :value, description: @spoke_desc],
       opts: [kind: :value, default: [], description: @opts_desc]
@@ -101,7 +103,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     |> unwrap_address()
   end
 
-  # --- total_assets ---
+  # --- total_supply ---
 
   api(:total_assets, "Total underlying assets managed by the vault.",
     params: [
@@ -116,7 +118,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     call_uint(spoke, "totalAssets()", [], opts)
   end
 
-  # --- total_supply ---
+  # --- balance_of ---
 
   api(:total_supply, "Total supply of vault share tokens.",
     params: [
@@ -131,7 +133,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     call_uint(spoke, "totalSupply()", [], opts)
   end
 
-  # --- balance_of ---
+  # --- convert_to_shares ---
 
   api(:balance_of, "Vault share balance of an owner.",
     params: [
@@ -148,7 +150,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     call_account_uint(spoke, "balanceOf(address)", owner, opts)
   end
 
-  # --- convert_to_shares ---
+  # --- convert_to_assets ---
 
   api(:convert_to_shares, "Ideal share amount exchanged for the given assets.",
     params: [
@@ -165,7 +167,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     call_uint(spoke, "convertToShares(uint256)", [assets], opts)
   end
 
-  # --- convert_to_assets ---
+  # --- preview_deposit ---
 
   api(:convert_to_assets, "Ideal asset amount exchanged for the given shares.",
     params: [
@@ -180,10 +182,9 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
           {:ok, non_neg_integer()} | {:error, term()}
 
   def convert_to_assets(spoke, shares, opts \\ []) when is_integer(shares) and shares >= 0 do
+    # --- preview_mint ---
     call_uint(spoke, "convertToAssets(uint256)", [shares], opts)
   end
-
-  # --- preview_deposit ---
 
   api(:preview_deposit, "Shares that would be minted for a deposit at the current block.",
     params: [
@@ -197,11 +198,11 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
   @spec preview_deposit(String.t() | binary(), non_neg_integer(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
 
+  # --- preview_withdraw ---
+
   def preview_deposit(spoke, assets, opts \\ []) when is_integer(assets) and assets >= 0 do
     call_uint(spoke, "previewDeposit(uint256)", [assets], opts)
   end
-
-  # --- preview_mint ---
 
   api(:preview_mint, "Assets that would be deposited to mint the given shares.",
     params: [
@@ -212,13 +213,12 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Assets deposited"}
   )
 
+  # --- preview_redeem ---
   @spec preview_mint(String.t() | binary(), non_neg_integer(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
   def preview_mint(spoke, shares, opts \\ []) when is_integer(shares) and shares >= 0 do
     call_uint(spoke, "previewMint(uint256)", [shares], opts)
   end
-
-  # --- preview_withdraw ---
 
   api(:preview_withdraw, "Shares that would be burned to withdraw the given assets.",
     params: [
@@ -229,13 +229,12 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Shares burned"}
   )
 
+  # --- max_deposit ---
   @spec preview_withdraw(String.t() | binary(), non_neg_integer(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
   def preview_withdraw(spoke, assets, opts \\ []) when is_integer(assets) and assets >= 0 do
     call_uint(spoke, "previewWithdraw(uint256)", [assets], opts)
   end
-
-  # --- preview_redeem ---
 
   api(:preview_redeem, "Assets that would be returned when redeeming the given shares.",
     params: [
@@ -246,13 +245,13 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Assets returned"}
   )
 
+  # --- max_mint ---
+
   @spec preview_redeem(String.t() | binary(), non_neg_integer(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
   def preview_redeem(spoke, shares, opts \\ []) when is_integer(shares) and shares >= 0 do
     call_uint(spoke, "previewRedeem(uint256)", [shares], opts)
   end
-
-  # --- max_deposit ---
 
   api(:max_deposit, "Maximum assets a receiver can deposit.",
     params: [
@@ -263,13 +262,13 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Max deposit (token units)"}
   )
 
+  # --- max_withdraw ---
+
   @spec max_deposit(String.t() | binary(), String.t() | binary(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
   def max_deposit(spoke, receiver, opts \\ []) do
     call_account_uint(spoke, "maxDeposit(address)", receiver, opts)
   end
-
-  # --- max_mint ---
 
   api(:max_mint, "Maximum shares that can be minted for a receiver.",
     params: [
@@ -280,13 +279,13 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Max shares minted"}
   )
 
+  # --- max_redeem ---
+
   @spec max_mint(String.t() | binary(), String.t() | binary(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
   def max_mint(spoke, receiver, opts \\ []) do
     call_account_uint(spoke, "maxMint(address)", receiver, opts)
   end
-
-  # --- max_withdraw ---
 
   api(:max_withdraw, "Maximum assets an owner can withdraw.",
     params: [
@@ -294,6 +293,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
       owner: [kind: :value, description: @account_desc],
       opts: [kind: :value, default: [], description: @opts_desc]
     ],
+    # --- hub ---
     returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Max withdraw (token units)"}
   )
 
@@ -303,14 +303,15 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     call_account_uint(spoke, "maxWithdraw(address)", owner, opts)
   end
 
-  # --- max_redeem ---
-
   api(:max_redeem, "Maximum shares an owner can redeem.",
     params: [
       spoke: [kind: :value, description: @spoke_desc],
       owner: [kind: :value, description: @account_desc],
       opts: [kind: :value, default: [], description: @opts_desc]
     ],
+
+    # --- asset_id ---
+
     returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Max shares redeemed"}
   )
 
@@ -320,10 +321,9 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     call_account_uint(spoke, "maxRedeem(address)", owner, opts)
   end
 
-  # --- hub ---
-
   api(:hub, "Hub this Tokenization Spoke is bound to.",
     params: [
+      # --- max_allowed_spoke_cap ---
       spoke: [kind: :value, description: @spoke_desc],
       opts: [kind: :value, default: [], description: @opts_desc]
     ],
@@ -337,8 +337,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     |> unwrap_address()
   end
 
-  # --- asset_id ---
-
+  # --- permit_nonce_namespace ---
   api(:asset_id, "Hub asset identifier for this Tokenization Spoke.",
     params: [
       spoke: [kind: :value, description: @spoke_desc],
@@ -352,8 +351,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     call_uint(spoke, "assetId()", [], opts)
   end
 
-  # --- max_allowed_spoke_cap ---
-
+  # --- typehashes ---
   api(:max_allowed_spoke_cap, "Maximum allowed spoke cap (ITokenizationSpoke constant).",
     params: [
       spoke: [kind: :value, description: @spoke_desc],
@@ -368,8 +366,6 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     call_uint(spoke, "MAX_ALLOWED_SPOKE_CAP()", [], opts)
   end
 
-  # --- permit_nonce_namespace ---
-
   api(:permit_nonce_namespace, "Nonce namespace used for share-token EIP-2612 permits.",
     params: [
       spoke: [kind: :value, description: @spoke_desc],
@@ -383,8 +379,6 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
   def permit_nonce_namespace(spoke, opts \\ []) do
     call_uint(spoke, "PERMIT_NONCE_NAMESPACE()", [], opts)
   end
-
-  # --- typehashes ---
 
   api(:deposit_typehash, "EIP-712 typehash for the deposit intent.",
     params: [
@@ -405,6 +399,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
     returns: %{type: "{:ok, String.t()} | {:error, term()}", description: "0x-prefixed bytes32"}
   )
 
+  # --- domain_separator ---
   @spec mint_typehash(String.t() | binary(), keyword()) :: {:ok, String.t()} | {:error, term()}
   def mint_typehash(spoke, opts \\ []), do: call_bytes32(spoke, "MINT_TYPEHASH()", opts)
 
@@ -440,8 +435,6 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
 
   @spec permit_typehash(String.t() | binary(), keyword()) :: {:ok, String.t()} | {:error, term()}
   def permit_typehash(spoke, opts \\ []), do: call_bytes32(spoke, "PERMIT_TYPEHASH()", opts)
-
-  # --- domain_separator ---
 
   api(:domain_separator, "EIP-712 domain separator for this Tokenization Spoke.",
     params: [

@@ -1,7 +1,7 @@
 defmodule Onchain.FeesTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.FeeHistory
+  alias Onchain.FeeHistory
   alias Onchain.Fees
 
   # Helper to build a deterministic FeeHistory struct.

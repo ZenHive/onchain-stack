@@ -1,11 +1,11 @@
-defmodule ABI.AlloyCacheTest do
+defmodule Onchain.ABI.AlloyCacheTest do
   # Resets the shared caches, so nothing else may run concurrently; the suite
   # otherwise fills the 1,024-entry schema cache before this module runs.
   use ExUnit.Case, async: false
 
-  alias ABI.Alloy
-  alias ABI.AlloyEvents
-  alias ABI.FunctionSelector
+  alias Onchain.ABI.Alloy
+  alias Onchain.ABI.AlloyEvents
+  alias Onchain.ABI.FunctionSelector
 
   setup do
     :persistent_term.erase({Alloy, :schema})
@@ -54,7 +54,7 @@ defmodule ABI.AlloyCacheTest do
 
     selectors
     |> Enum.map(fn selector ->
-      Task.async(fn -> AlloyEvents.decode(<<>>, [ABI.Event.event_signature(selector)], selector, []) end)
+      Task.async(fn -> AlloyEvents.decode(<<>>, [Onchain.ABI.Event.event_signature(selector)], selector, []) end)
     end)
     |> Task.await_many()
 

@@ -46,16 +46,48 @@
             {Credo.Check.Readability.SpaceAfterCommas, []},
             {Credo.Check.Readability.TrailingBlankLine, []},
             {Credo.Check.Readability.TrailingWhiteSpace, []},
-            # Specs is scoped to the cartouche library + its test support; tests
-            # outside test/support/ and the generator (lib/mix/cartouche.gen.ex)
-            # plus its output (lib/cartouche/contract/) are tracked by other tasks
-            # and excluded from this gate until those backfills land.
+            # Specs is scoped to the former cartouche library (moved under
+            # lib/onchain/ in 0.16.0) + its test support; tests outside
+            # test/support/ and generated contract bindings are tracked by other
+            # tasks and excluded from this gate until those backfills land.
             {Credo.Check.Readability.Specs,
              [
                include_defp: true,
                files: %{
-                 included: ["lib/cartouche/", "test/support/"],
-                 excluded: [~r"lib/cartouche/contract/"]
+                 included: [
+                   "lib/onchain/application.ex",
+                   "lib/onchain/block.ex",
+                   "lib/onchain/chain.ex",
+                   "lib/onchain/cloud_kms.ex",
+                   "lib/onchain/debug_trace.ex",
+                   "lib/onchain/fee_history.ex",
+                   "lib/onchain/filter.ex",
+                   "lib/onchain/filter/",
+                   "lib/onchain/hash.ex",
+                   "lib/onchain/hex.ex",
+                   "lib/onchain/http.ex",
+                   "lib/onchain/keys.ex",
+                   "lib/onchain/manifest.ex",
+                   "lib/onchain/open_chain.ex",
+                   "lib/onchain/receipt.ex",
+                   "lib/onchain/recover.ex",
+                   "lib/onchain/recovery_bit.ex",
+                   "lib/onchain/rpc.ex",
+                   "lib/onchain/rpc/proof.ex",
+                   "lib/onchain/signature.ex",
+                   "lib/onchain/signer.ex",
+                   "lib/onchain/signer/",
+                   "lib/onchain/sleuth.ex",
+                   "lib/onchain/trace_call.ex",
+                   "lib/onchain/rpc/trace.ex",
+                   "lib/onchain/transaction.ex",
+                   "lib/onchain/transaction/",
+                   "lib/onchain/typed.ex",
+                   "lib/onchain/typed/",
+                   "lib/onchain/wei.ex",
+                   "test/support/"
+                 ],
+                 excluded: [~r"lib/onchain/contract/"]
                }
              ]},
             {Credo.Check.Readability.VariableNames, []},

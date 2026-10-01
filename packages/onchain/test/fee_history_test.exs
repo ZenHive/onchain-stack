@@ -1,5 +1,5 @@
-defmodule Cartouche.FeeHistoryTest do
+defmodule Onchain.FeeHistoryTest do
   use ExUnit.Case, async: true
 
-  doctest Cartouche.FeeHistory
+  doctest Onchain.FeeHistory
 end

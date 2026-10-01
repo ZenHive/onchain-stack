@@ -2,7 +2,7 @@ defmodule Onchain.TraceCase do
   @moduledoc false
 
   # Shared :dbg trace helpers for tests that verify calldata passed to
-  # Cartouche.Signer.send_transaction/3.
+  # Onchain.Signer.send_transaction/3.
 
   import ExUnit.Assertions, only: [flunk: 1]
 
@@ -26,7 +26,7 @@ defmodule Onchain.TraceCase do
     # credo:disable-for-next-line Credo.Check.Refactor.Apply
     apply(:dbg, :p, [self(), [:call]])
     # credo:disable-for-next-line Credo.Check.Refactor.Apply
-    apply(:dbg, :tpl, [Cartouche.Signer, :send_transaction, :x])
+    apply(:dbg, :tpl, [Onchain.Signer, :send_transaction, :x])
 
     try do
       fun.()
@@ -43,14 +43,14 @@ defmodule Onchain.TraceCase do
   @spec receive_signer_call() :: {term(), term(), term()}
   defp receive_signer_call do
     receive do
-      {:dbg_trace, {:trace, _pid, :call, {Cartouche.Signer, :send_transaction, [to, calldata, opts]}}} ->
+      {:dbg_trace, {:trace, _pid, :call, {Onchain.Signer, :send_transaction, [to, calldata, opts]}}} ->
         {to, calldata, opts}
 
       {:dbg_trace, _other} ->
         receive_signer_call()
     after
       @trace_timeout_ms ->
-        flunk("Expected traced call to Cartouche.Signer.send_transaction/3")
+        flunk("Expected traced call to Onchain.Signer.send_transaction/3")
     end
   end
 

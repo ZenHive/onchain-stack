@@ -5,7 +5,7 @@
 There is no Basescan/Etherscan API key on this host. Sourcify v2 serves the
 **deployed** ABI with **named tuple components**, the source for per-struct
 field-count and field-order drift tests. Bindings decode positionally using
-`Onchain.RPC.eth_call/3`, `ABI.decode_response/2`, and hand-written
+`Onchain.RPC.eth_call/3`, `Onchain.ABI.decode_response/2`, and hand-written
 `from_raw/1` constructors, matching onchain_aave. Do not use
 `decode_structs: true`: un-interned field atoms raise at runtime.
 `Bindings.Abi` caches canonical signatures from these files at compile time.

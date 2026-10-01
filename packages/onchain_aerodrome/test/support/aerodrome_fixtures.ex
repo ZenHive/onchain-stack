@@ -5,7 +5,7 @@ defmodule Onchain.Aerodrome.Fixtures do
   Reads `test/fixtures/aerodrome/` with no network. The `nonempty/` subcollection
   has its own manifest and positive Position/Reward witnesses; load it with
   `load("nonempty/manifest")` and `load("nonempty/" <> id)`. Decode uses
-  `Bindings.Abi.return_type/2` and `ABI.decode_response/2`.
+  `Bindings.Abi.return_type/2` and `Onchain.ABI.decode_response/2`.
   """
 
   alias Onchain.Aerodrome.Bindings.Abi
@@ -42,7 +42,7 @@ defmodule Onchain.Aerodrome.Fixtures do
     lookup = fixture["signature"] || function
 
     with {:ok, return_type} <- Abi.return_type(contract <> ".json", lookup) do
-      ABI.decode_response(return_type, response)
+      Onchain.ABI.decode_response(return_type, response)
     end
   end
 

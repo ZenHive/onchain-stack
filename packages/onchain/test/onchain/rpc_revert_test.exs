@@ -2,11 +2,11 @@ defmodule Onchain.RPC.RevertTest do
   # Mutates global cartouche client config; cannot run async with other RPC tests.
   use ExUnit.Case, async: false
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   # Req function plug returning canned JSON-RPC responses queued in the calling
-  # test's process dictionary. Single-call RPC flows through Cartouche.RPC, so the
-  # stub is injected via cartouche's `config :cartouche, Cartouche.RPC, plug:` seam.
+  # test's process dictionary. Single-call RPC flows through Onchain.RPC, so the
+  # stub is injected via cartouche's `config :cartouche, Onchain.RPC, plug:` seam.
   defmodule StubClient do
     @moduledoc false
 
@@ -63,7 +63,7 @@ defmodule Onchain.RPC.RevertTest do
 
   describe "eth_call/3 revert handling" do
     test "without :errors opt — error map carries raw :revert binary, hex :data mirror, no :error_abi" do
-      revert_bytes = ABI.encode("InsufficientBalance(uint256,uint256)", [1_000, 500])
+      revert_bytes = Onchain.ABI.encode("InsufficientBalance(uint256,uint256)", [1_000, 500])
       hex_payload = "0x" <> Base.encode16(revert_bytes, case: :lower)
 
       StubClient.queue_revert(%{
@@ -85,7 +85,7 @@ defmodule Onchain.RPC.RevertTest do
 
     test "with matching :errors opt — error map carries :error_abi + :error_params" do
       signature = "InsufficientBalance(uint256,uint256)"
-      revert_bytes = ABI.encode(signature, [1_000, 500])
+      revert_bytes = Onchain.ABI.encode(signature, [1_000, 500])
 
       StubClient.queue_revert(%{
         "code" => 3,
@@ -140,7 +140,7 @@ defmodule Onchain.RPC.RevertTest do
       # Revert payload is for InsufficientBalance, but caller declares a
       # different custom error. cartouche fails to decode → only :revert (and
       # the Onchain-mirrored :data) is set; :error_abi / :error_params absent.
-      revert_bytes = ABI.encode("InsufficientBalance(uint256,uint256)", [1_000, 500])
+      revert_bytes = Onchain.ABI.encode("InsufficientBalance(uint256,uint256)", [1_000, 500])
       hex_payload = "0x" <> Base.encode16(revert_bytes, case: :lower)
 
       StubClient.queue_revert(%{

@@ -31,8 +31,8 @@ defmodule Onchain.Contract.Generator do
   - **Read functions** (`view`/`pure`): `fn_name(contract, ...params, opts \\\\ [])`
     delegates to `Onchain.Contract.call/5`
   - **Write functions** (`nonpayable`/`payable`): `fn_name(contract, ...params, opts)`
-    encodes calldata via `ABI.encode_hex_call/2` and delegates to
-    `Cartouche.Signer.send_transaction/3`
+    encodes calldata via `Onchain.ABI.encode_hex_call/2` and delegates to
+    `Onchain.Signer.send_transaction/3`
   - **Bang variants**: `fn_name!` that raises on error
   - **`Multicall` helpers**: typed call builders and result decoders for
     `Onchain.Multicall.aggregate3/2`
@@ -73,7 +73,7 @@ defmodule Onchain.Contract.Generator do
   `bytecode/0`, `deployed_bytecode/0` (only when `:deployed_bytecode` or the
   artifact's `deployedBytecode` is present),
   per-function `<name>_selector/0`, `encode_<name>/…`, `decode_<name>_call/1`, and
-  `decode_call/1` — the surface `Cartouche.Sleuth.query_by/3` expects.
+  `decode_call/1` — the surface `Onchain.Sleuth.query_by/3` expects.
 
   ## .sol Extras
 
@@ -643,14 +643,14 @@ defmodule Onchain.Contract.Generator do
       {:<-, [],
        [
          {:ok, calldata_var},
-         quote(do: ABI.encode_hex_call(unquote(signature), unquote(call_params)))
+         quote(do: Onchain.ABI.encode_hex_call(unquote(signature), unquote(call_params)))
        ]}
 
     body =
       quote do
-        Cartouche.Signer.send_transaction(
+        Onchain.Signer.send_transaction(
           contract,
-          Cartouche.Hex.decode!(unquote(calldata_var)),
+          Onchain.Hex.decode!(unquote(calldata_var)),
           opts
         )
       end
@@ -732,7 +732,7 @@ defmodule Onchain.Contract.Generator do
         @doc "Decodes an aggregate3 result for `#{unquote(func.signature)}`."
         @spec unquote(decoder_name)(raw_result()) :: unquote(result_spec)
         def unquote(decoder_name)({true, data_hex}) do
-          ABI.decode_response(unquote(func.return_type), data_hex)
+          Onchain.ABI.decode_response(unquote(func.return_type), data_hex)
         end
 
         def unquote(decoder_name)({false, data_hex}), do: {:error, data_hex}
@@ -764,12 +764,12 @@ defmodule Onchain.Contract.Generator do
       {:<-, [],
        [
          {:ok, calldata_hex},
-         quote(do: ABI.encode_hex_call(unquote(signature), unquote(call_params)))
+         quote(do: Onchain.ABI.encode_hex_call(unquote(signature), unquote(call_params)))
        ]}
 
     body =
       quote do
-        {:ok, {Cartouche.Hex.encode(unquote(contract_bin)), unquote(allow_failure), unquote(calldata_hex)}}
+        {:ok, {Onchain.Hex.encode(unquote(contract_bin)), unquote(allow_failure), unquote(calldata_hex)}}
       end
 
     {:with, [], [contract_clause] ++ validation_clauses ++ [encode_clause] ++ [[do: body]]}
@@ -966,7 +966,7 @@ defmodule Onchain.Contract.Generator do
   defp solidity_to_struct_type("uint" <> _), do: quote(do: non_neg_integer())
   defp solidity_to_struct_type(_), do: quote(do: term())
 
-  # --- Sleuth / Cartouche.Sleuth.query_by surface ---
+  # --- Sleuth / Onchain.Sleuth.query_by surface ---
 
   @doc false
   @spec generate_sleuth_surface([map()], keyword()) :: [Macro.t()]
@@ -1009,7 +1009,7 @@ defmodule Onchain.Contract.Generator do
         "0x" <> hex
       end
 
-    Cartouche.Hex.decode!(hex)
+    Onchain.Hex.decode!(hex)
   end
 
   @doc false
@@ -1054,14 +1054,14 @@ defmodule Onchain.Contract.Generator do
     input_vars = build_input_vars(func.inputs)
     var_asts = Enum.map(input_vars, fn {vname, _ty} -> Macro.var(vname, nil) end)
     encode_params = Enum.map(input_vars, fn {vname, _ty} -> Macro.var(vname, nil) end)
-    prefix = Cartouche.Hex.decode!(func.selector)
+    prefix = Onchain.Hex.decode!(func.selector)
     signature = func.signature
     encode_def = sleuth_encode_def(encode_name, selector_name, signature, input_vars, var_asts, encode_params)
 
     [
       quote do
         @doc unquote("Returns the ABI function selector for #{signature}.")
-        @spec unquote(selector_name)() :: ABI.FunctionSelector.t()
+        @spec unquote(selector_name)() :: Onchain.ABI.FunctionSelector.t()
         def unquote({selector_name, [], []}), do: unquote(Macro.escape(selector))
       end,
       encode_def,
@@ -1069,7 +1069,7 @@ defmodule Onchain.Contract.Generator do
         @doc unquote("Decodes ABI calldata for #{signature}.")
         @spec unquote(decode_name)(binary()) :: term()
         def unquote(decode_name)(unquote(Macro.escape(prefix)) <> calldata) do
-          ABI.decode(unquote(selector_name)(), calldata)
+          Onchain.ABI.decode(unquote(selector_name)(), calldata)
         end
       end
     ]
@@ -1082,11 +1082,11 @@ defmodule Onchain.Contract.Generator do
     encode_body =
       if var_asts == [] do
         quote do
-          ABI.encode(unquote(selector_name)(), [])
+          Onchain.ABI.encode(unquote(selector_name)(), [])
         end
       else
         quote do
-          ABI.encode(unquote(selector_name)(), unquote(encode_params))
+          Onchain.ABI.encode(unquote(selector_name)(), unquote(encode_params))
         end
       end
 
@@ -1110,7 +1110,7 @@ defmodule Onchain.Contract.Generator do
     clauses =
       Enum.map(functions, fn func ->
         decode_name = to_identifier_atom("decode_" <> func.elixir_name <> "_call")
-        prefix = Cartouche.Hex.decode!(func.selector)
+        prefix = Onchain.Hex.decode!(func.selector)
 
         quote do
           def decode_call(unquote(Macro.escape(prefix)) <> _ = calldata) do
@@ -1129,9 +1129,9 @@ defmodule Onchain.Contract.Generator do
   end
 
   @doc false
-  @spec function_selector_struct!(map()) :: ABI.FunctionSelector.t()
+  @spec function_selector_struct!(map()) :: Onchain.ABI.FunctionSelector.t()
   defp function_selector_struct!(func) do
-    case ABI.parse_specification([function_abi_entry(func)]) do
+    case Onchain.ABI.parse_specification([function_abi_entry(func)]) do
       [selector] -> selector
       other -> raise "expected one selector for #{func.signature}, got #{inspect(other)}"
     end

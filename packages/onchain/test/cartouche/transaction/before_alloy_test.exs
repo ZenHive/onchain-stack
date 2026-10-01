@@ -1,16 +1,16 @@
-defmodule Cartouche.Transaction.BeforeAlloyTest do
+defmodule Onchain.Transaction.BeforeAlloyTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Transaction
-  alias Cartouche.Transaction.V1
-  alias Cartouche.Transaction.V2
-  alias Cartouche.Transaction.V3
-  alias Cartouche.Transaction.V4
-  alias Cartouche.Transaction.V_2930
+  alias Onchain.Transaction
+  alias Onchain.Transaction.V1
+  alias Onchain.Transaction.V2
+  alias Onchain.Transaction.V3
+  alias Onchain.Transaction.V4
+  alias Onchain.Transaction.V_2930
 
   @fixture Path.expand("../../support/fixtures/transactions_before_alloy.etf", __DIR__)
   @external_resource @fixture
-  @records @fixture |> File.read!() |> :erlang.binary_to_term()
+  @records @fixture |> File.read!() |> :erlang.binary_to_term() |> Onchain.Test.LegacyModuleNames.translate()
   @modules [V1, V_2930, V2, V3, V4]
   @operations [
     :encode,
@@ -80,10 +80,10 @@ defmodule Cartouche.Transaction.BeforeAlloyTest do
       case changed_contract(module, :encode, [tx], bytes) do
         nil ->
           assert Transaction.encode(tx) == bytes
-          assert Cartouche.Hash.keccak(Transaction.encode(tx)) == Cartouche.Hash.keccak(bytes)
+          assert Onchain.Hash.keccak(Transaction.encode(tx)) == Onchain.Hash.keccak(bytes)
           assert {:ok, decoded} = Transaction.decode(bytes)
           assert Transaction.encode(decoded) == bytes
-          if unsigned?(tx), do: assert(Transaction.Native.signing_hash(tx) == Cartouche.Hash.keccak(bytes))
+          if unsigned?(tx), do: assert(Transaction.Native.signing_hash(tx) == Onchain.Hash.keccak(bytes))
 
         _ ->
           assert_raise ArgumentError, fn -> Transaction.encode(tx) end

@@ -8,7 +8,7 @@
 # so this asserts it in both directions, the same way .mutation/gate-muex20.sh
 # grades muex itself:
 #
-#   unmutated tree              -> `mix hieroglyph.manifest --check` exits 0
+#   unmutated tree              -> `mix onchain.manifest --check` exits 0
 #   one api() description edited -> exits 1, reporting a stale manifest
 #
 # The point of the class is not that these mutants are harmless. It is that
@@ -24,7 +24,7 @@ cp "$FILE" "$BAK"
 restore() { cp "$BAK" "$FILE"; rm -f "$BAK"; }
 trap restore EXIT INT TERM
 
-MIX_ENV=dev mix hieroglyph.manifest --check > /dev/null 2>&1
+MIX_ENV=dev mix onchain.manifest --check > /dev/null 2>&1
 clean=$?
 echo "--- unmutated tree: exit $clean (want 0)"
 
@@ -38,12 +38,12 @@ path.write_text(src.replace(anchor, anchor.replace('signature.",', 'signature.x"
 PY
 [ $? -eq 0 ] || { echo "=== GATE INCONCLUSIVE: could not apply the mutation" >&2; exit 2; }
 
-MIX_ENV=dev mix hieroglyph.manifest --check > /dev/null 2>&1
+MIX_ENV=dev mix onchain.manifest --check > /dev/null 2>&1
 mutated=$?
 echo "--- one api() description mutated: exit $mutated (want non-zero)"
 
 if [ "$clean" -eq 0 ] && [ "$mutated" -ne 0 ]; then
-  echo "=== GATE PASSES: api() prose is gated by mix hieroglyph.manifest --check"
+  echo "=== GATE PASSES: api() prose is gated by mix onchain.manifest --check"
   exit 0
 fi
 echo "=== GATE FAILS: the manifest check does not separate these two trees" >&2

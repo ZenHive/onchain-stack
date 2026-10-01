@@ -1,8 +1,8 @@
-defmodule Cartouche.SignatureTest do
+defmodule Onchain.SignatureTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Signature
-  alias Cartouche.Signer.Secp256k1
+  alias Onchain.Signature
+  alias Onchain.Signer.Secp256k1
 
   test "DER input without recovery parity round-trips through find_recid and recover_eth" do
     key = <<1::256>>
@@ -11,8 +11,8 @@ defmodule Cartouche.SignatureTest do
     assert {:ok, parsed} = Signature.from_der(der)
     assert parsed.recid == nil
     assert {:ok, address} = Secp256k1.get_address(key)
-    assert {:ok, recid} = Cartouche.Recover.find_recid("KMS recovery", parsed, address)
-    assert Cartouche.Recover.recover_eth("KMS recovery", %{parsed | recid: recid}) == address
+    assert {:ok, recid} = Onchain.Recover.find_recid("KMS recovery", parsed, address)
+    assert Onchain.Recover.recover_eth("KMS recovery", %{parsed | recid: recid}) == address
   end
 
   test "malformed or noncanonical DER and out-of-range scalars are rejected" do

@@ -1,8 +1,8 @@
 # Task 9031: production alloy ABI migration
 
 The production backend is active. The former handwritten codecs survive only as
-namespaced benchmark oracles in `legacy/`. `ABI.TypeEncoder` and
-`ABI.TypeDecoder` retain their documented API facades, doctests and exception
+namespaced benchmark oracles in `legacy/`. `Onchain.ABI.TypeEncoder` and
+`Onchain.ABI.TypeDecoder` retain their documented API facades, doctests and exception
 contracts. The yecc/leex grammar sources are removed. `bench/abi.exs` exits
 non-zero when any workload's mean is more than 2× the legacy mean.
 
@@ -58,7 +58,7 @@ of Benchee's mean.
 
 ## Boundary and safety
 
-The generic `ABI.Native.abi/3` boundary accepts operation/type-or-resource/value;
+The generic `Onchain.ABI.Native.abi/3` boundary accepts operation/type-or-resource/value;
 `compile/2` creates an immutable resource with parsed types and topic0.
 Bounded `:persistent_term` caches retain schemas and signatures. Normal-scheduler
 execution is reserved for small static events (32 nodes, 256 type bytes,
@@ -68,7 +68,7 @@ preflight runs before alloy decoding to bound aliased offsets and nested lengths
 Improper lists are walked without Rustler's panicking list iterator. All exported
 NIF operations contain unwinding panics and return tagged errors.
 
-`Cartouche.Filter` uses the real batch operation, grouping by topic and restoring
+`Onchain.Filter` uses the real batch operation, grouping by topic and restoring
 original log order. Batches return per-log outcomes. Facade validation retains
 strict violations and legacy permissive offset behavior. Reference topics,
 anonymous events, named structs, raw top-level encoding, zero-width arrays and
@@ -105,7 +105,7 @@ errors. Native properties exercise malformed types/values/payloads and resources
 - `cargo clippy --locked --manifest-path native/onchain_abi/Cargo.toml --all-targets -- -D warnings`
   and `cargo fmt --check --manifest-path native/onchain_abi/Cargo.toml` pass.
 - `mix compile --warnings-as-errors`, changed-file format checks,
-  `mix hieroglyph.manifest --check`, generated AGENTS freshness and diff checks pass.
+  `mix onchain.manifest --check`, generated AGENTS freshness and diff checks pass.
 - Five real cross-builds pass: aarch64/x86_64 Darwin, aarch64/x86_64 GNU/Linux,
   x86_64 musl. See `precompiled-build.json` for exact checksums/source hash.
   Only the host GNU/Linux artifact was executed here. The cross-builder used

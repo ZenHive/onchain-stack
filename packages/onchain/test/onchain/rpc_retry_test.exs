@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.RetryTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   @stub_rpc_url "http://stub.invalid"
   @no_backoff_ms 0
@@ -10,7 +10,7 @@ defmodule Onchain.RPC.RetryTest do
   # dictionary. A `{:transport_error, reason}` entry simulates a connection-level
   # failure (Req.Test.transport_error/2 -> %Req.TransportError{}); a 1-arity fun
   # builds a JSON-RPC response map from the decoded request body. Injected via
-  # cartouche's `config :cartouche, Cartouche.RPC, plug:` single-call seam.
+  # cartouche's `config :cartouche, Onchain.RPC, plug:` single-call seam.
   defmodule StubClient do
     @moduledoc false
 

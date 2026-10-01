@@ -142,7 +142,7 @@ defmodule Onchain.Precompiled do
 
   @spec crate_module(String.t()) :: module()
   defp crate_module("onchain_tempo"), do: Onchain.Tempo.Native
-  defp crate_module("onchain_abi"), do: ABI.Native
+  defp crate_module("onchain_abi"), do: Onchain.ABI.Native
   defp crate_module("onchain_evm"), do: Onchain.EVM
   defp crate_module("onchain_solidity"), do: Onchain.Solidity
 

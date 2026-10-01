@@ -1,16 +1,16 @@
 # Helpers for the mainnet archive integration suite.
 #
-# Tests pass `live_opts()` as the keyword list to every `Cartouche.RPC.*` call.
+# Tests pass `live_opts()` as the keyword list to every `Onchain.RPC.*` call.
 # The opts include `req_options: [plug: nil]` (clearing the test-env stub plug so
 # the call hits the real network per-call) and `ethereum_node: <url>` (overriding
 # the default). No Application env mutation, no `on_exit` cleanup needed.
 #
 #     test "eth_chainId returns 1" do
-#       assert {:ok, 1} = Cartouche.RPC.eth_chain_id(live_opts())
+#       assert {:ok, 1} = Onchain.RPC.eth_chain_id(live_opts())
 #     end
 #
 # Override the URL with `CARTOUCHE_LIVE_NODE_URL`.
-defmodule Cartouche.Test.Live do
+defmodule Onchain.Test.Live do
   @moduledoc false
   import ExUnit.Assertions
 
@@ -56,7 +56,7 @@ defmodule Cartouche.Test.Live do
   @doc "Requires the named endpoint to answer with chain ID 1 (Ethereum mainnet)."
   @spec assert_node_available!(endpoint()) :: :ok | no_return()
   def assert_node_available!(endpoint) do
-    case Cartouche.RPC.eth_chain_id(live_opts(endpoint)) do
+    case Onchain.RPC.eth_chain_id(live_opts(endpoint)) do
       {:ok, 1} -> :ok
       {:ok, _other} -> flunk(endpoint_message(endpoint, "reported a chain ID other than 1 (Ethereum mainnet)"))
       {:error, _reason} -> flunk(endpoint_message(endpoint, "is unreachable or refused eth_chainId"))
@@ -76,7 +76,7 @@ defmodule Cartouche.Test.Live do
   the consumer's node — not ours — as the case that matters:
   the identical green run on both endpoints is what the portability claim rests on.
 
-      assert_portability!(&Cartouche.RPC.send_rpc("eth_baseFee", [], &1),
+      assert_portability!(&Onchain.RPC.send_rpc("eth_baseFee", [], &1),
         archive: &match?({:ok, "0x" <> _fee}, &1),
         alchemy: &expected_alchemy_refusal?/1
       )
@@ -182,7 +182,7 @@ defmodule Cartouche.Test.Live do
   defp ping_dev_node!(url) do
     opts = [req_options: [plug: nil], ethereum_node: url, timeout: @ping_timeout]
 
-    case Cartouche.RPC.eth_chain_id(opts) do
+    case Onchain.RPC.eth_chain_id(opts) do
       {:ok, _chain_id} ->
         :ok
 
@@ -199,7 +199,7 @@ defmodule Cartouche.Test.Live do
 
   @spec start_ephemeral_anvil!() :: :ok | no_return()
   defp start_ephemeral_anvil! do
-    case Cartouche.RPC.eth_chain_id(dev_opts()) do
+    case Onchain.RPC.eth_chain_id(dev_opts()) do
       {:ok, _} ->
         :ok
 
@@ -247,7 +247,7 @@ defmodule Cartouche.Test.Live do
   end
 
   defp poll_anvil(port, remaining) do
-    case Cartouche.RPC.eth_chain_id(dev_opts()) do
+    case Onchain.RPC.eth_chain_id(dev_opts()) do
       {:ok, _} ->
         :ok
 

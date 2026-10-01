@@ -140,6 +140,6 @@ references use `:onchain_evm` (not `:onchain`).
 
 ## Dependencies from `onchain` core
 
-`Onchain.Address` (validation), `Cartouche.Hex` (hex encode/decode),
+`Onchain.Address` (validation), `Onchain.Hex` (hex encode/decode),
 `Onchain.RPC.Helpers` (`ensure_hex_address`, `ensure_hex_data`, `normalize_block`),
-and at Generator *runtime*: `Onchain.Contract`, `ABI`, `Cartouche.Signer`.
+and at Generator *runtime*: `Onchain.Contract`, `ABI`, `Onchain.Signer`.

@@ -1,13 +1,13 @@
-defmodule Cartouche.Transaction.InfoTest do
+defmodule Onchain.Transaction.InfoTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hex
-  alias Cartouche.Transaction.Info
-  alias Cartouche.Transaction.V1
-  alias Cartouche.Transaction.V2
-  alias Cartouche.Transaction.V3
-  alias Cartouche.Transaction.V4
-  alias Cartouche.Transaction.V_2930
+  alias Onchain.Hex
+  alias Onchain.Transaction.Info
+  alias Onchain.Transaction.V1
+  alias Onchain.Transaction.V2
+  alias Onchain.Transaction.V3
+  alias Onchain.Transaction.V4
+  alias Onchain.Transaction.V_2930
 
   @hash "0x" <> String.duplicate("ab", 32)
   @from "0x" <> String.duplicate("11", 20)

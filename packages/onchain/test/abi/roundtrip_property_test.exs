@@ -1,7 +1,7 @@
-defmodule ABI.RoundtripPropertyTest do
+defmodule Onchain.ABI.RoundtripPropertyTest do
   @moduledoc """
   Property-based `decode(encode(x)) == x` coverage for every type in
-  `ABI.FunctionSelector.@type type/0`.
+  `Onchain.ABI.FunctionSelector.@type type/0`.
 
   Structure: per-type properties localize failures to a single clause; the
   recursive `composite` property exercises nested `{:tuple, [{:array, ...}]}`
@@ -11,9 +11,9 @@ defmodule ABI.RoundtripPropertyTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  alias ABI.FunctionSelector
-  alias ABI.TypeDecoder
-  alias ABI.TypeEncoder
+  alias Onchain.ABI.FunctionSelector
+  alias Onchain.ABI.TypeDecoder
+  alias Onchain.ABI.TypeEncoder
 
   @uint_sizes Enum.map(1..32, &(&1 * 8))
   @int_sizes @uint_sizes

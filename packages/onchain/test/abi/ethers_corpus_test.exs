@@ -1,4 +1,4 @@
-defmodule ABI.EthersCorpusTest do
+defmodule Onchain.ABI.EthersCorpusTest do
   @moduledoc """
   Independent-oracle assertions against the vendored
   `@ethersproject/testcases` corpus.
@@ -11,12 +11,12 @@ defmodule ABI.EthersCorpusTest do
 
   The four corpus files cover four independent surfaces:
 
-    * `contract-interface` / `contract-interface-abi2` — `ABI.encode/2` and
-      `ABI.decode/3` against the contract's own returned ABI encoding
+    * `contract-interface` / `contract-interface-abi2` — `Onchain.ABI.encode/2` and
+      `Onchain.ABI.decode/3` against the contract's own returned ABI encoding
       (head/tail offsets, length words, padding, nested tuples and arrays).
-    * `contract-signatures` — `ABI.method_id/1` against `solc`'s selector.
-    * `contract-events` — `ABI.encode_event_topics/2`, the event `data`
-      payload, and `ABI.decode_event/4` against real emitted logs.
+    * `contract-signatures` — `Onchain.ABI.method_id/1` against `solc`'s selector.
+    * `contract-events` — `Onchain.ABI.encode_event_topics/2`, the event `data`
+      payload, and `Onchain.ABI.decode_event/4` against real emitted logs.
 
   Provenance and filter criteria:
   `test/support/fixtures/ethers/PROVENANCE.md`.
@@ -24,8 +24,8 @@ defmodule ABI.EthersCorpusTest do
 
   use ExUnit.Case, async: true
 
-  alias ABI.EthersCorpus, as: Corpus
-  alias ABI.FunctionSelector
+  alias Onchain.ABI.EthersCorpus, as: Corpus
+  alias Onchain.ABI.FunctionSelector
 
   # Every other assertion in this file is `assert compare(...) == []`, and
   # `compare/2` folds an empty corpus to `[]`. A fixture that was truncated,
@@ -57,7 +57,7 @@ defmodule ABI.EthersCorpusTest do
                  encoded =
                    vector["types"]
                    |> Corpus.selector()
-                   |> ABI.encode(args(vector))
+                   |> Onchain.ABI.encode(args(vector))
                    |> Corpus.to_hex()
 
                  {encoded, vector["result"]}
@@ -69,7 +69,7 @@ defmodule ABI.EthersCorpusTest do
                  decoded =
                    vector["types"]
                    |> Corpus.decode_selector()
-                   |> ABI.decode(Corpus.from_hex(vector["result"]))
+                   |> Onchain.ABI.decode(Corpus.from_hex(vector["result"]))
 
                  {decoded, values(vector)}
                end) == []
@@ -80,7 +80,7 @@ defmodule ABI.EthersCorpusTest do
   describe "method_id/1 against solc-recorded selectors" do
     test "every signature hashes to the recorded 4-byte selector" do
       assert compare("contract-signatures", fn vector ->
-               {Corpus.to_hex(ABI.method_id(vector["signature"])), vector["sigHash"]}
+               {Corpus.to_hex(Onchain.ABI.method_id(vector["signature"])), vector["sigHash"]}
              end) == []
     end
   end
@@ -91,7 +91,7 @@ defmodule ABI.EthersCorpusTest do
                topics =
                  vector["abi"]
                  |> FunctionSelector.parse_specification_item()
-                 |> ABI.encode_event_topics(indexed_values(vector))
+                 |> Onchain.ABI.encode_event_topics(indexed_values(vector))
                  |> Enum.map(&Corpus.to_hex/1)
 
                {topics, vector["topics"]}
@@ -105,7 +105,7 @@ defmodule ABI.EthersCorpusTest do
                data =
                  types
                  |> Corpus.selector()
-                 |> ABI.encode(Corpus.args(types, raw))
+                 |> Onchain.ABI.encode(Corpus.args(types, raw))
                  |> Corpus.to_hex()
 
                {data, vector["data"]}
@@ -118,7 +118,7 @@ defmodule ABI.EthersCorpusTest do
                topics = Enum.map(vector["topics"], &Corpus.from_hex/1)
                data = Corpus.from_hex(vector["data"])
 
-               {:ok, _name, decoded} = ABI.decode_event(selector, data, topics)
+               {:ok, _name, decoded} = Onchain.ABI.decode_event(selector, data, topics)
 
                {decoded, expected_decode(vector, topics)}
              end) == []
@@ -177,7 +177,7 @@ defmodule ABI.EthersCorpusTest do
 
   # The expected decode result, built from the corpus alone: an indexed
   # reference type survives in the log only as its topic hash, which
-  # `ABI.decode_event/4` surfaces as `{:indexed_hash, topic}`.
+  # `Onchain.ABI.decode_event/4` surfaces as `{:indexed_hash, topic}`.
   @spec expected_decode(map(), [binary()]) :: map()
   defp expected_decode(vector, topics) do
     indexed = if vector["abi"]["anonymous"], do: topics, else: tl(topics)

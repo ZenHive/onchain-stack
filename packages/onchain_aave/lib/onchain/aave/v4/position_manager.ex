@@ -29,9 +29,9 @@ defmodule Onchain.Aave.V4.PositionManager do
   | Amount / reserve id / flag | `{:error, {:invalid_amount, input}}`, `{:error, {:invalid_reserve_id, input}}`, `{:error, {:invalid_flag, input}}` |
   | `Onchain.Aave.Contracts.address/2` | `{:error, {:unsupported_network, network}}`, `{:error, {:unknown_contract, key}}` |
   | Taker allowance reverts | `{:error, {:insufficient_borrow_allowance, allowance, required}}`, `{:error, {:insufficient_withdraw_allowance, allowance, required}}` |
-  | `ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
+  | `Onchain.ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
   | `Onchain.Contract.call/5` | `{:error, {:rpc_error, map}}`, `{:error, {:decode_error, reason}}` |
-  | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
+  | `Onchain.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
 
   ## Functions
 
@@ -60,12 +60,12 @@ defmodule Onchain.Aave.V4.PositionManager do
 
   use Descripex, namespace: "/aave/v4/position_manager"
 
-  alias Cartouche.Hex
-  alias Cartouche.Signer
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.Opts
   alias Onchain.Address
   alias Onchain.Contract
+  alias Onchain.Hex
+  alias Onchain.Signer
 
   @type address :: String.t() | binary()
   @type result(value) :: {:ok, value} | {:error, term()}
@@ -87,6 +87,9 @@ defmodule Onchain.Aave.V4.PositionManager do
   @set_user_position_manager_sig "setUserPositionManager(address,bool)"
 
   @set_using_as_collateral_sig "setUsingAsCollateral(uint256,bool,address)"
+
+  # --- supply ---
+
   @set_using_as_collateral_obo_sig "setUsingAsCollateralOnBehalfOf(address,uint256,bool,address)"
   @update_risk_premium_sig "updateUserRiskPremiumOnBehalfOf(address,address)"
   @update_dynamic_config_sig "updateUserDynamicConfigOnBehalfOf(address,address)"
@@ -96,6 +99,8 @@ defmodule Onchain.Aave.V4.PositionManager do
 
   @borrow_allowance_error "InsufficientBorrowAllowance(uint256,uint256)"
   @withdraw_allowance_error "InsufficientWithdrawAllowance(uint256,uint256)"
+
+  # --- repay ---
 
   @allowance_errors [@borrow_allowance_error, @withdraw_allowance_error]
 
@@ -107,12 +112,12 @@ defmodule Onchain.Aave.V4.PositionManager do
   @manager_desc "Position manager address to authorize or revoke"
   @delegatee_desc "Address receiving (or holding) a Config permission"
 
+  # --- borrow ---
+
   @flag_desc "Boolean flag; rejected unless it is exactly true or false"
   @write_opts_desc "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :network (default :ethereum), :gas_limit"
   @read_opts_desc "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
   @tx_hash_desc "Transaction hash hex string"
-
-  # --- supply ---
 
   api(:supply, "Supply underlying to a Spoke reserve on behalf of a position owner via the Giver.",
     params: [
@@ -122,6 +127,7 @@ defmodule Onchain.Aave.V4.PositionManager do
       on_behalf_of: [kind: :value, description: @owner_desc],
       opts: [kind: :value, description: @write_opts_desc]
     ],
+    # --- withdraw ---
     returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
   )
 
@@ -129,8 +135,6 @@ defmodule Onchain.Aave.V4.PositionManager do
   def supply(spoke, reserve_id, amount, on_behalf_of, opts) do
     on_behalf_of_tx(@giver, @supply_sig, spoke, reserve_id, amount, on_behalf_of, opts)
   end
-
-  # --- repay ---
 
   api(:repay, "Repay a Spoke reserve debt on behalf of a position owner via the Giver.",
     params: [
@@ -140,6 +144,9 @@ defmodule Onchain.Aave.V4.PositionManager do
       on_behalf_of: [kind: :value, description: @owner_desc],
       opts: [kind: :value, description: @write_opts_desc]
     ],
+
+    # --- approve_borrow ---
+
     returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
   )
 
@@ -148,14 +155,13 @@ defmodule Onchain.Aave.V4.PositionManager do
     on_behalf_of_tx(@giver, @repay_sig, spoke, reserve_id, amount, on_behalf_of, opts)
   end
 
-  # --- borrow ---
-
   api(:borrow, "Borrow from a Spoke reserve on behalf of a position owner via the Taker.",
     params: [
       spoke: [kind: :value, description: @spoke_desc],
       reserve_id: [kind: :value, description: @reserve_id_desc],
       amount: [kind: :value, description: @amount_desc],
       on_behalf_of: [kind: :value, description: @owner_desc],
+      # --- approve_withdraw ---
       opts: [kind: :value, description: @write_opts_desc]
     ],
     returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
@@ -166,13 +172,12 @@ defmodule Onchain.Aave.V4.PositionManager do
     on_behalf_of_tx(@taker, @borrow_sig, spoke, reserve_id, amount, on_behalf_of, opts)
   end
 
-  # --- withdraw ---
-
   api(:withdraw, "Withdraw from a Spoke reserve on behalf of a position owner via the Taker.",
     params: [
       spoke: [kind: :value, description: @spoke_desc],
       reserve_id: [kind: :value, description: @reserve_id_desc],
       amount: [kind: :value, description: @amount_desc],
+      # --- renounce_borrow_allowance ---
       on_behalf_of: [kind: :value, description: @owner_desc],
       opts: [kind: :value, description: @write_opts_desc]
     ],
@@ -184,11 +189,10 @@ defmodule Onchain.Aave.V4.PositionManager do
     on_behalf_of_tx(@taker, @withdraw_sig, spoke, reserve_id, amount, on_behalf_of, opts)
   end
 
-  # --- approve_borrow ---
-
   api(:approve_borrow, "Grant a spender Taker borrow allowance from the signer (msg.sender) position.",
     params: [
       spoke: [kind: :value, description: @spoke_desc],
+      # --- renounce_withdraw_allowance ---
       reserve_id: [kind: :value, description: @reserve_id_desc],
       spender: [kind: :value, description: @spender_desc],
       amount: [kind: :value, description: "Allowance amount; `type(uint256).max` is infinite"],
@@ -202,9 +206,8 @@ defmodule Onchain.Aave.V4.PositionManager do
     approve_tx(@approve_borrow_sig, spoke, reserve_id, spender, amount, opts)
   end
 
-  # --- approve_withdraw ---
-
   api(:approve_withdraw, "Grant a spender Taker withdraw allowance from the signer (msg.sender) position.",
+    # --- borrow_allowance ---
     params: [
       spoke: [kind: :value, description: @spoke_desc],
       reserve_id: [kind: :value, description: @reserve_id_desc],
@@ -220,8 +223,7 @@ defmodule Onchain.Aave.V4.PositionManager do
     approve_tx(@approve_withdraw_sig, spoke, reserve_id, spender, amount, opts)
   end
 
-  # --- renounce_borrow_allowance ---
-
+  # --- withdraw_allowance ---
   api(:renounce_borrow_allowance, "Renounce the Taker borrow allowance granted by a position owner.",
     params: [
       spoke: [kind: :value, description: @spoke_desc],
@@ -237,9 +239,8 @@ defmodule Onchain.Aave.V4.PositionManager do
     renounce_tx(@renounce_borrow_sig, spoke, reserve_id, owner, opts)
   end
 
-  # --- renounce_withdraw_allowance ---
-
   api(:renounce_withdraw_allowance, "Renounce the Taker withdraw allowance granted by a position owner.",
+    # --- set_user_position_manager ---
     params: [
       spoke: [kind: :value, description: @spoke_desc],
       reserve_id: [kind: :value, description: @reserve_id_desc],
@@ -254,14 +255,14 @@ defmodule Onchain.Aave.V4.PositionManager do
     renounce_tx(@renounce_withdraw_sig, spoke, reserve_id, owner, opts)
   end
 
-  # --- borrow_allowance ---
-
   api(:borrow_allowance, "Read the Taker borrow allowance a spender holds from a position owner.",
     params: [
       spoke: [kind: :value, description: @spoke_desc],
       reserve_id: [kind: :value, description: @reserve_id_desc],
+      # --- update_user_risk_premium_on_behalf_of ---
       owner: [kind: :value, description: @owner_desc],
       spender: [kind: :value, description: @spender_desc],
+      # --- set_using_as_collateral ---
       opts: [kind: :value, default: [], description: @read_opts_desc]
     ],
     returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Current borrow allowance"}
@@ -271,8 +272,6 @@ defmodule Onchain.Aave.V4.PositionManager do
   def borrow_allowance(spoke, reserve_id, owner, spender, opts \\ []) do
     allowance_view(@borrow_allowance_sig, spoke, reserve_id, owner, spender, opts)
   end
-
-  # --- withdraw_allowance ---
 
   api(:withdraw_allowance, "Read the Taker withdraw allowance a spender holds from a position owner.",
     params: [
@@ -290,8 +289,6 @@ defmodule Onchain.Aave.V4.PositionManager do
   def withdraw_allowance(spoke, reserve_id, owner, spender, opts \\ []) do
     allowance_view(@withdraw_allowance_sig, spoke, reserve_id, owner, spender, opts)
   end
-
-  # --- set_user_position_manager ---
 
   api(:set_user_position_manager, "Authorize or revoke a position manager on a Spoke for the signer (msg.sender).",
     params: [
@@ -311,10 +308,6 @@ defmodule Onchain.Aave.V4.PositionManager do
       send_spoke_tx(spoke, @set_user_position_manager_sig, [manager_bin, approve], opts)
     end
   end
-
-  # --- update_user_risk_premium_on_behalf_of ---
-
-  # --- set_using_as_collateral ---
 
   api(:set_using_as_collateral, "Toggle a Spoke reserve as collateral on behalf of a position owner.",
     params: [
@@ -406,6 +399,7 @@ defmodule Onchain.Aave.V4.PositionManager do
     params: [
       spoke: [kind: :value, description: @spoke_desc],
       delegatee: [kind: :value, description: @delegatee_desc],
+      # --- decode_revert ---
       status: [kind: :value, description: @flag_desc],
       opts: [kind: :value, description: @write_opts_desc]
     ],
@@ -451,8 +445,6 @@ defmodule Onchain.Aave.V4.PositionManager do
     config_permission_tx(@set_can_update_dynamic_permission_sig, spoke, delegatee, status, opts)
   end
 
-  # --- decode_revert ---
-
   api(:decode_revert, "Decode Taker InsufficientBorrow/WithdrawAllowance custom-error revert data.",
     params: [
       revert_data: [
@@ -472,7 +464,7 @@ defmodule Onchain.Aave.V4.PositionManager do
           | {:error, {:insufficient_withdraw_allowance, non_neg_integer(), non_neg_integer()}}
           | {:error, {:unknown_revert, term()}}
   def decode_revert(revert_data) do
-    case ABI.decode_hex_error(revert_hex(revert_data), @allowance_errors) do
+    case Onchain.ABI.decode_hex_error(revert_hex(revert_data), @allowance_errors) do
       {:ok, %{error: "InsufficientBorrowAllowance", args: [allowance, required]}} ->
         {:error, {:insufficient_borrow_allowance, allowance, required}}
 
@@ -549,7 +541,7 @@ defmodule Onchain.Aave.V4.PositionManager do
   defp send_spoke_tx(spoke, signature, args, opts) do
     {_network_opts, signer_opts} = Opts.split_network(opts)
 
-    with {:ok, calldata_hex} <- ABI.encode_hex_call(signature, args) do
+    with {:ok, calldata_hex} <- Onchain.ABI.encode_hex_call(signature, args) do
       spoke
       |> Signer.send_transaction(Hex.decode!(calldata_hex), signer_opts)
       |> map_rpc_error()
@@ -561,7 +553,7 @@ defmodule Onchain.Aave.V4.PositionManager do
     {network_opts, signer_opts} = Opts.split_network(opts)
 
     with {:ok, addr} <- Contracts.address(contract_key, network_opts),
-         {:ok, calldata_hex} <- ABI.encode_hex_call(signature, args) do
+         {:ok, calldata_hex} <- Onchain.ABI.encode_hex_call(signature, args) do
       addr
       |> Signer.send_transaction(Hex.decode!(calldata_hex), signer_opts)
       |> map_rpc_error()

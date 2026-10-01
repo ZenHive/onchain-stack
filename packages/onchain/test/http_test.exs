@@ -1,7 +1,7 @@
-defmodule Cartouche.HTTPTest do
+defmodule Onchain.HTTPTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.HTTP
+  alias Onchain.HTTP
 
   describe "normalize_response/1" do
     test "wraps 2xx responses in {:ok, response}" do
@@ -35,7 +35,7 @@ defmodule Cartouche.HTTPTest do
   end
 
   test "CCIP and RPC keep their application seams and option precedence" do
-    for {app, owner} <- [{:onchain, Onchain.ENS}, {:cartouche, Cartouche.RPC}] do
+    for {app, owner} <- [{:onchain, Onchain.ENS}, {:cartouche, Onchain.RPC}] do
       original_owner = Application.fetch_env(app, owner)
       original_global = Application.fetch_env(app, :req_options)
 

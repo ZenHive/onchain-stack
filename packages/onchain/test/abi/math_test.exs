@@ -1,7 +1,7 @@
-defmodule ABI.MathTest do
+defmodule Onchain.ABI.MathTest do
   use ExUnit.Case, async: true
 
-  alias ABI.Math
+  alias Onchain.ABI.Math
 
   doctest Math
 

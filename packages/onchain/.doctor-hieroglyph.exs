@@ -1,5 +1,5 @@
 %Doctor.Config{
-  ignore_paths: [~r"^(?!lib/(abi(?:/|\.ex)|mix/tasks/hieroglyph\.)|test/support/)"],
+  ignore_paths: [~r"^(?!lib/(onchain/abi(?:/|\.ex)|mix/tasks/onchain\.manifest\.)|test/support/)"],
   ignore_modules: [],
   min_module_doc_coverage: 100,
   min_module_spec_coverage: 100,

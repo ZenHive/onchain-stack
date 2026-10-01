@@ -1,11 +1,11 @@
-defmodule ABI.BeforeAlloyFixtureTest do
+defmodule Onchain.ABI.BeforeAlloyFixtureTest do
   use ExUnit.Case, async: true
 
   @fixture Path.expand("../support/fixtures/abi_before_alloy.etf", __DIR__)
 
   # spec-tags: NIF-4
   test "the pre-migration ABI corpus retains exact return values and exception reasons" do
-    records = @fixture |> File.read!() |> :erlang.binary_to_term()
+    records = @fixture |> File.read!() |> :erlang.binary_to_term() |> Onchain.Test.LegacyModuleNames.translate()
     assert Enum.count_until(records, 17_353) == 17_352
 
     Enum.each(records, fn {mod, fun, args, kind, expected} ->

@@ -1,8 +1,8 @@
-defmodule Cartouche.Transaction.SignatureTest do
+defmodule Onchain.Transaction.SignatureTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Transaction.Signature
-  alias Cartouche.Transaction.V3
+  alias Onchain.Transaction.Signature
+  alias Onchain.Transaction.V3
 
   describe "pack/3" do
     test "32-byte r/s packing is byte-identical to r <> s <> <<y_parity>>" do

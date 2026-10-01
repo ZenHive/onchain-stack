@@ -1,11 +1,11 @@
-defmodule Cartouche.RPCTransactionReadsTest do
+defmodule Onchain.RPCTransactionReadsTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hex
-  alias Cartouche.Receipt
-  alias Cartouche.RPC
-  alias Cartouche.Transaction.Info
-  alias Cartouche.Transaction.V1
+  alias Onchain.Hex
+  alias Onchain.Receipt
+  alias Onchain.RPC
+  alias Onchain.Transaction.Info
+  alias Onchain.Transaction.V1
 
   @block_number 16
   @block_hash "0x" <> String.duplicate("cd", 32)

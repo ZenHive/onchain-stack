@@ -113,8 +113,8 @@ defmodule Onchain.SubscriptionIntegrationTest do
             flunk("No USDC Transfer log received within #{@new_heads_timeout_ms}ms")
         end
 
-      assert log.address == Cartouche.Hex.from_hex!(@usdc_address)
-      assert hd(log.topics) == Cartouche.Hex.from_hex!(@erc20_transfer_topic)
+      assert log.address == Onchain.Hex.from_hex!(@usdc_address)
+      assert hd(log.topics) == Onchain.Hex.from_hex!(@erc20_transfer_topic)
       assert is_integer(log.block_number)
       assert is_integer(log.log_index)
       assert is_binary(log.transaction_hash)

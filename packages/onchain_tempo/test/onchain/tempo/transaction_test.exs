@@ -3,7 +3,7 @@ defmodule Onchain.Tempo.TransactionTest do
 
   import Onchain.Tempo.TestHelpers
 
-  alias Cartouche.Signer.Secp256k1
+  alias Onchain.Signer.Secp256k1
   alias Onchain.Tempo.Codec
   alias Onchain.Tempo.Transaction
   alias Onchain.Tempo.Transaction.Builder

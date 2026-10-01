@@ -1,6 +1,6 @@
 defmodule Onchain.RPC.Codegen do
   @moduledoc """
-  Spec-checked JSON-RPC wrapper generation for `Cartouche.RPC`.
+  Spec-checked JSON-RPC wrapper generation for `Onchain.RPC`.
 
   `defrpc/2` takes a function name and keyword options including `:method`.
   Every declaration is checked against `Onchain.RPC.Specs` at compile time,

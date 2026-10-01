@@ -64,7 +64,7 @@
 #     in deps/muex/lib/muex/tce.ex), which for a nested module is the INNER
 #     one, so both sides of the comparison fingerprint the inner module and
 #     every mutation outside it compares equal. `lib/abi/type_decoder.ex`
-#     nests ABI.TypeDecoder.StrictViolation at line 17 and was the only file
+#     nests Onchain.ABI.TypeDecoder.StrictViolation at line 17 and was the only file
 #     in the tree that tripped this. Measured on the 2026-08-26 TCE-on run:
 #     672 of its 867 mutations were declared "equivalent", dropped from the
 #     denominator and never executed -- including `@word_size_bytes 32 -> 33`,

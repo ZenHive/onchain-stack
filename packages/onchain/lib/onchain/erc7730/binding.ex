@@ -30,7 +30,7 @@ defmodule Onchain.ERC7730.Binding do
 
       %{
         format: format(),            # the matched display format
-        signature: %ABI.FunctionSelector{} | nil,
+        signature: %Onchain.ABI.FunctionSelector{} | nil,
         message: %{name => value},   # decoded bound data (path "#." root)
         types: %{name => abi_type},  # ABI type per message field
         envelope: %{to: _, value: _, from: _}  # transaction envelope (path "@." root)
@@ -39,13 +39,14 @@ defmodule Onchain.ERC7730.Binding do
 
   use Descripex, namespace: "/erc7730/binding"
 
-  alias ABI, as: OnchainABI
-  alias Cartouche.Hex
+  alias Onchain.ABI, as: OnchainABI
+  alias Onchain.ABI.FunctionSelector
   alias Onchain.Address
   alias Onchain.ERC7730.Descriptor
+  alias Onchain.Hex
 
   # Descriptor JSON is third-party input, so an unparseable type or format key is
-  # an expected fallback, not a crash. `ABI.FunctionSelector.decode/1` and
+  # an expected fallback, not a crash. `Onchain.ABI.FunctionSelector.decode/1` and
   # `decode_type/1` fail the parser's result match (MatchError) on junk or empty
   # input and raise ArgumentError on explicit spec violations; a non-binary reaches
   # no clause (FunctionClauseError). Same set as `ABI`'s `@abi_errors`,
@@ -59,7 +60,7 @@ defmodule Onchain.ERC7730.Binding do
 
   @type resolution :: %{
           format: Descriptor.format(),
-          signature: ABI.FunctionSelector.t() | nil,
+          signature: FunctionSelector.t() | nil,
           message: %{optional(String.t()) => term()},
           types: %{optional(String.t()) => term()},
           envelope: map()
@@ -136,6 +137,7 @@ defmodule Onchain.ERC7730.Binding do
     end
   end
 
+  # --- deployment matching ---
   def resolve(%Descriptor{context: {:eip712, _}}, {:calldata, _, _, _}, _opts),
     do: {:error, {:context_mismatch, "descriptor is an eip712 context; got a calldata request"}}
 
@@ -152,9 +154,9 @@ defmodule Onchain.ERC7730.Binding do
     end
   end
 
-  def resolve(%Descriptor{}, request, _opts), do: {:error, {:invalid_request, request}}
+  # --- domain matching (EIP-712) ---
 
-  # --- deployment matching ---
+  def resolve(%Descriptor{}, request, _opts), do: {:error, {:invalid_request, request}}
 
   defp match_deployment(%{deployments: deployments} = ctx, chain_id, address) do
     match =
@@ -169,8 +171,6 @@ defmodule Onchain.ERC7730.Binding do
     end
   end
 
-  # --- domain matching (EIP-712) ---
-
   defp match_domain(%{domain: nil}, _domain), do: :ok
 
   defp match_domain(%{domain: expected}, actual) when is_map(expected) do
@@ -180,6 +180,7 @@ defmodule Onchain.ERC7730.Binding do
     # Only compare keys the descriptor actually constrains; ignore the rest.
     mismatch =
       Enum.find(expected, fn {key, expected_value} ->
+        # --- format lookup ---
         actual_value = Map.get(actual, key)
 
         is_nil(actual_value) or not domain_value_equal?(key, expected_value, actual_value)
@@ -194,8 +195,6 @@ defmodule Onchain.ERC7730.Binding do
   defp domain_value_equal?("verifyingContract", a, b), do: Address.equal?(a, b)
   defp domain_value_equal?("chainId", a, b), do: to_int(a) == to_int(b)
   defp domain_value_equal?(_key, a, b), do: a == b
-
-  # --- format lookup ---
 
   defp find_format_by_selector(descriptor, selector) do
     matches =
@@ -272,8 +271,9 @@ defmodule Onchain.ERC7730.Binding do
     {name, parse_eip712_type(type)}
   end
 
+  # --- calldata decoding ---
   defp parse_eip712_type(type) when is_binary(type) do
-    ABI.FunctionSelector.decode_type(type)
+    FunctionSelector.decode_type(type)
   rescue
     _ in @selector_errors -> type
   end
@@ -288,8 +288,8 @@ defmodule Onchain.ERC7730.Binding do
 
   defp function_selector(key) do
     with {:ok, fs} <- parse_selector(key),
-         bare = ABI.FunctionSelector.encode(fs),
-         <<sel::binary-size(4), _::binary>> <- Cartouche.Hash.keccak(bare) do
+         bare = FunctionSelector.encode(fs),
+         <<sel::binary-size(4), _::binary>> <- Onchain.Hash.keccak(bare) do
       {:ok, fs, sel}
     end
   rescue
@@ -297,15 +297,14 @@ defmodule Onchain.ERC7730.Binding do
   end
 
   defp parse_selector(key) do
-    {:ok, ABI.FunctionSelector.decode(key)}
+    {:ok, FunctionSelector.decode(key)}
   rescue
     _ in @selector_errors -> {:error, {:invalid_format_key, key}}
   end
 
-  # --- calldata decoding ---
-
   defp selector_of(hex_data) do
     case Hex.decode(hex_data) do
+      # --- helpers ---
       {:ok, <<selector::binary-size(4), _::binary>>} -> {:ok, selector}
       {:ok, _short} -> {:error, {:decode_error, :calldata_too_short}}
       {:error, reason} -> {:error, {:decode_error, reason}}
@@ -324,21 +323,19 @@ defmodule Onchain.ERC7730.Binding do
     end
   end
 
-  defp field_names(%ABI.FunctionSelector{types: types}) do
+  defp field_names(%FunctionSelector{types: types}) do
     types
     |> Enum.with_index()
     |> Enum.map(fn {type, i} -> Map.get(type, :name) || Integer.to_string(i) end)
   end
 
-  defp types_from_selector(%ABI.FunctionSelector{types: types}) do
+  defp types_from_selector(%FunctionSelector{types: types}) do
     types
     |> Enum.with_index()
     |> Map.new(fn {type, i} ->
       {Map.get(type, :name) || Integer.to_string(i), Map.get(type, :type)}
     end)
   end
-
-  # --- helpers ---
 
   defp envelope(address, opts) do
     %{to: address, value: Keyword.get(opts, :value, 0), from: Keyword.get(opts, :from)}

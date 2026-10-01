@@ -1,8 +1,8 @@
-defmodule Cartouche.Sleuth.IntegrationTest do
+defmodule Onchain.Sleuth.IntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.Sleuth
   alias Onchain.Contract
+  alias Onchain.Sleuth
 
   @moduletag :integration
 

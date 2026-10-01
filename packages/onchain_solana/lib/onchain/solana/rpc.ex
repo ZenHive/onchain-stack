@@ -20,7 +20,7 @@ defmodule Onchain.Solana.RPC do
 
   use Descripex, namespace: "/solana/rpc"
 
-  import Cartouche.HTTP, only: [normalize_response: 1]
+  import Onchain.HTTP, only: [normalize_response: 1]
 
   alias Onchain.Solana.Base58
   alias Onchain.Solana.Transaction
@@ -112,7 +112,7 @@ defmodule Onchain.Solana.RPC do
       req_result =
         normalize_response(
           Req.request(
-            Cartouche.HTTP.req_options(
+            Onchain.HTTP.req_options(
               __MODULE__,
               [
                 method: :post,

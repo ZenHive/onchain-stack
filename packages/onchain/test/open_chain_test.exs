@@ -1,13 +1,13 @@
-defmodule Cartouche.OpenChainTest do
+defmodule Onchain.OpenChainTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.OpenChain
-  alias Cartouche.OpenChain.Signatures
+  alias Onchain.OpenChain
+  alias Onchain.OpenChain.Signatures
 
   doctest OpenChain
   doctest Signatures
-  doctest Cartouche.OpenChain.API
+  doctest Onchain.OpenChain.API
 
   defmodule TestClient do
     @moduledoc false

@@ -8,9 +8,9 @@ defmodule Onchain.Aave.PoolInterestRateModeIntegrationTest do
 
   use ExUnit.Case, async: false
 
-  alias Cartouche.Hex
   alias Onchain.Aave.Types.UserAccountData
   alias Onchain.EVM
+  alias Onchain.Hex
   alias Onchain.RPCCase
 
   @moduletag :integration
@@ -29,20 +29,20 @@ defmodule Onchain.Aave.PoolInterestRateModeIntegrationTest do
 
   describe "deployed Pool rejects interest-rate mode 1" do
     test "a borrowable position reverts mode 1 and accepts mode 2 on the same fork" do
-      {:ok, approve} = ABI.encode_hex_call("approve(address,uint256)", [address_bin(@pool), @supply_amount])
+      {:ok, approve} = Onchain.ABI.encode_hex_call("approve(address,uint256)", [address_bin(@pool), @supply_amount])
 
       {:ok, supply} =
-        ABI.encode_hex_call("supply(address,uint256,address,uint16)", [
+        Onchain.ABI.encode_hex_call("supply(address,uint256,address,uint16)", [
           address_bin(@weth),
           @supply_amount,
           address_bin(@user),
           0
         ])
 
-      {:ok, query} = ABI.encode_hex_call("getUserAccountData(address)", [address_bin(@user)])
+      {:ok, query} = Onchain.ABI.encode_hex_call("getUserAccountData(address)", [address_bin(@user)])
 
       {:ok, borrow_stable} =
-        ABI.encode_hex_call("borrow(address,uint256,uint256,uint16,address)", [
+        Onchain.ABI.encode_hex_call("borrow(address,uint256,uint256,uint16,address)", [
           address_bin(@weth),
           @borrow_amount,
           1,
@@ -51,7 +51,7 @@ defmodule Onchain.Aave.PoolInterestRateModeIntegrationTest do
         ])
 
       {:ok, borrow_variable} =
-        ABI.encode_hex_call("borrow(address,uint256,uint256,uint16,address)", [
+        Onchain.ABI.encode_hex_call("borrow(address,uint256,uint256,uint16,address)", [
           address_bin(@weth),
           @borrow_amount,
           2,
@@ -87,7 +87,7 @@ defmodule Onchain.Aave.PoolInterestRateModeIntegrationTest do
       assert query_result.success
 
       {:ok, raw} =
-        ABI.decode_types("(uint256,uint256,uint256,uint256,uint256,uint256)", query_result.output)
+        Onchain.ABI.decode_types("(uint256,uint256,uint256,uint256,uint256,uint256)", query_result.output)
 
       account = UserAccountData.from_raw(raw)
       assert Decimal.positive?(account.available_borrows_base)
@@ -109,7 +109,7 @@ defmodule Onchain.Aave.PoolInterestRateModeIntegrationTest do
   defp weth_balance_override(amount) do
     slot =
       (<<0::96>> <> address_bin(@user) <> <<@weth_balance_slot::256>>)
-      |> Cartouche.Hash.keccak()
+      |> Onchain.Hash.keccak()
       |> Hex.encode()
 
     JSON.encode!(%{slot => hex_uint(amount)})

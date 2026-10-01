@@ -3,8 +3,8 @@ defmodule Onchain.AddressTest do
 
   import Onchain.TypeEvasion, only: [untyped: 1]
 
-  alias Cartouche.Hex.InvalidHex
   alias Onchain.Address
+  alias Onchain.Hex.InvalidHex
 
   # EIP-55 test vectors from the spec
   @checksummed_vectors [
@@ -18,7 +18,7 @@ defmodule Onchain.AddressTest do
   @zero_binary <<0::160>>
 
   # A known address as 20-byte binary
-  @sample_binary Cartouche.Hex.decode_address!("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed")
+  @sample_binary Onchain.Hex.decode_address!("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed")
 
   describe "validate/1" do
     test "validates lowercase hex" do
@@ -112,7 +112,7 @@ defmodule Onchain.AddressTest do
 
     test "produces correct EIP-55 checksums from binary input" do
       for expected <- @checksummed_vectors do
-        binary = Cartouche.Hex.decode_address!(expected)
+        binary = Onchain.Hex.decode_address!(expected)
         assert {:ok, ^expected} = Address.checksum(binary)
       end
     end

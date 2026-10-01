@@ -1,4 +1,4 @@
-defmodule Cartouche.RPC.IntegrationTest do
+defmodule Onchain.RPC.TransportIntegrationTest do
   @moduledoc """
   Mainnet archive integration tests.
 
@@ -11,17 +11,18 @@ defmodule Cartouche.RPC.IntegrationTest do
   """
   use ExUnit.Case, async: true
 
-  import Cartouche.Test.Live, only: [live_opts: 0]
+  import Onchain.Test.Live, only: [live_opts: 0]
 
-  alias Cartouche.Transaction.Call
-  alias Cartouche.Transaction.V1
-  alias Cartouche.Transaction.V2
-  alias Cartouche.Transaction.V_2930
+  alias Onchain.RPC.Trace
+  alias Onchain.Transaction.Call
+  alias Onchain.Transaction.V1
+  alias Onchain.Transaction.V2
+  alias Onchain.Transaction.V_2930
 
   @moduletag :integration
 
   setup_all do
-    Cartouche.Test.Live.assert_node_available!()
+    Onchain.Test.Live.assert_node_available!()
     :ok
   end
 
@@ -93,7 +94,7 @@ defmodule Cartouche.RPC.IntegrationTest do
   @type_4_trace_block 23_600_000
 
   # CREATE trace anchor — contract-deployment tx at block 18,000,000.
-  # Exercises `Cartouche.Trace.Action.deserialize/1`'s `"init"` clause: action.init
+  # Exercises `Onchain.RPC.Trace.Action.deserialize/1`'s `"init"` clause: action.init
   # carries the constructor bytecode, and the trace's result_address/result_code
   # carry the deployed address + runtime bytecode.
   @create_trace_hash <<0x24578BF2676FABD01269543DDA61E53496A3282B1D9794DDB141319578052359::256>>
@@ -136,29 +137,29 @@ defmodule Cartouche.RPC.IntegrationTest do
 
   describe "chain-level reads" do
     test "eth_chainId returns 1 (mainnet)" do
-      assert {:ok, 1} = Cartouche.RPC.eth_chain_id(live_opts())
+      assert {:ok, 1} = Onchain.RPC.eth_chain_id(live_opts())
     end
 
     test "eth_blockNumber is past archive baseline" do
-      assert {:ok, n} = Cartouche.RPC.eth_block_number(live_opts())
+      assert {:ok, n} = Onchain.RPC.eth_block_number(live_opts())
       assert is_integer(n)
       assert n > 19_000_000
     end
 
     test "eth_gasPrice > 0" do
-      assert {:ok, p} = Cartouche.RPC.gas_price(live_opts())
+      assert {:ok, p} = Onchain.RPC.gas_price(live_opts())
       assert is_integer(p)
       assert p > 0
     end
 
     test "eth_maxPriorityFeePerGas >= 0" do
-      assert {:ok, p} = Cartouche.RPC.max_priority_fee_per_gas(live_opts())
+      assert {:ok, p} = Onchain.RPC.max_priority_fee_per_gas(live_opts())
       assert is_integer(p)
       assert p >= 0
     end
 
     test "eth_config reports mainnet fork constants" do
-      config = live_result!("eth_config", Cartouche.RPC.eth_config(live_opts()))
+      config = live_result!("eth_config", Onchain.RPC.eth_config(live_opts()))
 
       assert config.current.chain_id == 1
       assert byte_size(config.current.fork_id) == 4
@@ -172,10 +173,10 @@ defmodule Cartouche.RPC.IntegrationTest do
     end
 
     test "eth_capabilities reports an archive node and a real canonical head" do
-      capabilities = live_result!("eth_capabilities", Cartouche.RPC.eth_capabilities(live_opts()))
+      capabilities = live_result!("eth_capabilities", Onchain.RPC.eth_capabilities(live_opts()))
 
       block =
-        live_result!("eth_getBlockByNumber", Cartouche.RPC.get_block_by_number(capabilities.head.number, live_opts()))
+        live_result!("eth_getBlockByNumber", Onchain.RPC.get_block_by_number(capabilities.head.number, live_opts()))
 
       assert block.hash == capabilities.head.hash
       assert capabilities.state.disabled == false
@@ -188,7 +189,7 @@ defmodule Cartouche.RPC.IntegrationTest do
 
   describe "block reads at fork-tier anchors" do
     test "pre-London (block 10,000,000) by number" do
-      assert {:ok, b} = Cartouche.RPC.get_block_by_number(@pre_london_block, live_opts())
+      assert {:ok, b} = Onchain.RPC.get_block_by_number(@pre_london_block, live_opts())
       assert b.number == @pre_london_block
       assert b.hash == @pre_london_hash
       assert b.parent_hash == @pre_london_parent
@@ -199,13 +200,13 @@ defmodule Cartouche.RPC.IntegrationTest do
     end
 
     test "pre-London (block 10,000,000) by hash" do
-      assert {:ok, b} = Cartouche.RPC.get_block_by_hash(@pre_london_hash, live_opts())
+      assert {:ok, b} = Onchain.RPC.get_block_by_hash(@pre_london_hash, live_opts())
       assert b.number == @pre_london_block
       assert b.hash == @pre_london_hash
     end
 
     test "post-London (block 15,000,000) by number" do
-      assert {:ok, b} = Cartouche.RPC.get_block_by_number(@post_london_block, live_opts())
+      assert {:ok, b} = Onchain.RPC.get_block_by_number(@post_london_block, live_opts())
       assert b.number == @post_london_block
       assert b.hash == @post_london_hash
       assert b.parent_hash == @post_london_parent
@@ -219,13 +220,13 @@ defmodule Cartouche.RPC.IntegrationTest do
     end
 
     test "post-London (block 15,000,000) by hash" do
-      assert {:ok, b} = Cartouche.RPC.get_block_by_hash(@post_london_hash, live_opts())
+      assert {:ok, b} = Onchain.RPC.get_block_by_hash(@post_london_hash, live_opts())
       assert b.number == @post_london_block
       assert b.hash == @post_london_hash
     end
 
     test "post-Shanghai (block 18,000,000) by number" do
-      assert {:ok, b} = Cartouche.RPC.get_block_by_number(@post_shanghai_block, live_opts())
+      assert {:ok, b} = Onchain.RPC.get_block_by_number(@post_shanghai_block, live_opts())
       assert b.number == @post_shanghai_block
       assert b.hash == @post_shanghai_hash
       assert b.parent_hash == @post_shanghai_parent
@@ -238,17 +239,17 @@ defmodule Cartouche.RPC.IntegrationTest do
       assert byte_size(b.withdrawals_root) == 32
       # The 18M anchor is well past Shanghai (block ≥ 17,034,870), so a real
       # mainnet block at this height carries at least one validator withdrawal.
-      assert [%Cartouche.Block.Withdrawal{} | _] = b.withdrawals
+      assert [%Onchain.Block.Withdrawal{} | _] = b.withdrawals
     end
 
     test "post-Shanghai (block 18,000,000) by hash" do
-      assert {:ok, b} = Cartouche.RPC.get_block_by_hash(@post_shanghai_hash, live_opts())
+      assert {:ok, b} = Onchain.RPC.get_block_by_hash(@post_shanghai_hash, live_opts())
       assert b.number == @post_shanghai_block
       assert b.hash == @post_shanghai_hash
     end
 
     test "post-Cancun (block 20,000,000) by number" do
-      assert {:ok, b} = Cartouche.RPC.get_block_by_number(@post_cancun_block, live_opts())
+      assert {:ok, b} = Onchain.RPC.get_block_by_number(@post_cancun_block, live_opts())
       assert b.number == @post_cancun_block
       assert b.hash == @post_cancun_hash
       assert b.parent_hash == @post_cancun_parent
@@ -264,20 +265,20 @@ defmodule Cartouche.RPC.IntegrationTest do
     end
 
     test "post-Cancun (block 20,000,000) by hash" do
-      assert {:ok, b} = Cartouche.RPC.get_block_by_hash(@post_cancun_hash, live_opts())
+      assert {:ok, b} = Onchain.RPC.get_block_by_hash(@post_cancun_hash, live_opts())
       assert b.number == @post_cancun_block
       assert b.hash == @post_cancun_hash
     end
 
     # Task 66: pin only deterministic fields — wrapper struct module per
-    # element, hash round-trip via `Cartouche.Transaction.V1.t/0`'s `r` /
-    # `Cartouche.Transaction.V2.t/0`'s `signature_r` round-trip is too
+    # element, hash round-trip via `Onchain.Transaction.V1.t/0`'s `r` /
+    # `Onchain.Transaction.V2.t/0`'s `signature_r` round-trip is too
     # node-variant; instead we pin shape-level invariants (struct module,
     # at least one V1, at least one V2 — block 18M is post-London so the
     # mempool shape mixes both; full-detail decode succeeds end-to-end).
     test "post-Shanghai (block 18,000,000) with `:include_transaction_details, true` — full-detail decode" do
       opts = Keyword.put(live_opts(), :include_transaction_details, true)
-      assert {:ok, b} = Cartouche.RPC.get_block_by_number(@post_shanghai_block, opts)
+      assert {:ok, b} = Onchain.RPC.get_block_by_number(@post_shanghai_block, opts)
 
       assert b.number == @post_shanghai_block
       assert b.hash == @post_shanghai_hash
@@ -290,8 +291,8 @@ defmodule Cartouche.RPC.IntegrationTest do
                case tx do
                  %V1{} -> true
                  %V2{} -> true
-                 %Cartouche.Transaction.V3{} -> true
-                 %Cartouche.Transaction.V4{} -> true
+                 %Onchain.Transaction.V3{} -> true
+                 %Onchain.Transaction.V4{} -> true
                  _other -> false
                end
              end)
@@ -306,7 +307,7 @@ defmodule Cartouche.RPC.IntegrationTest do
 
     test "post-Cancun (block 20,000,000) includes the pinned EIP-2930 type-1 transaction" do
       opts = Keyword.put(live_opts(), :include_transaction_details, true)
-      assert {:ok, b} = Cartouche.RPC.get_block_by_number(@type_1_block, opts)
+      assert {:ok, b} = Onchain.RPC.get_block_by_number(@type_1_block, opts)
 
       assert b.number == @type_1_block
       assert b.hash == @post_cancun_hash
@@ -325,7 +326,7 @@ defmodule Cartouche.RPC.IntegrationTest do
     # shape per the @type t/0 union after the Task 66 widening.
     test "post-Shanghai (block 18,000,000) with `:include_transaction_details, false` — hashes preserved" do
       opts = Keyword.put(live_opts(), :include_transaction_details, false)
-      assert {:ok, b} = Cartouche.RPC.get_block_by_number(@post_shanghai_block, opts)
+      assert {:ok, b} = Onchain.RPC.get_block_by_number(@post_shanghai_block, opts)
 
       assert is_list(b.transactions)
       assert b.transactions != []
@@ -339,7 +340,7 @@ defmodule Cartouche.RPC.IntegrationTest do
 
   describe "receipt reads" do
     test "type-0 (legacy) receipt at block 10,000,000" do
-      assert {:ok, r} = Cartouche.RPC.get_trx_receipt(@type_0_receipt_hash, live_opts())
+      assert {:ok, r} = Onchain.RPC.get_trx_receipt(@type_0_receipt_hash, live_opts())
       assert r.transaction_hash == @type_0_receipt_hash
       assert r.block_number == @type_0_receipt_block
       assert r.status == 1
@@ -349,7 +350,7 @@ defmodule Cartouche.RPC.IntegrationTest do
     end
 
     test "type-2 (EIP-1559) receipt at block 18,000,000" do
-      assert {:ok, r} = Cartouche.RPC.get_trx_receipt(@type_2_receipt_hash, live_opts())
+      assert {:ok, r} = Onchain.RPC.get_trx_receipt(@type_2_receipt_hash, live_opts())
       assert r.transaction_hash == @type_2_receipt_hash
       assert r.block_number == @type_2_receipt_block
       assert r.status == 1
@@ -362,7 +363,7 @@ defmodule Cartouche.RPC.IntegrationTest do
     end
 
     test "type-3 (EIP-4844 blob) receipt at block 19,449,343" do
-      assert {:ok, r} = Cartouche.RPC.get_trx_receipt(@type_3_receipt_hash, live_opts())
+      assert {:ok, r} = Onchain.RPC.get_trx_receipt(@type_3_receipt_hash, live_opts())
       assert r.transaction_hash == @type_3_receipt_hash
       assert r.block_number == @type_3_receipt_block
       assert r.status == 1
@@ -382,24 +383,24 @@ defmodule Cartouche.RPC.IntegrationTest do
   describe "account/code reads (WETH9 at block 18,000,000)" do
     test "eth_getCode returns pinned bytecode" do
       opts = Keyword.put(live_opts(), :block_number, @weth9_anchor_block)
-      assert {:ok, code} = Cartouche.RPC.get_code(@weth9, opts)
+      assert {:ok, code} = Onchain.RPC.get_code(@weth9, opts)
       assert is_binary(code)
       assert byte_size(code) == @weth9_code_byte_length
       assert <<first, _::binary>> = code
       # 0x60 = PUSH1, valid EVM bytecode prefix
       assert first == 0x60
-      assert Cartouche.Hash.keccak(code) == @weth9_code_hash
+      assert Onchain.Hash.keccak(code) == @weth9_code_hash
     end
 
     test "eth_getBalance pins to historical balance" do
       opts = Keyword.put(live_opts(), :block_number, @weth9_anchor_block)
-      assert {:ok, balance} = Cartouche.RPC.get_balance(@weth9, opts)
+      assert {:ok, balance} = Onchain.RPC.get_balance(@weth9, opts)
       assert balance == @weth9_balance
     end
 
     test "eth_getTransactionCount pins to historical nonce" do
       opts = Keyword.put(live_opts(), :block_number, @weth9_anchor_block)
-      assert {:ok, nonce} = Cartouche.RPC.get_transaction_count(@weth9, opts)
+      assert {:ok, nonce} = Onchain.RPC.get_transaction_count(@weth9, opts)
       assert nonce == @weth9_nonce
     end
   end
@@ -409,7 +410,7 @@ defmodule Cartouche.RPC.IntegrationTest do
       trx = V1.new(0, {0, :gwei}, 100_000, @weth9, 0, @weth9_total_supply_selector)
 
       opts = Keyword.put(live_opts(), :block_number, @weth9_anchor_block)
-      assert {:ok, result} = Cartouche.RPC.call_trx(trx, opts)
+      assert {:ok, result} = Onchain.RPC.call_trx(trx, opts)
       assert is_binary(result)
       assert byte_size(result) == 32
       assert :binary.decode_unsigned(result) == @weth9_total_supply
@@ -420,7 +421,7 @@ defmodule Cartouche.RPC.IntegrationTest do
       to = <<0x000000000000000000000000000000000000DEAD::160>>
       trx = V1.new(0, {1, :gwei}, 30_000, to, 0, <<>>)
 
-      assert {:ok, gas} = Cartouche.RPC.estimate_gas(trx, live_opts())
+      assert {:ok, gas} = Onchain.RPC.estimate_gas(trx, live_opts())
       assert is_integer(gas)
       assert gas == 21_000
     end
@@ -433,7 +434,7 @@ defmodule Cartouche.RPC.IntegrationTest do
               %{
                 access_list: [{@weth9, [@weth9_zero_balance_storage_key]}],
                 gas_used: @weth9_access_list_gas_used
-              }} = Cartouche.RPC.create_access_list(call, opts)
+              }} = Onchain.RPC.create_access_list(call, opts)
     end
 
     test "eth_createAccessList retains the node's observed WETH9 revert result" do
@@ -445,7 +446,7 @@ defmodule Cartouche.RPC.IntegrationTest do
                 access_list: [{@weth9, [@weth9_zero_balance_storage_key]}],
                 error: "execution reverted",
                 gas_used: @weth9_revert_access_list_gas_used
-              }} = Cartouche.RPC.create_access_list(call, opts)
+              }} = Onchain.RPC.create_access_list(call, opts)
     end
   end
 
@@ -453,27 +454,27 @@ defmodule Cartouche.RPC.IntegrationTest do
     @tag :base_fee_portability
     test "fee history and eth_baseFee agree in one batch" do
       assert {:ok, [raw_fee, raw_history]} =
-               Cartouche.RPC.send_batch(
+               Onchain.RPC.send_batch(
                  [{"eth_baseFee", []}, {"eth_feeHistory", ["0x1", "latest", []]}],
                  live_opts()
                )
 
-      assert %Cartouche.FeeHistory{base_fee_per_gas: [_current, next]} =
-               Cartouche.FeeHistory.deserialize(raw_history)
+      assert %Onchain.FeeHistory{base_fee_per_gas: [_current, next]} =
+               Onchain.FeeHistory.deserialize(raw_history)
 
-      assert next == Cartouche.Hex.decode_hex_number!(raw_fee)
+      assert next == Onchain.Hex.decode_hex_number!(raw_fee)
     end
 
     @tag :base_fee_portability
     test "base_fee matches the EIP-1559 next-block update rule" do
-      {head, base_fee} = stable_head_fee!("eth_feeHistory", &Cartouche.RPC.base_fee/1)
+      {head, base_fee} = stable_head_fee!("eth_feeHistory", &Onchain.RPC.base_fee/1)
 
       assert base_fee == next_base_fee(head)
     end
 
     test "eth_blobBaseFee matches the next-block excess update and EIP-4844 fake_exponential" do
-      {head, blob_base_fee} = stable_head_fee!("eth_blobBaseFee", &Cartouche.RPC.blob_base_fee/1)
-      config = live_result!("eth_config", Cartouche.RPC.eth_config(live_opts()))
+      {head, blob_base_fee} = stable_head_fee!("eth_blobBaseFee", &Onchain.RPC.blob_base_fee/1)
+      config = live_result!("eth_config", Onchain.RPC.eth_config(live_opts()))
       schedule = config.current.blob_schedule
       next_excess_blob_gas = next_excess_blob_gas(head, schedule)
 
@@ -488,7 +489,7 @@ defmodule Cartouche.RPC.IntegrationTest do
         |> Keyword.put(:newest_block, "0x#{Integer.to_string(@fee_history_newest_block, 16)}")
         |> Keyword.put(:reward_percentiles, [25.0, 50.0, 75.0])
 
-      assert {:ok, fh} = Cartouche.RPC.fee_history(opts)
+      assert {:ok, fh} = Onchain.RPC.fee_history(opts)
 
       assert fh.oldest_block == @fee_history_oldest_block
       # block_count + 1
@@ -504,8 +505,8 @@ defmodule Cartouche.RPC.IntegrationTest do
     # type/call_type. Shape-only: gas_used (positive int — varies across nodes),
     # subtraces count (depends on internal trace structure).
     test "trace_transaction at type-0 anchor (block 10,000,000, ETH transfer)" do
-      assert {:ok, [trace]} = Cartouche.RPC.trace_trx(@type_0_receipt_hash, live_opts())
-      assert %Cartouche.Trace{} = trace
+      assert {:ok, [trace]} = Onchain.RPC.trace_trx(@type_0_receipt_hash, live_opts())
+      assert %Trace{} = trace
       assert trace.transaction_hash == @type_0_receipt_hash
       assert trace.block_number == @type_0_receipt_block
       assert trace.type == "call"
@@ -517,8 +518,8 @@ defmodule Cartouche.RPC.IntegrationTest do
     end
 
     test "trace_transaction at type-2 anchor (block 18,000,000, contract call)" do
-      assert {:ok, traces} = Cartouche.RPC.trace_trx(@type_2_receipt_hash, live_opts())
-      assert [%Cartouche.Trace{} = top | _] = traces
+      assert {:ok, traces} = Onchain.RPC.trace_trx(@type_2_receipt_hash, live_opts())
+      assert [%Trace{} = top | _] = traces
       assert top.transaction_hash == @type_2_receipt_hash
       assert top.block_number == @type_2_receipt_block
       assert top.type == "call"
@@ -532,14 +533,14 @@ defmodule Cartouche.RPC.IntegrationTest do
       trx = V1.new(0, {0, :gwei}, 100_000, @weth9, 0, @weth9_total_supply_selector)
       opts = Keyword.put(live_opts(), :block_number, @weth9_anchor_block)
 
-      assert {:ok, %Cartouche.TraceCall{} = result} = Cartouche.RPC.trace_call(trx, opts)
+      assert {:ok, %Onchain.TraceCall{} = result} = Onchain.RPC.trace_call(trx, opts)
       assert is_binary(result.output)
       assert byte_size(result.output) == 32
       assert :binary.decode_unsigned(result.output) == @weth9_total_supply
       # `state_diff` and `vm_trace` are unsupported — always nil per moduledoc.
       assert result.state_diff == nil
       assert result.vm_trace == nil
-      assert [%Cartouche.Trace{} = top | _] = result.trace
+      assert [%Trace{} = top | _] = result.trace
       assert top.type == "call"
       assert top.action.call_type == "call"
     end
@@ -552,9 +553,9 @@ defmodule Cartouche.RPC.IntegrationTest do
       trx_balance = V1.new(0, {0, :gwei}, 100_000, @weth9, 0, balance_of_zero)
       opts = Keyword.put(live_opts(), :block_number, @weth9_anchor_block)
 
-      assert {:ok, [first, second]} = Cartouche.RPC.trace_call_many([trx_total, trx_balance], opts)
-      assert %Cartouche.TraceCall{} = first
-      assert %Cartouche.TraceCall{} = second
+      assert {:ok, [first, second]} = Onchain.RPC.trace_call_many([trx_total, trx_balance], opts)
+      assert %Onchain.TraceCall{} = first
+      assert %Onchain.TraceCall{} = second
 
       assert byte_size(first.output) == 32
       assert :binary.decode_unsigned(first.output) == @weth9_total_supply
@@ -570,21 +571,21 @@ defmodule Cartouche.RPC.IntegrationTest do
     # moduledoc for the rationale and how to opt in.
 
     test "trace_transaction at type-4 (EIP-7702) anchor — delegation tx" do
-      assert {:ok, traces} = Cartouche.RPC.trace_trx(@type_4_trace_hash, live_opts())
-      assert [%Cartouche.Trace{} = top | _] = traces
+      assert {:ok, traces} = Onchain.RPC.trace_trx(@type_4_trace_hash, live_opts())
+      assert [%Trace{} = top | _] = traces
       assert top.transaction_hash == @type_4_trace_hash
       assert top.block_number == @type_4_trace_block
       # 7702 delegation runs through the existing CALL-family — no new opcodes,
       # so the wrapper action stays a call. This is the precise property that
-      # justifies leaving the `lib/cartouche/debug_trace.ex` opcode whitelist
+      # justifies leaving the `lib/onchain/debug_trace.ex` opcode whitelist
       # unchanged for Pectra (verified under Task 68 closure).
       assert top.type == "call"
       assert top.action.call_type == "call"
     end
 
     test "trace_transaction at CREATE anchor — exercises action.init / result_address / result_code" do
-      assert {:ok, [%Cartouche.Trace{} = trace]} =
-               Cartouche.RPC.trace_trx(@create_trace_hash, live_opts())
+      assert {:ok, [%Trace{} = trace]} =
+               Onchain.RPC.trace_trx(@create_trace_hash, live_opts())
 
       assert trace.transaction_hash == @create_trace_hash
       assert trace.block_number == @create_trace_block
@@ -604,7 +605,7 @@ defmodule Cartouche.RPC.IntegrationTest do
     end
 
     test "trace_transaction at SELFDESTRUCT anchor — exercises action.refund_address" do
-      assert {:ok, traces} = Cartouche.RPC.trace_trx(@selfdestruct_trace_hash, live_opts())
+      assert {:ok, traces} = Onchain.RPC.trace_trx(@selfdestruct_trace_hash, live_opts())
 
       # CHI-token gas refund tx at block 11,500,000 — internal "suicide" actions.
       # We don't pin the count (depends on how many CHI tokens were freed in the
@@ -614,7 +615,7 @@ defmodule Cartouche.RPC.IntegrationTest do
       assert suicides != []
 
       Enum.each(suicides, fn trace ->
-        assert %Cartouche.Trace{} = trace
+        assert %Trace{} = trace
         assert trace.transaction_hash == @selfdestruct_trace_hash
         assert trace.block_number == @selfdestruct_trace_block
         assert is_binary(trace.action.refund_address)
@@ -630,15 +631,15 @@ defmodule Cartouche.RPC.IntegrationTest do
   defp live_result!(method, {:error, error}), do: flunk("#{method} failed against the live node: #{inspect(error)}")
 
   @spec stable_head_fee!(String.t(), (Keyword.t() -> {:ok, non_neg_integer()} | {:error, term()})) ::
-          {Cartouche.Block.t(), non_neg_integer()} | no_return()
+          {Onchain.Block.t(), non_neg_integer()} | no_return()
   defp stable_head_fee!(method, fee_reader), do: stable_head_fee!(method, fee_reader, @stable_head_attempts)
 
   @spec stable_head_fee!(String.t(), (Keyword.t() -> {:ok, non_neg_integer()} | {:error, term()}), pos_integer()) ::
-          {Cartouche.Block.t(), non_neg_integer()} | no_return()
+          {Onchain.Block.t(), non_neg_integer()} | no_return()
   defp stable_head_fee!(method, fee_reader, attempts_left) do
-    before = live_result!("eth_getBlockByNumber", Cartouche.RPC.get_block_by_number("latest", live_opts()))
+    before = live_result!("eth_getBlockByNumber", Onchain.RPC.get_block_by_number("latest", live_opts()))
     fee = live_result!(method, fee_reader.(live_opts()))
-    after_read = live_result!("eth_getBlockByNumber", Cartouche.RPC.get_block_by_number("latest", live_opts()))
+    after_read = live_result!("eth_getBlockByNumber", Onchain.RPC.get_block_by_number("latest", live_opts()))
 
     if before.hash == after_read.hash do
       {before, fee}
@@ -651,7 +652,7 @@ defmodule Cartouche.RPC.IntegrationTest do
           String.t(),
           (Keyword.t() -> {:ok, non_neg_integer()} | {:error, term()}),
           pos_integer()
-        ) :: {Cartouche.Block.t(), non_neg_integer()} | no_return()
+        ) :: {Onchain.Block.t(), non_neg_integer()} | no_return()
   defp retry_stable_head_fee!(method, fee_reader, attempts_left) when attempts_left > 1 do
     stable_head_fee!(method, fee_reader, attempts_left - 1)
   end
@@ -660,7 +661,7 @@ defmodule Cartouche.RPC.IntegrationTest do
     flunk("#{method} could not be compared at a stable head after #{@stable_head_attempts} attempts")
   end
 
-  @spec next_base_fee(Cartouche.Block.t()) :: non_neg_integer()
+  @spec next_base_fee(Onchain.Block.t()) :: non_neg_integer()
   defp next_base_fee(block) do
     gas_target = div(block.gas_limit, @base_fee_elasticity_multiplier)
     base_fee_delta(block.base_fee_per_gas, block.gas_used - gas_target, gas_target)
@@ -678,7 +679,7 @@ defmodule Cartouche.RPC.IntegrationTest do
     base_fee - div(base_fee * -gas_delta, gas_target * @base_fee_change_denominator)
   end
 
-  @spec next_excess_blob_gas(Cartouche.Block.t(), Cartouche.RPC.Configuration.BlobSchedule.t()) ::
+  @spec next_excess_blob_gas(Onchain.Block.t(), Onchain.RPC.Configuration.BlobSchedule.t()) ::
           non_neg_integer()
   defp next_excess_blob_gas(block, schedule) do
     # Post-Fusaka EIP-7918 changes the child excess update when execution gas

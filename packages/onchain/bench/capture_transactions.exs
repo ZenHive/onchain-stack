@@ -1,8 +1,8 @@
 # MIX_ENV=test mix run --no-start bench/capture_transactions.exs
 # Run only against the handwritten implementation, before replacing it.
-if Code.ensure_loaded?(Cartouche.Transaction.Native), do: raise("capture requires the pre-alloy revision")
+if Code.ensure_loaded?(Onchain.Transaction.Native), do: raise("capture requires the pre-alloy revision")
 
-defmodule Cartouche.Bench.Capture do
+defmodule Onchain.Bench.Capture do
   @moduledoc false
 
   @spec loop(map(), MapSet.t()) :: term()
@@ -30,17 +30,17 @@ defmodule Cartouche.Bench.Capture do
 end
 
 modules = [
-  Cartouche.Transaction.V1,
-  Cartouche.Transaction.V2,
-  Cartouche.Transaction.V_2930,
-  Cartouche.Transaction.V3,
-  Cartouche.Transaction.V4,
-  Cartouche.Typed,
-  Cartouche.Typed.Type
+  Onchain.Transaction.V1,
+  Onchain.Transaction.V2,
+  Onchain.Transaction.V_2930,
+  Onchain.Transaction.V3,
+  Onchain.Transaction.V4,
+  Onchain.Typed,
+  Onchain.Typed.Type
 ]
 
 Enum.each(modules, &Code.ensure_loaded!/1)
-tracer = spawn(fn -> Cartouche.Bench.Capture.loop(%{}, MapSet.new()) end)
+tracer = spawn(fn -> Onchain.Bench.Capture.loop(%{}, MapSet.new()) end)
 
 Enum.each(modules, fn mod ->
   for {fun, arity} <- mod.__info__(:functions),

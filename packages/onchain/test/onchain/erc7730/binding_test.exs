@@ -1,9 +1,9 @@
 defmodule Onchain.ERC7730.BindingTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hex
   alias Onchain.ERC7730
   alias Onchain.ERC7730.Binding
+  alias Onchain.Hex
 
   @fixtures "test/support/fixtures/erc7730"
   @usdc "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
@@ -13,7 +13,7 @@ defmodule Onchain.ERC7730.BindingTest do
   defp load(name), do: @fixtures |> Path.join(name) |> ERC7730.load() |> elem(1)
 
   defp transfer_calldata(to \\ @recipient, amount \\ 1_500_000) do
-    ABI.encode_hex_call!("transfer(address,uint256)", [Hex.decode!(to), amount])
+    Onchain.ABI.encode_hex_call!("transfer(address,uint256)", [Hex.decode!(to), amount])
   end
 
   describe "resolve/3 — calldata" do
@@ -41,7 +41,7 @@ defmodule Onchain.ERC7730.BindingTest do
     end
 
     test "errors when the selector matches no format", %{descriptor: d} do
-      unknown = ABI.encode_hex_call!("approve(address,uint256)", [Hex.decode!(@recipient), 1])
+      unknown = Onchain.ABI.encode_hex_call!("approve(address,uint256)", [Hex.decode!(@recipient), 1])
 
       assert {:error, {:no_format_match, _selector}} =
                Binding.resolve(d, {:calldata, @usdc, 1, unknown})
@@ -197,7 +197,7 @@ defmodule Onchain.ERC7730.BindingTest do
       }
 
       assert {:ok, descriptor} = ERC7730.load(raw)
-      calldata = ABI.encode_hex_call!("f(uint256)", [1])
+      calldata = Onchain.ABI.encode_hex_call!("f(uint256)", [1])
 
       assert {:error, {:invalid_descriptor, {:duplicate_format_selector, _selector}}} =
                Binding.resolve(descriptor, {:calldata, @usdc, 1, calldata})

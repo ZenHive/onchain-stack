@@ -1,7 +1,7 @@
 defmodule Onchain.Subscription.ParserTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Filter.Log
+  alias Onchain.Filter.Log
   alias Onchain.Subscription.Parser
 
   describe "parse_event(:new_heads, raw_map)" do
@@ -101,7 +101,7 @@ defmodule Onchain.Subscription.ParserTest do
       {:ok, log} = Parser.parse_event(:logs, @raw_log)
 
       assert %Log{} = log
-      assert log.address == Cartouche.Hex.from_hex!(@raw_log["address"])
+      assert log.address == Onchain.Hex.from_hex!(@raw_log["address"])
       assert log.block_number == 0x12A0B5F
       assert log.log_index == 0
       assert log.transaction_index == 5
@@ -111,9 +111,9 @@ defmodule Onchain.Subscription.ParserTest do
     test "decodes topics, data, and hashes to binaries" do
       {:ok, log} = Parser.parse_event(:logs, @raw_log)
 
-      assert log.topics == Enum.map(@raw_log["topics"], &Cartouche.Hex.from_hex!/1)
-      assert log.data == Cartouche.Hex.from_hex!(@raw_log["data"])
-      assert log.transaction_hash == Cartouche.Hex.from_hex!(@raw_log["transactionHash"])
+      assert log.topics == Enum.map(@raw_log["topics"], &Onchain.Hex.from_hex!/1)
+      assert log.data == Onchain.Hex.from_hex!(@raw_log["data"])
+      assert log.transaction_hash == Onchain.Hex.from_hex!(@raw_log["transactionHash"])
     end
 
     test "pending logs share receipt and filter decoding with nullable location fields" do

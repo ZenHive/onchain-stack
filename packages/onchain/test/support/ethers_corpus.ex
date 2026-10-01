@@ -1,4 +1,4 @@
-defmodule ABI.EthersCorpus do
+defmodule Onchain.ABI.EthersCorpus do
   @moduledoc """
   Loader for the vendored `@ethersproject/testcases` vector corpus.
 
@@ -17,11 +17,11 @@ defmodule ABI.EthersCorpus do
   Fixture values are plain JSON — integers as decimal strings, `bytesN` /
   `bytes` / `address` as `0x`-prefixed hex, `bool` as a JSON boolean, `string`
   as a JSON string, arrays and tuples as JSON arrays. `coerce/2` turns them
-  into the Elixir terms `ABI.encode/2` expects, driven by the parsed Solidity
+  into the Elixir terms `Onchain.ABI.encode/2` expects, driven by the parsed Solidity
   type rather than by the JSON shape.
   """
 
-  alias ABI.FunctionSelector
+  alias Onchain.ABI.FunctionSelector
 
   @fixture_dir Path.join(__DIR__, "fixtures/ethers")
 
@@ -37,7 +37,7 @@ defmodule ABI.EthersCorpus do
   end
 
   @doc """
-  Parses a list of corpus type strings into `ABI.FunctionSelector` argument maps.
+  Parses a list of corpus type strings into `Onchain.ABI.FunctionSelector` argument maps.
 
   The corpus spells tuples as `tuple(a,b)`; hieroglyph's grammar spells them
   `(a,b)`. Nesting is handled by the plain textual rewrite because `tuple(`
@@ -58,10 +58,10 @@ defmodule ABI.EthersCorpus do
 
   The Solidity ABI spec encodes a function's argument list as the tuple of its
   arguments (`abi-spec.html#formal-specification-of-the-encoding`), so a
-  top-level dynamic argument carries a head offset. `ABI.encode/2` reproduces
+  top-level dynamic argument carries a head offset. `Onchain.ABI.encode/2` reproduces
   that only when the types are wrapped in an explicit tuple — the bare
   `%FunctionSelector{function: nil, types: [...]}` form documented on
-  `ABI.TypeEncoder.encode_raw/2` concatenates each type in place instead.
+  `Onchain.ABI.TypeEncoder.encode_raw/2` concatenates each type in place instead.
 
   Encoding against this selector produces the ABI encoding of the argument
   list with no 4-byte method ID, which is exactly what the corpus records in
@@ -80,7 +80,7 @@ defmodule ABI.EthersCorpus do
   @doc """
   Builds the selector for the decode direction.
 
-  `ABI.decode/3` wraps `function_selector.types` in the argument tuple itself,
+  `Onchain.ABI.decode/3` wraps `function_selector.types` in the argument tuple itself,
   so the decode side takes the bare type list where `selector/1` (the encode
   side) takes it pre-wrapped.
   """

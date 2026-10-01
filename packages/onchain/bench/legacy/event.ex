@@ -1,4 +1,4 @@
-defmodule ABI.Bench.Legacy.Event do
+defmodule Onchain.ABI.Bench.Legacy.Event do
   @moduledoc """
   Decodes Ethereum event log data into Solidity-typed arguments.
 
@@ -9,11 +9,11 @@ defmodule ABI.Bench.Legacy.Event do
 
   use Descripex, namespace: "/selector"
 
-  alias ABI.Bench.Legacy.TypeDecoder
-  alias ABI.Bench.Legacy.TypeDecoder.StrictViolation
-  alias ABI.Bench.Legacy.TypeEncoder
-  alias ABI.FunctionSelector
-  alias ABI.Math
+  alias Onchain.ABI.Bench.Legacy.TypeDecoder
+  alias Onchain.ABI.Bench.Legacy.TypeDecoder.StrictViolation
+  alias Onchain.ABI.Bench.Legacy.TypeEncoder
+  alias Onchain.ABI.FunctionSelector
+  alias Onchain.ABI.Math
 
   api(
     :decode_event,
@@ -117,8 +117,8 @@ defmodule ABI.Bench.Legacy.Event do
 
   ## Examples
 
-      iex> ABI.Bench.Legacy.Event.encode_event_topics(
-      ...>   %ABI.FunctionSelector{
+      iex> Onchain.ABI.Bench.Legacy.Event.encode_event_topics(
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
       ...>       %{type: :address, name: "from", indexed: true},
@@ -158,14 +158,14 @@ defmodule ABI.Bench.Legacy.Event do
 
   ## Examples
 
-      iex> ABI.Bench.Legacy.Event.decode_event(
+      iex> Onchain.ABI.Bench.Legacy.Event.decode_event(
       ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],
       ...>   [
       ...>     ~h[0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef],
       ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],
       ...>     ~h[0x0000000000000000000000007795126b3ae468f44c901287de98594198ce38ea]
       ...>   ],
-      ...>   %ABI.FunctionSelector{
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
       ...>       %{type: :address, name: "from", indexed: true},
@@ -180,14 +180,14 @@ defmodule ABI.Bench.Legacy.Event do
           "to" => ~h[0x7795126b3ae468f44c901287de98594198ce38ea]
       }}
 
-      iex> ABI.Bench.Legacy.Event.decode_event(
+      iex> Onchain.ABI.Bench.Legacy.Event.decode_event(
       ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],
       ...>   [
       ...>     ~h[0x0000000000000000000000000000000000000000000000000000000000000001],
       ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],
       ...>     ~h[0x0000000000000000000000007795126b3ae468f44c901287de98594198ce38ea]
       ...>   ],
-      ...>   %ABI.FunctionSelector{
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
       ...>       %{type: :address, name: "from", indexed: true},
@@ -202,13 +202,13 @@ defmodule ABI.Bench.Legacy.Event do
            got: ~h[0x0000000000000000000000000000000000000000000000000000000000000001]
          }}}
 
-      iex> ABI.Bench.Legacy.Event.decode_event(
+      iex> Onchain.ABI.Bench.Legacy.Event.decode_event(
       ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],
       ...>   [
       ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],
       ...>     ~h[0x0000000000000000000000007795126b3ae468f44c901287de98594198ce38ea]
       ...>   ],
-      ...>   %ABI.FunctionSelector{
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
       ...>       %{type: :address, name: "from", indexed: true},
@@ -218,13 +218,13 @@ defmodule ABI.Bench.Legacy.Event do
       ...>   })
       {:error, {:topics_length_mismatch, %{got: 2, expected: 3}}}
 
-      iex> ABI.Bench.Legacy.Event.decode_event(
+      iex> Onchain.ABI.Bench.Legacy.Event.decode_event(
       ...>   ~h[0x00000000000000000000000000000000000000000000000000000004a817c800],
       ...>   [
       ...>     ~h[0x000000000000000000000000b2b7c1795f19fbc28fda77a95e59edbb8b3709c8],
       ...>     ~h[0x0000000000000000000000007795126b3ae468f44c901287de98594198ce38ea]
       ...>   ],
-      ...>   %ABI.FunctionSelector{
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
       ...>       %{type: :address, name: "from", indexed: true},
@@ -362,7 +362,7 @@ defmodule ABI.Bench.Legacy.Event do
     # bug rather than malformed event data, so it should propagate instead of
     # being reported as the caller's fault — notably the ArgumentError that
     # `decode_structs: true` raises for a non-interned field-name atom, which
-    # carries a migration hint and raises identically out of `ABI.decode/3`.
+    # carries a migration hint and raises identically out of `Onchain.ABI.decode/3`.
     e in [MatchError, CaseClauseError, RuntimeError] ->
       {:error, {:malformed_data, Exception.message(e)}}
   end
@@ -516,8 +516,8 @@ defmodule ABI.Bench.Legacy.Event do
 
   ## Examples
 
-      iex> ABI.Bench.Legacy.Event.event_signature(
-      ...>   %ABI.FunctionSelector{
+      iex> Onchain.ABI.Bench.Legacy.Event.event_signature(
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
       ...>       %{type: :address, name: "from", indexed: true},
@@ -561,8 +561,8 @@ defmodule ABI.Bench.Legacy.Event do
 
   ## Examples
 
-      iex> ABI.Bench.Legacy.Event.canonical(
-      ...>   %ABI.FunctionSelector{
+      iex> Onchain.ABI.Bench.Legacy.Event.canonical(
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
       ...>       %{type: :address, name: "from", indexed: true},
@@ -573,8 +573,8 @@ defmodule ABI.Bench.Legacy.Event do
       ...> )
       "Transfer(address,address,uint256)"
 
-      iex> ABI.Bench.Legacy.Event.canonical(
-      ...>   %ABI.FunctionSelector{
+      iex> Onchain.ABI.Bench.Legacy.Event.canonical(
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
       ...>       %{type: :address, name: "from", indexed: true},
@@ -586,8 +586,8 @@ defmodule ABI.Bench.Legacy.Event do
       ...> )
       "Transfer(address from,address to,uint256 amount)"
 
-      iex> ABI.Bench.Legacy.Event.canonical(
-      ...>   %ABI.FunctionSelector{
+      iex> Onchain.ABI.Bench.Legacy.Event.canonical(
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
       ...>       %{type: :address, name: "from", indexed: true},
@@ -599,8 +599,8 @@ defmodule ABI.Bench.Legacy.Event do
       ...> )
       "Transfer(address indexed,address indexed,uint256)"
 
-      iex> ABI.Bench.Legacy.Event.canonical(
-      ...>   %ABI.FunctionSelector{
+      iex> Onchain.ABI.Bench.Legacy.Event.canonical(
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "Transfer",
       ...>     types: [
       ...>       %{type: :address, name: "from", indexed: true},

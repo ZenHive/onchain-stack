@@ -1,12 +1,12 @@
-defmodule Cartouche.TypedTest do
+defmodule Onchain.TypedTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Typed
-  alias Cartouche.Typed.Type
+  alias Onchain.Typed
+  alias Onchain.Typed.Type
 
   doctest Typed
-  doctest Cartouche.Typed.Domain
+  doctest Onchain.Typed.Domain
   doctest Type
 
   describe "EIP-712 conformance" do
@@ -45,8 +45,8 @@ defmodule Cartouche.TypedTest do
       types = person_array_types()
       people = [%{"name" => "Alice"}, %{"name" => "Bob"}]
       expected = Enum.map_join(people, &Typed.hash_struct("Person", &1, types))
-      assert Type.encode_data_value(people, {:array, "Person"}, types) == Cartouche.Hash.keccak(expected)
-      assert Type.encode_data_value([], {:array, "Person"}, types) == Cartouche.Hash.keccak(<<>>)
+      assert Type.encode_data_value(people, {:array, "Person"}, types) == Onchain.Hash.keccak(expected)
+      assert Type.encode_data_value([], {:array, "Person"}, types) == Onchain.Hash.keccak(<<>>)
     end
 
     test "recursive and shared dependencies occur once, including nested arrays" do
@@ -83,11 +83,11 @@ defmodule Cartouche.TypedTest do
         assert to_hex(Typed.hash_struct(vector["primaryType"], typed.value, typed.types)) == vector["struct_hash"]
 
         encoded = Typed.encode(typed)
-        assert to_hex(Cartouche.Hash.keccak(encoded)) == vector["digest"]
+        assert to_hex(Onchain.Hash.keccak(encoded)) == vector["digest"]
         signature = from_hex!(vector["signature"])
-        assert to_hex(Cartouche.Recover.recover_eth(encoded, signature)) == vector["signer"]
-        backend = {Cartouche.Signer.Secp256k1, :sign, [from_hex!(fixture["privateKey"])]}
-        assert {:ok, ^signature} = Cartouche.Signer.sign_direct(encoded, from_hex!(vector["signer"]), backend, 0)
+        assert to_hex(Onchain.Recover.recover_eth(encoded, signature)) == vector["signer"]
+        backend = {Onchain.Signer.Secp256k1, :sign, [from_hex!(fixture["privateKey"])]}
+        assert {:ok, ^signature} = Onchain.Signer.sign_direct(encoded, from_hex!(vector["signer"]), backend, 0)
       end
     end
 

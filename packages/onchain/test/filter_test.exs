@@ -1,14 +1,14 @@
-defmodule Cartouche.FilterTest do
+defmodule Onchain.FilterTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
   import ExUnit.CaptureLog
 
-  alias Cartouche.Filter.Log
+  alias Onchain.Filter.Log
 
-  doctest Cartouche.Filter
+  doctest Onchain.Filter
 
-  # Req function plugs (`fun(conn) -> conn`). These run inside the `Cartouche.Filter`
+  # Req function plugs (`fun(conn) -> conn`). These run inside the `Onchain.Filter`
   # GenServer process that issues the request, so `Process.get/put` here reads and
   # writes that filter process's dictionary — which the expiry test asserts on.
   defmodule ExpiredFilterClient do
@@ -34,7 +34,7 @@ defmodule Cartouche.FilterTest do
             %{jsonrpc: "2.0", error: %{code: -32_000, message: "filter not found"}, id: id}
 
           {"eth_getFilterChanges", ["0xf11736"]} ->
-            %{jsonrpc: "2.0", result: Cartouche.Test.Client.eth_getFilterChanges("0xf11735"), id: id}
+            %{jsonrpc: "2.0", result: Onchain.Test.Client.eth_getFilterChanges("0xf11735"), id: id}
 
           {"eth_uninstallFilter", _} ->
             %{jsonrpc: "2.0", result: true, id: id}
@@ -69,21 +69,21 @@ defmodule Cartouche.FilterTest do
     end
 
     defp reference_type_log do
-      event = ABI.FunctionSelector.decode("Message(string indexed tag, uint256 value)")
-      data = ABI.encode("(uint256)", [{7}])
+      event = Onchain.ABI.FunctionSelector.decode("Message(string indexed tag, uint256 value)")
+      data = Onchain.ABI.encode("(uint256)", [{7}])
 
       %{
-        "address" => Cartouche.Hex.encode_hex(<<3::160>>),
-        "blockHash" => Cartouche.Hex.encode_hex(<<4::256>>),
+        "address" => Onchain.Hex.encode_hex(<<3::160>>),
+        "blockHash" => Onchain.Hex.encode_hex(<<4::256>>),
         "blockNumber" => "0x1",
-        "data" => Cartouche.Hex.encode_hex(data),
+        "data" => Onchain.Hex.encode_hex(data),
         "logIndex" => "0x0",
         "removed" => false,
         "topics" => [
-          Cartouche.Hex.encode_hex(ABI.Event.event_signature(event)),
-          Cartouche.Hex.encode_hex(@indexed_topic)
+          Onchain.Hex.encode_hex(Onchain.ABI.Event.event_signature(event)),
+          Onchain.Hex.encode_hex(@indexed_topic)
         ],
-        "transactionHash" => Cartouche.Hex.encode_hex(<<5::256>>),
+        "transactionHash" => Onchain.Hex.encode_hex(<<5::256>>),
         "transactionIndex" => "0x0"
       }
     end
@@ -93,7 +93,7 @@ defmodule Cartouche.FilterTest do
     extra_data = %{some_key: "some value"}
 
     {:ok, _filter_pid} =
-      Cartouche.Filter.start_link(
+      Onchain.Filter.start_link(
         name: MyFilter,
         address: <<1::160>>,
         events: ["Transfer(address indexed from, address indexed to, uint amount)"],
@@ -101,7 +101,7 @@ defmodule Cartouche.FilterTest do
         extra_data: extra_data
       )
 
-    Cartouche.Filter.listen(MyFilter)
+    Onchain.Filter.listen(MyFilter)
 
     :timer.sleep(600)
 
@@ -137,14 +137,14 @@ defmodule Cartouche.FilterTest do
 
   test "indexed reference-type event params surface the topic hash" do
     {:ok, _filter_pid} =
-      Cartouche.Filter.start_link(
+      Onchain.Filter.start_link(
         name: ReferenceTypeFilter,
         events: ["Message(string indexed tag, uint256 value)"],
         check_delay: 20,
         rpc_opts: [req_options: [plug: &ReferenceTypeEventClient.call/1]]
       )
 
-    Cartouche.Filter.listen(ReferenceTypeFilter)
+    Onchain.Filter.listen(ReferenceTypeFilter)
 
     assert_receive {:event,
                     {"Message",
@@ -182,7 +182,7 @@ defmodule Cartouche.FilterTest do
       |> Map.put(:extra_data, extra_data)
 
     {:ok, filter_pid} =
-      Cartouche.Filter.start_link(
+      Onchain.Filter.start_link(
         name: ExpiredFilter,
         address: <<1::160>>,
         events: ["Transfer(address indexed from, address indexed to, uint amount)"],
@@ -191,7 +191,7 @@ defmodule Cartouche.FilterTest do
         rpc_opts: [req_options: [plug: &ExpiredFilterClient.call/1]]
       )
 
-    Cartouche.Filter.listen(ExpiredFilter)
+    Onchain.Filter.listen(ExpiredFilter)
 
     assert_receive {:event, {"Transfer", _}, ^log}, 500
     assert_receive {:log, ^log}, 500
@@ -324,7 +324,7 @@ defmodule Cartouche.FilterTest do
     Process.register(self(), :cartouche_filter_uninstall)
 
     {:ok, pid} =
-      Cartouche.Filter.start_link(
+      Onchain.Filter.start_link(
         name: UninstallFilter,
         address: <<1::160>>,
         check_delay: 10_000,
@@ -340,7 +340,7 @@ defmodule Cartouche.FilterTest do
     log =
       capture_log(fn ->
         {:ok, pid} =
-          Cartouche.Filter.start_link(
+          Onchain.Filter.start_link(
             name: UninstallFailureFilter,
             address: <<1::160>>,
             check_delay: 10_000,
@@ -356,44 +356,44 @@ defmodule Cartouche.FilterTest do
 
   test "block filters deliver hash lists to listeners" do
     {:ok, _pid} =
-      Cartouche.Filter.start_link(
+      Onchain.Filter.start_link(
         name: BlockHashFilter,
         kind: :block,
         check_delay: 20,
         rpc_opts: [req_options: [plug: &BlockFilterClient.call/1]]
       )
 
-    Cartouche.Filter.listen(BlockHashFilter)
+    Onchain.Filter.listen(BlockHashFilter)
 
     assert_receive {:hashes, [hash]}, 500
-    assert hash == Cartouche.Hex.decode_word!("0xdc0818cf78f21a8e70579cb46a43643f78291264dda342ae31049421c82d21ae")
+    assert hash == Onchain.Hex.decode_word!("0xdc0818cf78f21a8e70579cb46a43643f78291264dda342ae31049421c82d21ae")
   end
 
   test "pending-transaction filters deliver hash lists to listeners" do
     {:ok, _pid} =
-      Cartouche.Filter.start_link(
+      Onchain.Filter.start_link(
         name: PendingHashFilter,
         kind: :pending,
         check_delay: 20,
         rpc_opts: [req_options: [plug: &PendingFilterClient.call/1]]
       )
 
-    Cartouche.Filter.listen(PendingHashFilter)
+    Onchain.Filter.listen(PendingHashFilter)
 
     assert_receive {:hashes, [hash]}, 500
-    assert hash == Cartouche.Hex.decode_word!("0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b")
+    assert hash == Onchain.Hex.decode_word!("0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b")
   end
 
   test "recreates a block filter when the node reports it expired" do
     {:ok, filter_pid} =
-      Cartouche.Filter.start_link(
+      Onchain.Filter.start_link(
         name: ExpiredBlockFilter,
         kind: :block,
         check_delay: 20,
         rpc_opts: [req_options: [plug: &ExpiredBlockFilterClient.call/1]]
       )
 
-    Cartouche.Filter.listen(ExpiredBlockFilter)
+    Onchain.Filter.listen(ExpiredBlockFilter)
 
     assert_receive {:hashes, [hash]}, 500
     assert byte_size(hash) == 32
@@ -405,7 +405,7 @@ defmodule Cartouche.FilterTest do
 
   test "starts a log filter without an address" do
     {:ok, pid} =
-      Cartouche.Filter.start_link(
+      Onchain.Filter.start_link(
         name: AddresslessFilter,
         check_delay: 10_000
       )
@@ -454,14 +454,14 @@ defmodule Cartouche.FilterTest do
 
   test "recreates a pending-transaction filter when the node reports it expired" do
     {:ok, filter_pid} =
-      Cartouche.Filter.start_link(
+      Onchain.Filter.start_link(
         name: ExpiredPendingFilter,
         kind: :pending,
         check_delay: 20,
         rpc_opts: [req_options: [plug: &ExpiredPendingFilterClient.call/1]]
       )
 
-    Cartouche.Filter.listen(ExpiredPendingFilter)
+    Onchain.Filter.listen(ExpiredPendingFilter)
 
     assert_receive {:hashes, [hash]}, 500
     assert byte_size(hash) == 32
@@ -475,7 +475,7 @@ defmodule Cartouche.FilterTest do
     @moduledoc false
     # A real socket, not a `Req.Test` plug: plugs are invoked in-process, so
     # `receive_timeout` never applies to them and they cannot exercise the
-    # shutdown-budget bound in `Cartouche.Filter.uninstall_filter/1`.
+    # shutdown-budget bound in `Onchain.Filter.uninstall_filter/1`.
     # Answers `eth_newFilter` immediately, then stalls forever on
     # `eth_uninstallFilter` so only the client-side timeout ends the call.
 
@@ -559,7 +559,7 @@ defmodule Cartouche.FilterTest do
     log =
       capture_log(fn ->
         {:ok, pid} =
-          Cartouche.Filter.start_link(
+          Onchain.Filter.start_link(
             name: StalledUninstallFilter,
             address: <<1::160>>,
             check_delay: 10_000,
@@ -579,15 +579,15 @@ defmodule Cartouche.FilterTest do
 
   test "rejects an unknown filter kind" do
     assert_raise ArgumentError, ~r/unknown filter kind/, fn ->
-      Cartouche.Filter.start_link(name: BadKindFilter, kind: :nope)
+      Onchain.Filter.start_link(name: BadKindFilter, kind: :nope)
     end
   end
 end
 
-defmodule Cartouche.Filter.IntegrationTest do
+defmodule Onchain.Filter.IntegrationTest do
   use ExUnit.Case, async: true
 
-  import Cartouche.Test.Live, only: [live_opts: 0]
+  import Onchain.Test.Live, only: [live_opts: 0]
 
   @moduletag :integration
 
@@ -603,7 +603,7 @@ defmodule Cartouche.Filter.IntegrationTest do
   @block_poll_interval 2_000
 
   setup_all do
-    Cartouche.Test.Live.assert_node_available!()
+    Onchain.Test.Live.assert_node_available!()
     :ok
   end
 
@@ -611,19 +611,19 @@ defmodule Cartouche.Filter.IntegrationTest do
     opts = live_opts()
 
     params = %{"address" => @weth9, "fromBlock" => @anchor_block, "toBlock" => @anchor_block}
-    assert {:ok, id} = Cartouche.RPC.send_rpc("eth_newFilter", [params], opts)
+    assert {:ok, id} = Onchain.RPC.send_rpc("eth_newFilter", [params], opts)
     assert is_binary(id)
 
     # A freshly created filter has no *changes* yet — the backlog is what
     # `eth_getFilterLogs` returns, and that is where the shape is provable.
-    assert {:ok, changes} = Cartouche.RPC.send_rpc("eth_getFilterChanges", [id], opts)
+    assert {:ok, changes} = Onchain.RPC.send_rpc("eth_getFilterChanges", [id], opts)
     assert is_list(changes)
 
-    assert {:ok, logs} = Cartouche.RPC.get_filter_logs(id, opts)
+    assert {:ok, logs} = Onchain.RPC.get_filter_logs(id, opts)
     assert logs != [], "expected WETH9 logs in block #{@anchor_block}; is the node an archive node?"
 
     Enum.each(logs, fn log ->
-      assert %Cartouche.Filter.Log{} = log
+      assert %Onchain.Filter.Log{} = log
       assert byte_size(log.address) == 20
       assert byte_size(log.block_hash) == 32
       assert byte_size(log.transaction_hash) == 32
@@ -631,12 +631,12 @@ defmodule Cartouche.Filter.IntegrationTest do
       assert Enum.all?(log.topics, &(byte_size(&1) == 32))
     end)
 
-    assert {:ok, true} = Cartouche.RPC.send_rpc("eth_uninstallFilter", [id], opts)
+    assert {:ok, true} = Onchain.RPC.send_rpc("eth_uninstallFilter", [id], opts)
   end
 
   test "block filter yields block hashes as the chain advances, then uninstalls" do
     opts = live_opts()
-    assert {:ok, id} = Cartouche.RPC.new_block_filter(opts)
+    assert {:ok, id} = Onchain.RPC.new_block_filter(opts)
     assert is_binary(id)
 
     hashes = poll_until_non_empty(id, opts, @block_poll_attempts)
@@ -644,17 +644,17 @@ defmodule Cartouche.Filter.IntegrationTest do
     assert hashes != [],
            "no new block in #{div(@block_poll_attempts * @block_poll_interval, 1_000)}s — the node is not following the chain"
 
-    Enum.each(hashes, fn hash -> assert byte_size(Cartouche.Hex.decode_word!(hash)) == 32 end)
+    Enum.each(hashes, fn hash -> assert byte_size(Onchain.Hex.decode_word!(hash)) == 32 end)
 
-    assert {:ok, true} = Cartouche.RPC.send_rpc("eth_uninstallFilter", [id], opts)
+    assert {:ok, true} = Onchain.RPC.send_rpc("eth_uninstallFilter", [id], opts)
   end
 
   test "pending-transaction filter installs and uninstalls; payload shape asserted only when the node shares its mempool" do
     opts = live_opts()
-    assert {:ok, id} = Cartouche.RPC.new_pending_transaction_filter(opts)
+    assert {:ok, id} = Onchain.RPC.new_pending_transaction_filter(opts)
     assert is_binary(id)
 
-    assert {:ok, hashes} = Cartouche.RPC.send_rpc("eth_getFilterChanges", [id], opts)
+    assert {:ok, hashes} = Onchain.RPC.send_rpc("eth_getFilterChanges", [id], opts)
 
     # Recorded observation, not a skip: most hosted archive endpoints install
     # the filter but never surface mempool contents to an external caller, so an
@@ -665,17 +665,17 @@ defmodule Cartouche.Filter.IntegrationTest do
         assert hashes == []
 
       [_ | _] ->
-        Enum.each(hashes, fn hash -> assert byte_size(Cartouche.Hex.decode_word!(hash)) == 32 end)
+        Enum.each(hashes, fn hash -> assert byte_size(Onchain.Hex.decode_word!(hash)) == 32 end)
     end
 
-    assert {:ok, true} = Cartouche.RPC.send_rpc("eth_uninstallFilter", [id], opts)
+    assert {:ok, true} = Onchain.RPC.send_rpc("eth_uninstallFilter", [id], opts)
   end
 
   @spec poll_until_non_empty(String.t(), Keyword.t(), non_neg_integer()) :: [String.t()]
   defp poll_until_non_empty(_id, _opts, 0), do: []
 
   defp poll_until_non_empty(id, opts, remaining) do
-    assert {:ok, hashes} = Cartouche.RPC.send_rpc("eth_getFilterChanges", [id], opts)
+    assert {:ok, hashes} = Onchain.RPC.send_rpc("eth_getFilterChanges", [id], opts)
 
     if hashes == [] do
       Process.sleep(@block_poll_interval)

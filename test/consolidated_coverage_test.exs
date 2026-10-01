@@ -12,7 +12,7 @@ defmodule ConsolidatedCoverageTest do
   end
 
   defp baseline do
-    [row("ABI", 95, 5), row("Cartouche", 85, 15), row("Cartouche.Signer", 95, 5), row("Onchain", 70, 30)]
+    [row("Onchain.ABI", 95, 5), row("Onchain.RPC", 85, 15), row("Onchain.Signer", 95, 5), row("Onchain.ENS", 70, 30)]
   end
 
   test "preserves each library floor at its boundary" do
@@ -20,13 +20,18 @@ defmodule ConsolidatedCoverageTest do
   end
 
   test "high Onchain coverage cannot conceal deficient ABI coverage" do
-    rows = [row("ABI", 94, 6), row("Onchain.Extra", 10_000, 0) | tl(baseline())]
+    rows = [row("Onchain.ABI", 94, 6), row("Onchain.Extra", 10_000, 0) | tl(baseline())]
     assert_raise Mix.Error, ~r/ABI coverage below 95%/, fn -> Coverage.check!(rows) end
   end
 
   test "signer coverage retains its critical floor" do
-    rows = baseline() ++ [row("Cartouche.Signer.CloudKMS", 90, 10)]
+    rows = baseline() ++ [row("Onchain.Signer.CloudKMS", 90, 10)]
     assert_raise Mix.Error, ~r/Cartouche signers coverage below 95%/, fn -> Coverage.check!(rows) end
+  end
+
+  test "former cartouche modules keep the cartouche floor under their new names" do
+    rows = baseline() ++ [row("Onchain.Block", 0, 100)]
+    assert_raise Mix.Error, ~r/Cartouche coverage below 85%/, fn -> Coverage.check!(rows) end
   end
 
   test "a missing library report fails closed" do

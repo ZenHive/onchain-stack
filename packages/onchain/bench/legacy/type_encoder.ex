@@ -1,14 +1,14 @@
-defmodule ABI.Bench.Legacy.TypeEncoder do
+defmodule Onchain.ABI.Bench.Legacy.TypeEncoder do
   @moduledoc """
-  `ABI.Bench.Legacy.TypeEncoder` is responsible for encoding types to the format
+  `Onchain.ABI.Bench.Legacy.TypeEncoder` is responsible for encoding types to the format
   expected by Solidity. We generally take a function selector and an
   array of data and encode that array according to the specification.
   """
 
   use Descripex, namespace: "/codec"
 
-  alias ABI.FunctionSelector
-  alias ABI.Math
+  alias Onchain.ABI.FunctionSelector
+  alias Onchain.ABI.Math
 
   # A single ABI argument descriptor (`%{type: ..., optional :name}`).
   @typep arg_type :: FunctionSelector.argument_type()
@@ -43,8 +43,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
   ## Examples
 
       iex> [69, true]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: "baz",
       ...>        types: [
       ...>          %{type: {:uint, 32}},
@@ -57,8 +57,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       "cdcd77c000000000000000000000000000000000000000000000000000000000000000450000000000000000000000000000000000000000000000000000000000000001"
 
       iex> ["BAT"]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: "price",
       ...>        types: [
       ...>          %{type: :string}
@@ -71,8 +71,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
 
 
       iex> [Base.decode16!("ffffffffffffffffffffffffffffffffffffffff", case: :lower)]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: "price",
       ...>        types: [
       ...>          %{type: :address}
@@ -83,8 +83,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       "aea91078000000000000000000000000ffffffffffffffffffffffffffffffffffffffff"
 
       iex> [1]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: "price",
       ...>        types: [
       ...>          %{type: :address}
@@ -95,8 +95,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       "aea910780000000000000000000000000000000000000000000000000000000000000001"
 
       iex> ["hello world"]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: :string},
@@ -107,8 +107,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       "000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
 
       iex> [{{0x11, 0x22}, "hello world"}]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:tuple, [
@@ -122,8 +122,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       "000000000000000000000000000000000000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000220000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
 
       iex> [{"awesome", true}]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:tuple, [%{type: :string}, %{type: :bool}]}}
@@ -134,8 +134,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       "000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000007617765736f6d6500000000000000000000000000000000000000000000000000"
 
       iex> [{17, true, <<32, 64>>}]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:tuple, [%{type: {:uint, 32}}, %{type: :bool}, %{type: {:bytes, 2}}]}}
@@ -146,8 +146,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       "000000000000000000000000000000000000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000012040000000000000000000000000000000000000000000000000000000000000"
 
       iex> [[17, 1]]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: "baz",
       ...>        types: [
       ...>          %{type: {:array, {:uint, 32}, 2}}
@@ -158,8 +158,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       "3d0ec53300000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000001"
 
       iex> [[17, 1], true]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:array, {:uint, 32}, 2}},
@@ -171,8 +171,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       "000000000000000000000000000000000000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001"
 
       iex> [[17, 1]]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:array, {:uint, 32}}}
@@ -197,8 +197,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       ...>   <<0xa::256>>,
       ...>   <<0xb::256>>
       ...> ]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>   %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>   %Onchain.ABI.FunctionSelector{
       ...>     function: "test",
       ...>     function_type: :function,
       ...>     state_mutability: :nonpayable,
@@ -229,8 +229,8 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       "19c9d90a00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000000009000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000b0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000010600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
 
       iex> [%{x: 42, flag: true}]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(
-      ...>      %ABI.FunctionSelector{
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(
+      ...>      %Onchain.ABI.FunctionSelector{
       ...>        function: nil,
       ...>        types: [
       ...>          %{type: {:tuple, [
@@ -244,13 +244,13 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
       "000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000001"
 
       iex> [-255]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode(%ABI.FunctionSelector{function: nil, types: [%{type: {:int, 16}}]})
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode(%Onchain.ABI.FunctionSelector{function: nil, types: [%{type: {:int, 16}}]})
       ...> |> Base.encode16(case: :lower)
       "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff01"
   """
   @spec encode([any()], FunctionSelector.t()) :: binary()
   def encode(data, function_selector) do
-    ABI.Bench.Legacy.method_id(function_selector) <>
+    Onchain.ABI.Bench.Legacy.method_id(function_selector) <>
       do_encode_data(data, function_selector)
   end
 
@@ -282,14 +282,14 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
   )
 
   @doc """
-  Simiar to `ABI.Bench.Legacy.TypeEncoder.encode/2` except we accept
+  Simiar to `Onchain.ABI.Bench.Legacy.TypeEncoder.encode/2` except we accept
   an array of types instead of a function selector. We also
   do not pre-pend the method id.
 
   ## Examples
 
       iex> [{"awesome", true}]
-      ...> |> ABI.Bench.Legacy.TypeEncoder.encode_raw([%{type: {:tuple, [%{type: :string}, %{type: :bool}]}}])
+      ...> |> Onchain.ABI.Bench.Legacy.TypeEncoder.encode_raw([%{type: {:tuple, [%{type: :string}, %{type: :bool}]}}])
       ...> |> Base.encode16(case: :lower)
       "000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000007617765736f6d6500000000000000000000000000000000000000000000000000"
   """
@@ -334,7 +334,7 @@ defmodule ABI.Bench.Legacy.TypeEncoder do
 
   ## Examples
 
-      iex> ABI.Bench.Legacy.TypeEncoder.encode_packed(
+      iex> Onchain.ABI.Bench.Legacy.TypeEncoder.encode_packed(
       ...>   [-1, <<0x42>>, 3, "Hello, world!"],
       ...>   [
       ...>     %{type: {:int, 16}},

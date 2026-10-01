@@ -78,7 +78,7 @@ defmodule OnchainTempo.MixProject do
   defp deps do
     [
       # Core owns the shared precompiled-NIF infrastructure introduced in 0.15.
-      sibling(:onchain, "~> 0.15"),
+      sibling(:onchain, "~> 0.16"),
       # Direct dep: lib/onchain/tempo/transaction{,/builder}.ex call Cartouche
       # (Signer, Transaction, RPC) themselves rather than only through onchain.
       # 0.10 provides the Cartouche-owned signature type and Secp256k1 backend.

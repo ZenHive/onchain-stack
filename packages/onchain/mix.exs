@@ -14,7 +14,7 @@ end
 defmodule Onchain.MixProject do
   use Mix.Project
 
-  @version "0.15.0"
+  @version "0.16.0"
   @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
@@ -50,7 +50,7 @@ defmodule Onchain.MixProject do
 
   def application do
     [
-      mod: {Cartouche.Application, []},
+      mod: {Onchain.Application, []},
       extra_applications: [:logger]
     ]
   end
@@ -142,7 +142,7 @@ defmodule Onchain.MixProject do
   end
 
   defp description do
-    "Shared Ethereum/blockchain library for read (eth_call) and write (transaction signing) operations including ABI codecs, cryptography and Cartouche signing."
+    "Shared Ethereum/blockchain library for read (eth_call) and write (transaction signing) operations including ABI codecs, cryptography and transaction signing."
   end
 
   defp package do
@@ -219,7 +219,7 @@ defmodule Onchain.MixProject do
         "deps.audit.gated",
         &cargo_audit/1,
         "cmd env MIX_ENV=test mix onchain.coverage",
-        "hieroglyph.manifest --check",
+        "onchain.manifest --check",
         &cargo_test/1,
         &cargo_clippy/1,
         "dialyzer",

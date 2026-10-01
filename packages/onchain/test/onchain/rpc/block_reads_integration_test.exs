@@ -1,11 +1,10 @@
 defmodule Onchain.RPC.BlockReadsIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.Hex
-  alias Cartouche.Receipt
-  alias Cartouche.RPC
-  alias Cartouche.RPC, as: CartoucheRPC
-  alias Cartouche.Transaction.Info
+  alias Onchain.Hex
+  alias Onchain.Receipt
+  alias Onchain.RPC
+  alias Onchain.Transaction.Info
 
   @moduletag :integration
 
@@ -21,21 +20,21 @@ defmodule Onchain.RPC.BlockReadsIntegrationTest do
   defp rpc_opts, do: [rpc_url: Onchain.RPCCase.rpc_url!()]
 
   test "bulk block receipts match the single-receipt decoder" do
-    assert {:ok, receipts} = CartoucheRPC.eth_get_block_receipts(@known_block, rpc_opts())
+    assert {:ok, receipts} = RPC.eth_get_block_receipts(@known_block, rpc_opts())
     assert length(receipts) == @known_transaction_count
 
     hash = Hex.decode_word!(@known_transaction_hash)
     bulk_receipt = Enum.find(receipts, &(&1.transaction_hash == hash))
     assert %Receipt{} = bulk_receipt
 
-    assert {:ok, single_receipt} = CartoucheRPC.get_trx_receipt(@known_transaction_hash, rpc_opts())
+    assert {:ok, single_receipt} = RPC.get_trx_receipt(@known_transaction_hash, rpc_opts())
 
     assert bulk_receipt === single_receipt
   end
 
   test "by-index reads return the known transaction from both block selectors" do
     assert {:ok, %Info{transaction_index: @known_transaction_index} = by_hash} =
-             CartoucheRPC.eth_get_transaction_by_block_hash_and_index(
+             RPC.eth_get_transaction_by_block_hash_and_index(
                @known_block_hash,
                @known_transaction_index,
                rpc_opts()
@@ -44,7 +43,7 @@ defmodule Onchain.RPC.BlockReadsIntegrationTest do
     assert by_hash.hash == Hex.decode_word!(@known_transaction_hash)
 
     assert {:ok, %Info{transaction_index: @known_transaction_index} = by_number} =
-             CartoucheRPC.eth_get_transaction_by_block_number_and_index(
+             RPC.eth_get_transaction_by_block_number_and_index(
                @known_block,
                @known_transaction_index,
                rpc_opts()
@@ -55,7 +54,7 @@ defmodule Onchain.RPC.BlockReadsIntegrationTest do
 
   test "an out-of-range transaction index is not found" do
     assert {:error, :not_found} =
-             CartoucheRPC.eth_get_transaction_by_block_number_and_index(
+             RPC.eth_get_transaction_by_block_number_and_index(
                @known_block,
                @out_of_range_transaction_index,
                rpc_opts()
@@ -65,7 +64,7 @@ defmodule Onchain.RPC.BlockReadsIntegrationTest do
   test "block access list matches the configured node's observed EIP-7928 shape" do
     # Observed on 2026-08-25 from the configured Reth archive node. Its live
     # camelCase response uses blockAccessIndex/newValue and slot/changes keys.
-    case CartoucheRPC.get_block_access_list(@known_block, rpc_opts()) do
+    case RPC.get_block_access_list(@known_block, rpc_opts()) do
       {:ok, access_list} when is_list(access_list) ->
         assert length(access_list) == @known_access_list_entries
 

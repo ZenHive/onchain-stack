@@ -1,5 +1,5 @@
-defmodule Cartouche.HashTest do
+defmodule Onchain.HashTest do
   use ExUnit.Case, async: true
 
-  doctest Cartouche.Hash
+  doctest Onchain.Hash
 end

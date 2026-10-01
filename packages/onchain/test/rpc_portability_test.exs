@@ -1,7 +1,7 @@
-defmodule Cartouche.RPCPortabilityTest do
+defmodule Onchain.RPCPortabilityTest do
   use ExUnit.Case, async: true
 
-  import Cartouche.Test.Live
+  import Onchain.Test.Live
 
   @moduletag :integration
 
@@ -12,7 +12,7 @@ defmodule Cartouche.RPCPortabilityTest do
   @infura_refusal "The method eth_baseFee does not exist/is not available"
 
   test "eth_baseFee returns on archive and pins both hosted refusals" do
-    assert_portability!(&Cartouche.RPC.send_rpc("eth_baseFee", [], &1),
+    assert_portability!(&Onchain.RPC.send_rpc("eth_baseFee", [], &1),
       archive: &match?({:ok, "0x" <> _fee}, &1),
       alchemy: &alchemy_refusal?/1,
       infura: &infura_refusal?/1
@@ -21,7 +21,7 @@ defmodule Cartouche.RPCPortabilityTest do
 
   test "portable base_fee returns on archive, Alchemy, and Infura" do
     fee? = &match?({:ok, fee} when is_integer(fee) and fee >= 0, &1)
-    assert_portability!(&Cartouche.RPC.base_fee/1, archive: fee?, alchemy: fee?, infura: fee?)
+    assert_portability!(&Onchain.RPC.base_fee/1, archive: fee?, alchemy: fee?, infura: fee?)
   end
 
   defp infura_refusal?({:error, {:method_not_found, %{code: -32_601, message: @infura_refusal}}}), do: true

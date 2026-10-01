@@ -14,7 +14,7 @@ end
 defmodule OnchainAave.MixProject do
   use Mix.Project
 
-  @version "0.6.0"
+  @version "0.7.0"
   @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
@@ -84,7 +84,7 @@ defmodule OnchainAave.MixProject do
       # onchain 0.11.0 -> zen_websocket 0.4.2, whose looser gun bound only
       # happens to have landed on a fixed 2.5.0. Two-segment, so onchain 0.13.0
       # resolves here without a bound edit.
-      sibling(:onchain, "~> 0.12"),
+      sibling(:onchain, "~> 0.16"),
       {:decimal, "~> 3.1"},
       # Two-segment on purpose: the three-segment cap turned every descripex
       # minor into a forced nine-repo release cascade, while the committed

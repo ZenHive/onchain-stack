@@ -1,7 +1,7 @@
-defmodule Cartouche.ManifestTest do
+defmodule Onchain.ManifestTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Manifest
+  alias Onchain.Manifest
 
   describe "build/0" do
     test "returns a non-empty map with the descripex top-level keys" do
@@ -16,7 +16,7 @@ defmodule Cartouche.ManifestTest do
 
     test "mirrors the modules registered for Cartouche descripex discovery" do
       manifest_modules = MapSet.new(Manifest.build().modules, & &1.module)
-      registered = MapSet.new(Cartouche.__descripex_modules__(), &inspect/1)
+      registered = MapSet.new(Onchain.Configuration.__descripex_modules__(), &inspect/1)
 
       assert MapSet.equal?(manifest_modules, registered)
     end

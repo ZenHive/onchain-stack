@@ -2,8 +2,8 @@ defmodule Onchain do
   @moduledoc """
   Shared Ethereum/blockchain library providing read and write capabilities.
 
-  Uses `cartouche` as the sole Ethereum dependency for RPC calls, ABI encoding,
-  transaction signing, and cryptographic operations.
+  Owns RPC calls, ABI encoding (`Onchain.ABI`), transaction signing, and
+  cryptographic operations.
 
   ## Discovery
 
@@ -14,12 +14,12 @@ defmodule Onchain do
 
   use Descripex.Discoverable,
     modules: [
-      Cartouche.Hex,
-      ABI,
+      Onchain.Hex,
+      Onchain.ABI,
       Onchain.Address,
       Onchain.Decimal,
-      Cartouche.RPC,
-      Cartouche.Block,
+      Onchain.RPC,
+      Onchain.Block,
       Onchain.Contract,
       Onchain.DEX.Router,
       Onchain.ERC20,
@@ -27,7 +27,7 @@ defmodule Onchain do
       Onchain.ERC1155,
       Onchain.ENS,
       Onchain.Multicall,
-      Cartouche.Signer,
+      Onchain.Signer,
       Onchain.Subscription,
       Onchain.Transfer,
       Onchain.Wallet,

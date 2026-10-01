@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.NodeRefusalTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   @stub_rpc_url "http://stub.invalid"
   @call_address "0x" <> String.duplicate("aa", 20)

@@ -1,9 +1,9 @@
-defmodule Cartouche.ReceiptTest do
+defmodule Onchain.ReceiptTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Filter.Log
-  alias Cartouche.Receipt
+  alias Onchain.Filter.Log
+  alias Onchain.Receipt
 
   doctest Receipt
   doctest Log

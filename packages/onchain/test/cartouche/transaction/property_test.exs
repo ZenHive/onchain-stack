@@ -1,17 +1,17 @@
-defmodule Cartouche.Transaction.PropertyTest do
+defmodule Onchain.Transaction.PropertyTest do
   use ExUnit.Case, async: false
   use ExUnitProperties
 
-  alias Cartouche.Recover
-  alias Cartouche.Signer
-  alias Cartouche.Signer.Secp256k1
-  alias Cartouche.Test.HighSSignerBackend
-  alias Cartouche.Transaction
-  alias Cartouche.Transaction.V1
-  alias Cartouche.Transaction.V2
-  alias Cartouche.Transaction.V3
-  alias Cartouche.Transaction.V4
-  alias Cartouche.Transaction.V_2930
+  alias Onchain.Recover
+  alias Onchain.Signer
+  alias Onchain.Signer.Secp256k1
+  alias Onchain.Test.HighSSignerBackend
+  alias Onchain.Transaction
+  alias Onchain.Transaction.V1
+  alias Onchain.Transaction.V2
+  alias Onchain.Transaction.V3
+  alias Onchain.Transaction.V4
+  alias Onchain.Transaction.V_2930
 
   @private_key Base.decode16!("800509FA3E80882AD0BE77C27505BDC91380F800D51ED80897D22F9FCC75F4BF")
   @signer_address Base.decode16!("63CC7C25E0CDB121ABB0FE477A6B9901889F99A7")
@@ -56,7 +56,7 @@ defmodule Cartouche.Transaction.PropertyTest do
     high_s_signer = start_signer!({HighSSignerBackend, @private_key})
 
     check all(message <- StreamData.binary(max_length: 128), max_runs: @property_runs) do
-      digest = Cartouche.Hash.keccak(message)
+      digest = Onchain.Hash.keccak(message)
       assert {:ok, high_s} = HighSSignerBackend.sign_payload(digest, @private_key)
       assert high_s.s > @secp256k1_half_n
 

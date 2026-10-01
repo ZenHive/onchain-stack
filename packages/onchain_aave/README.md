@@ -79,10 +79,10 @@ Read Aave state at fork state, with no transaction and no gas:
 
 ```elixir
 pool = "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
-{:ok, data} = ABI.encode_hex_call("getUserAccountData(address)", [user_bin])
+{:ok, data} = Onchain.ABI.encode_hex_call("getUserAccountData(address)", [user_bin])
 {:ok, out} = Onchain.EVM.simulate_call(pool, data, rpc_url: rpc_url)
 
-{:ok, raw} = ABI.decode_types("(uint256,uint256,uint256,uint256,uint256,uint256)", out)
+{:ok, raw} = Onchain.ABI.decode_types("(uint256,uint256,uint256,uint256,uint256,uint256)", out)
 Onchain.Aave.Types.UserAccountData.from_raw(raw)
 #=> %UserAccountData{total_collateral_base: #Decimal<…>, health_factor: #Decimal<…>, …}
 ```
@@ -95,11 +95,11 @@ slot→value map:
 
 ```elixir
 # WETH's balanceOf mapping lives at storage slot 3
-slot = Cartouche.Hash.keccak(<<0::96>> <> user_bin <> <<3::256>>) |> Cartouche.Hex.encode()
+slot = Onchain.Hash.keccak(<<0::96>> <> user_bin <> <<3::256>>) |> Onchain.Hex.encode()
 
-{:ok, approve} = ABI.encode_hex_call("approve(address,uint256)", [pool_bin, amount])
-{:ok, supply} = ABI.encode_hex_call("supply(address,uint256,address,uint16)", [weth_bin, amount, user_bin, 0])
-{:ok, query} = ABI.encode_hex_call("getUserAccountData(address)", [user_bin])
+{:ok, approve} = Onchain.ABI.encode_hex_call("approve(address,uint256)", [pool_bin, amount])
+{:ok, supply} = Onchain.ABI.encode_hex_call("supply(address,uint256,address,uint16)", [weth_bin, amount, user_bin, 0])
+{:ok, query} = Onchain.ABI.encode_hex_call("getUserAccountData(address)", [user_bin])
 
 {:ok, [_approve, supply_result, account]} =
   Onchain.EVM.simulate_batch(
@@ -116,7 +116,7 @@ supply_result.success   #=> true
 supply_result.gas_used  #=> 184324
 supply_result.logs      #=> ReserveDataUpdated, aWETH Transfer/Mint, Supply
 
-{:ok, raw} = ABI.decode_types("(uint256,uint256,uint256,uint256,uint256,uint256)", account.output)
+{:ok, raw} = Onchain.ABI.decode_types("(uint256,uint256,uint256,uint256,uint256,uint256)", account.output)
 Onchain.Aave.Types.UserAccountData.from_raw(raw)
 #=> %UserAccountData{total_collateral_base: #Decimal<24262.09170529>,
 #=>                  ltv: #Decimal<0.805>, current_liquidation_threshold: #Decimal<0.83>, …}

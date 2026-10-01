@@ -1,15 +1,15 @@
-defmodule ABI.DefiCalldataTest do
+defmodule Onchain.ABI.DefiCalldataTest do
   @moduledoc """
   Real-world golden calldata fixtures captured from `defi-skills build --action <name> --json`
   (defi-skills v0.3.0). Each fixture locks a `{signature, args, calldata}` triple from a
-  mainnet-style call. Round-tripping through `ABI.encode/2` + `ABI.decode_call/3` must
+  mainnet-style call. Round-tripping through `Onchain.ABI.encode/2` + `Onchain.ABI.decode_call/3` must
   reproduce the calldata byte-for-byte and recover the original args.
 
   Fixtures cover Aave V3, Compound V3, Lido, EigenLayer, ERC-20 transfer, and WETH unwrap.
   """
 
   use ExUnit.Case, async: true
-  use ABI.Hex
+  use Onchain.ABI.Hex
 
   # Mainnet addresses referenced below:
   #   USDC                       0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
@@ -128,13 +128,13 @@ defmodule ABI.DefiCalldataTest do
     for f <- @fixtures do
       %{action: action, signature: sig, args: args, calldata: calldata} = f
 
-      test "#{action}: ABI.encode/2 produces the locked calldata" do
-        assert ABI.encode(unquote(sig), unquote(args)) == unquote(calldata)
+      test "#{action}: Onchain.ABI.encode/2 produces the locked calldata" do
+        assert Onchain.ABI.encode(unquote(sig), unquote(args)) == unquote(calldata)
       end
 
       test "#{action}: decode_call/3 round-trips through the locked calldata" do
         assert {:ok, unquote(args)} =
-                 ABI.decode_call(unquote(sig), unquote(calldata))
+                 Onchain.ABI.decode_call(unquote(sig), unquote(calldata))
       end
     end
   end

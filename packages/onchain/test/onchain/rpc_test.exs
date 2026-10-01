@@ -1,7 +1,7 @@
 defmodule Onchain.RPCTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   setup do
     # This suite exercised the real transport before Cartouche's fixtures moved here.
@@ -441,7 +441,7 @@ defmodule Onchain.RPCTest do
 
       assert {:ok, parsed} = RPC.get_transaction_receipt(tx_hash, opts)
       assert parsed == RPC.get_transaction_receipt!(tx_hash, opts)
-      assert parsed.transaction_hash == Cartouche.Hex.from_hex!(tx_hash)
+      assert parsed.transaction_hash == Onchain.Hex.from_hex!(tx_hash)
       assert parsed.transaction_index == 2
       assert parsed.block_number == 16
       assert parsed.gas_used == 21_000
@@ -584,12 +584,12 @@ defmodule Onchain.RPCTest do
       opts = [rpc_url: "http://stub.invalid", req_options: [plug: rpc_result_plug(raw_receipt)]]
 
       assert {:ok, receipt} = RPC.get_transaction_receipt(tx_hash, opts)
-      assert [%Cartouche.Filter.Log{} = log] = receipt.logs
-      assert log.address == Cartouche.Hex.from_hex!(address)
-      assert log.topics == [Cartouche.Hex.from_hex!(topic)]
+      assert [%Onchain.Filter.Log{} = log] = receipt.logs
+      assert log.address == Onchain.Hex.from_hex!(address)
+      assert log.topics == [Onchain.Hex.from_hex!(topic)]
       assert log.data == <<1>>
       assert log.block_number == 16
-      assert log.transaction_hash == Cartouche.Hex.from_hex!(tx_hash)
+      assert log.transaction_hash == Onchain.Hex.from_hex!(tx_hash)
       assert log.log_index == 3
       assert log.transaction_index == 2
       assert log.removed == false

@@ -1,15 +1,15 @@
-defmodule Cartouche.DescripexValidationTest do
+defmodule Onchain.DescripexValidationTest do
   use ExUnit.Case, async: false
 
-  describe "Cartouche.__descripex_modules__/0" do
+  describe "Onchain.Configuration.__descripex_modules__/0" do
     test "registers transaction modules for Phase 12 discovery" do
-      assert Cartouche.Transaction in Cartouche.__descripex_modules__()
-      assert Cartouche.Transaction.V1 in Cartouche.__descripex_modules__()
-      assert Cartouche.Transaction.V2 in Cartouche.__descripex_modules__()
+      assert Onchain.Transaction in Onchain.Configuration.__descripex_modules__()
+      assert Onchain.Transaction.V1 in Onchain.Configuration.__descripex_modules__()
+      assert Onchain.Transaction.V2 in Onchain.Configuration.__descripex_modules__()
     end
 
     test "every public function in a registered module carries descripex :hints metadata" do
-      for module <- Cartouche.__descripex_modules__() do
+      for module <- Onchain.Configuration.__descripex_modules__() do
         case Code.fetch_docs(module) do
           {:docs_v1, _, _, _, _, _, docs} ->
             for {{:function, name, arity}, _line, _sigs, doc, meta} <- docs, doc != :hidden do
@@ -31,7 +31,7 @@ defmodule Cartouche.DescripexValidationTest do
             flunk("""
             Code.fetch_docs(#{inspect(module)}) returned {:error, #{inspect(reason)}}.
 
-            The module is registered in Cartouche.__descripex_modules__/0 but appears
+            The module is registered in Onchain.Configuration.__descripex_modules__/0 but appears
             uncompiled or stripped of doc chunks. Confirm it compiles cleanly and
             is not built with strip_beams: true / docs disabled.
             """)
@@ -52,7 +52,7 @@ defmodule Cartouche.DescripexValidationTest do
       # different arities) are tracked as a list, NOT collapsed — so a misplaced block above a
       # function whose name has no api(...) declaration is detected even when other declarations
       # exist for the leaked-from name.
-      for module <- Cartouche.__descripex_modules__(),
+      for module <- Onchain.Configuration.__descripex_modules__(),
           Code.ensure_loaded?(module),
           function_exported?(module, :__api__, 0) do
         case Code.fetch_docs(module) do
@@ -103,7 +103,7 @@ defmodule Cartouche.DescripexValidationTest do
             flunk("""
             Code.fetch_docs(#{inspect(module)}) returned {:error, #{inspect(reason)}}.
 
-            The module is registered in Cartouche.__descripex_modules__/0 but appears
+            The module is registered in Onchain.Configuration.__descripex_modules__/0 but appears
             uncompiled or stripped of doc chunks. Confirm it compiles cleanly and
             is not built with strip_beams: true / docs disabled.
             """)
@@ -112,11 +112,11 @@ defmodule Cartouche.DescripexValidationTest do
     end
 
     test "returns a list (initially empty until Phase 12 annotation tasks register modules)" do
-      assert is_list(Cartouche.__descripex_modules__())
+      assert is_list(Onchain.Configuration.__descripex_modules__())
     end
 
     test "Cartouche discovery functions carry descripex hints" do
-      {:docs_v1, _, _, _, _, _, docs} = Code.fetch_docs(Cartouche)
+      {:docs_v1, _, _, _, _, _, docs} = Code.fetch_docs(Onchain.Configuration)
 
       for arity <- 0..2 do
         assert {{:function, :describe, ^arity}, _, _, _, %{hints: %{description: description}}} =
@@ -141,26 +141,26 @@ defmodule Cartouche.DescripexValidationTest do
         end
       end)
 
-      assert <<1::160>> = Cartouche.get_contract_address(address)
-      assert <<1::160>> = Cartouche.get_contract_address(:test_descripex)
+      assert <<1::160>> = Onchain.Configuration.get_contract_address(address)
+      assert <<1::160>> = Onchain.Configuration.get_contract_address(:test_descripex)
     end
   end
 
-  describe "Cartouche.describe/1 transaction aliases" do
+  describe "Onchain.Configuration.describe/1 transaction aliases" do
     test "exposes top-level transaction constructor helpers" do
-      functions = Cartouche.describe(:transaction)
+      functions = Onchain.Configuration.describe(:transaction)
 
       assert Enum.any?(functions, &match?(%{name: :build_trx}, &1))
       assert Enum.any?(functions, &match?(%{name: :build_trx_v2}, &1))
     end
 
     test "exposes versioned transaction modules through stable nested aliases" do
-      assert Enum.any?(Cartouche.describe(:transaction_v1), &match?(%{name: :encode}, &1))
-      assert Enum.any?(Cartouche.describe(:transaction_v2), &match?(%{name: :encode}, &1))
+      assert Enum.any?(Onchain.Configuration.describe(:transaction_v1), &match?(%{name: :encode}, &1))
+      assert Enum.any?(Onchain.Configuration.describe(:transaction_v2), &match?(%{name: :encode}, &1))
     end
 
     test "exposes top-level transaction encode dispatcher metadata" do
-      detail = Cartouche.describe(:transaction, :encode)
+      detail = Onchain.Configuration.describe(:transaction, :encode)
 
       assert %{
                params: %{transaction: %{kind: :value}},
@@ -172,7 +172,7 @@ defmodule Cartouche.DescripexValidationTest do
     end
 
     test "exposes top-level transaction encode dispatcher metadata for module input" do
-      detail = Cartouche.describe(Cartouche.Transaction, :encode)
+      detail = Onchain.Configuration.describe(Onchain.Transaction, :encode)
 
       assert %{
                params: %{transaction: %{kind: :value}},
@@ -184,10 +184,10 @@ defmodule Cartouche.DescripexValidationTest do
     end
 
     test "keeps top-level transaction decode and build metadata aligned" do
-      assert %{description: decode_description} = fetch_hints(Cartouche.Transaction, :decode, 1)
+      assert %{description: decode_description} = fetch_hints(Onchain.Transaction, :decode, 1)
       assert decode_description =~ "Decode raw Ethereum transaction bytes"
 
-      assert %{description: build_description} = fetch_hints(Cartouche.Transaction, :build_trx, 7)
+      assert %{description: build_description} = fetch_hints(Onchain.Transaction, :build_trx, 7)
       assert build_description =~ "Build a legacy transaction"
     end
   end

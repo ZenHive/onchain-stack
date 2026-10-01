@@ -650,9 +650,9 @@ lib/onchain/aave/
 |--------|----------|
 | `ABI` | ABI encoding/decoding (`encode_hex_call/2`, `decode_response/2`) |
 | `Onchain.RPC` | eth_call |
-| `Cartouche.Signer` | Transaction signing (pool writes, faucet) |
+| `Onchain.Signer` | Transaction signing (pool writes, faucet) |
 | `Onchain.Address` | Validation, checksumming |
-| `Cartouche.Hex` | Hex encoding/decoding |
+| `Onchain.Hex` | Hex encoding/decoding |
 | `Onchain.Contract` | Generic contract call (oracle) |
 | `Onchain.Decimal` | Decimal math (types) |
 

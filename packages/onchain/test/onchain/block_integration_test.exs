@@ -1,7 +1,7 @@
-defmodule Cartouche.Block.IntegrationTest do
+defmodule Onchain.Block.IntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.Block
+  alias Onchain.Block
 
   @moduletag :integration
 

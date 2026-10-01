@@ -25,7 +25,7 @@ This is the canonical policy for **when** checks run. Project command catalogs d
 Maintain this policy in `~/.claude/includes/verification-policy.md`. Import it from project `CLAUDE.md`; regenerate `AGENTS.md` with `claude-marketplace/scripts/sync-agents-md.sh`. Keep scheduling rules here, project-specific commands and justified risk checks in the project. Do not duplicate the policy in project prose.
 
 
-Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) and write (transaction signing) capabilities including the relocated `ABI.*` and `Cartouche.*` modules.
+Shared Ethereum/blockchain library for the portfolio. Provides read (eth_call) and write (transaction signing) capabilities including the former hieroglyph and cartouche code, renamed to `Onchain.*` (`Onchain.ABI.*` for the codec) in 0.16.0.
 
 <!-- Selective-load (Opus 4.8): eager floor = critical-rules. harness-workflow is eager
      because this repo is harness-driven (the OTP dispatch→review→land loop is the active
@@ -533,9 +533,9 @@ Layout). The boundary is **ephemeral vs durable**, not read vs write.
 ## Architecture
 
 - **ABI codecs use an alloy Rust NIF**, shipped as checksum-verified precompiled artifacts. Supported consumers do not need Cargo.
-- **ABI and Cartouche** ship inside this package: RPC, ABI encoding, signing and crypto retain their existing module names.
+- **Former hieroglyph and cartouche code** ships inside this package under `Onchain.*` since 0.16.0 (full map in `CHANGELOG.md`); `:cartouche` config keys are unchanged.
 - **zen_websocket** for WebSocket transport (eth_subscribe real-time subscriptions) — a standalone (unabsorbed) dep, plain Hex requirement, no sibling/3 involved
-- Cartouche wraps **ex_secp256k1** (precompiled RustCrypto k256 NIF) internally for signing/key ops via `Cartouche.Signer.Secp256k1` — never add a secp256k1 library as a direct dep
+- Signing wraps **ex_secp256k1** (precompiled RustCrypto k256 NIF) internally for signing/key ops via `Onchain.Signer.Secp256k1` — never add a secp256k1 library as a direct dep
 - Consumers configure RPC URL via `config :cartouche` or pass URL per-call
 - Standard error tuples: `{:ok, result} | {:error, {:tag, reason}}`
 - Plain structs with `defstruct` + `@enforce_keys`, no private macro deps
@@ -546,7 +546,7 @@ The family-wide law is `node-portability.md` (`@`-imported above): our archive n
 privileged environment, not the reference one, and this is an open-source package whose
 users run Alchemy, Infura, or a pruned Geth. What is specific to this repo:
 
-- **`Cartouche.RPC.base_fee/1` is the worked example.** It reads the final
+- **`Onchain.RPC.base_fee/1` is the worked example.** It reads the final
   `baseFeePerGas` from `eth_feeHistory(1, "latest", [])`. `eth_baseFee` is on
   execution-apis `main` since 2026-06-15 and in no tagged release; Alchemy and
   Infura mainnet refuse it. `Onchain.RPC.base_fee/1` (the pending-header read)
@@ -554,8 +554,8 @@ users run Alchemy, Infura, or a pruned Geth. What is specific to this repo:
   `docs/base-fee-portability.md`. A non-obvious portability decision still gets
   a `NOTE (portability):` comment naming the method, who serves it, and the
   consumer-visible error.
-- **Node-capability refusals are classified in `Cartouche.RPC` (`send_rpc/3` and
-  `send_batch/2`).** `Onchain.RPC.Helpers.do_rpc/3` and `Cartouche.RPC.batch/2` both call that transport. A method the node does not implement is `{:error, {:method_not_found, map}}`,
+- **Node-capability refusals are classified in `Onchain.RPC` (`send_rpc/3` and
+  `send_batch/2`).** `Onchain.RPC.Helpers.do_rpc/3` and `Onchain.RPC.batch/2` both call that transport. A method the node does not implement is `{:error, {:method_not_found, map}}`,
   a plan-disabled namespace is `{:error, {:namespace_unavailable, map}}`, and a
   request the node cannot complete (including historical `eth_feeHistory` on Alchemy)
   is `{:error, {:unavailable, map}}`. Unrecognized codes stay `{:rpc_error, map}`.
@@ -594,17 +594,19 @@ precommit` is the fast local loop (no dialyzer/coverage).
 ## Module Layout
 
 ```
-lib/abi.ex          # ABI codec; hex conveniences are encode_hex_call/decode_hex_call/decode_hex_error
-lib/cartouche/hex.ex    # hex codec, sigils, and the former Onchain.Hex convenience names
-lib/cartouche/http.ex   # Req options; Onchain.ENS reads :onchain, other owners read :cartouche
-lib/cartouche/block.ex  # full block decode plus get_by_number/find_by_timestamp
 lib/onchain/
+  abi.ex, abi/      # Onchain.ABI codec (alloy NIF); hex conveniences are encode_hex_call/decode_hex_call/decode_hex_error
+  configuration.ex  # Onchain.Configuration: former Cartouche root (config + descripex discovery)
+  hex.ex            # hex codec, sigils, and the former Onchain.Hex convenience names
+  http.ex           # Req options; Onchain.ENS reads :onchain, other owners read :cartouche
+  block.ex          # full block decode plus get_by_number/find_by_timestamp
   address.ex        # validate, checksum (EIP-55), normalize, from_public_key/1
   decimal.ex        # to_decimal/2, to_basis_points/1, div_pow10/2
-  fees.ex           # suggest_fees/2 — EIP-1559 fee recommendation over Cartouche.FeeHistory.t()
-  rpc.ex            # defdelegate aliases only. Implementations live on Cartouche.RPC (eth_call, eth_estimate_gas, get_balance, block_number, chain_id, get_block_by_number, get_transaction_receipt, get_transaction_count, eth_get_code, fee_history, blob_base_fee, eth_send_raw_transaction, get_block_access_list, call/3, batch/2). Next-block base fee is Cartouche.RPC.base_fee/1 via eth_feeHistory. Node refusals are classified on Cartouche.RPC.send_rpc/3 (:method_not_found / :namespace_unavailable / :unavailable). eth_syncing, block transaction counts, net_listening, net_peerCount, and web3_clientVersion are Cartouche.RPC. Stateless eth_getLogs is Cartouche.RPC.eth_get_logs/2. eth_getStorageAt and EIP-1186 eth_getProof are Cartouche.RPC.eth_get_storage_at/3 and eth_get_proof/3
+  fees.ex           # suggest_fees/2 — EIP-1559 fee recommendation over Onchain.FeeHistory.t()
+  rpc.ex            # Onchain.RPC: the one RPC module (formerly Cartouche.RPC; the 0.15 Onchain.RPC aliases are gone). Next-block base fee is base_fee/1 via eth_feeHistory. Node refusals are classified on send_rpc/3 (:method_not_found / :namespace_unavailable / :unavailable). eth_getStorageAt and EIP-1186 eth_getProof are eth_get_storage_at/3 and eth_get_proof/3
+  rpc/proof.ex, rpc/trace.ex  # eth_getProof and trace_* result structs (Onchain.RPC.Trace, not onchain_evm's Onchain.Trace)
   rpc/codegen.ex    # the one defrpc/2 macro, checked against Onchain.RPC.Specs, plus defrpc_bang/2
-  rpc/helpers.ex    # shared RPC helpers; parse_block_response/1, parse_transaction_map/1; do_rpc enriches revert maps with :data hex for decode_error/2. parse_log/1 is removed; receipt and subscription logs decode through Cartouche.Filter.Log
+  rpc/helpers.ex    # shared RPC helpers; parse_block_response/1, parse_transaction_map/1; do_rpc enriches revert maps with :data hex for decode_error/2. parse_log/1 is removed; receipt and subscription logs decode through Onchain.Filter.Log
   erc20.ex          # reads + writes, plus ERC20.Call and ERC20.CallData
   erc721.ex         # ERC-721 NFT reads: ownerOf, tokenURI, balanceOf
   erc1155.ex        # ERC-1155 multi-token reads: balanceOf, balanceOfBatch, uri
@@ -623,7 +625,7 @@ lib/onchain/
   ens/
     normalize.ex    # UTS-46/ENSIP-15 name normalization (deterministic subset: case-fold + NFC + ignored/disallowed code points)
     ccip.ex         # EIP-3668 CCIP-Read pure helpers + injectable gateway round-trip loop
-  transfer.ex       # ERC-20/721/1155 Transfer parsing via ABI.decode_event/3
+  transfer.ex       # ERC-20/721/1155 Transfer parsing via Onchain.ABI.decode_event/3
   mev.ex            # private tx submission via Flashbots-style relays (eth_sendPrivateTransaction / eth_sendBundle)
   subscription.ex   # real-time eth_subscribe (newHeads, pendingTx, logs)
   subscription/
@@ -656,7 +658,7 @@ lib/onchain/
 
 | Suite (tag) | Env vars | Notes |
 |---|---|---|
-| Differential RPC (`:differential`) | `ONCHAIN_DIFFERENTIAL_TESTS=1` + mainnet `ETHEREUM_API_URL` | Compares `Cartouche.RPC` wrappers with independently decoded wire results on one mainnet URL. Reads historical block `20_000_000` → needs archive. |
+| Differential RPC (`:differential`) | `ONCHAIN_DIFFERENTIAL_TESTS=1` + mainnet `ETHEREUM_API_URL` | Compares `Onchain.RPC` wrappers with independently decoded wire results on one mainnet URL. Reads historical block `20_000_000` → needs archive. |
 | AA bundler (`aa_integration_test.exs`) | `BUNDLER_RPC_URL` | Read-only ERC-4337 calls. Alchemy serves these on its standard node URL. |
 | MEV relay (`mev_integration_test.exs`) | `MEV_RELAY_URL` (`https://rpc.flashbots.net`) | No `MEV_AUTH_HEADER` — Flashbots' `signature required` reply is itself the valid JSON-RPC round-trip the test asserts. |
 | Node-capability refusals (`rpc/node_refusal_integration_test.exs`) | `ETHEREUM_API_URL` (archive `-32601`) plus `ETHEREUM_LIMITED_RPC_URL` or `ETHEREUM_ALCHEMY_URL` (hosted `-32600` / `-32001`) | Flunks with the exact export commands when the limited URL is unset. |
@@ -698,18 +700,24 @@ mix credo --strict --format json               # Static analysis (JSON output)
 
 ## Consolidated ABI and Cartouche sources
 
-`lib/abi.ex`, `lib/abi/`, `lib/cartouche.ex`, `lib/cartouche/` and their Mix tasks
-were relocated without namespace or behavior changes. The former yecc/leex grammar is removed; type parsing uses alloy. `priv/*.json`,
-`sol/`, the original test suites, fixtures and support modules move with them.
-`Cartouche.Application` is now onchain's application callback; existing
-`:cartouche` configuration keys and supervisor names remain compatible. Mix warns
-that the `:cartouche` application is absent when loading that legacy config;
-the keys are still read by the unchanged modules. Namespace/config migration
-belongs to the subsequent rename task.
+hieroglyph's `ABI.*` and cartouche's `Cartouche.*` sources moved into this
+package and were renamed to `Onchain.*` in 0.16.0; they now live under
+`lib/onchain/` (`abi.ex` and `abi/` for the codec, `configuration.ex` for the
+former `Cartouche` root). The former yecc/leex grammar is removed; type parsing
+uses alloy. `priv/*.json`, `sol/`, the original test suites, fixtures and
+support modules move with them. `Onchain.Application` is onchain's application
+callback; existing `:cartouche` configuration keys and supervisor names remain
+compatible. Mix warns that the `:cartouche` application is absent when loading
+that config; the keys are still read. The pre-0.16 `.etf` oracle fixtures keep
+their recorded `ABI.*`/`Cartouche.*` atoms; `Onchain.Test.LegacyModuleNames`
+translates them on replay.
 
-Full QA runs `mix onchain.coverage`: ABI retains 95%, Cartouche retains 85%,
-and the Cartouche signer modules retain a separate 95% floor; Onchain retains 70%.
-`Cartouche.Contract.IConsole` and its coverage exclusion are gone; `Cartouche.Contract.Sleuth` is a thin `use` of `Onchain.Contract.Generator`.
+Full QA runs `mix onchain.coverage`: the former ABI modules (`Onchain.ABI*`) retain 95%,
+the former cartouche modules (listed by new name in the task) retain 85%, the
+signer modules retain a separate 95% floor, and the rest of Onchain retains 70%.
+`.doctor-hieroglyph.exs` and `.doctor-cartouche.exs` select the same former
+sources by their new paths.
+`Onchain.Contract.IConsole` and its coverage exclusion are gone; `Onchain.Contract.Sleuth` is a thin `use` of `Onchain.Contract.Generator`.
 The original strict Doctor policies are retained in `.doctor-hieroglyph.exs`
 and `.doctor-cartouche.exs`. The ABI manifest check remains in full QA.
 
@@ -732,15 +740,15 @@ are preserved in `docs/hieroglyph/` and `docs/cartouche/`.
 
 ## Core ABI native build and release verification
 
-`ABI.Native` is the generic Rustler boundary in `native/onchain_abi`. It accepts
+`Onchain.ABI.Native` is the generic Rustler boundary in `native/onchain_abi`. It accepts
 operations, type strings or compiled schema resources, and BEAM values. Its one
-recursive converter handles values without JSON serialization. `ABI.TypeEncoder`
-and `ABI.TypeDecoder` remain compatibility facades with no handwritten value
-codec. `ABI.Validation` normalizes the historically ignored tuple offsets before
+recursive converter handles values without JSON serialization. `Onchain.ABI.TypeEncoder`
+and `Onchain.ABI.TypeDecoder` remain compatibility facades with no handwritten value
+codec. `Onchain.ABI.Validation` normalizes the historically ignored tuple offsets before
 alloy follows them and passes payloads through unchanged when their offsets
 already name those tails. Zero-width aggregate shape and packed-array padding
-need explicit compatibility adaptation around alloy. `Cartouche.Filter` groups
-logs by topic, calls `ABI.Event.decode_events/3`, then restores the original log
+need explicit compatibility adaptation around alloy. `Onchain.Filter` groups
+logs by topic, calls `Onchain.ABI.Event.decode_events/3`, then restores the original log
 order.
 
 The boundary's rules are in `docs/specs/onchain-native.md` (repo root):
@@ -779,19 +787,19 @@ exact release revision):
 OUT_DIR="$PWD/artifacts/precompiled/release" scripts/build-precompiled.sh
 # Produces aarch64/x86_64 Darwin, aarch64/x86_64 GNU/Linux, x86_64 musl.
 # After the operator publishes the package-scoped GitHub release assets:
-mix rustler_precompiled.download ABI.Native --all --print
-# Commit checksum-Elixir.ABI.Native.exs, then verify packaging:
+mix rustler_precompiled.download Onchain.ABI.Native --all --print
+# Commit checksum-Elixir.Onchain.ABI.Native.exs, then verify packaging:
 ONCHAIN_PUBLISH=1 mix deps.get
 ONCHAIN_PUBLISH=1 mix hex.build | tee artifacts/hex-build.log
 ! grep -q 'excluded from the package' artifacts/hex-build.log
-# Inspect metadata/files and ensure checksum-Elixir.ABI.Native.exs is included.
+# Inspect metadata/files and ensure checksum-Elixir.Onchain.ABI.Native.exs is included.
 # Restore the development lock after publish preparation.
 git restore mix.lock
 ```
 
 Verify a fresh consumer of the built tarball with Cargo absent from PATH and
 all force-build environment variables unset. After `mix deps.get`, run
-`mix compile` and `mix run -e 'IO.inspect(ABI.encode("f(uint256)", [1]))'`.
+`mix compile` and `mix run -e 'IO.inspect(Onchain.ABI.encode("f(uint256)", [1]))'`.
 Use an empty build directory; ensure `System.find_executable("cargo") == nil`.
 An offline smoke check can seed `RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH` with the
 locally built tarballs. That verifies checksum/loading/compilation but **does not

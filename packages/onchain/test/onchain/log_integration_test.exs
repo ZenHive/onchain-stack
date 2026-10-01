@@ -1,7 +1,7 @@
-defmodule ABI.LogIntegrationTest do
+defmodule Onchain.ABI.LogIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Cartouche.RPC
+  alias Onchain.RPC
 
   @moduletag :integration
 
@@ -27,7 +27,7 @@ defmodule ABI.LogIntegrationTest do
       log = hd(logs)
       signature = "Transfer(address indexed from, address indexed to, uint256 value)"
 
-      assert {:ok, "Transfer", decoded} = ABI.decode_event(signature, log.data, log.topics)
+      assert {:ok, "Transfer", decoded} = Onchain.ABI.decode_event(signature, log.data, log.topics)
       assert byte_size(decoded["from"]) == 20
       assert byte_size(decoded["to"]) == 20
 

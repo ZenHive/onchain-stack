@@ -4,7 +4,7 @@ if Code.ensure_loaded?(Goth) do
     Ed25519 signing backend using Google Cloud KMS.
 
     GCP KMS supports Ed25519 signing (algorithm `EC_SIGN_ED25519`) since
-    April 2024. This is the Solana equivalent of `Cartouche.Signer.CloudKMS`
+    April 2024. This is the Solana equivalent of `Onchain.Signer.CloudKMS`
     for Ethereum.
 
     Key differences from the Ethereum KMS signer:
@@ -12,14 +12,14 @@ if Code.ensure_loaded?(Goth) do
     - PEM contains Ed25519 SubjectPublicKeyInfo (RFC 8410), not an EC point
     - Signature is raw 64 bytes, not DER-encoded
 
-    Implements `Cartouche.Signer.Backend` — its `config` is the
+    Implements `Onchain.Signer.Backend` — its `config` is the
     `{credentials, project, location, keychain, key, version}` key-coordinate
     tuple. Ed25519 signs raw message bytes, so
-    `c:Cartouche.Signer.Backend.sign_payload/2` is the raw-message signer.
+    `c:Onchain.Signer.Backend.sign_payload/2` is the raw-message signer.
     """
-    @behaviour Cartouche.Signer.Backend
+    @behaviour Onchain.Signer.Backend
 
-    alias Cartouche.CloudKMS
+    alias Onchain.CloudKMS
 
     # Ed25519 SubjectPublicKeyInfo DER prefix (12 bytes):
     # SEQUENCE { SEQUENCE { OID 1.3.101.112 (id-Ed25519) } BIT STRING ... }

@@ -1,7 +1,7 @@
-alias Cartouche.Transaction
-alias Cartouche.Transaction.Native
-alias Cartouche.Transaction.V2
-alias Cartouche.Transaction.V4
+alias Onchain.Transaction
+alias Onchain.Transaction.Native
+alias Onchain.Transaction.V2
+alias Onchain.Transaction.V4
 
 # ONCHAIN_BUILD=1 MIX_ENV=test mix run --no-start bench/transactions.exs before|after|boundary-before|boundary-after
 # Benchee is a development dependency; load its compiled dev artifacts for this offline run.
@@ -11,14 +11,14 @@ fixtures = Jason.decode!(File.read!("test/fixtures/vectors/ethers-6.17.0.json"))
 
 transactions =
   Map.new(fixtures["vectors"], fn {name, vector} ->
-    {:ok, tx} = Transaction.decode(Cartouche.Hex.decode_hex!(vector["unsigned_serialized"]))
+    {:ok, tx} = Transaction.decode(Onchain.Hex.decode_hex!(vector["unsigned_serialized"]))
     {name, tx}
   end)
 
-raw = Cartouche.Hex.decode_hex!(fixtures["vectors"]["v2"]["serialized"])
+raw = Onchain.Hex.decode_hex!(fixtures["vectors"]["v2"]["serialized"])
 
 permit =
-  Cartouche.Typed.deserialize(%{
+  Onchain.Typed.deserialize(%{
     "domain" => %{
       "name" => "Token",
       "version" => "1",
@@ -53,7 +53,7 @@ if phase == "before" and Code.ensure_loaded?(Native),
 
 hash = fn tx ->
   if phase == "before",
-    do: tx |> Transaction.encode() |> Cartouche.Hash.keccak(),
+    do: tx |> Transaction.encode() |> Onchain.Hash.keccak(),
     else: Native.signing_hash(tx)
 end
 
@@ -65,8 +65,8 @@ suite =
       "raw-tx decode" => fn -> Transaction.decode(raw) end,
       "EIP-712 permit hash" => fn ->
         if phase == "before",
-          do: permit |> Cartouche.Typed.encode() |> Cartouche.Hash.keccak(),
-          else: Cartouche.Typed.Native.signing_hash(permit)
+          do: permit |> Onchain.Typed.encode() |> Onchain.Hash.keccak(),
+          else: Onchain.Typed.Native.signing_hash(permit)
       end
     },
     time: 3,

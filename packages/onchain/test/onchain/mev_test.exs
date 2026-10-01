@@ -1,7 +1,7 @@
 defmodule Onchain.MEVTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Hex
+  alias Onchain.Hex
   alias Onchain.MEV
 
   @raw_tx "0x" <> String.duplicate("ab", 50)

@@ -1,8 +1,8 @@
-defmodule Cartouche.Signer.Secp256k1Test do
+defmodule Onchain.Signer.Secp256k1Test do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Signer.Secp256k1
+  alias Onchain.Signer.Secp256k1
 
   doctest Secp256k1
 
@@ -14,7 +14,7 @@ defmodule Cartouche.Signer.Secp256k1Test do
   end
 
   test "sign_digest/2 is a back-compat alias for sign_payload/2" do
-    digest = Cartouche.Hash.keccak("test")
+    digest = Onchain.Hash.keccak("test")
     assert Secp256k1.sign_digest(digest, @priv_key) == Secp256k1.sign_payload(digest, @priv_key)
   end
 
@@ -28,10 +28,10 @@ defmodule Cartouche.Signer.Secp256k1Test do
   end
 end
 
-defmodule Cartouche.Signer.Secp256k1VectorsTest do
+defmodule Onchain.Signer.Secp256k1VectorsTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Signer.Secp256k1
+  alias Onchain.Signer.Secp256k1
 
   @order 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
   # Captured from unmodified Curvy 0.3.1 before removing the dependency:
@@ -48,8 +48,8 @@ defmodule Cartouche.Signer.Secp256k1VectorsTest do
       assert <<sig.r::256, sig.s::256, sig.recid>> == expected
       assert Secp256k1.sign_payload(digest, key) == {:ok, sig}
       assert {:ok, address} = Secp256k1.get_address(key)
-      assert Cartouche.Recover.recover_eth_from_digest(digest, sig) == address
-      assert Cartouche.Recover.find_recid_from_digest(digest, sig, address) == {:ok, sig.recid}
+      assert Onchain.Recover.recover_eth_from_digest(digest, sig) == address
+      assert Onchain.Recover.find_recid_from_digest(digest, sig, address) == {:ok, sig.recid}
     end
   end
 

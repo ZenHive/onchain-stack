@@ -1,16 +1,16 @@
-defmodule Cartouche.TransactionTest do
+defmodule Onchain.TransactionTest do
   use ExUnit.Case, async: true
-  use Cartouche.Hex
+  use Onchain.Hex
 
-  alias Cartouche.Signer.Default
-  alias Cartouche.Test.Signer
-  alias Cartouche.Transaction
-  alias Cartouche.Transaction.Call
-  alias Cartouche.Transaction.V1
-  alias Cartouche.Transaction.V2
-  alias Cartouche.Transaction.V3
-  alias Cartouche.Transaction.V4
-  alias Cartouche.Transaction.V_2930
+  alias Onchain.Signer.Default
+  alias Onchain.Test.Signer
+  alias Onchain.Transaction
+  alias Onchain.Transaction.Call
+  alias Onchain.Transaction.V1
+  alias Onchain.Transaction.V2
+  alias Onchain.Transaction.V3
+  alias Onchain.Transaction.V4
+  alias Onchain.Transaction.V_2930
 
   doctest Call
   doctest Transaction
@@ -46,7 +46,7 @@ defmodule Cartouche.TransactionTest do
   describe "V2.new/9 (no signature)" do
     test "chain_id: nil falls back to Application.chain_id()" do
       trx = V2.new(1, {1, :gwei}, {100, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<>>, [])
-      assert trx.chain_id == Cartouche.Application.chain_id()
+      assert trx.chain_id == Onchain.Application.chain_id()
       assert trx.signature_y_parity == nil
       assert trx.signature_r == nil
       assert trx.signature_s == nil
@@ -97,7 +97,7 @@ defmodule Cartouche.TransactionTest do
           <<2::256>>
         )
 
-      assert trx.chain_id == Cartouche.Application.chain_id()
+      assert trx.chain_id == Onchain.Application.chain_id()
     end
   end
 
@@ -115,7 +115,7 @@ defmodule Cartouche.TransactionTest do
           []
         )
 
-      assert trx.chain_id == Cartouche.Application.chain_id()
+      assert trx.chain_id == Onchain.Application.chain_id()
       assert trx.data == <<0x12, 0x34>>
     end
 
@@ -162,7 +162,7 @@ defmodule Cartouche.TransactionTest do
     test "raw binary call_data is preserved with default chain_id" do
       trx = Transaction.build_trx(<<1::160>>, 5, <<0x12, 0x34>>, {50, :gwei}, 100_000, 0)
 
-      assert trx.v == Cartouche.Application.chain_id()
+      assert trx.v == Onchain.Application.chain_id()
       assert trx.data == <<0x12, 0x34>>
     end
 
@@ -190,7 +190,7 @@ defmodule Cartouche.TransactionTest do
       {:ok, signed} = Transaction.build_signed_trx(<<1::160>>, 5, <<>>, {50, :gwei}, 100_000, 0)
 
       {:ok, recovered} = V1.recover_signer(signed, :goerli)
-      assert recovered == Cartouche.Signer.address(Default)
+      assert recovered == Onchain.Signer.address(Default)
     end
 
     test "callback can transform the unsigned transaction before signing" do
@@ -205,7 +205,7 @@ defmodule Cartouche.TransactionTest do
 
       assert signed.data == <<0x34>>
       {:ok, recovered} = V1.recover_signer(signed, :goerli)
-      assert Cartouche.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
+      assert Onchain.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
     end
   end
 
@@ -217,7 +217,7 @@ defmodule Cartouche.TransactionTest do
         Transaction.build_signed_trx_v2(<<1::160>>, 5, <<>>, {1, :gwei}, {100, :gwei}, 100_000, 0, [])
 
       {:ok, recovered} = V2.recover_signer(signed)
-      assert recovered == Cartouche.Signer.address(Default)
+      assert recovered == Onchain.Signer.address(Default)
     end
 
     test "happy path: signature recovers to signer's address" do
@@ -242,7 +242,7 @@ defmodule Cartouche.TransactionTest do
       assert byte_size(signed.signature_s) == 32
 
       {:ok, recovered} = V2.recover_signer(signed)
-      assert Cartouche.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
+      assert Onchain.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
     end
 
     test "callback returning {:error, _} short-circuits the with-pipeline" do
@@ -284,7 +284,7 @@ defmodule Cartouche.TransactionTest do
 
       assert transaction.access_list == [{<<2::160>>, []}, {<<3::160>>, []}]
 
-      assert Cartouche.Hex.encode_big_hex(encoded) ==
+      assert Onchain.Hex.encode_big_hex(encoded) ==
                "0x02F85A0501843B9ACA0085174876E800830186A09400000000000000000000000000000000000000010283010203EED6940000000000000000000000000000000000000002C0D6940000000000000000000000000000000000000003C0"
 
       <<0x02, payload::binary>> = encoded
@@ -311,7 +311,7 @@ defmodule Cartouche.TransactionTest do
 
       encoded = V2.encode(transaction)
 
-      assert Cartouche.Hex.encode_big_hex(encoded) ==
+      assert Onchain.Hex.encode_big_hex(encoded) ==
                "0x02F85D0501843B9ACA0085174876E800830186A09400000000000000000000000000000000000000010283010203EED6940000000000000000000000000000000000000002C0D6940000000000000000000000000000000000000003C0010102"
 
       <<0x02, payload::binary>> = encoded
@@ -365,7 +365,7 @@ defmodule Cartouche.TransactionTest do
 
       assert transaction.access_list == [{<<2::160>>, [<<22::256>>]}, {<<3::160>>, []}]
 
-      assert Cartouche.Hex.encode_big_hex(encoded) ==
+      assert Onchain.Hex.encode_big_hex(encoded) ==
                "0x02F87F0501843B9ACA0085174876E800830186A09400000000000000000000000000000000000000010283010203F84FF7940000000000000000000000000000000000000002E1A00000000000000000000000000000000000000000000000000000000000000016D6940000000000000000000000000000000000000003C0010102"
 
       assert {:ok, ^transaction} = V2.decode(encoded)
@@ -706,7 +706,7 @@ defmodule Cartouche.TransactionTest do
           [signed_authorization(1, <<2::160>>, 7)]
         )
 
-      assert transaction.chain_id == Cartouche.Application.chain_id()
+      assert transaction.chain_id == Onchain.Application.chain_id()
       assert transaction.max_priority_fee_per_gas == nil
       assert transaction.max_fee_per_gas == nil
     end
@@ -1076,7 +1076,7 @@ defmodule Cartouche.TransactionTest do
       assert byte_size(signed.signature_s) == 32
 
       {:ok, recovered} = V4.recover_signer(signed)
-      assert Cartouche.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
+      assert Onchain.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
     end
 
     test "hash/1 returns the keccak of encoded bytes" do
@@ -1085,7 +1085,7 @@ defmodule Cartouche.TransactionTest do
         |> v4_transaction()
         |> V4.add_signature(<<1::256, 2::256, 1>>)
 
-      assert V4.hash(transaction) == transaction |> V4.encode() |> Cartouche.Hash.keccak()
+      assert V4.hash(transaction) == transaction |> V4.encode() |> Onchain.Hash.keccak()
       assert V4.hash(V4.encode(transaction)) == V4.hash(transaction)
     end
 
@@ -1115,7 +1115,7 @@ defmodule Cartouche.TransactionTest do
       assert {0, <<2::160>>, 7, _y_parity, <<_::256>>, <<_::256>>} = authorization
 
       {:ok, recovered} = V4.recover_authority(authorization)
-      assert Cartouche.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
+      assert Onchain.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
     end
 
     test "missing signatures return explicit errors" do
@@ -1202,14 +1202,14 @@ defmodule Cartouche.TransactionTest do
       assert V4.hash(transaction) == ~h[0xb418e774d8492b01ebc5966b2a80d873d4651351b4813e954fdbdda713081ab8]
 
       assert {:ok, outer_signer} = V4.recover_signer(transaction)
-      assert Cartouche.Hex.to_address(outer_signer) == "0x52ceD5DD182f7CD50B8eC4A2ad0c50824DA39A66"
+      assert Onchain.Hex.to_address(outer_signer) == "0x52ceD5DD182f7CD50B8eC4A2ad0c50824DA39A66"
 
       assert {:ok, authority} = V4.recover_authority(authorization)
-      assert Cartouche.Hex.to_address(authority) == "0x52ceD5DD182f7CD50B8eC4A2ad0c50824DA39A66"
+      assert Onchain.Hex.to_address(authority) == "0x52ceD5DD182f7CD50B8eC4A2ad0c50824DA39A66"
     end
   end
 
-  describe "Cartouche.Transaction.decode/1" do
+  describe "Onchain.Transaction.decode/1" do
     test "dispatches legacy transactions through V1" do
       transaction = V1.new(1, {100, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>, :kovan)
 
@@ -1353,7 +1353,7 @@ defmodule Cartouche.TransactionTest do
     test "new/8 defaults chain id and leaves signature fields unset" do
       transaction = V_2930.new(1, {1, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>, [])
 
-      assert transaction.chain_id == Cartouche.Application.chain_id()
+      assert transaction.chain_id == Onchain.Application.chain_id()
       assert transaction.signature_y_parity == nil
       assert transaction.signature_r == nil
       assert transaction.signature_s == nil
@@ -1415,7 +1415,7 @@ defmodule Cartouche.TransactionTest do
       assert byte_size(signed.signature_s) == 32
 
       {:ok, recovered} = V_2930.recover_signer(signed)
-      assert Cartouche.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
+      assert Onchain.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
     end
 
     test "default signer path signs with the configured signer" do
@@ -1445,11 +1445,11 @@ defmodule Cartouche.TransactionTest do
     test "hash/1 returns the keccak of encoded bytes" do
       transaction = V_2930.add_signature(v2930_transaction(), true, <<1::256>>, <<2::256>>)
 
-      assert V_2930.hash(transaction) == transaction |> V_2930.encode() |> Cartouche.Hash.keccak()
+      assert V_2930.hash(transaction) == transaction |> V_2930.encode() |> Onchain.Hash.keccak()
     end
   end
 
-  describe "Cartouche.Transaction.encode/1" do
+  describe "Onchain.Transaction.encode/1" do
     test "delegates V1 structs to V1.encode/1 (untyped legacy RLP)" do
       transaction = V1.new(1, {100, :gwei}, 100_000, <<1::160>>, {2, :wei}, <<1, 2, 3>>, :kovan)
 
@@ -1548,7 +1548,7 @@ defmodule Cartouche.TransactionTest do
 
       {:ok, decoded} = V1.decode(V1.encode(signed))
       {:ok, recovered} = V1.recover_signer(decoded, 5)
-      assert Cartouche.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
+      assert Onchain.Hex.to_address(recovered) == "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
     end
 
     test "decode of unsigned RLP yields r=0, s=0; recover_signer reports missing signature" do

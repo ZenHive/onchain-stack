@@ -241,7 +241,7 @@ defmodule Onchain.Contract.GeneratorTest do
       assert {:ok, user_bin} = Onchain.Address.validate(@user_address)
 
       assert {:ok, expected_calldata} =
-               ABI.encode_hex_call("getUserData(address)", [user_bin])
+               Onchain.ABI.encode_hex_call("getUserData(address)", [user_bin])
 
       assert calldata == expected_calldata
 
@@ -278,13 +278,13 @@ defmodule Onchain.Contract.GeneratorTest do
 
       assert <<0x60, 0x01, 0x60, 0x01, 0x55>> = SleuthBytecodeModule.bytecode()
       assert is_binary(SleuthBytecodeModule.encode_answer())
-      assert %ABI.FunctionSelector{function: "answer"} = SleuthBytecodeModule.answer_selector()
+      assert %Onchain.ABI.FunctionSelector{function: "answer"} = SleuthBytecodeModule.answer_selector()
     end
 
     test "does not pass init bytecode off as deployed bytecode" do
       refute function_exported?(SleuthBytecodeModule, :deployed_bytecode, 0)
 
-      artifact_module = Cartouche.Contract.BlockNumber
+      artifact_module = Onchain.Contract.BlockNumber
       assert is_binary(artifact_module.deployed_bytecode())
       refute artifact_module.deployed_bytecode() == artifact_module.bytecode()
     end
@@ -325,6 +325,6 @@ defmodule Onchain.Contract.GeneratorTest do
   end
 
   defp raw_result(type, values) do
-    type |> ABI.encode([List.to_tuple(values)]) |> Cartouche.Hex.encode()
+    type |> Onchain.ABI.encode([List.to_tuple(values)]) |> Onchain.Hex.encode()
   end
 end

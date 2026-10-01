@@ -24,7 +24,7 @@ DIST-6: Core onchain refuses to compile on a host outside the shipped target set
 DIST-7: `ONCHAIN_BUILD=1` force-builds onchain's crate and `ONCHAIN_EVM_BUILD=1` onchain_evm's crates; neither variable affects the other package.
   Source: Onchain.Precompiled; packages/onchain/CLAUDE.md; task 9043 (acceptance criterion 3).
 
-DIST-8: onchain's published tarball declares rustler optional, ships `checksum-Elixir.ABI.Native.exs`, and compiles in a fresh consumer without cargo on PATH.
+DIST-8: onchain's published tarball declares rustler optional, ships `checksum-Elixir.Onchain.ABI.Native.exs`, and compiles in a fresh consumer without cargo on PATH.
   Source: task 9031 (acceptance criterion 4); task 9043 (acceptance criterion 2); packages/onchain/CLAUDE.md (publish-time verification).
 
 DIST-9: `sibling/2,3` resolves an in-family dependency to its path only when the `.onchain-monorepo-root` marker exists and `ONCHAIN_PUBLISH` is not `1`, never by the sibling directory's existence.

@@ -14,8 +14,8 @@ defmodule Onchain.Aave.Faucet do
   |--------|-------------|
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
   | `Onchain.Aave.Contracts.address/2` | `{:error, {:unknown_contract, :faucet}}` |
-  | `ABI.encode_hex_call/2` | `{:error, {:encode_error, ...}}` |
-  | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
+  | `Onchain.ABI.encode_hex_call/2` | `{:error, {:encode_error, ...}}` |
+  | `Onchain.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
 
   ## Functions
 
@@ -27,14 +27,13 @@ defmodule Onchain.Aave.Faucet do
 
   use Descripex, namespace: "/aave/faucet"
 
-  alias Cartouche.Hex
-  alias Cartouche.Signer
   alias Onchain.Aave.Contracts
   alias Onchain.Address
+  # --- mint ---
+  alias Onchain.Hex
+  alias Onchain.Signer
 
   @default_gas_limit 200_000
-
-  # --- mint ---
 
   api(:mint, "Mint test ERC-20 tokens from the Aave testnet faucet.",
     params: [
@@ -59,15 +58,14 @@ defmodule Onchain.Aave.Faucet do
     {network_opts, signer_opts} = split_opts(opts)
 
     with {:ok, token_bin} <- Address.validate(token),
+         # --- mint! ---
          {:ok, to_bin} <- Address.validate(to),
          {:ok, faucet_addr} <- Contracts.address(:faucet, network_opts),
          {:ok, calldata_hex} <-
-           ABI.encode_hex_call("mint(address,address,uint256)", [token_bin, to_bin, amount]) do
+           Onchain.ABI.encode_hex_call("mint(address,address,uint256)", [token_bin, to_bin, amount]) do
       Signer.send_transaction(faucet_addr, Hex.decode!(calldata_hex), signer_opts)
     end
   end
-
-  # --- mint! ---
 
   api(:mint!, "Mint test ERC-20 tokens from the Aave testnet faucet. Raises on error.",
     params: [

@@ -521,7 +521,7 @@ defmodule Onchain.Aave.MathRevmTest do
   defp call_wrapper_batch(ctx, signature, args_list) do
     calls =
       Enum.map(args_list, fn args ->
-        {@wrapper_address, ABI.encode_hex_call!(signature, args)}
+        {@wrapper_address, Onchain.ABI.encode_hex_call!(signature, args)}
       end)
 
     case EVM.simulate_batch(calls, ctx.opts) do
@@ -554,7 +554,7 @@ defmodule Onchain.Aave.MathRevmTest do
     |> Enum.zip(results)
     |> Enum.map(fn {args, result} ->
       if result.success do
-        [value] = ABI.decode_response!("(uint256)", result.output)
+        [value] = Onchain.ABI.decode_response!("(uint256)", result.output)
         value
       else
         flunk("""

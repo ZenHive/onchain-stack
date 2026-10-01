@@ -14,7 +14,7 @@ end
 defmodule OnchainJs.MixProject do
   use Mix.Project
 
-  @version "0.4.0"
+  @version "0.5.0"
   @source_url "https://github.com/ZenHive/onchain-stack"
 
   def project do
@@ -85,7 +85,7 @@ defmodule OnchainJs.MixProject do
       # onchain 0.11.0 -> zen_websocket 0.4.2, whose looser gun bound only
       # happens to have landed on a fixed 2.5.0. Two-segment, so onchain 0.13.0
       # resolves here without a bound edit.
-      sibling(:onchain, "~> 0.12"),
+      sibling(:onchain, "~> 0.16"),
       # Three-segment on purpose: QuickBEAM is a 0.x native runtime dependency,
       # so each minor line is reviewed and tested before this cap moves.
       {:quickbeam, "~> 0.11.0"},

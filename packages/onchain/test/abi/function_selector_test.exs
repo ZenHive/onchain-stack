@@ -1,7 +1,7 @@
-defmodule ABI.FunctionSelectorTest do
+defmodule Onchain.ABI.FunctionSelectorTest do
   use ExUnit.Case, async: true
 
-  alias ABI.FunctionSelector
+  alias Onchain.ABI.FunctionSelector
 
   doctest FunctionSelector
 
@@ -138,8 +138,8 @@ defmodule ABI.FunctionSelectorTest do
       pointer = <<1::160, 0xA9, 0x05, 0x9C, 0xBB>>
       assert byte_size(pointer) == 24
 
-      assert ABI.encode("foo(function,uint256)", [pointer, 7]) ==
-               ABI.method_id("foo(function,uint256)") <>
+      assert Onchain.ABI.encode("foo(function,uint256)", [pointer, 7]) ==
+               Onchain.ABI.method_id("foo(function,uint256)") <>
                  <<1::160, 0xA9, 0x05, 0x9C, 0xBB, 0::64>> <>
                  <<7::256>>
     end
@@ -256,7 +256,7 @@ defmodule ABI.FunctionSelectorTest do
         }
       ]
 
-      [%FunctionSelector{types: [first, second]}] = ABI.parse_specification(abi)
+      [%FunctionSelector{types: [first, second]}] = Onchain.ABI.parse_specification(abi)
 
       refute Map.has_key?(first, :name)
       assert first.type == :address
@@ -305,7 +305,7 @@ defmodule ABI.FunctionSelectorTest do
   end
 
   describe "parse-error position reporting" do
-    # `ABI.Parser.parse!/2` prepends a disambiguating start token
+    # `Onchain.ABI.Parser.parse!/2` prepends a disambiguating start token
     # (`expecting selector` / `expecting type`) so the shared grammar knows
     # which production to enter. That token carries line 1, and on input the
     # lexer reduces to nothing it is the only token the parser sees — so it

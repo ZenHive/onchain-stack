@@ -1,7 +1,7 @@
 defmodule Onchain.Solana.SignerBoundaryTest do
   use ExUnit.Case, async: true
 
-  alias Cartouche.Signer
+  alias Onchain.Signer
 
   describe "algorithm mismatch" do
     @seed Base.decode16!("9D61B19DEFFD5A60BA844AF492EC2CC44449C5697B326919703BAC031CAE7F60")
