@@ -10114,14 +10114,14 @@ b = 7
 u = 7
 [[task]]
 id = "9036"
-spec_changes = [{ rule = "NIF-1", op = "change" }, { rule = "NIF-4", op = "change" }, { rule = "NIF-5", op = "change" }, { rule = "DIST-8", op = "change" }]
 phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain"
 milestone = "onchain_core_consolidation"
-status = "pending"
+status = "in_progress"
 title = "Rename ABI.* and Cartouche.* to Onchain.* and prepare the single breaking release"
 scores = { d = 5, b = 8, u = 7 }
+depends_on = [9032, 9034, 9035, "9039", "9040", "9043"]
 acceptance_criteria = ["No module under packages/*/lib is defined as or referenced by an ABI.* or Cartouche.* name: `grep -rnE '(^|[^.A-Za-z_])(ABI|Cartouche)\\.[A-Za-z_]|defmodule (ABI|Cartouche)\\b' packages/*/lib` returns nothing (the leading-context guard keeps Onchain.ABI.* from matching)", "Focused tests of the core and every in-repo dependent pass; `mix check.dispatch` is green in every touched package; mix onchain.bounds passes; ONCHAIN_PUBLISH=1 mix hex.build of onchain prints no 'excluded from the package' line", "onchain CHANGELOG has a migration section with the complete old->new module table and names the 0.9.1 bytesN padding break; docs/cartouche/CHANGELOG.md no longer labels the published 0.10.0 as unreleased and records Solana removal as post-0.10.0", "README and CLAUDE.md files use the new names; AGENTS.md regenerated", "The task outcome lists the exact publish order and the hex.retire commands for the human", "`:cartouche` application-env keys are unchanged by the rename (grep of config reads before/after is identical apart from any key set task 2137 documented), and the onchain CHANGELOG migration section states this"]
 out_of_scope = ["Migrating external consumers (aave_sim, blockwatch, bourse, faucet_ex, mpp, strip0x) — follow-ups in their own repos after publish", "Running mix hex.publish or mix hex.retire — human-gated (2FA)"]
 touches = ["packages/onchain/", "packages/onchain_aave/", "packages/onchain_aerodrome/", "packages/onchain_evm/", "packages/onchain_js/", "packages/onchain_tempo/", "packages/onchain_solana/", "CLAUDE.md", "AGENTS.md"]
@@ -10142,8 +10142,9 @@ Prepare, but do not run, the publish and the retirement of the old packages. No 
 (2026-09-30, spec setup; trimmed after 5ff423c) NIF-1..6 and TEMPO-* tags are set; NIF-7 goes with 9050. Still owed: packages/onchain/test/onchain/precompiled_test.exs (added by 9043): "core source-builds with committed checksums in the monorepo" -> DIST-4, "missing and mismatched ABI checksums fail integrity checks" -> DIST-2, "build overrides are scoped to their crates" -> DIST-7, "unsupported hosts reject core ..." -> DIST-6. Tag only where the test checks the rule; keep all existing `# spec-tags:` comments through the rename.
 """
 created_at = "2026-09-29"
+started_at = "2026-10-01"
 scored_at = "2026-09-29"
-depends_on = [9032, 9034, 9035, "9039", "9040", "9043"]
+spec_changes = [{ rule = "NIF-1", op = "change" }, { rule = "NIF-4", op = "change" }, { rule = "NIF-5", op = "change" }, { rule = "DIST-8", op = "change" }]
 
 [[task]]
 id = "9037"
