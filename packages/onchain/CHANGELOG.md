@@ -30,7 +30,8 @@ Completed roadmap tasks.
   execution-apis v1.0.0-beta.7) and returns a 32-byte binary. `eth_get_proof/3`
   returns an EIP-1186 `%Cartouche.RPC.Proof{}`; each `storage_proof` entry is a
   `%Cartouche.RPC.Proof.StorageProof{}` with `key`, `value`, and `proof`.
-  Historical availability is endpoint-specific. The 2026-10-01 probes are in
+  Both take keys of 1 to 64 hex digits, as the beta.7 spec types them;
+  `eth_get_proof/3` left-pads each key to 32 bytes. Historical availability is endpoint-specific. The 2026-10-01 probes are in
   `docs/state-read-portability.md`.
 
 ### Breaking behaviour

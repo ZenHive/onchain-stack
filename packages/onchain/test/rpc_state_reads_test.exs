@@ -49,6 +49,19 @@ defmodule Cartouche.RPCStateReadsTest do
     assert nodes == Enum.map(hd(result["storageProof"])["proof"], &Cartouche.Hex.decode_hex!/1)
   end
 
+  test "proof keys of 1..64 hex digits are left-padded to 32 bytes; others are rejected" do
+    result = fixture("alchemy_eth_getProof_before_deployment")["result"]
+
+    assert {:ok, %Proof{}} = RPC.eth_get_proof(@address, ["0x1", "0xAB"], opts(result))
+    assert_request("eth_getProof", [@address, [@key, "0x" <> String.duplicate("0", 62) <> "ab"], "latest"])
+
+    for key <- ["0x", "0x" <> String.duplicate("0", 65), "0xgg", "1", 1] do
+      assert {:error, {:invalid_storage_key, ^key}} = RPC.eth_get_proof(@address, [@key, key])
+    end
+
+    assert {:error, {:invalid_storage_keys, "0x1"}} = RPC.eth_get_proof(@address, "0x1")
+  end
+
   test "account-only and non-existent storage proofs retain empty arrays" do
     result = fixture("alchemy_eth_getProof_before_deployment")["result"]
 

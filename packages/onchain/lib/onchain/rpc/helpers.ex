@@ -128,17 +128,6 @@ defmodule Onchain.RPC.Helpers do
   def ensure_tx_hash(other), do: {:error, {:invalid_tx_hash, other}}
 
   @doc false
-  # Validates a storage slot key: 0x-prefixed hex string of exactly 32 bytes.
-  # Same shape as a tx hash but tagged distinctly so callers see the right boundary.
-  @spec ensure_storage_key(term()) :: {:ok, String.t()} | {:error, {:invalid_storage_key, term()}}
-  def ensure_storage_key(key) do
-    case ensure_tx_hash(key) do
-      {:ok, normalized} -> {:ok, normalized}
-      {:error, {:invalid_tx_hash, input}} -> {:error, {:invalid_storage_key, input}}
-    end
-  end
-
-  @doc false
   # Validates `eth_feeHistory` block_count: integer in 1..1024 (EIP-1474 cap).
   # Encodes the integer to lowercase 0x hex on success.
   @spec ensure_block_count(term()) :: {:ok, String.t()} | {:error, term()}

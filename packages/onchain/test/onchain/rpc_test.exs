@@ -797,8 +797,8 @@ defmodule Onchain.RPCTest do
       assert {:error, {:invalid_storage_keys, "0x00"}} = Cartouche.RPC.eth_get_proof(@valid_address, "0x00")
     end
 
-    test "rejects storage key with bad length" do
-      bad_key = "0x1234"
+    test "rejects storage key wider than 32 bytes" do
+      bad_key = "0x" <> String.duplicate("12", 33)
       assert {:error, {:invalid_storage_key, ^bad_key}} = Cartouche.RPC.eth_get_proof(@valid_address, [bad_key])
     end
 

@@ -2611,7 +2611,7 @@ defmodule Cartouche.RPC do
   api(:eth_get_proof, "Fetch an EIP-1186 account and storage proof.",
     params: [
       address: [kind: :value, description: "Hex address or 20-byte binary."],
-      storage_keys: [kind: :value, description: "List of 32-byte hex storage keys."],
+      storage_keys: [kind: :value, description: "List of hex storage keys of up to 32 bytes."],
       opts: [kind: :value, default: [], description: "Options: :block and send_rpc/3 transport options."]
     ],
     returns: %{type: :ok_error_tuple, description: "Cartouche.RPC.Proof struct or an error."}
@@ -2620,7 +2620,8 @@ defmodule Cartouche.RPC do
   @doc """
   Fetches an EIP-1186 account and storage proof as `Cartouche.RPC.Proof`.
 
-  Defined by execution-apis v1.0.0-beta.7. Keys are 32-byte hex strings;
+  Defined by execution-apis v1.0.0-beta.7. Keys are hex strings of 1 to 64
+  digits, left-padded to 32 bytes on the wire;
   `:block` selects a block number or tag (default `"latest"`). Quantities decode
   to integers and addresses, hashes and proof nodes to bytes. No local Merkle
   verification is performed.
@@ -2655,9 +2656,9 @@ defmodule Cartouche.RPC do
   defp validate_storage_keys(keys) when is_list(keys) do
     keys
     |> Enum.reduce_while({:ok, []}, fn key, {:ok, acc} ->
-      case Helpers.ensure_storage_key(key) do
-        {:ok, normalized} -> {:cont, {:ok, [String.downcase(normalized) | acc]}}
-        {:error, _} = error -> {:halt, error}
+      case normalize_storage_slot(key) do
+        {:ok, "0x" <> digits} -> {:cont, {:ok, ["0x" <> String.pad_leading(digits, 64, "0") | acc]}}
+        {:error, _} -> {:halt, {:error, {:invalid_storage_key, key}}}
       end
     end)
     |> case do
