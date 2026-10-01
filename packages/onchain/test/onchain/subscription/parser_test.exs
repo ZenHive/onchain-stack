@@ -143,5 +143,17 @@ defmodule Onchain.Subscription.ParserTest do
     test "returns error for non-map input" do
       assert {:error, {:invalid_log, _}} = Parser.parse_event(:logs, "not a map")
     end
+
+    test "malformed log maps stay tagged errors" do
+      assert {:error, {:invalid_log, %FunctionClauseError{}}} =
+               Parser.parse_event(:logs, %{"removed" => false})
+
+      assert {:error, {:invalid_log, _}} =
+               Parser.parse_event(:logs, %{
+                 "address" => "0xzz",
+                 "data" => "0x",
+                 "topics" => []
+               })
+    end
   end
 end

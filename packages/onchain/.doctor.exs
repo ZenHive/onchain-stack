@@ -5,7 +5,7 @@
   # expressions that can never carry @doc/@spec), so the module reports 0% doc
   # and spec coverage regardless of how it is documented. Ignore it here; the
   # module itself is documented via its moduledoc comment and @doc false macros.
-  ignore_modules: [Onchain.RPC.Codegen, Onchain.Contract.Generator, Cartouche.RPC.DSL],
+  ignore_modules: [Onchain.RPC.Codegen, Onchain.Contract.Generator],
   ignore_paths: [],
   min_module_doc_coverage: 40,
   min_module_spec_coverage: 0,

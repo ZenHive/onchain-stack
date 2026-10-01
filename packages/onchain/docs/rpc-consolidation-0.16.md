@@ -6,10 +6,11 @@ renaming the owner. `Onchain.RPC.Helpers`, `.Specs`, and `.Codegen` retain
 their namespaces until that migration. All runtime callers in `packages/*/lib`
 use the owner directly.
 
-## Breaking release notes for the harness changelog writer
+## Breaking release notes
 
-Harness owns changelog updates. The following is the complete 0.16.0 entry
-for this task; no changelog or roadmap file is edited here.
+The 0.16.0 entry lives in `packages/onchain/CHANGELOG.md`. The root
+`CHANGELOG.md` and roadmap files are left for harness. The notes below match
+that entry.
 
 The implementations of these `Onchain.RPC` functions are removed (their
 aliases remain temporarily). Default-option arities and every `!` variant
@@ -76,8 +77,8 @@ Acceptance coverage: all twelve RPC operations have one wire implementation
 in Cartouche; callers and both former test surfaces target that owner. There
 is one spec-checked `defrpc/2`; bang behavior is documented and tested.
 Onchain contains delegates only. Logs share the canonical decoder, including
-pending locations. Breaking release notes are above for harness to copy into
-the changelog. The namespace rename is not performed.
+pending locations. The breaking release notes are in
+`packages/onchain/CHANGELOG.md`. The namespace rename is not performed.
 
 Checks run on 2026-10-01 from each named package directory:
 

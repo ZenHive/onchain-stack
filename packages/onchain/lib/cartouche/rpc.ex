@@ -85,6 +85,18 @@ defmodule Cartouche.RPC do
   `get_block_by_number/2` returns `Cartouche.Block`; logs use `Cartouche.Filter.Log`.
   Bang variants unwrap `{:ok, value}` and raise `RuntimeError` on `{:error, reason}`.
 
+  ## Error Format
+
+  Hex-input adapters (`eth_call/3`, `eth_estimate_gas/2`, `eth_get_code/2`,
+  `eth_send_raw_transaction/2`, `get_transaction_receipt/2`, `fee_history/2`,
+  and `call/3`) return `{:error, {:rpc_error, map}}` for an unclassified RPC
+  error. A `code: 3` revert map includes `:revert` (raw bytes) and `:data`
+  (0x hex). When `:errors` names a matching custom-error signature, the map
+  also includes `:error_abi` and `:error_params`. Classified node refusals
+  stay `:method_not_found`, `:namespace_unavailable`, or `:unavailable`.
+  Typed methods such as `get_balance/2`, `get_block_by_number/2`, and
+  `call_trx/2` return the transport error directly.
+
   Local signing through `Cartouche.Signer` is the normal route for submitting
   transactions (`eth_sendRawTransaction`). The node-custody methods
   (`accounts/1`, `coinbase/1`, `fill_transaction/2`, `sign/3`,

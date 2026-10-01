@@ -1,16 +1,8 @@
 %Doctor.Config{
-  # The excluded module builds AST literals via `def unquote(name)(args)` inside
-  # `quote do ... end` blocks (Cartouche.RPC.DSL's
-  # `defrpc` macro emits the uniform RPC wrappers). Doctor's source-level AST walker
-  # counts those literals as if they were real defs of the host module (BEAM introspection
-  # confirms otherwise) and does not associate the `@doc`/`@spec` attached to the enclosing
-  # `defmacro`/`def unquote` — producing false-positive missing-doc/spec warnings. Excluding
-  # silences the false positive; the real @moduledoc/@doc/@spec stay in source for hexdocs.
-  # TODO(upstream-doctor): drop once Doctor's AST walker handles `def unquote(name)(args)`
-  # inside `quote do ... end` blocks. Intentionally untracked in ROADMAP — this is an
-  # upstream Doctor limitation we can't fix locally.
+  # Cartouche.RPC.DSL is gone. The remaining spec-checked macro is
+  # Onchain.RPC.Codegen, which this cartouche-only scan does not include.
   ignore_paths: [~r"^(?!lib/(cartouche(?:/|\.ex)|mix/cartouche\.)|test/support/)"],
-  ignore_modules: [Cartouche.RPC.DSL],
+  ignore_modules: [],
   min_module_doc_coverage: 100,
   min_module_spec_coverage: 100,
   min_overall_doc_coverage: 100,

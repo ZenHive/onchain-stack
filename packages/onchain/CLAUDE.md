@@ -86,7 +86,7 @@ users run Alchemy, Infura, or a pruned Geth. What is specific to this repo:
   a `NOTE (portability):` comment naming the method, who serves it, and the
   consumer-visible error.
 - **Node-capability refusals are classified in `Cartouche.RPC` (`send_rpc/3` and
-  `send_batch/2`).** `Onchain.RPC` `do_rpc/3` and `batch/2` both call that transport. A method the node does not implement is `{:error, {:method_not_found, map}}`,
+  `send_batch/2`).** `Onchain.RPC.Helpers.do_rpc/3` and `Cartouche.RPC.batch/2` both call that transport. A method the node does not implement is `{:error, {:method_not_found, map}}`,
   a plan-disabled namespace is `{:error, {:namespace_unavailable, map}}`, and a
   request the node cannot complete (including historical `eth_feeHistory` on Alchemy)
   is `{:error, {:unavailable, map}}`. Unrecognized codes stay `{:rpc_error, map}`.
@@ -133,9 +133,9 @@ lib/onchain/
   address.ex        # validate, checksum (EIP-55), normalize, from_public_key/1
   decimal.ex        # to_decimal/2, to_basis_points/1, div_pow10/2
   fees.ex           # suggest_fees/2 — EIP-1559 fee recommendation over Cartouche.FeeHistory.t()
-  rpc.ex            # eth_call, eth_estimateGas, eth_getBalance, receipts, nonces, fee_history, blob_base_fee. Next-block base fee is Cartouche.RPC.base_fee/1 via eth_feeHistory, generic call/3 passthrough; do_rpc and batch delegate to Cartouche.RPC, which classifies node refusals (:method_not_found / :namespace_unavailable / :unavailable). eth_syncing, block transaction counts, net_listening, net_peerCount, and web3_clientVersion are Cartouche.RPC. Stateless eth_getLogs is Cartouche.RPC.eth_get_logs/2. eth_getStorageAt and EIP-1186 eth_getProof are Cartouche.RPC.eth_get_storage_at/3 and eth_get_proof/3
-  rpc/codegen.ex    # defrpc/defrpc_bang macros — NimbleOptions-backed codegen for uniform RPC wrapper bodies
-  rpc/helpers.ex    # shared RPC helpers; parse_block_response/1, parse_transaction_map/1; do_rpc enriches revert maps with :data hex for decode_error/2
+  rpc.ex            # defdelegate aliases only. Implementations live on Cartouche.RPC (eth_call, eth_estimate_gas, get_balance, block_number, chain_id, get_block_by_number, get_transaction_receipt, get_transaction_count, eth_get_code, fee_history, blob_base_fee, eth_send_raw_transaction, get_block_access_list, call/3, batch/2). Next-block base fee is Cartouche.RPC.base_fee/1 via eth_feeHistory. Node refusals are classified on Cartouche.RPC.send_rpc/3 (:method_not_found / :namespace_unavailable / :unavailable). eth_syncing, block transaction counts, net_listening, net_peerCount, and web3_clientVersion are Cartouche.RPC. Stateless eth_getLogs is Cartouche.RPC.eth_get_logs/2. eth_getStorageAt and EIP-1186 eth_getProof are Cartouche.RPC.eth_get_storage_at/3 and eth_get_proof/3
+  rpc/codegen.ex    # the one defrpc/2 macro, checked against Onchain.RPC.Specs, plus defrpc_bang/2
+  rpc/helpers.ex    # shared RPC helpers; parse_block_response/1, parse_transaction_map/1; do_rpc enriches revert maps with :data hex for decode_error/2. parse_log/1 is removed; receipt and subscription logs decode through Cartouche.Filter.Log
   erc20.ex          # reads + writes, plus ERC20.Call and ERC20.CallData
   erc721.ex         # ERC-721 NFT reads: ownerOf, tokenURI, balanceOf
   erc1155.ex        # ERC-1155 multi-token reads: balanceOf, balanceOfBatch, uri
@@ -187,7 +187,7 @@ lib/onchain/
 
 | Suite (tag) | Env vars | Notes |
 |---|---|---|
-| Differential RPC (`:differential`) | `ONCHAIN_DIFFERENTIAL_TESTS=1` + mainnet `ETHEREUM_API_URL` | Compares `Onchain.RPC` vs `Cartouche.RPC` against one mainnet URL. Reads historical block `20_000_000` → needs archive. |
+| Differential RPC (`:differential`) | `ONCHAIN_DIFFERENTIAL_TESTS=1` + mainnet `ETHEREUM_API_URL` | Compares `Cartouche.RPC` wrappers with independently decoded wire results on one mainnet URL. Reads historical block `20_000_000` → needs archive. |
 | AA bundler (`aa_integration_test.exs`) | `BUNDLER_RPC_URL` | Read-only ERC-4337 calls. Alchemy serves these on its standard node URL. |
 | MEV relay (`mev_integration_test.exs`) | `MEV_RELAY_URL` (`https://rpc.flashbots.net`) | No `MEV_AUTH_HEADER` — Flashbots' `signature required` reply is itself the valid JSON-RPC round-trip the test asserts. |
 | Node-capability refusals (`rpc/node_refusal_integration_test.exs`) | `ETHEREUM_API_URL` (archive `-32601`) plus `ETHEREUM_LIMITED_RPC_URL` or `ETHEREUM_ALCHEMY_URL` (hosted `-32600` / `-32001`) | Flunks with the exact export commands when the limited URL is unset. |

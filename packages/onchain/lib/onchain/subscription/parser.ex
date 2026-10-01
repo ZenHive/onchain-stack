@@ -2,7 +2,8 @@ defmodule Onchain.Subscription.Parser do
   @moduledoc false
 
   # Pure parsing functions for eth_subscribe notification payloads.
-  # Converts raw JSON-RPC subscription results into normalized Elixir maps.
+  # Heads and pending-transaction hashes stay maps and hex strings.
+  # Log notifications decode to `%Cartouche.Filter.Log{}`.
   # No WebSocket dependency — all functions are pure and testable in isolation.
 
   import Onchain.RPC.Helpers, only: [parse_hex_integer: 1, parse_address: 1]
@@ -48,6 +49,8 @@ defmodule Onchain.Subscription.Parser do
 
   def parse_event(:logs, raw) when is_map(raw) do
     {:ok, Cartouche.Filter.Log.deserialize(raw)}
+  rescue
+    exception -> {:error, {:invalid_log, exception}}
   end
 
   def parse_event(:logs, other), do: {:error, {:invalid_log, other}}

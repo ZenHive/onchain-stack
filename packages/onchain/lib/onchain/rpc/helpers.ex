@@ -184,7 +184,7 @@ defmodule Onchain.RPC.Helpers do
   # JSON-RPC `code: 3` revert and the revert payload's selector matches one of
   # the supplied custom-error signatures (e.g. `"InsufficientBalance(uint256)"`),
   # cartouche populates `:error_abi` and `:error_params` on the inner error map
-  # in addition to the always-present `:revert` binary. See `Onchain.RPC`
+  # in addition to the always-present `:revert` binary. See `Cartouche.RPC`
   # `@moduledoc`'s "Error Format" for the full shape.
   @spec to_rpc_opts(keyword()) :: keyword()
   def to_rpc_opts(opts) do

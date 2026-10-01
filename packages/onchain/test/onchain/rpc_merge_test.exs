@@ -2,6 +2,7 @@ defmodule Onchain.RPCMergeTest do
   use ExUnit.Case, async: true
 
   alias Cartouche.RPC
+  alias Onchain.RPC.Helpers
 
   test "block reads retain the requests hash and nullable pending fields" do
     raw = %{"number" => nil, "hash" => nil, "requestsHash" => "0x" <> String.duplicate("ab", 32)}
@@ -39,6 +40,40 @@ defmodule Onchain.RPCMergeTest do
     assert_receive {:wire, %{"params" => ["0x1", "latest", [50]]}}
     assert {:ok, ^expected} = RPC.fee_history([block_count: "0x1", reward_percentiles: [50]] ++ opts)
     assert_receive {:wire, %{"params" => ["0x1", "latest", [50]]}}
+  end
+
+  test "Onchain.RPC is aliases only and forwards block_number" do
+    assert Code.ensure_loaded?(Onchain.RPC)
+    assert Code.ensure_loaded?(RPC)
+    assert Code.ensure_loaded?(Helpers)
+
+    for {name, arity} <- [
+          {:eth_call, 3},
+          {:eth_estimate_gas, 2},
+          {:eth_send_raw_transaction, 2},
+          {:get_balance, 2},
+          {:block_number, 0},
+          {:chain_id, 0},
+          {:get_block_by_number, 2},
+          {:get_transaction_receipt, 2},
+          {:get_transaction_count, 2},
+          {:eth_get_code, 2},
+          {:fee_history, 2},
+          {:blob_base_fee, 0},
+          {:get_block_access_list, 2},
+          {:call, 3},
+          {:batch, 2}
+        ] do
+      assert function_exported?(Onchain.RPC, name, arity)
+      assert function_exported?(RPC, name, arity)
+    end
+
+    refute Code.ensure_loaded?(Cartouche.RPC.DSL)
+    refute function_exported?(Helpers, :parse_log, 1)
+    refute function_exported?(Onchain.RPC, :send_rpc, 3)
+
+    assert {:ok, 42} = Onchain.RPC.block_number(result_opts("0x2a"))
+    assert_receive {:wire, %{"method" => "eth_blockNumber", "params" => []}}
   end
 
   defp result_opts(result) do

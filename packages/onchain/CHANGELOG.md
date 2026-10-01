@@ -126,7 +126,58 @@ Completed roadmap tasks.
   instead of the previous atom-keyed log maps (checksummed address strings,
   hex topic and data strings). `Onchain.Transfer.fetch/2` follows the new call.
   `Onchain.Transfer.parse_log/1` accepts both the struct and the old map.
-  Receipt logs from `get_transaction_receipt/2` stay maps.
+  Receipt and subscription logs use `%Cartouche.Filter.Log{}` too; see the
+  RPC merge bullet below.
+- One implementation for the twelve residual RPC methods, on `Cartouche.RPC`.
+  `Onchain.RPC` keeps `defdelegate` aliases only.
+  `Cartouche.RPC.DSL.defrpc/3` is removed. Declarations use
+  `Onchain.RPC.Codegen.defrpc/2`, checked against `Onchain.RPC.Specs`.
+  `defrpc_bang/2` is the bang convention: unwrap `{:ok, value}` including nil,
+  and raise `RuntimeError` as `"name failed: ..."` on `{:error, reason}`.
+  `Onchain.RPC.Helpers.parse_log/1` is removed.
+
+  Removed implementations (aliases of the same names remain on `Onchain.RPC`):
+  `eth_call/2,3` and `eth_call!/2,3` (owner `Cartouche.RPC.eth_call/3`, which
+  adapts `call_trx/2`); `eth_estimate_gas/1,2` and `eth_estimate_gas!/1,2`
+  (adapts `estimate_gas/2`); `eth_send_raw_transaction/1,2` and
+  `eth_send_raw_transaction!/1,2` (adapts `send_trx/2`); `get_balance/1,2` and
+  `get_balance!/1,2`; `block_number/0,1` and `block_number!/0,1` (alias of
+  `eth_block_number/1`); `chain_id/0,1` and `chain_id!/0,1` (alias of
+  `eth_chain_id/1`); `get_block_by_number/1,2` and `get_block_by_number!/1,2`;
+  `get_transaction_receipt/1,2` and `get_transaction_receipt!/1,2` (adapts
+  `get_trx_receipt/2`); `get_transaction_count/1,2` and
+  `get_transaction_count!/1,2` (`get_nonce/2` delegates here);
+  `eth_get_code/1,2` and `eth_get_code!/1,2` (adapts `get_code/2`);
+  `fee_history/1,2` and `fee_history!/1,2`; `blob_base_fee/0,1` and
+  `blob_base_fee!/0,1`. `get_block_access_list/1,2`, `call/2,3`, and
+  `batch/1,2` move onto `Cartouche.RPC` with the same aliases.
+
+  Return-shape changes:
+  - `get_block_by_number/2` returns `%Cartouche.Block{}` instead of an
+    atom-keyed map. Hashes, roots, bloom, miner, extra data, and uncle hashes
+    are binaries; nonce is an integer; withdrawals are
+    `%Cartouche.Block.Withdrawal{}`; `requests_hash` is retained. Transaction
+    hashes stay hex strings. Full transactions are Cartouche transaction
+    structs. An unknown block is `{:ok, nil}`. An invalid id is
+    `{:error, {:invalid_block_id, id}}`.
+  - `get_transaction_receipt/2` returns `%Cartouche.Receipt{}` instead of a
+    map. Hashes and addresses are binaries. The struct includes `logs_bloom`,
+    `blob_gas_used`, and `blob_gas_price`. Pending or unknown receipts stay
+    `{:ok, nil}`.
+  - Receipt logs and `Onchain.Subscription` log events are
+    `%Cartouche.Filter.Log{}` instead of atom-keyed maps. Addresses, data,
+    hashes, and topics are binaries. A missing `removed` is nil (formerly
+    false). Pending location fields may be absent or null and decode to nil.
+  - `get_balance/2`, `block_number/1`, `chain_id/1`, `get_transaction_count/2`,
+    `get_block_by_number/2`, and `blob_base_fee/1` keep Cartouche's native
+    unclassified errors instead of `{:error, {:rpc_error, map}}`. Classified
+    refusals stay tagged. The hex adapters (`eth_call/3`, `eth_estimate_gas/2`,
+    `eth_get_code/2`, `eth_send_raw_transaction/2`, `get_transaction_receipt/2`,
+    `fee_history/2`, `call/3`) still wrap unclassified errors as
+    `{:rpc_error, map}` and still return hex strings where they did before.
+  - `fee_history/2` encodes the block count as a hex quantity. Its default
+    reward percentile remains `[50]`. The options form `fee_history/1` keeps
+    an empty percentile default.
 - JSON-RPC single calls and batches share `Cartouche.RPC`'s transport. Set the
   URL with `config :cartouche, :ethereum_node`, or per call with `:rpc_url` /
   `:ethereum_node` (`:rpc_url` wins). Set transport defaults with

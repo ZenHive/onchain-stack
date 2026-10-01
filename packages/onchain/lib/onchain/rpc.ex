@@ -1,5 +1,20 @@
 defmodule Onchain.RPC do
-  @moduledoc "Compatibility aliases for `Cartouche.RPC`; scheduled for removal in the namespace migration."
+  @moduledoc """
+  Compatibility aliases for `Cartouche.RPC`. This module has no implementation
+  of its own.
+
+  Every function here is a `defdelegate`. There is no second implementation.
+  The names that remain are `eth_call/2,3`, `eth_call!/2,3`,
+  `eth_estimate_gas/1,2`, `eth_estimate_gas!/1,2`, `eth_send_raw_transaction/1,2`,
+  `eth_send_raw_transaction!/1,2`, `get_balance/1,2`, `get_balance!/1,2`,
+  `block_number/0,1`, `block_number!/0,1`, `get_block_by_number/1,2`,
+  `get_block_by_number!/1,2`, `get_block_access_list/1,2`,
+  `get_block_access_list!/1,2`, `chain_id/0,1`, `chain_id!/0,1`,
+  `get_transaction_receipt/1,2`, `get_transaction_receipt!/1,2`,
+  `get_transaction_count/1,2`, `get_transaction_count!/1,2`, `eth_get_code/1,2`,
+  `eth_get_code!/1,2`, `call/2,3`, `call!/2,3`, `fee_history/1,2`,
+  `fee_history!/1,2`, `blob_base_fee/0,1`, `blob_base_fee!/0,1`, and `batch/1,2`.
+  """
 
   @spec eth_call(term(), term(), keyword()) :: term()
   defdelegate eth_call(address, data, opts \\ []), to: Cartouche.RPC
