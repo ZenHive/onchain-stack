@@ -790,56 +790,42 @@ defmodule Onchain.RPCTest do
     @valid_storage_key "0x" <> String.duplicate("00", 32)
 
     test "rejects address without 0x prefix" do
-      assert {:error, {:invalid_address, "abcd1234"}} = RPC.get_proof("abcd1234", [])
+      assert {:error, {:invalid_address, "abcd1234"}} = Cartouche.RPC.eth_get_proof("abcd1234", [])
     end
 
     test "rejects non-list storage_keys" do
-      assert {:error, {:invalid_storage_keys, "0x00"}} = RPC.get_proof(@valid_address, "0x00")
+      assert {:error, {:invalid_storage_keys, "0x00"}} = Cartouche.RPC.eth_get_proof(@valid_address, "0x00")
     end
 
     test "rejects storage key with bad length" do
       bad_key = "0x1234"
-      assert {:error, {:invalid_storage_key, ^bad_key}} = RPC.get_proof(@valid_address, [bad_key])
+      assert {:error, {:invalid_storage_key, ^bad_key}} = Cartouche.RPC.eth_get_proof(@valid_address, [bad_key])
     end
 
     test "rejects storage key with invalid hex chars" do
       bad_key = "0x" <> String.duplicate("ZZ", 32)
-      assert {:error, {:invalid_storage_key, ^bad_key}} = RPC.get_proof(@valid_address, [bad_key])
+      assert {:error, {:invalid_storage_key, ^bad_key}} = Cartouche.RPC.eth_get_proof(@valid_address, [bad_key])
     end
 
     test "rejects non-binary storage key entry" do
-      assert {:error, {:invalid_storage_key, 123}} = RPC.get_proof(@valid_address, [123])
+      assert {:error, {:invalid_storage_key, 123}} = Cartouche.RPC.eth_get_proof(@valid_address, [123])
     end
 
     test "rejects bad block tag" do
       assert {:error, {:invalid_block, "bogus"}} =
-               RPC.get_proof(@valid_address, [], block: "bogus")
+               Cartouche.RPC.eth_get_proof(@valid_address, [], block: "bogus")
     end
 
     test "accepts empty storage_keys list (passes input validation)" do
-      result = RPC.get_proof(@valid_address, [], rpc_url: "http://localhost:1")
+      result = Cartouche.RPC.eth_get_proof(@valid_address, [], rpc_url: "http://localhost:1")
       refute match?({:error, {:invalid_storage_keys, _}}, result)
       refute match?({:error, {:invalid_address, _}}, result)
     end
 
     test "accepts populated storage_keys list (passes input validation)" do
-      result = RPC.get_proof(@valid_address, [@valid_storage_key], rpc_url: "http://localhost:1")
+      result = Cartouche.RPC.eth_get_proof(@valid_address, [@valid_storage_key], rpc_url: "http://localhost:1")
       refute match?({:error, {:invalid_storage_keys, _}}, result)
       refute match?({:error, {:invalid_storage_key, _}}, result)
-    end
-  end
-
-  describe "get_proof!/3" do
-    test "raises on invalid address" do
-      assert_raise RuntimeError, ~r/get_proof failed.*invalid_address/, fn ->
-        RPC.get_proof!("no_prefix", [])
-      end
-    end
-
-    test "raises on invalid storage key" do
-      assert_raise RuntimeError, ~r/get_proof failed.*invalid_storage_key/, fn ->
-        RPC.get_proof!("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", ["0x1234"])
-      end
     end
   end
 

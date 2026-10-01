@@ -38,6 +38,7 @@ defmodule Cartouche.RPC do
   import Cartouche.Wei, only: [to_wei: 1]
 
   alias Cartouche.Filter.Log, as: FilterLog
+  alias Cartouche.RPC.Proof
   alias Cartouche.Signer.Default
   alias Cartouche.Transaction
   alias Cartouche.Transaction.Call
@@ -2576,6 +2577,92 @@ defmodule Cartouche.RPC do
         {:ok, 1000000000}
     """
   )
+
+  api(:eth_get_storage_at, "Read a 32-byte contract storage word.",
+    params: [
+      address: [kind: :value, description: "Hex address or 20-byte binary."],
+      slot: [kind: :value, description: "Hex storage position, up to 32 bytes."],
+      opts: [kind: :value, default: [], description: "Options: :block and send_rpc/3 transport options."]
+    ],
+    returns: %{type: :ok_error_tuple, description: "32-byte binary or an error."}
+  )
+
+  @doc """
+  Reads a 32-byte storage word via `eth_getStorageAt` (execution-apis v1.0.0-beta.7).
+
+  Accepts a hex slot of up to 32 bytes, including leading zeroes. `:block` selects
+  a block number or tag (default `"latest"`). Returns raw bytes.
+
+  Observed 2026-10-01: Alchemy mainnet and the archive node returned DAI slot 1
+  at block 18,000,000; Alchemy also returned zero at block 1 (before deployment).
+  This does not establish an unlimited history guarantee. Verbatim responses
+  and refusals are recorded in `docs/state-read-portability.md`.
+  """
+  @spec eth_get_storage_at(String.t() | binary(), String.t(), keyword()) ::
+          {:ok, <<_::256>>} | {:error, term()}
+  def eth_get_storage_at(address, slot, opts \\ []) do
+    with {:ok, address} <- Helpers.ensure_hex_address(address),
+         {:ok, slot} <- normalize_storage_slot(slot),
+         {:ok, block} <- Helpers.normalize_block(Keyword.get(opts, :block, "latest")) do
+      send_rpc("eth_getStorageAt", [address, slot, block], Keyword.put(opts, :decode, &Hex.decode_word!/1))
+    end
+  end
+
+  api(:eth_get_proof, "Fetch an EIP-1186 account and storage proof.",
+    params: [
+      address: [kind: :value, description: "Hex address or 20-byte binary."],
+      storage_keys: [kind: :value, description: "List of 32-byte hex storage keys."],
+      opts: [kind: :value, default: [], description: "Options: :block and send_rpc/3 transport options."]
+    ],
+    returns: %{type: :ok_error_tuple, description: "Cartouche.RPC.Proof struct or an error."}
+  )
+
+  @doc """
+  Fetches an EIP-1186 account and storage proof as `Cartouche.RPC.Proof`.
+
+  Defined by execution-apis v1.0.0-beta.7. Keys are 32-byte hex strings;
+  `:block` selects a block number or tag (default `"latest"`). Quantities decode
+  to integers and addresses, hashes and proof nodes to bytes. No local Merkle
+  verification is performed.
+
+  Observed 2026-10-01: Alchemy mainnet served DAI proofs at latest, block
+  18,000,000 and block 1 (before deployment, with empty storage proof nodes).
+  The archive node served latest but refused both historical blocks with
+  `-32602`, `"distance to target block exceeds maximum proof window"`.
+  Availability is endpoint-specific; node refusals propagate unchanged.
+  See `docs/state-read-portability.md` for verbatim evidence.
+  """
+  @spec eth_get_proof(String.t() | binary(), [String.t()], keyword()) ::
+          {:ok, Proof.t()} | {:error, term()}
+  def eth_get_proof(address, storage_keys, opts \\ []) do
+    with {:ok, address} <- Helpers.ensure_hex_address(address),
+         {:ok, keys} <- validate_storage_keys(storage_keys),
+         {:ok, block} <- Helpers.normalize_block(Keyword.get(opts, :block, "latest")) do
+      send_rpc("eth_getProof", [address, keys, block], Keyword.put(opts, :decode, &Proof.deserialize/1))
+    end
+  end
+
+  defp normalize_storage_slot("0x" <> digits = slot) when byte_size(digits) in 1..64 do
+    if Regex.match?(@hex_digits, digits), do: {:ok, String.downcase(slot)}, else: {:error, {:invalid_slot, slot}}
+  end
+
+  defp normalize_storage_slot(slot), do: {:error, {:invalid_slot, slot}}
+
+  defp validate_storage_keys(keys) when is_list(keys) do
+    keys
+    |> Enum.reduce_while({:ok, []}, fn key, {:ok, acc} ->
+      case Helpers.ensure_storage_key(key) do
+        {:ok, normalized} -> {:cont, {:ok, [String.downcase(normalized) | acc]}}
+        {:error, _} = error -> {:halt, error}
+      end
+    end)
+    |> case do
+      {:ok, keys} -> {:ok, Enum.reverse(keys)}
+      error -> error
+    end
+  end
+
+  defp validate_storage_keys(keys), do: {:error, {:invalid_storage_keys, keys}}
 
   api(:base_fee, "Fetch the EIP-1559 base fee per gas for the next block.",
     params: [opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]],

@@ -171,8 +171,6 @@ defmodule Onchain.RPC do
   | `batch/2` | Generic JSON-RPC array batch — one HTTP round-trip for many raw calls |
   | `fee_history/2` | EIP-1559 fee history (`eth_feeHistory`) → `Cartouche.FeeHistory.t()` |
   | `fee_history!/2` | Same, raises on error |
-  | `get_proof/3` | Account + storage Merkle proofs (`eth_getProof`) |
-  | `get_proof!/3` | Same, raises on error |
   """
 
   use Descripex, namespace: "/rpc"
@@ -945,58 +943,6 @@ defmodule Onchain.RPC do
     end
   end
 
-  # --- get_proof ---
-
-  api(:get_proof, "Fetch Merkle proof for an account and storage slots (eth_getProof).",
-    params: [
-      address: [kind: :value, description: "Account address as 0x hex string or 20-byte binary"],
-      storage_keys: [
-        kind: :value,
-        description: "List of 0x-prefixed 32-byte hex storage slot keys (may be empty for account-only proofs)"
-      ],
-      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
-    ],
-    returns: %{
-      type: "{:ok, map} | {:error, term}",
-      description:
-        "Atom-keyed proof map: address (checksummed), balance (integer wei), nonce (integer), code_hash (0x hex), storage_hash (0x hex), account_proof ([0x hex]), storage_proof ([%{key, value, proof}])"
-    }
-  )
-
-  @spec get_proof(String.t() | binary(), [String.t()], keyword()) ::
-          {:ok, map()} | {:error, term()}
-  def get_proof(address, storage_keys, opts \\ []) do
-    with {:ok, hex_addr} <- ensure_hex_address(address),
-         {:ok, normalized_keys} <- validate_storage_keys(storage_keys),
-         {:ok, block} <- normalize_block(Keyword.get(opts, :block, "latest")),
-         {:ok, raw} <-
-           do_rpc("eth_getProof", [hex_addr, normalized_keys, block], to_rpc_opts(opts)) do
-      {:ok, parse_proof(raw)}
-    end
-  end
-
-  # --- get_proof! ---
-
-  api(:get_proof!, "Fetch Merkle proof for an account and storage slots. Raises on error.",
-    params: [
-      address: [kind: :value, description: "Account address as 0x hex string or 20-byte binary"],
-      storage_keys: [
-        kind: :value,
-        description: "List of 0x-prefixed 32-byte hex storage slot keys (may be empty for account-only proofs)"
-      ],
-      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
-    ],
-    returns: %{type: "map", description: "Atom-keyed proof map (see get_proof/3)"}
-  )
-
-  @spec get_proof!(String.t() | binary(), [String.t()], keyword()) :: map()
-  def get_proof!(address, storage_keys, opts \\ []) do
-    case get_proof(address, storage_keys, opts) do
-      {:ok, result} -> result
-      {:error, reason} -> raise "get_proof failed: #{inspect(reason)}"
-    end
-  end
-
   # --- blob_base_fee ---
 
   api(:blob_base_fee, "Get the current base fee per blob gas (eth_blobBaseFee).",
@@ -1220,49 +1166,4 @@ defmodule Onchain.RPC do
   end
 
   defp decode_get_block_result(other), do: other
-
-  @doc false
-  # Validates that storage_keys is a list of 32-byte 0x-hex strings, normalizing each.
-  @spec validate_storage_keys(term()) :: {:ok, [String.t()]} | {:error, term()}
-  defp validate_storage_keys(keys) when is_list(keys) do
-    result =
-      Enum.reduce_while(keys, {:ok, []}, fn key, {:ok, acc} ->
-        case ensure_storage_key(key) do
-          {:ok, normalized} -> {:cont, {:ok, [normalized | acc]}}
-          {:error, _} = err -> {:halt, err}
-        end
-      end)
-
-    case result do
-      {:ok, list} -> {:ok, Enum.reverse(list)}
-      err -> err
-    end
-  end
-
-  defp validate_storage_keys(other), do: {:error, {:invalid_storage_keys, other}}
-
-  @doc false
-  # Parses a raw eth_getProof response into an atom-keyed map.
-  @spec parse_proof(map()) :: map()
-  defp parse_proof(proof) when is_map(proof) do
-    %{
-      address: parse_address(proof["address"]),
-      balance: parse_hex_integer(proof["balance"]),
-      nonce: parse_hex_integer(proof["nonce"]),
-      code_hash: proof["codeHash"],
-      storage_hash: proof["storageHash"],
-      account_proof: proof["accountProof"] || [],
-      storage_proof: Enum.map(proof["storageProof"] || [], &parse_storage_proof_entry/1)
-    }
-  end
-
-  @doc false
-  @spec parse_storage_proof_entry(map()) :: map()
-  defp parse_storage_proof_entry(entry) when is_map(entry) do
-    %{
-      key: entry["key"],
-      value: entry["value"],
-      proof: entry["proof"] || []
-    }
-  end
 end

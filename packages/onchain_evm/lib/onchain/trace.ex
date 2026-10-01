@@ -179,10 +179,11 @@ defmodule Onchain.Trace do
           {:ok, String.t()}
           | {:error, {:invalid_address, term()} | {:invalid_slot, term()} | {:invalid_block, term()} | rpc_error()}
   def storage_at(address, slot, opts \\ []) do
-    with {:ok, hex_addr} <- ensure_hex_address(address),
-         {:ok, hex_slot} <- ensure_hex_slot(slot),
-         {:ok, block} <- normalize_block(Keyword.get(opts, :block, "latest")) do
-      do_rpc("eth_getStorageAt", [hex_addr, hex_slot, block], to_rpc_opts(opts))
+    case Cartouche.RPC.eth_get_storage_at(address, slot, opts) do
+      {:ok, word} -> {:ok, Onchain.Hex.encode(word)}
+      {:error, %{} = map} -> {:error, {:rpc_error, maybe_put_revert_data_hex(map)}}
+      {:error, message} when is_binary(message) -> {:error, {:rpc_error, %{message: inspect(message)}}}
+      error -> error
     end
   end
 
@@ -300,13 +301,4 @@ defmodule Onchain.Trace do
       other -> {:error, {:invalid_value, other}}
     end
   end
-
-  @doc false
-  # Validates that a slot is a 0x-prefixed hex string.
-  @spec ensure_hex_slot(term()) :: {:ok, String.t()} | {:error, {:invalid_slot, term()}}
-  defp ensure_hex_slot("0x" <> _ = slot) do
-    if Onchain.Hex.valid?(slot), do: {:ok, slot}, else: {:error, {:invalid_slot, slot}}
-  end
-
-  defp ensure_hex_slot(other), do: {:error, {:invalid_slot, other}}
 end

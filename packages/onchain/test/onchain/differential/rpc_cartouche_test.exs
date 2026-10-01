@@ -225,9 +225,9 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   end
 
   # Nodes cap eth_getProof to a recent proof window; use "latest" so both sides succeed.
-  test "eth_getProof map params and sparse fields match the oracle", %{rpc_url: rpc_url} do
+  test "eth_getProof struct fields match the oracle", %{rpc_url: rpc_url} do
     assert {:ok, actual} =
-             RPC.get_proof(@aave_v3_pool_proxy, [@eip1967_impl_slot], onchain_opts(rpc_url))
+             Cartouche.RPC.eth_get_proof(@aave_v3_pool_proxy, [@eip1967_impl_slot], onchain_opts(rpc_url))
 
     expected =
       "eth_getProof"
@@ -422,22 +422,22 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   end
 
   defp expected_proof(proof) do
-    %{
-      address: checksum(proof["address"]),
+    %Cartouche.RPC.Proof{
+      address: Onchain.Hex.decode!(proof["address"]),
       balance: hex_to_integer(proof["balance"]),
       nonce: hex_to_integer(proof["nonce"]),
-      code_hash: proof["codeHash"],
-      storage_hash: proof["storageHash"],
-      account_proof: proof["accountProof"] || [],
-      storage_proof: Enum.map(proof["storageProof"] || [], &expected_storage_proof_entry/1)
+      code_hash: Onchain.Hex.decode!(proof["codeHash"]),
+      storage_hash: Onchain.Hex.decode!(proof["storageHash"]),
+      account_proof: Enum.map(proof["accountProof"], &Onchain.Hex.decode!/1),
+      storage_proof: Enum.map(proof["storageProof"], &expected_storage_proof_entry/1)
     }
   end
 
   defp expected_storage_proof_entry(entry) do
-    %{
-      key: entry["key"],
-      value: entry["value"],
-      proof: entry["proof"] || []
+    %Cartouche.RPC.Proof.StorageProof{
+      key: hex_to_integer(entry["key"]),
+      value: hex_to_integer(entry["value"]),
+      proof: Enum.map(entry["proof"], &Onchain.Hex.decode!/1)
     }
   end
 end

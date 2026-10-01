@@ -3,6 +3,25 @@ defmodule Onchain.TraceTest do
 
   alias Onchain.Trace
 
+  defmodule StorageAdapter do
+    @moduledoc false
+
+    @spec run(Req.Request.t()) :: {Req.Request.t(), Req.Response.t()}
+    def run(req) do
+      request = req.body |> IO.iodata_to_binary() |> Jason.decode!()
+      send(self(), {:storage_request, request})
+
+      payload =
+        case List.last(request["params"]) do
+          "0x10" -> %{"result" => "0x" <> String.duplicate("0", 63) <> "1"}
+          "0xffffffffffffffff" -> %{"error" => %{"code" => -32_001, "message" => "block not found: 0xffffffffffffffff"}}
+        end
+
+      body = Jason.encode!(Map.merge(payload, %{"jsonrpc" => "2.0", "id" => request["id"]}))
+      {req, Req.Response.new(status: 200, body: body)}
+    end
+  end
+
   # --- Unit tests: input validation (no network calls) ---
 
   describe "trace_transaction/2 input validation" do
@@ -118,6 +137,18 @@ defmodule Onchain.TraceTest do
       result = Trace.trace_call(%{to: addr, data: "0x18160ddd"}, "0xe4e1c0")
       refute match?({:error, {:invalid_block, _}}, result)
     end
+  end
+
+  test "storage_at delegates to the shared RPC and retains the hex-word result" do
+    address = "0x" <> String.duplicate("aa", 20)
+    word = "0x" <> String.duplicate("0", 63) <> "1"
+
+    opts = [block: 16, rpc_url: "http://stub.invalid", req_options: [adapter: StorageAdapter]]
+    assert {:ok, ^word} = Trace.storage_at(address, "0x1", opts)
+    assert_receive {:storage_request, %{"method" => "eth_getStorageAt", "params" => [^address, "0x1", "0x10"]}}
+
+    assert {:error, {:rpc_error, %{code: -32_001, message: "block not found: 0xffffffffffffffff"}}} =
+             Trace.storage_at(address, "0x1", Keyword.put(opts, :block, "0xffffffffffffffff"))
   end
 
   describe "storage_at/3 input validation" do

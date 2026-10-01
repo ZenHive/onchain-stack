@@ -1,0 +1,23 @@
+{
+  "observed_on": "2026-10-01",
+  "endpoint_env": "ETHEREUM_API_URL",
+  "http_status": 200,
+  "request": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "eth_getStorageAt",
+    "params": [
+      "0x6b175474e89094c44da98b954eedeac495271d0f",
+      "0x1",
+      "0xffffffffffffffff"
+    ]
+  },
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+      "code": -32001,
+      "message": "block not found: 0xffffffffffffffff"
+    }
+  }
+}
