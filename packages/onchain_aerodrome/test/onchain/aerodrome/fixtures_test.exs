@@ -166,11 +166,11 @@ defmodule Onchain.Aerodrome.FixturesTest do
 
         args =
           Enum.map(fixture["args"], fn
-            "0x" <> _ = address -> Onchain.Hex.decode!(address)
+            "0x" <> _ = address -> Cartouche.Hex.decode!(address)
             integer -> integer
           end)
 
-        assert {:ok, data} = Onchain.ABI.encode_call(fixture["signature"], args)
+        assert {:ok, data} = ABI.encode_hex_call(fixture["signature"], args)
         assert String.downcase(data) == fixture["calldata"]
       end
     end
@@ -219,7 +219,7 @@ defmodule Onchain.Aerodrome.FixturesTest do
           Keyword.put(opts, :eth_call, fn contract, name, args, address, data, block ->
             if name == function do
               # ABI encoding of one empty dynamic array: offset then zero length.
-              {:ok, Onchain.Hex.encode(<<32::256, 0::256>>)}
+              {:ok, Cartouche.Hex.encode(<<32::256, 0::256>>)}
             else
               positive.(contract, name, args, address, data, block)
             end
@@ -324,7 +324,7 @@ defmodule Onchain.Aerodrome.FixturesTest do
 
     payload = ABI.encode(%{selector | function: "fixture", types: selector.returns}, values)
     <<_selector::binary-size(4), encoded::binary>> = payload
-    Onchain.Hex.encode(encoded)
+    Cartouche.Hex.encode(encoded)
   end
 
   defp stub_values(:lp_sugar, "count", []), do: [2_500]

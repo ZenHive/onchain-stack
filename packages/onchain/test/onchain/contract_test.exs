@@ -7,7 +7,7 @@ defmodule Onchain.ContractTest do
 
   @valid_addr "0x" <> String.duplicate("ab", 20)
   @stub_opts [rpc_url: "http://stub.invalid"]
-  @dirty_hex Onchain.Hex.encode(<<1>> <> :binary.copy(<<0>>, 30) <> <<1>>)
+  @dirty_hex Cartouche.Hex.encode(<<1>> <> :binary.copy(<<0>>, 30) <> <<1>>)
 
   describe "call/5" do
     test "returns error for invalid address" do

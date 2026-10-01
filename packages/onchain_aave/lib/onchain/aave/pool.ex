@@ -18,9 +18,9 @@ defmodule Onchain.Aave.Pool do
   |--------|-------------|
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
   | `Onchain.Aave.Contracts.address/2` | `{:error, {:unsupported_network, network}}` |
-  | `Onchain.ABI.encode_call/2` | `{:error, {:encode_error, reason}}` |
+  | `ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
   | `Onchain.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
-  | `Onchain.ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
+  | `ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
   | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
   | Interest rate mode validation | `{:error, {:invalid_interest_rate_mode, value}}`, `{:error, {:unsupported_interest_rate_mode, :stable}}` |
 
@@ -46,13 +46,12 @@ defmodule Onchain.Aave.Pool do
 
   use Descripex, namespace: "/aave/pool"
 
+  alias Cartouche.Hex
   alias Cartouche.Signer
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.Opts
   alias Onchain.Aave.Types.UserAccountData
-  alias Onchain.ABI
   alias Onchain.Address
-  alias Onchain.Hex
   alias Onchain.Multicall
   alias Onchain.RPC
 
@@ -91,7 +90,7 @@ defmodule Onchain.Aave.Pool do
 
     with {:ok, user_bin} <- Address.validate(user_address),
          {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
-         {:ok, calldata} <- ABI.encode_call("getUserAccountData(address)", [user_bin]),
+         {:ok, calldata} <- ABI.encode_hex_call("getUserAccountData(address)", [user_bin]),
          {:ok, hex_result} <- RPC.eth_call(pool_addr, calldata, rpc_opts),
          {:ok, values} <- ABI.decode_response(@user_account_data_response, hex_result) do
       {:ok, UserAccountData.from_raw(values)}
@@ -114,6 +113,7 @@ defmodule Onchain.Aave.Pool do
     ],
     returns: %{
       type: "UserAccountData.t()",
+      # --- get_user_account_data_many ---
       description:
         "UserAccountData struct with Decimal values for collateral, debt, borrows, thresholds, and health factor"
     }
@@ -126,8 +126,6 @@ defmodule Onchain.Aave.Pool do
       {:error, reason} -> raise "get_user_account_data failed: #{inspect(reason)}"
     end
   end
-
-  # --- get_user_account_data_many ---
 
   api(
     :get_user_account_data_many,
@@ -152,6 +150,9 @@ defmodule Onchain.Aave.Pool do
 
   @spec get_user_account_data_many([String.t() | binary()], keyword()) ::
           {:ok, [UserAccountData.t()]} | {:error, term()}
+
+  # --- get_user_account_data_many! ---
+
   def get_user_account_data_many(user_addresses, opts \\ [])
 
   def get_user_account_data_many([], _opts), do: {:ok, []}
@@ -167,8 +168,6 @@ defmodule Onchain.Aave.Pool do
     end
   end
 
-  # --- get_user_account_data_many! ---
-
   api(
     :get_user_account_data_many!,
     "Batch-fetch many users' Aave V3 positions in one round-trip. Raises on error.",
@@ -180,6 +179,7 @@ defmodule Onchain.Aave.Pool do
       opts: [
         kind: :value,
         default: [],
+        # --- get_reserve_variable_debt_token ---
         description: "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
       ]
     ],
@@ -196,8 +196,6 @@ defmodule Onchain.Aave.Pool do
       {:error, reason} -> raise "get_user_account_data_many failed: #{inspect(reason)}"
     end
   end
-
-  # --- get_reserve_variable_debt_token ---
 
   api(
     :get_reserve_variable_debt_token,
@@ -217,6 +215,7 @@ defmodule Onchain.Aave.Pool do
     ],
     returns: %{
       type: "{:ok, String.t()} | {:error, term()}",
+      # --- get_reserve_variable_debt_token! ---
       description: "Checksummed variable debt-token contract address"
     }
   )
@@ -228,14 +227,12 @@ defmodule Onchain.Aave.Pool do
 
     with {:ok, asset_bin} <- Address.validate(asset),
          {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
-         {:ok, calldata} <- ABI.encode_call("getReserveVariableDebtToken(address)", [asset_bin]),
+         {:ok, calldata} <- ABI.encode_hex_call("getReserveVariableDebtToken(address)", [asset_bin]),
          {:ok, hex_result} <- RPC.eth_call(pool_addr, calldata, rpc_opts),
          {:ok, [debt_token_bin]} <- ABI.decode_response(@variable_debt_token_response, hex_result) do
       Address.checksum(debt_token_bin)
     end
   end
-
-  # --- get_reserve_variable_debt_token! ---
 
   api(
     :get_reserve_variable_debt_token!,
@@ -543,7 +540,7 @@ defmodule Onchain.Aave.Pool do
           {:ok, String.t()} | {:error, term()}
   defp send_pool_tx(network_opts, abi_sig, args, signer_opts) do
     with {:ok, pool_addr} <- Contracts.address(:pool, network_opts),
-         {:ok, calldata_hex} <- ABI.encode_call(abi_sig, args) do
+         {:ok, calldata_hex} <- ABI.encode_hex_call(abi_sig, args) do
       Signer.send_transaction(pool_addr, Hex.decode!(calldata_hex), signer_opts)
     end
   end

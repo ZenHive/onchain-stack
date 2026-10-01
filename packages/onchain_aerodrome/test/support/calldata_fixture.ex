@@ -3,11 +3,10 @@ defmodule Onchain.Aerodrome.CalldataFixture do
 
   import ExUnit.Assertions
 
-  alias Onchain.ABI
+  alias Cartouche.Hex
   alias Onchain.Aerodrome.Bindings.Abi
   alias Onchain.Aerodrome.Contracts
   alias Onchain.Aerodrome.RPCCase
-  alias Onchain.Hex
   alias Onchain.RPC
   alias Onchain.RPC.Helpers
 
@@ -72,7 +71,7 @@ defmodule Onchain.Aerodrome.CalldataFixture do
   defp sugar_owner(id, opts) do
     with {:ok, signature} <- Abi.signature("ve_sugar.json", "byId"),
          {:ok, return_type} <- Abi.return_type("ve_sugar.json", "byId"),
-         {:ok, data} <- ABI.encode_call(signature, [id]),
+         {:ok, data} <- ABI.encode_hex_call(signature, [id]),
          {:ok, response} <- RPC.eth_call(Contracts.address!(:ve_sugar), data, opts),
          {:ok, [nft]} <- ABI.decode_response(return_type, response) do
       owner_from_nft(nft, id)

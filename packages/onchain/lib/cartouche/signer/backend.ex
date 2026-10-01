@@ -71,8 +71,8 @@ defmodule Cartouche.Signer.Backend do
   The curve-native public key for the backend's key.
 
   Returns the *public key*, not a chain address — the caller derives the address
-  (e.g. secp256k1 ⇒ `Cartouche.Address.from_public_key/1`). Returns the uncompressed SEC1 secp256k1 point (65
-  bytes *including* the leading `0x04` prefix, which `Cartouche.Address.from_public_key/1`
+  (e.g. secp256k1 ⇒ `Onchain.Address.from_public_key/1`). Returns the uncompressed SEC1 secp256k1 point (65
+  bytes *including* the leading `0x04` prefix, which `Onchain.Address.from_public_key/1`
   strips) or the 32-byte Ed25519 public key.
   """
   @callback public_key(config()) :: {:ok, binary()} | {:error, term()}

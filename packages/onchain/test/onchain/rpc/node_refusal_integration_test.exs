@@ -37,7 +37,7 @@ defmodule Onchain.RPC.NodeRefusalIntegrationTest do
                RPC.get_block_access_list(@historical_block, opts)
 
       assert {:error, {:method_not_found, %{code: -32_600, message: @alchemy_unsupported_access_list}}} =
-               RPC.call("eth_getBlockAccessList", [Onchain.Hex.from_integer(@historical_block)], opts)
+               RPC.call("eth_getBlockAccessList", [Cartouche.Hex.from_integer(@historical_block)], opts)
     end
 
     test "Alchemy refuses eth_baseFee as {:method_not_found, map}" do
@@ -51,7 +51,7 @@ defmodule Onchain.RPC.NodeRefusalIntegrationTest do
       opts = limited_opts()
 
       assert {:error, {:namespace_unavailable, %{code: -32_600, message: @alchemy_trace_tier}}} =
-               RPC.call("trace_block", [Onchain.Hex.from_integer(@historical_block)], opts)
+               RPC.call("trace_block", [Cartouche.Hex.from_integer(@historical_block)], opts)
     end
 
     test "historical eth_feeHistory is {:unavailable, map}; latest feeHistory succeeds" do
@@ -87,7 +87,7 @@ defmodule Onchain.RPC.NodeRefusalIntegrationTest do
     # not invent a distinction the node declines to make.
     test "pruned eth_feeHistory is {:unavailable, map} single but unclassified batched" do
       opts = limited_opts()
-      params = ["0x1", Onchain.Hex.from_integer(@historical_block), [50]]
+      params = ["0x1", Cartouche.Hex.from_integer(@historical_block), [50]]
 
       assert {:error, {:unavailable, %{code: -32_001, message: @alchemy_unable}}} =
                RPC.call("eth_feeHistory", params, opts)
@@ -106,7 +106,7 @@ defmodule Onchain.RPC.NodeRefusalIntegrationTest do
                RPC.batch([{"eth_blockNumber", []}, {"eth_baseFee", []}], opts)
 
       assert {:error, {:namespace_unavailable, %{code: -32_600, message: @alchemy_trace_tier}}} =
-               RPC.batch([{"trace_block", [Onchain.Hex.from_integer(@historical_block)]}], opts)
+               RPC.batch([{"trace_block", [Cartouche.Hex.from_integer(@historical_block)]}], opts)
     end
   end
 

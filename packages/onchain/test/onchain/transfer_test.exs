@@ -6,11 +6,11 @@ defmodule Onchain.TransferTest do
   # --- Fixture helpers ---
 
   # Precomputed topic hashes (matching the module's compile-time constants)
-  @transfer_topic Onchain.Hex.encode(Cartouche.Hash.keccak("Transfer(address,address,uint256)"))
-  @transfer_single_topic Onchain.Hex.encode(
+  @transfer_topic Cartouche.Hex.encode(Cartouche.Hash.keccak("Transfer(address,address,uint256)"))
+  @transfer_single_topic Cartouche.Hex.encode(
                            Cartouche.Hash.keccak("TransferSingle(address,address,address,uint256,uint256)")
                          )
-  @transfer_batch_topic Onchain.Hex.encode(
+  @transfer_batch_topic Cartouche.Hex.encode(
                           Cartouche.Hash.keccak("TransferBatch(address,address,address,uint256[],uint256[])")
                         )
 
@@ -53,6 +53,9 @@ defmodule Onchain.TransferTest do
   end
 
   @doc false
+
+  # --- Tests ---
+
   # Encodes two uint256[] arrays as ABI-encoded data for ERC-1155 TransferBatch.
   # Uses standard ABI encoding: offset(ids), offset(values), len(ids), ids..., len(values), values...
   defp encode_uint256_arrays(ids, values) do
@@ -68,8 +71,6 @@ defmodule Onchain.TransferTest do
 
   defp pad_left(bin, size) when byte_size(bin) >= size, do: bin
   defp pad_left(bin, size), do: :binary.copy(<<0>>, size - byte_size(bin)) <> bin
-
-  # --- Tests ---
 
   describe "transfer_topics/0" do
     test "returns 3 valid hex topic hashes" do
@@ -100,14 +101,14 @@ defmodule Onchain.TransferTest do
       assert transfer.token_id == nil
 
       filter_log = %Cartouche.Filter.Log{
-        address: Onchain.Hex.decode!(log.address),
-        topics: Enum.map(log.topics, &Onchain.Hex.decode!/1),
-        data: Onchain.Hex.decode!(log.data),
+        address: Cartouche.Hex.decode!(log.address),
+        topics: Enum.map(log.topics, &Cartouche.Hex.decode!/1),
+        data: Cartouche.Hex.decode!(log.data),
         block_hash: <<0::256>>,
         block_number: log.block_number,
         log_index: log.log_index,
         removed: false,
-        transaction_hash: Onchain.Hex.decode!(log.transaction_hash),
+        transaction_hash: Cartouche.Hex.decode!(log.transaction_hash),
         transaction_index: 0
       }
 
@@ -251,7 +252,7 @@ defmodule Onchain.TransferTest do
         )
 
       # Approval event — should be skipped
-      approval_topic = Onchain.Hex.encode(Cartouche.Hash.keccak("Approval(address,address,uint256)"))
+      approval_topic = Cartouche.Hex.encode(Cartouche.Hash.keccak("Approval(address,address,uint256)"))
 
       non_transfer_log =
         build_log(
@@ -326,6 +327,16 @@ defmodule Onchain.TransferTest do
       assert_raise RuntimeError, ~r/fetch failed/, fn ->
         Transfer.fetch!(%{from_block: "bogus"})
       end
+    end
+  end
+
+  test "missing and malformed event data return errors rather than raising" do
+    topic = Cartouche.Hex.encode(ABI.event_signature("Transfer(address,address,uint256)"))
+    address_topic = Cartouche.Hex.encode(<<1::256>>)
+
+    for data <- [nil, "0xzz"] do
+      log = %{topics: [topic, address_topic, address_topic], data: data}
+      assert {:error, _} = Transfer.parse_log(log)
     end
   end
 end

@@ -1,5 +1,5 @@
-defmodule Cartouche.AddressTest do
+defmodule Onchain.Address.PublicKeyTest do
   use ExUnit.Case, async: true
 
-  doctest Cartouche.Address
+  doctest Onchain.Address
 end

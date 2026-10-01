@@ -1,5 +1,5 @@
-defmodule Cartouche.Erc20Test do
+defmodule Onchain.ERC20.DoctestTest do
   use ExUnit.Case, async: true
 
-  doctest Cartouche.Erc20
+  doctest Onchain.ERC20
 end

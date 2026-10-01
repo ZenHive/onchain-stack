@@ -59,12 +59,12 @@ defmodule Onchain.ENSIntegrationTest do
     # addr(node, coinType)). The EIP-3668 CCIP-Read round-trip itself is covered
     # offline in test/onchain/ens_ccip_test.exs.
     test "resolves vitalik.eth ETH address (coin type 60) to raw bytes" do
-      expected = Onchain.Hex.decode!(@vitalik_address)
+      expected = Cartouche.Hex.decode!(@vitalik_address)
       assert {:ok, ^expected} = ENS.address("vitalik.eth", 60, rpc_opts())
     end
 
     test "address!/3 returns the raw bytes directly" do
-      expected = Onchain.Hex.decode!(@vitalik_address)
+      expected = Cartouche.Hex.decode!(@vitalik_address)
       assert ^expected = ENS.address!("vitalik.eth", 60, rpc_opts())
     end
 

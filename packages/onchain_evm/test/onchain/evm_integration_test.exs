@@ -1,7 +1,6 @@
 defmodule Onchain.EVM.IntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.ABI
   alias Onchain.EVM
   alias Onchain.RPC
 
@@ -57,7 +56,7 @@ defmodule Onchain.EVM.IntegrationTest do
   end
 
   defp multicall_uint(signature, opts) do
-    {:ok, calldata} = ABI.encode_call(signature, [])
+    {:ok, calldata} = ABI.encode_hex_call(signature, [])
     assert {:ok, output} = EVM.simulate_call(@multicall3_address, calldata, opts)
     assert {:ok, [value]} = ABI.decode_response("(uint256)", output)
     value
@@ -84,15 +83,15 @@ defmodule Onchain.EVM.IntegrationTest do
   end
 
   defp zero_address_bin do
-    Onchain.Hex.decode!("0x0000000000000000000000000000000000000000")
+    Cartouche.Hex.decode!("0x0000000000000000000000000000000000000000")
   end
 
   defp usdc_address_bin do
-    Onchain.Hex.decode!(@usdc_address)
+    Cartouche.Hex.decode!(@usdc_address)
   end
 
   defp weth_address_bin do
-    Onchain.Hex.decode!(@weth_address)
+    Cartouche.Hex.decode!(@weth_address)
   end
 
   defp sample_wall_us(fun, n) do
@@ -186,16 +185,16 @@ defmodule Onchain.EVM.IntegrationTest do
       assert {:ok, [coinbase, timestamp, number, prevrandao, gas_limit, base_fee]} =
                ABI.decode_response("(address,uint256,uint256,bytes32,uint256,uint256)", output)
 
-      assert coinbase == Onchain.Hex.decode!(expected_block.miner)
+      assert coinbase == Cartouche.Hex.decode!(expected_block.miner)
       assert timestamp == expected_block.timestamp
       assert number == expected_block.number
-      assert prevrandao == Onchain.Hex.decode!(expected_block.mix_hash)
+      assert prevrandao == Cartouche.Hex.decode!(expected_block.mix_hash)
       assert gas_limit == expected_block.gas_limit
       assert base_fee == expected_block.base_fee_per_gas
     end
 
     test "USDC totalSupply at pinned block returns known uint256" do
-      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
 
       assert {:ok, hex_result} = EVM.simulate_call(@usdc_address, calldata, rpc_opts())
       assert {:ok, [total_supply]} = ABI.decode_response("(uint256)", hex_result)
@@ -203,7 +202,7 @@ defmodule Onchain.EVM.IntegrationTest do
     end
 
     test "WETH name at pinned block returns known string" do
-      {:ok, calldata} = ABI.encode_call("name()", [])
+      {:ok, calldata} = ABI.encode_hex_call("name()", [])
 
       assert {:ok, hex_result} = EVM.simulate_call(@weth_address, calldata, rpc_opts())
       assert {:ok, [name]} = ABI.decode_response("(string)", hex_result)
@@ -211,7 +210,7 @@ defmodule Onchain.EVM.IntegrationTest do
     end
 
     test "fork at specific block returns consistent result" do
-      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
 
       assert {:ok, hex1} = EVM.simulate_call(@usdc_address, calldata, rpc_opts())
       assert {:ok, hex2} = EVM.simulate_call(@usdc_address, calldata, rpc_opts())
@@ -222,7 +221,7 @@ defmodule Onchain.EVM.IntegrationTest do
 
     test "reverted call returns evm_revert with decoded revert reason" do
       {:ok, calldata} =
-        ABI.encode_call("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)", [
+        ABI.encode_hex_call("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)", [
           1,
           1,
           [usdc_address_bin(), weth_address_bin()],
@@ -240,13 +239,13 @@ defmodule Onchain.EVM.IntegrationTest do
       assert String.starts_with?(revert_data, "0x08c379a0")
 
       assert {:ok, %{error: "Error", args: ["TransferHelper: TRANSFER_FROM_FAILED"]}} =
-               ABI.decode_error(revert_data, ["Error(string)"])
+               ABI.decode_hex_error(revert_data, ["Error(string)"])
     end
   end
 
   describe "simulate_call/3 with state overrides" do
     test "balance, nonce, and storage overrides preserve un-fetched contract code" do
-      {:ok, calldata} = ABI.encode_call("balanceOf(address)", [zero_address_bin()])
+      {:ok, calldata} = ABI.encode_hex_call("balanceOf(address)", [zero_address_bin()])
 
       assert {:ok, expected_output} =
                RPC.eth_call(@weth_address, calldata,
@@ -322,7 +321,7 @@ defmodule Onchain.EVM.IntegrationTest do
 
   describe "simulate_transaction/3" do
     test "returns gas_used and success for view call" do
-      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
 
       assert {:ok, result} = EVM.simulate_transaction(@usdc_address, calldata, rpc_opts())
       assert is_map(result)
@@ -335,7 +334,7 @@ defmodule Onchain.EVM.IntegrationTest do
 
     test "returns success: false for reverting call" do
       {:ok, calldata} =
-        ABI.encode_call("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)", [
+        ABI.encode_hex_call("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)", [
           1,
           1,
           [usdc_address_bin(), weth_address_bin()],
@@ -354,7 +353,7 @@ defmodule Onchain.EVM.IntegrationTest do
       assert String.starts_with?(tx_result.output, "0x08c379a0")
 
       assert {:ok, %{error: "Error", args: ["TransferHelper: TRANSFER_FROM_FAILED"]}} =
-               ABI.decode_error(tx_result.output, ["Error(string)"])
+               ABI.decode_hex_error(tx_result.output, ["Error(string)"])
     end
 
     test "simulates from a high-nonce EOA without NonceTooLow (regression)" do
@@ -364,7 +363,7 @@ defmodule Onchain.EVM.IntegrationTest do
       # eth_call semantics never validate nonce. Vitalik's address is a real EOA
       # with many txs, so its nonce is well above 0 at the pinned fork block.
       high_nonce_eoa = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
-      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
 
       assert {:ok, result} =
                EVM.simulate_transaction(
@@ -381,16 +380,16 @@ defmodule Onchain.EVM.IntegrationTest do
   describe "simulate_batch/2" do
     test "Aave V3 supply uses the forked block timestamp" do
       {:ok, approve_data} =
-        ABI.encode_call("approve(address,uint256)", [
-          Onchain.Hex.decode!(@aave_v3_pool),
+        ABI.encode_hex_call("approve(address,uint256)", [
+          Cartouche.Hex.decode!(@aave_v3_pool),
           @supply_amount
         ])
 
       {:ok, supply_data} =
-        ABI.encode_call("supply(address,uint256,address,uint16)", [
+        ABI.encode_hex_call("supply(address,uint256,address,uint16)", [
           usdc_address_bin(),
           @supply_amount,
-          Onchain.Hex.decode!(@usdc_holder),
+          Cartouche.Hex.decode!(@usdc_holder),
           @aave_referral_code
         ])
 
@@ -408,8 +407,8 @@ defmodule Onchain.EVM.IntegrationTest do
     end
 
     test "batch multiple calls on shared fork" do
-      {:ok, total_supply_data} = ABI.encode_call("totalSupply()", [])
-      {:ok, decimals_data} = ABI.encode_call("decimals()", [])
+      {:ok, total_supply_data} = ABI.encode_hex_call("totalSupply()", [])
+      {:ok, decimals_data} = ABI.encode_hex_call("decimals()", [])
 
       calls = [
         {@usdc_address, total_supply_data},
@@ -441,7 +440,7 @@ defmodule Onchain.EVM.IntegrationTest do
 
   describe "simulate_call/3 error taxonomy" do
     test "returns {:error, {:evm_error, _}} for execution validation errors" do
-      {:ok, calldata} = ABI.encode_call("decimals()", [])
+      {:ok, calldata} = ABI.encode_hex_call("decimals()", [])
 
       assert {:error, {:evm_error, msg}} =
                EVM.simulate_call(@usdc_address, calldata, rpc_opts() ++ [gas_limit: 1])
@@ -458,7 +457,7 @@ defmodule Onchain.EVM.IntegrationTest do
     @black_hole_rpc "http://192.0.2.1:8545"
 
     test "returns {:error, {:timeout, _}} when request exceeds timeout_ms" do
-      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
 
       started = System.monotonic_time(:millisecond)
 
@@ -494,7 +493,7 @@ defmodule Onchain.EVM.IntegrationTest do
     @refused_rpc "http://127.0.0.1:1"
 
     test "returns {:error, {:fork_error, _}} when the connection is refused" do
-      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
 
       # Generous timeout so the refusal — not the timer — is what fires.
       result =
@@ -571,7 +570,7 @@ defmodule Onchain.EVM.IntegrationTest do
     end
 
     test "forks Base latest and executes a real Base contract" do
-      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
 
       case EVM.simulate_call(@base_usdc, calldata, base_opts()) do
         {:ok, hex} ->
@@ -633,7 +632,7 @@ defmodule Onchain.EVM.IntegrationTest do
 
   describe "bang variants with integration" do
     test "simulate_call! returns hex directly" do
-      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
 
       result = EVM.simulate_call!(@usdc_address, calldata, rpc_opts())
       assert is_binary(result)
@@ -641,7 +640,7 @@ defmodule Onchain.EVM.IntegrationTest do
     end
 
     test "simulate_transaction! returns result map directly" do
-      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
 
       result = EVM.simulate_transaction!(@usdc_address, calldata, rpc_opts())
       assert is_map(result)
@@ -649,7 +648,7 @@ defmodule Onchain.EVM.IntegrationTest do
     end
 
     test "simulate_batch! returns list directly" do
-      {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+      {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
       calls = [{@usdc_address, calldata}]
 
       results = EVM.simulate_batch!(calls, rpc_opts())
@@ -667,10 +666,10 @@ defmodule Onchain.EVM.IntegrationTest do
     @tag :tokio_runtime
     @tag timeout: 180_000
     test "is not a visible share of cheap or expensive archive-node calls" do
-      {:ok, cheap_data} = ABI.encode_call("totalSupply()", [])
+      {:ok, cheap_data} = ABI.encode_hex_call("totalSupply()", [])
 
       {:ok, expensive_data} =
-        ABI.encode_call("getUserAccountData(address)", [Onchain.Hex.decode!(@usdc_holder)])
+        ABI.encode_hex_call("getUserAccountData(address)", [Cartouche.Hex.decode!(@usdc_holder)])
 
       cheap = fn ->
         assert {:ok, _} = EVM.simulate_call(@usdc_address, cheap_data, rpc_opts())

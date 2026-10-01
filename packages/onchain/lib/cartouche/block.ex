@@ -320,8 +320,10 @@ defmodule Cartouche.Block do
         excess_blob_gas: 0x4a0000
       }
   """
-  @spec deserialize(map()) :: t()
-  def deserialize(params) do
+  @spec deserialize(map() | nil) :: t() | nil
+  def deserialize(nil), do: nil
+
+  def deserialize(params) when is_map(params) do
     %__MODULE__{
       number: map(get_in(params, ["number"]), &Hex.decode_hex_number!/1),
       hash: map(get_in(params, ["hash"]), &Hex.decode_word!/1),
@@ -400,4 +402,186 @@ defmodule Cartouche.Block do
               "unsupported transaction envelope type #{inspect(other)} in block JSON"
     end
   end
+
+  api(:get_by_number, "Fetch and parse a block by number or tag.",
+    params: [
+      block_id: [
+        kind: :value,
+        description: ~s{Block number (integer) or tag string ("latest", "finalized", etc.)}
+      ],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{
+      type: "{:ok, Cartouche.Block.t()} | {:error, term}",
+      description: "Full block struct with integer quantities and binary hashes"
+    }
+  )
+
+  @spec get_by_number(integer() | String.t(), keyword()) :: {:ok, t()} | {:error, term()}
+  def get_by_number(block_id, opts \\ []) do
+    with {:ok, block} <- Cartouche.RPC.get_block_by_number(block_id, opts) do
+      summarize_block(block)
+    end
+  end
+
+  # --- get_by_number! ---
+
+  api(:get_by_number!, "Fetch and parse a block by number or tag. Raises on error.",
+    params: [
+      block_id: [kind: :value, description: "Block number (integer) or tag string"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{type: :map, description: "Full decoded block struct"}
+  )
+
+  @spec get_by_number!(integer() | String.t(), keyword()) :: t()
+  def get_by_number!(block_id, opts \\ []) do
+    case get_by_number(block_id, opts) do
+      {:ok, block} -> block
+      {:error, reason} -> raise "get_by_number failed: #{inspect(reason)}"
+    end
+  end
+
+  # --- find_by_timestamp ---
+
+  api(:find_by_timestamp, "Binary search for the highest block with timestamp ≤ target.",
+    params: [
+      target_timestamp: [kind: :value, description: "Unix timestamp (seconds) to search for"],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "Options: :rpc_url, :timeout, :floor (block number integer), :ceil (block number integer)"
+      ]
+    ],
+    returns: %{
+      type: "{:ok, Cartouche.Block.t()} | {:error, term}",
+      description: "Full block struct with highest timestamp ≤ target"
+    }
+  )
+
+  @spec find_by_timestamp(non_neg_integer(), keyword()) :: {:ok, t()} | {:error, term()}
+  def find_by_timestamp(target_timestamp, opts \\ [])
+
+  def find_by_timestamp(target_timestamp, _opts) when not is_integer(target_timestamp) do
+    {:error, {:invalid_timestamp, target_timestamp}}
+  end
+
+  def find_by_timestamp(target_timestamp, _opts) when target_timestamp < 0 do
+    {:error, {:invalid_timestamp, target_timestamp}}
+  end
+
+  def find_by_timestamp(target_timestamp, opts) do
+    rpc_opts = Keyword.drop(opts, [:floor, :ceil])
+
+    with {:ok, floor_block} <- resolve_floor(Keyword.get(opts, :floor), rpc_opts),
+         {:ok, ceil_block} <- resolve_ceil(Keyword.get(opts, :ceil), rpc_opts) do
+      cond do
+        floor_block.timestamp == target_timestamp ->
+          {:ok, floor_block}
+
+        floor_block.timestamp > target_timestamp ->
+          {:error, {:timestamp_before_floor, target_timestamp}}
+
+        ceil_block.timestamp <= target_timestamp ->
+          # Target is at or after the ceiling — return ceil as best known block
+          {:ok, ceil_block}
+
+        true ->
+          binary_search(
+            floor_block.number + 1,
+            ceil_block.number,
+            floor_block,
+            target_timestamp,
+            rpc_opts
+          )
+      end
+    end
+  end
+
+  # --- find_by_timestamp! ---
+
+  api(:find_by_timestamp!, "Binary search for block ≤ target timestamp. Raises on error.",
+    params: [
+      target_timestamp: [kind: :value, description: "Unix timestamp (seconds)"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :floor, :ceil"]
+    ],
+    returns: %{type: :map, description: "Full decoded block struct"}
+  )
+
+  @spec find_by_timestamp!(non_neg_integer(), keyword()) :: t()
+  def find_by_timestamp!(target_timestamp, opts \\ []) do
+    case find_by_timestamp(target_timestamp, opts) do
+      {:ok, block} -> block
+      {:error, reason} -> raise "find_by_timestamp failed: #{inspect(reason)}"
+    end
+  end
+
+  # --- Private helpers ---
+
+  @doc false
+  # Resolves the floor block: fetch genesis (block 0) if no floor provided.
+  @spec resolve_floor(non_neg_integer() | nil, keyword()) :: {:ok, t()} | {:error, term()}
+  defp resolve_floor(nil, rpc_opts), do: get_by_number(0, rpc_opts)
+  defp resolve_floor(block_num, rpc_opts), do: get_by_number(block_num, rpc_opts)
+
+  @doc false
+  # Resolves the ceiling block: fetch "finalized" if no ceil provided.
+  # "finalized" avoids reorg issues (same strategy as blockwatch).
+  @spec resolve_ceil(non_neg_integer() | nil, keyword()) :: {:ok, t()} | {:error, term()}
+  defp resolve_ceil(nil, rpc_opts), do: get_by_number("finalized", rpc_opts)
+  defp resolve_ceil(block_num, rpc_opts), do: get_by_number(block_num, rpc_opts)
+
+  @doc false
+  # Binary search for the highest block with timestamp <= target.
+  #
+  # Invariants:
+  #   - floor: lowest block number that might have timestamp <= target
+  #   - ceil: block number whose timestamp is always > target (exclusive upper bound)
+  #   - best: highest block seen so far with timestamp <= target
+  #
+  # Ported from blockwatch's do_get_block_number_from_timestamp/5.
+  @spec binary_search(
+          non_neg_integer(),
+          non_neg_integer(),
+          map(),
+          non_neg_integer(),
+          keyword()
+        ) :: {:ok, t()} | {:error, term()}
+  defp binary_search(floor, ceil, best, _target, _rpc_opts) when floor >= ceil do
+    {:ok, best}
+  end
+
+  defp binary_search(floor, ceil, best, target, rpc_opts) do
+    mid = div(ceil - floor, 2) + floor
+
+    case get_by_number(mid, rpc_opts) do
+      {:ok, block} ->
+        cond do
+          block.timestamp == target ->
+            {:ok, block}
+
+          block.timestamp < target ->
+            binary_search(mid + 1, ceil, block, target, rpc_opts)
+
+          true ->
+            binary_search(floor, mid, best, target, rpc_opts)
+        end
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  @doc false
+  # RPC blocks are decoded in Cartouche.RPC; pending blocks have number: nil.
+  @spec summarize_block(map() | nil) :: {:ok, t()} | {:error, term()}
+  defp summarize_block(nil), do: {:error, :block_not_found}
+
+  defp summarize_block(%{number: nil}), do: {:error, :pending_block}
+
+  defp summarize_block(%__MODULE__{number: n, timestamp: ts} = block) when is_integer(n) and is_integer(ts) do
+    {:ok, block}
+  end
+
+  defp summarize_block(_), do: {:error, :invalid_block}
 end

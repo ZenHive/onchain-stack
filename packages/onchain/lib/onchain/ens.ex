@@ -59,12 +59,11 @@ defmodule Onchain.ENS do
 
   import Bitwise, only: [bor: 2]
 
-  alias Onchain.ABI
+  alias Cartouche.Hex
   alias Onchain.Address
   alias Onchain.Contract
   alias Onchain.ENS.CCIP
   alias Onchain.ENS.Normalize
-  alias Onchain.Hex
   alias Onchain.RPC
 
   @ens_registry "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
@@ -524,6 +523,7 @@ defmodule Onchain.ENS do
   )
 
   @spec pubkey!(String.t(), keyword()) :: {binary(), binary()}
+
   def pubkey!(name, opts \\ []) do
     case pubkey(name, opts) do
       {:ok, coords} -> coords
@@ -709,9 +709,9 @@ defmodule Onchain.ENS do
           {:ok, term()} | {:error, term()}
   defp resolve_extended(resolver_addr, normalized, node, inner_sig, extra_args, return_type, opts, on_result) do
     with {:ok, dns} <- encode_dns_labels(normalized),
-         {:ok, inner_call} <- ABI.encode_call(inner_sig, [node | extra_args]),
+         {:ok, inner_call} <- ABI.encode_hex_call(inner_sig, [node | extra_args]),
          {:ok, inner_bytes} <- Hex.decode(inner_call),
-         {:ok, outer_call} <- ABI.encode_call("resolve(bytes,bytes)", [dns, inner_bytes]),
+         {:ok, outer_call} <- ABI.encode_hex_call("resolve(bytes,bytes)", [dns, inner_bytes]),
          {:ok, outer_hex} <- ccip_eth_call(resolver_addr, outer_call, opts),
          {:ok, [inner_result]} <- ABI.decode_response("(bytes)", outer_hex),
          {:ok, decoded} <- ABI.decode_response(return_type, Hex.encode(inner_result)) do
@@ -794,7 +794,7 @@ defmodule Onchain.ENS do
     ]
 
     __MODULE__
-    |> Onchain.HTTP.req_options(base, opts)
+    |> Cartouche.HTTP.req_options(base, opts)
     |> Req.request()
     |> Cartouche.HTTP.normalize_response()
     |> case do

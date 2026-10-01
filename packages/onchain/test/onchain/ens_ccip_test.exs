@@ -1,8 +1,8 @@
 defmodule Onchain.ENS.CCIPTest do
   use ExUnit.Case, async: true
 
+  alias Cartouche.Hex
   alias Onchain.ENS.CCIP
-  alias Onchain.Hex
 
   @sender "0xC1735677a60884ABbCF72295E88d47764BeDa282"
   @callback_selector <<0xAA, 0xBB, 0xCC, 0xDD>>

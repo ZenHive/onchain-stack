@@ -1,7 +1,6 @@
 defmodule Onchain.Aerodrome.Integration.PortabilityTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.ABI
   alias Onchain.Aerodrome.Bindings.Abi
   alias Onchain.Aerodrome.Contracts
   alias Onchain.Aerodrome.RPCCase
@@ -22,7 +21,7 @@ defmodule Onchain.Aerodrome.Integration.PortabilityTest do
     address = Contracts.address!(:lp_sugar)
     {:ok, signature} = Abi.signature("lp_sugar.json", "all")
     {:ok, return_type} = Abi.return_type("lp_sugar.json", "all")
-    {:ok, calldata} = ABI.encode_call(signature, [@limit, @offset, @filter])
+    {:ok, calldata} = ABI.encode_hex_call(signature, [@limit, @offset, @filter])
 
     # Pin both calls to one block so a latest-block race cannot look like
     # endpoint disagreement. The second unprivileged endpoint is what the

@@ -37,11 +37,11 @@ defmodule Onchain.ERC7730.Formatter do
 
   use Descripex, namespace: "/erc7730/formatter"
 
+  alias Cartouche.Hex
   alias Onchain.Address
   alias Onchain.Decimal, as: OnchainDecimal
   alias Onchain.ERC20
   alias Onchain.ERC7730.Descriptor
-  alias Onchain.Hex
 
   @native_markers [
     "0x0000000000000000000000000000000000000000",
@@ -142,6 +142,7 @@ defmodule Onchain.ERC7730.Formatter do
   defp coerce(value, {:int, _}), do: to_int(value)
   defp coerce(value, :bool) when is_boolean(value), do: value
   defp coerce(value, {:bytes, _}), do: to_bytes(value)
+
   defp coerce(value, :bytes), do: to_bytes(value)
   defp coerce(value, _type), do: value
 
@@ -279,6 +280,7 @@ defmodule Onchain.ERC7730.Formatter do
 
   defp resolve_ref("$." <> _ = ref, resolution, descriptor), do: elem(resolve_path(ref, resolution, descriptor), 0)
   defp resolve_ref("@." <> _ = ref, resolution, descriptor), do: elem(resolve_path(ref, resolution, descriptor), 0)
+
   defp resolve_ref(literal, _resolution, _descriptor), do: literal
 
   defp native_token?(token) do

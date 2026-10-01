@@ -97,7 +97,7 @@ defmodule Cartouche.Signer.GasEstimateTest do
   end
 
   defp decoded_gas_limit do
-    {:ok, %V2{} = tx} = StubClient.raw_tx() |> Onchain.Hex.decode!() |> V2.decode()
+    {:ok, %V2{} = tx} = StubClient.raw_tx() |> Cartouche.Hex.decode!() |> V2.decode()
     tx.gas_limit
   end
 
@@ -120,15 +120,15 @@ defmodule Cartouche.Signer.GasEstimateTest do
 
     test "estimates with non-empty calldata (ERC-20 transfer shape)" do
       {:ok, calldata_hex} =
-        Onchain.ABI.encode_call("transfer(address,uint256)", [
-          Onchain.Hex.decode!(@dummy_to),
+        ABI.encode_hex_call("transfer(address,uint256)", [
+          Cartouche.Hex.decode!(@dummy_to),
           1_000
         ])
 
       StubClient.queue(estimate: "0xea60", send: @fake_tx_hash)
 
       assert {:ok, _} =
-               Signer.send_transaction(@dummy_to, Onchain.Hex.decode!(calldata_hex), base_opts([]))
+               Signer.send_transaction(@dummy_to, Cartouche.Hex.decode!(calldata_hex), base_opts([]))
 
       # 60_000 (0xea60) * 1.25 == 75_000
       assert decoded_gas_limit() == 75_000

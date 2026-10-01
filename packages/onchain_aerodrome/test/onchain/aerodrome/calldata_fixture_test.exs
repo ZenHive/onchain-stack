@@ -1,7 +1,6 @@
 defmodule Onchain.Aerodrome.CalldataFixtureTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.ABI
   alias Onchain.Aerodrome.Bindings.Abi
   alias Onchain.Aerodrome.CalldataFixture
   alias Onchain.Aerodrome.Contracts
@@ -18,14 +17,14 @@ defmodule Onchain.Aerodrome.CalldataFixtureTest do
     assert {:ok, "reset(uint256)" = signature} = Abi.signature("voter.json", "reset")
 
     for id <- [0, 1, 256, Integer.pow(2, 256) - 1] do
-      assert {:ok, calldata} = ABI.encode_call(signature, [id])
+      assert {:ok, calldata} = ABI.encode_hex_call(signature, [id])
       assert CalldataFixture.assert_calldata(calldata, signature, [Integer.to_string(id)])
     end
   end
 
   test "the reference catches a wrong argument and a wrong selector" do
-    assert {:ok, wrong_id} = ABI.encode_call("reset(uint256)", [2])
-    assert {:ok, wrong_selector} = ABI.encode_call("poke(uint256)", [1])
+    assert {:ok, wrong_id} = ABI.encode_hex_call("reset(uint256)", [2])
+    assert {:ok, wrong_selector} = ABI.encode_hex_call("poke(uint256)", [1])
 
     for wrong <- [wrong_id, wrong_selector] do
       assert_raise ExUnit.AssertionError, fn ->
@@ -36,7 +35,7 @@ defmodule Onchain.Aerodrome.CalldataFixtureTest do
 
   test "cast handles dynamic arguments independently" do
     signature = "example(uint256[],string)"
-    assert {:ok, calldata} = ABI.encode_call(signature, [[1, 256], "two words"])
+    assert {:ok, calldata} = ABI.encode_hex_call(signature, [[1, 256], "two words"])
     assert CalldataFixture.assert_calldata(calldata, signature, ["[1,256]", "two words"])
   end
 
@@ -64,7 +63,7 @@ defmodule Onchain.Aerodrome.CalldataFixtureTest do
   test "impersonation sends the Sugar owner as from and preserves return bytes and revert data" do
     fixture = Fixtures.load("ve_sugar.byId")
     {:ok, [nft]} = Fixtures.decode(fixture)
-    owner = Onchain.Hex.encode(elem(nft, 1))
+    owner = Cartouche.Hex.encode(elem(nft, 1))
     voter = Contracts.address!(:voter)
     block = "0x30f85d0"
 
@@ -138,9 +137,9 @@ defmodule Onchain.Aerodrome.CalldataFixtureTest do
   test "an integer block is hex-encoded on the Sugar read and the impersonation" do
     fixture = Fixtures.load("ve_sugar.byId")
     {:ok, [nft]} = Fixtures.decode(fixture)
-    owner = Onchain.Hex.encode(elem(nft, 1))
+    owner = Cartouche.Hex.encode(elem(nft, 1))
     voter = Contracts.address!(:voter)
-    block = Onchain.Hex.from_integer(51_348_944)
+    block = Cartouche.Hex.from_integer(51_348_944)
 
     adapter = fn request ->
       case request.body |> IO.iodata_to_binary() |> Jason.decode!() do

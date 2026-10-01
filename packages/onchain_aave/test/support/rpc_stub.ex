@@ -60,7 +60,7 @@ defmodule Onchain.RPCStub do
   @doc false
   @spec selector(String.t(), list()) :: String.t()
   def selector(signature, params) do
-    {:ok, hex} = Onchain.ABI.encode_call(signature, params)
+    {:ok, hex} = ABI.encode_hex_call(signature, params)
     String.slice(hex, @selector_start, @selector_length)
   end
 

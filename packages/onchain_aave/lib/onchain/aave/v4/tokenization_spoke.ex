@@ -49,11 +49,11 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
 
   use Descripex, namespace: "/aave/v4/tokenization_spoke"
 
+  alias Cartouche.Hex
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.Opts
   alias Onchain.Address
   alias Onchain.Contract
-  alias Onchain.Hex
 
   @type hub :: atom()
 
@@ -178,6 +178,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
 
   @spec convert_to_assets(String.t() | binary(), non_neg_integer(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
+
   def convert_to_assets(spoke, shares, opts \\ []) when is_integer(shares) and shares >= 0 do
     call_uint(spoke, "convertToAssets(uint256)", [shares], opts)
   end
@@ -195,6 +196,7 @@ defmodule Onchain.Aave.V4.TokenizationSpoke do
 
   @spec preview_deposit(String.t() | binary(), non_neg_integer(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
+
   def preview_deposit(spoke, assets, opts \\ []) when is_integer(assets) and assets >= 0 do
     call_uint(spoke, "previewDeposit(uint256)", [assets], opts)
   end

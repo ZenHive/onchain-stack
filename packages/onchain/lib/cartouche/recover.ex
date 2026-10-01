@@ -23,8 +23,8 @@ defmodule Cartouche.Recover do
 
   use Cartouche.Hex
 
-  import Cartouche.Address, only: [from_public_key: 1]
   import Cartouche.Hash, only: [keccak: 1]
+  import Onchain.Address, only: [from_public_key: 1]
 
   # secp256k1 group order (n) and its halfway point, for EIP-2 low-s canonicalization.
   @secp256k1_n 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141

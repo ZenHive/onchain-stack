@@ -33,26 +33,27 @@ defmodule Onchain.Tempo.Transfer do
   @spec parse_transfer_with_memo_logs([map()]) :: [map()]
   def parse_transfer_with_memo_logs(logs) when is_list(logs) do
     Enum.flat_map(logs, fn log ->
-      case Onchain.Log.decode_event(log, @transfer_with_memo_sig) do
-        {:ok, %{from: from, to: to, amount: amount, memo: memo_bytes}} ->
-          [
-            %{
-              token: log.address,
-              from: from,
-              to: to,
-              amount: amount,
-              memo: encode_memo(memo_bytes)
-            }
-          ]
-
-        _ ->
-          []
+      with %{data: data, topics: topics} when is_binary(data) and is_list(topics) <- log,
+           {:ok, bytes} <- Cartouche.Hex.decode(data),
+           {:ok, "TransferWithMemo", %{"from" => from, "to" => to, "amount" => amount, "memo" => memo_bytes}} <-
+             ABI.decode_event(@transfer_with_memo_sig, bytes, Enum.map(topics, &Cartouche.Hex.decode!/1)) do
+        [
+          %{
+            token: log.address,
+            from: Onchain.Address.checksum!(from),
+            to: Onchain.Address.checksum!(to),
+            amount: amount,
+            memo: encode_memo(memo_bytes)
+          }
+        ]
+      else
+        _ -> []
       end
     end)
   end
 
   # Encodes a raw bytes32 memo value to hex string for comparison.
-  # Onchain.Log.decode_event returns bytes32 as a 32-byte binary.
+  # ABI.decode_event returns bytes32 as a 32-byte binary.
   defp encode_memo(memo) when is_binary(memo) and byte_size(memo) == 32 do
     "0x" <> Base.encode16(memo, case: :lower)
   end

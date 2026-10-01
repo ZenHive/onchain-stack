@@ -12,7 +12,6 @@ defmodule Onchain.Aerodrome.Bindings.LpSugar do
   Elixir names use snake_case (for example `for_swaps/3` calls `forSwaps`).
   """
 
-  alias Onchain.ABI
   alias Onchain.Address
   alias Onchain.Aerodrome.Bindings.Abi
   alias Onchain.Aerodrome.Contracts
@@ -189,7 +188,7 @@ defmodule Onchain.Aerodrome.Bindings.LpSugar do
     with {:ok, address} <- Contracts.address(:lp_sugar, opts),
          {:ok, signature} <- Abi.signature("lp_sugar.json", function),
          {:ok, return_type} <- Abi.return_type("lp_sugar.json", function),
-         {:ok, calldata} <- ABI.encode_call(signature, args),
+         {:ok, calldata} <- ABI.encode_hex_call(signature, args),
          {:ok, response} <- RPC.eth_call(address, calldata, opts) do
       ABI.decode_response(return_type, response)
     end

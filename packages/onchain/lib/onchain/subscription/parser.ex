@@ -39,7 +39,7 @@ defmodule Onchain.Subscription.Parser do
     cond do
       not String.starts_with?(hash, "0x") -> {:error, {:invalid_tx_hash, hash}}
       byte_size(hash) != @tx_hash_hex_length -> {:error, {:invalid_tx_hash, hash}}
-      not Onchain.Hex.valid?(hash) -> {:error, {:invalid_tx_hash, hash}}
+      not Cartouche.Hex.valid?(hash) -> {:error, {:invalid_tx_hash, hash}}
       true -> {:ok, hash}
     end
   end

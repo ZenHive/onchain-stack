@@ -270,7 +270,7 @@ defmodule SleuthTest do
       assert {:ok, {^address, true, data}} =
                Cartouche.Contract.Sleuth.Multicall.query_2(address, <<2, 3>>, <<4, 5>>)
 
-      assert {:ok, ^data} = Onchain.ABI.encode_call("query(bytes,bytes)", [<<2, 3>>, <<4, 5>>])
+      assert {:ok, ^data} = ABI.encode_hex_call("query(bytes,bytes)", [<<2, 3>>, <<4, 5>>])
       set_sleuth_result(<<7, 8>>)
 
       assert {:ok, [<<7, 8>>]} =

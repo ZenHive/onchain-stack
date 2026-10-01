@@ -26,7 +26,7 @@ defmodule Onchain.SignerCase do
   @doc false
   @spec signer_address!() :: String.t()
   def signer_address! do
-    key_binary = Onchain.Hex.decode!(signer_key!())
+    key_binary = Cartouche.Hex.decode!(signer_key!())
     {:ok, addr_binary} = Secp256k1.get_address(key_binary)
     Onchain.Address.checksum!(addr_binary)
   end

@@ -39,16 +39,16 @@ defmodule Onchain.ERC7730.Binding do
 
   use Descripex, namespace: "/erc7730/binding"
 
-  alias Onchain.ABI, as: OnchainABI
+  alias ABI, as: OnchainABI
+  alias Cartouche.Hex
   alias Onchain.Address
   alias Onchain.ERC7730.Descriptor
-  alias Onchain.Hex
 
   # Descriptor JSON is third-party input, so an unparseable type or format key is
   # an expected fallback, not a crash. `ABI.FunctionSelector.decode/1` and
   # `decode_type/1` fail the parser's result match (MatchError) on junk or empty
   # input and raise ArgumentError on explicit spec violations; a non-binary reaches
-  # no clause (FunctionClauseError). Same set as `Onchain.ABI`'s `@abi_errors`,
+  # no clause (FunctionClauseError). Same set as `ABI`'s `@abi_errors`,
   # minus the decode-payload-only entries.
   @selector_errors [ArgumentError, FunctionClauseError, MatchError]
 
@@ -181,6 +181,7 @@ defmodule Onchain.ERC7730.Binding do
     mismatch =
       Enum.find(expected, fn {key, expected_value} ->
         actual_value = Map.get(actual, key)
+
         is_nil(actual_value) or not domain_value_equal?(key, expected_value, actual_value)
       end)
 
@@ -312,7 +313,7 @@ defmodule Onchain.ERC7730.Binding do
   end
 
   defp decode_calldata(fs, hex_data) do
-    case OnchainABI.decode_call(fs, hex_data) do
+    case OnchainABI.decode_hex_call(fs, hex_data) do
       {:ok, values} ->
         names = field_names(fs)
         message = names |> Enum.zip(values) |> Map.new()

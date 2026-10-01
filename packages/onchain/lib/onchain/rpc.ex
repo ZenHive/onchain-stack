@@ -108,7 +108,7 @@ defmodule Onchain.RPC do
     selector inspection or pass to ABI libraries that accept binaries.
   - `:data` — the same payload as a lowercase `0x`-prefixed hex string. Mirrored
     from `:revert` whenever the latter is set so callers can pipe it straight
-    into `Onchain.ABI.decode_error/2` (which expects 0x hex, not raw bytes).
+    into `ABI.decode_hex_error/2` (which expects 0x hex, not raw bytes).
   - `:error_abi` — the matching custom-error signature `String.t()` from the
     `:errors` opt (e.g. `"InsufficientBalance(uint256,uint256)"`). Only present
     when the caller passed `errors:` AND the revert payload's selector matches
@@ -123,7 +123,7 @@ defmodule Onchain.RPC do
       # Revert without :errors opt — decode out-of-band via the hex :data mirror
       {:error, {:rpc_error, %{code: 3, data: hex_data}}} = result
       {:ok, %{error: signature, args: args}} =
-        Onchain.ABI.decode_error(hex_data, ["InsufficientBalance(uint256,uint256)"])
+        ABI.decode_hex_error(hex_data, ["InsufficientBalance(uint256,uint256)"])
 
       # Revert with matching :errors opt — already decoded inline
       {:error,
@@ -213,7 +213,7 @@ defmodule Onchain.RPC do
 
       case Onchain.RPC.eth_call(token, calldata, errors: ["InsufficientBalance(uint256,uint256)"]) do
         {:ok, hex_result} ->
-          # Decode hex_result with Onchain.ABI.decode_response/2
+          # Decode hex_result with ABI.decode_response/2
           :ok
 
         {:error, {:rpc_error, %{code: 3, error_abi: "InsufficientBalance(uint256,uint256)", error_params: [requested, available]}}} ->
@@ -222,8 +222,8 @@ defmodule Onchain.RPC do
         {:error, {:rpc_error, %{code: 3, data: hex_data}}} ->
           # Custom error not in :errors list (or :errors omitted) — fall back
           # to the hex-mirrored revert payload and decode out-of-band.
-          # `Onchain.ABI.decode_error/2` expects 0x hex, which is exactly :data.
-          Onchain.ABI.decode_error(hex_data, ["MyError(uint256)"])
+          # `ABI.decode_hex_error/2` expects 0x hex, which is exactly :data.
+          ABI.decode_hex_error(hex_data, ["MyError(uint256)"])
 
         {:error, {:rpc_error, %{message: msg}}} ->
           {:rpc, msg}
@@ -424,7 +424,7 @@ defmodule Onchain.RPC do
   def get_block_by_number(block_id, opts \\ [])
 
   def get_block_by_number(block_id, opts) when is_integer(block_id) and block_id >= 0 do
-    hex = Onchain.Hex.from_integer(block_id)
+    hex = Cartouche.Hex.from_integer(block_id)
 
     "eth_getBlockByNumber"
     |> do_rpc([hex, false], to_rpc_opts(opts))
@@ -438,7 +438,7 @@ defmodule Onchain.RPC do
   end
 
   def get_block_by_number("0x" <> _ = hex_num, opts) do
-    if Onchain.Hex.valid?(hex_num) do
+    if Cartouche.Hex.valid?(hex_num) do
       "eth_getBlockByNumber"
       |> do_rpc([hex_num, false], to_rpc_opts(opts))
       |> decode_get_block_result()
@@ -849,7 +849,7 @@ defmodule Onchain.RPC do
   defp put_estimate_quantity(result, _key, nil), do: {:ok, result}
 
   defp put_estimate_quantity(result, key, n) when is_integer(n) and n >= 0 do
-    {:ok, Map.put(result, key, Onchain.Hex.from_integer(n))}
+    {:ok, Map.put(result, key, Cartouche.Hex.from_integer(n))}
   end
 
   defp put_estimate_quantity(_result, key, other), do: {:error, {:invalid_quantity, key, other}}
@@ -894,7 +894,7 @@ defmodule Onchain.RPC do
   end
 
   defp serialize_storage_keys([key | rest], acc) when is_binary(key) and byte_size(key) == 32 do
-    serialize_storage_keys(rest, [Onchain.Hex.encode(key) | acc])
+    serialize_storage_keys(rest, [Cartouche.Hex.encode(key) | acc])
   end
 
   defp serialize_storage_keys([key | _rest], _acc), do: {:error, {:invalid_storage_key, key}}

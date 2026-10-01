@@ -9,6 +9,10 @@ defmodule Onchain.ENS.CCIP do
   # then queries one of the gateway `urls`, and re-calls `sender` with
   # `callbackFunction(response, extraData)`. That callback may itself revert with
   # another `OffchainLookup`, so the round-trip is a bounded loop.
+  alias Cartouche.Hex
+  alias Onchain.Address
+
+  # keccak256("OffchainLookup(address,string[],bytes,bytes4,bytes)")[0..3]
   #
   # The transport-bearing functions (`fetch/5`) take `call_fun` and `gateway_fun`
   # as explicit arguments so the spec-heavy revert→gateway→callback logic is unit
@@ -16,10 +20,6 @@ defmodule Onchain.ENS.CCIP do
   #
   # Reference: https://eips.ethereum.org/EIPS/eip-3668
 
-  alias Onchain.Address
-  alias Onchain.Hex
-
-  # keccak256("OffchainLookup(address,string[],bytes,bytes4,bytes)")[0..3]
   @offchain_lookup_selector <<0x55, 0x6F, 0x18, 0x30>>
   @offchain_lookup_args "(address,string[],bytes,bytes4,bytes)"
   @callback_args "(bytes,bytes)"
@@ -136,7 +136,7 @@ defmodule Onchain.ENS.CCIP do
   end
 
   # Gateway/resolver payloads are attacker-influenced, so a malformed one is an
-  # expected `:error`, not a crash. Exception set mirrors `Onchain.ABI`'s
+  # expected `:error`, not a crash. Exception set mirrors `ABI`'s
   # `@abi_errors` — see the note there for how each was verified against
   # hieroglyph. Anything outside it is a bug in this module and propagates.
   @spec safe_decode(String.t(), binary()) :: {:ok, list()} | :error

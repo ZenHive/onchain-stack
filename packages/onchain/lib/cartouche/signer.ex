@@ -379,7 +379,7 @@ defmodule Cartouche.Signer do
   defp backend_address({backend, config}) when is_atom(backend) do
     with :ok <- Backend.expect_algorithm(backend, config, :secp256k1),
          {:ok, public_key} <- backend.public_key(config) do
-      {:ok, Cartouche.Address.from_public_key(public_key)}
+      {:ok, Onchain.Address.from_public_key(public_key)}
     end
   end
 
@@ -673,7 +673,7 @@ defmodule Cartouche.Signer do
   end
 
   def encode_transaction(%V2{} = signed_trx) do
-    {:ok, signed_trx |> V2.encode() |> Onchain.Hex.encode()}
+    {:ok, signed_trx |> V2.encode() |> Cartouche.Hex.encode()}
   end
 
   api(:encode_transaction!, "Encode a signed transaction to 0x-prefixed hex for broadcast. Raises on error.",
@@ -791,7 +791,7 @@ defmodule Cartouche.Signer do
     %{
       from: from,
       to: to,
-      data: Onchain.Hex.encode(calldata),
+      data: Cartouche.Hex.encode(calldata),
       value: Cartouche.Wei.to_wei(Keyword.get(opts, :value, 0)),
       access_list: Keyword.get(opts, :access_list, [])
     }

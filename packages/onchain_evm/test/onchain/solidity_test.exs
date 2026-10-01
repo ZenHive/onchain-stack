@@ -78,7 +78,7 @@ defmodule Onchain.SolidityTest do
       assert func.selector == "0x70a08231"
     end
 
-    test "return_type is compatible with Onchain.ABI.decode_response/2" do
+    test "return_type is compatible with ABI.decode_response/2" do
       json = File.read!(Path.join(@priv_abis, "chainlink_aggregator.json"))
       assert {:ok, abi} = Solidity.parse_abi_json(json)
 
@@ -86,10 +86,10 @@ defmodule Onchain.SolidityTest do
       decimals = find_function(abi, "decimals")
 
       # encode_call should work with the parsed signature
-      assert {:ok, _calldata} = Onchain.ABI.encode_call(decimals.signature, [])
+      assert {:ok, _calldata} = ABI.encode_hex_call(decimals.signature, [])
 
       # The selector from encoding should match the parsed selector
-      {:ok, calldata} = Onchain.ABI.encode_call(decimals.signature, [])
+      {:ok, calldata} = ABI.encode_hex_call(decimals.signature, [])
       # calldata is "0x" + 4-byte selector + params — selector starts at same position
       assert String.slice(calldata, 0, 10) == decimals.selector
     end
@@ -543,13 +543,13 @@ defmodule Onchain.SolidityTest do
     end
   end
 
-  describe "roundtrip with Onchain.ABI" do
+  describe "roundtrip with ABI" do
     test "parsed signatures produce matching selectors when encoded" do
       json = File.read!(Path.join(@priv_abis, "aave_pool.json"))
       assert {:ok, abi} = Solidity.parse_abi_json(json)
 
       for func <- abi.functions, func.inputs != [] do
-        {:ok, calldata} = Onchain.ABI.encode_call(func.signature, dummy_args(func.inputs))
+        {:ok, calldata} = ABI.encode_hex_call(func.signature, dummy_args(func.inputs))
         encoded_selector = String.slice(calldata, 0, 10)
 
         assert encoded_selector == func.selector,

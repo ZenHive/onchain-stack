@@ -1,9 +1,8 @@
 defmodule Onchain.ERC7730.IntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.ABI
+  alias Cartouche.Hex
   alias Onchain.ERC7730
-  alias Onchain.Hex
   alias Onchain.RPCCase
 
   @moduletag :integration
@@ -17,7 +16,7 @@ defmodule Onchain.ERC7730.IntegrationTest do
   test "renders real ERC-20 transfer calldata, resolving token metadata over RPC" do
     rpc_url = RPCCase.rpc_url!()
     {:ok, descriptor} = ERC7730.load(Path.join(@fixtures, "erc20-transfer.json"))
-    calldata = ABI.encode_call!("transfer(address,uint256)", [Hex.decode!(@recipient), 2_500_000])
+    calldata = ABI.encode_hex_call!("transfer(address,uint256)", [Hex.decode!(@recipient), 2_500_000])
 
     assert {:ok, fields} = ERC7730.format(descriptor, {:calldata, @usdc, 1, calldata}, rpc_url: rpc_url)
 

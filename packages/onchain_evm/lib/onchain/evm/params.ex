@@ -238,7 +238,7 @@ defmodule Onchain.EVM.Params do
 
   @spec parse_u256_hex(term()) :: {:ok, String.t()} | :error
   defp parse_u256_hex("0x" <> rest = hex) do
-    if Onchain.Hex.valid?(hex) do
+    if Cartouche.Hex.valid?(hex) do
       case Integer.parse(rest, 16) do
         {n, ""} when n <= @u256_max -> {:ok, hex}
         _ -> :error

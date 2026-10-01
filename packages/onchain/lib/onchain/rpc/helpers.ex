@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.Helpers do
   @moduledoc false
 
-  # Shared helpers for RPC-adjacent modules (Onchain.RPC, Onchain.Block, etc.).
+  # Shared helpers for RPC-adjacent modules (Onchain.RPC, Cartouche.Block, etc.).
   # Provides input validation, block normalization, option mapping, and RPC dispatch.
 
   require Logger
@@ -43,11 +43,11 @@ defmodule Onchain.RPC.Helpers do
   end
 
   # When Cartouche attaches execution-revert bytes as `:revert`, mirror them as
-  # `:data` (0x hex) so callers can pass the map straight to `Onchain.ABI.decode_error/2`.
+  # `:data` (0x hex) so callers can pass the map straight to `ABI.decode_hex_error/2`.
   @doc false
   @spec maybe_put_revert_data_hex(map()) :: map()
   def maybe_put_revert_data_hex(%{revert: revert} = map) when is_binary(revert) do
-    Map.put_new(map, :data, Onchain.Hex.encode(revert))
+    Map.put_new(map, :data, Cartouche.Hex.encode(revert))
   end
 
   def maybe_put_revert_data_hex(map), do: map
@@ -64,14 +64,14 @@ defmodule Onchain.RPC.Helpers do
   # wildly different on-chain address.
   @spec ensure_hex_address(term()) :: {:ok, String.t()} | {:error, term()}
   def ensure_hex_address("0x" <> rest = input) when byte_size(rest) == 40 do
-    if Onchain.Hex.valid?(input),
+    if Cartouche.Hex.valid?(input),
       do: {:ok, "0x" <> String.downcase(rest)},
       else: {:error, {:invalid_address, input}}
   end
 
   def ensure_hex_address(<<"0x", _::binary>> = input), do: {:error, {:invalid_address, input}}
 
-  def ensure_hex_address(bin) when is_binary(bin) and byte_size(bin) == 20, do: {:ok, Onchain.Hex.encode(bin)}
+  def ensure_hex_address(bin) when is_binary(bin) and byte_size(bin) == 20, do: {:ok, Cartouche.Hex.encode(bin)}
 
   def ensure_hex_address(input), do: {:error, {:invalid_address, input}}
 
@@ -81,7 +81,7 @@ defmodule Onchain.RPC.Helpers do
   @spec ensure_hex_data(term()) :: {:ok, String.t()} | {:error, term()}
   def ensure_hex_data("0x" <> rest = data) do
     cond do
-      not Onchain.Hex.valid?(data) -> {:error, {:invalid_data, data}}
+      not Cartouche.Hex.valid?(data) -> {:error, {:invalid_data, data}}
       rem(byte_size(rest), 2) != 0 -> {:error, {:invalid_data, data}}
       true -> {:ok, data}
     end
@@ -94,10 +94,10 @@ defmodule Onchain.RPC.Helpers do
   # Accepts tag strings, non-negative integers (converted to hex), and "0x..." hex strings.
   @spec normalize_block(term()) :: {:ok, String.t()} | {:error, term()}
   def normalize_block(tag) when tag in @block_tags, do: {:ok, tag}
-  def normalize_block(n) when is_integer(n) and n >= 0, do: {:ok, Onchain.Hex.from_integer(n)}
+  def normalize_block(n) when is_integer(n) and n >= 0, do: {:ok, Cartouche.Hex.from_integer(n)}
 
   def normalize_block("0x" <> _ = hex) do
-    if Onchain.Hex.valid?(hex), do: {:ok, hex}, else: {:error, {:invalid_block, hex}}
+    if Cartouche.Hex.valid?(hex), do: {:ok, hex}, else: {:error, {:invalid_block, hex}}
   end
 
   def normalize_block(other), do: {:error, {:invalid_block, other}}
@@ -106,10 +106,10 @@ defmodule Onchain.RPC.Helpers do
   # Normalizes a concrete block number for RPC params that require a quantity (not a tag).
   # Accepts non-negative integers (converted to hex) and "0x..." hex strings; rejects block tags.
   @spec normalize_block_number(term()) :: {:ok, String.t()} | {:error, term()}
-  def normalize_block_number(n) when is_integer(n) and n >= 0, do: {:ok, Onchain.Hex.from_integer(n)}
+  def normalize_block_number(n) when is_integer(n) and n >= 0, do: {:ok, Cartouche.Hex.from_integer(n)}
 
   def normalize_block_number("0x" <> _ = hex) do
-    if Onchain.Hex.valid?(hex), do: {:ok, hex}, else: {:error, {:invalid_block, hex}}
+    if Cartouche.Hex.valid?(hex), do: {:ok, hex}, else: {:error, {:invalid_block, hex}}
   end
 
   def normalize_block_number(other), do: {:error, {:invalid_block, other}}
@@ -119,7 +119,7 @@ defmodule Onchain.RPC.Helpers do
   @spec ensure_tx_hash(term()) :: {:ok, String.t()} | {:error, term()}
   def ensure_tx_hash("0x" <> _ = hash) do
     cond do
-      not Onchain.Hex.valid?(hash) -> {:error, {:invalid_tx_hash, hash}}
+      not Cartouche.Hex.valid?(hash) -> {:error, {:invalid_tx_hash, hash}}
       byte_size(hash) != @tx_hash_hex_length -> {:error, {:invalid_tx_hash, hash}}
       true -> {:ok, hash}
     end
@@ -131,7 +131,7 @@ defmodule Onchain.RPC.Helpers do
   # Validates `eth_feeHistory` block_count: integer in 1..1024 (EIP-1474 cap).
   # Encodes the integer to lowercase 0x hex on success.
   @spec ensure_block_count(term()) :: {:ok, String.t()} | {:error, term()}
-  def ensure_block_count(n) when is_integer(n) and n >= 1 and n <= 1024, do: {:ok, Onchain.Hex.from_integer(n)}
+  def ensure_block_count(n) when is_integer(n) and n >= 1 and n <= 1024, do: {:ok, Cartouche.Hex.from_integer(n)}
 
   def ensure_block_count(other), do: {:error, {:invalid_block_count, other}}
 
@@ -190,6 +190,7 @@ defmodule Onchain.RPC.Helpers do
   end
 
   # --- RPC response parsing helpers ---
+
   # Used by Onchain.RPC and Onchain.Subscription.Parser to convert
   # raw JSON-RPC response fields into normalized Elixir values.
 
@@ -228,7 +229,7 @@ defmodule Onchain.RPC.Helpers do
   def parse_hex_integer(nil), do: nil
 
   def parse_hex_integer(hex) do
-    case Onchain.Hex.to_integer(hex) do
+    case Cartouche.Hex.to_integer(hex) do
       {:ok, n} ->
         n
 
@@ -306,7 +307,7 @@ defmodule Onchain.RPC.Helpers do
   defp parse_block_number(nil), do: {:ok, nil}
 
   defp parse_block_number(hex) do
-    case Onchain.Hex.to_integer(hex) do
+    case Cartouche.Hex.to_integer(hex) do
       {:ok, n} -> {:ok, n}
       {:error, _} -> {:error, {:invalid_block_response, :number, hex}}
     end

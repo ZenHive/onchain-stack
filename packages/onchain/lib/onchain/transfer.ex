@@ -31,7 +31,7 @@ defmodule Onchain.Transfer do
   ## Error Format
 
   - Non-transfer log: `{:error, {:unknown_event, :not_a_transfer}}`
-  - Decode errors: propagated from `Onchain.Log.decode_event/2`
+  - Decode errors: propagated from `ABI.decode_event/3`
 
   ## Functions
 
@@ -49,9 +49,8 @@ defmodule Onchain.Transfer do
   use Descripex, namespace: "/transfer"
 
   alias Cartouche.Filter.Log, as: FilterLog
+  alias Cartouche.Hex
   alias Onchain.Address
-  alias Onchain.Hex
-  alias Onchain.Log
 
   require Logger
 
@@ -68,6 +67,7 @@ defmodule Onchain.Transfer do
                          "address indexed to, uint256 id, uint256 value)"
 
   # ERC-1155: TransferBatch(operator, from, to, ids[], values[])
+
   @transfer_batch_sig "TransferBatch(address indexed operator, address indexed from, " <>
                         "address indexed to, uint256[] ids, uint256[] values)"
 
@@ -251,6 +251,7 @@ defmodule Onchain.Transfer do
   def fetch(filter, opts \\ []) do
     # Wrap topics list in an outer list for eth_getLogs OR semantics at position 0:
     # [[topicA, topicB, topicC]] means "match topicA OR topicB OR topicC as topic0"
+
     filter = Map.put_new(filter, :topics, [transfer_topics()])
 
     with {:ok, logs} <- Cartouche.RPC.eth_get_logs(filter, opts) do
@@ -269,6 +270,7 @@ defmodule Onchain.Transfer do
   )
 
   @spec fetch!(map(), keyword()) :: [t()]
+
   def fetch!(filter, opts \\ []) do
     case fetch(filter, opts) do
       {:ok, result} -> result
@@ -292,11 +294,22 @@ defmodule Onchain.Transfer do
     }
   end
 
+  @spec decode_event(map(), String.t()) :: {:ok, map()} | {:error, term()}
+  defp decode_event(%{data: data, topics: topics}, signature) when is_binary(data) do
+    with {:ok, bytes} <- Hex.decode(data),
+         {:ok, _name, decoded} <- ABI.decode_event(signature, bytes, Enum.map(topics, &Hex.decode!/1)) do
+      {:ok, decoded}
+    end
+  end
+
+  defp decode_event(%{data: nil}, _signature), do: {:error, {:decode_error, :missing_data_field}}
+  defp decode_event(_log, _signature), do: {:error, {:decode_error, :invalid_log_format}}
+
   @doc false
   # Parses an ERC-20 Transfer log: 3 topics + uint256 value in data.
   @spec do_parse_erc20(map()) :: {:ok, t()} | {:error, term()}
   defp do_parse_erc20(log) do
-    with {:ok, decoded} <- Log.decode_event(log, @transfer_sig) do
+    with {:ok, decoded} <- decode_event(log, @transfer_sig) do
       build_transfer(decoded, log, :erc20)
     end
   end
@@ -305,9 +318,9 @@ defmodule Onchain.Transfer do
   # Parses an ERC-721 Transfer log: 4 topics (from, to, tokenId all indexed).
   @spec do_parse_erc721(map()) :: {:ok, t()} | {:error, term()}
   defp do_parse_erc721(log) do
-    with {:ok, decoded} <- Log.decode_event(log, @transfer_721_sig),
+    with {:ok, decoded} <- decode_event(log, @transfer_721_sig),
          {:ok, transfer} <- build_transfer(decoded, log, :erc721) do
-      {:ok, %{transfer | token_id: decoded.tokenId, amount: nil}}
+      {:ok, %{transfer | token_id: decoded["tokenId"], amount: nil}}
     end
   end
 
@@ -315,14 +328,14 @@ defmodule Onchain.Transfer do
   # Parses an ERC-1155 TransferSingle log: 4 topics + (uint256, uint256) in data.
   @spec do_parse_erc1155_single(map()) :: {:ok, t()} | {:error, term()}
   defp do_parse_erc1155_single(log) do
-    with {:ok, decoded} <- Log.decode_event(log, @transfer_single_sig),
+    with {:ok, decoded} <- decode_event(log, @transfer_single_sig),
          {:ok, transfer} <- build_transfer(decoded, log, :erc1155) do
       {:ok,
        %{
          transfer
-         | operator: ensure_checksum(decoded.operator),
-           token_id: decoded.id,
-           amount: decoded.value
+         | operator: ensure_checksum(decoded["operator"]),
+           token_id: decoded["id"],
+           amount: decoded["value"]
        }}
     end
   end
@@ -332,13 +345,13 @@ defmodule Onchain.Transfer do
   # Expands into one struct per (id, value) pair. All share the same log_index.
   @spec do_parse_erc1155_batch(map()) :: {:ok, [t()]} | {:error, term()}
   defp do_parse_erc1155_batch(log) do
-    with {:ok, decoded} <- Log.decode_event(log, @transfer_batch_sig),
+    with {:ok, decoded} <- decode_event(log, @transfer_batch_sig),
          {:ok, base} <- build_transfer(decoded, log, :erc1155) do
-      operator = ensure_checksum(decoded.operator)
+      operator = ensure_checksum(decoded["operator"])
 
       transfers =
-        decoded.ids
-        |> Enum.zip(decoded.values)
+        decoded["ids"]
+        |> Enum.zip(decoded["values"])
         |> Enum.map(fn {id, value} ->
           %{base | operator: operator, token_id: id, amount: value}
         end)
@@ -353,8 +366,8 @@ defmodule Onchain.Transfer do
   @spec build_transfer(map(), map(), :erc20 | :erc721 | :erc1155) ::
           {:ok, t()} | {:error, term()}
   defp build_transfer(decoded, log, standard) do
-    with {:ok, from} <- Address.checksum(decoded.from),
-         {:ok, to} <- Address.checksum(decoded.to),
+    with {:ok, from} <- Address.checksum(decoded["from"]),
+         {:ok, to} <- Address.checksum(decoded["to"]),
          {:ok, token} <- Address.checksum(log.address) do
       {:ok,
        %__MODULE__{
@@ -362,7 +375,7 @@ defmodule Onchain.Transfer do
          to: to,
          token: token,
          token_standard: standard,
-         amount: if(standard == :erc20, do: decoded[:value]),
+         amount: if(standard == :erc20, do: decoded["value"]),
          token_id: nil,
          operator: nil,
          block_number: log.block_number,

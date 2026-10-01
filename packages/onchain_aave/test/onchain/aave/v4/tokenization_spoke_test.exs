@@ -195,12 +195,12 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
       assert {:ok, permit} = TokenizationSpoke.permit_typehash(spoke, rpc_opts)
       assert {:ok, domain} = TokenizationSpoke.domain_separator(spoke, rpc_opts)
 
-      assert deposit == Onchain.Hex.encode(@deposit_hash)
-      assert mint == Onchain.Hex.encode(@mint_hash)
-      assert withdraw == Onchain.Hex.encode(@withdraw_hash)
-      assert redeem == Onchain.Hex.encode(@redeem_hash)
-      assert permit == Onchain.Hex.encode(@permit_hash)
-      assert domain == Onchain.Hex.encode(@domain_hash)
+      assert deposit == Cartouche.Hex.encode(@deposit_hash)
+      assert mint == Cartouche.Hex.encode(@mint_hash)
+      assert withdraw == Cartouche.Hex.encode(@withdraw_hash)
+      assert redeem == Cartouche.Hex.encode(@redeem_hash)
+      assert permit == Cartouche.Hex.encode(@permit_hash)
+      assert domain == Cartouche.Hex.encode(@domain_hash)
     end
 
     test "lookup address is the eth_call target for configured spokes", %{
@@ -276,7 +276,7 @@ defmodule Onchain.Aave.V4.TokenizationSpokeTest do
   end
 
   defp calldata(signature, params) do
-    {:ok, hex} = Onchain.ABI.encode_call(signature, params)
+    {:ok, hex} = ABI.encode_hex_call(signature, params)
     String.downcase(hex)
   end
 

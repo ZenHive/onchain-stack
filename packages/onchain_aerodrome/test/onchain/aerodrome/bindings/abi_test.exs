@@ -21,7 +21,7 @@ defmodule Onchain.Aerodrome.Bindings.AbiTest do
       assert signature == independent_signature
 
       params = Enum.map(selector.types, &sample/1)
-      assert {:ok, "0x" <> calldata} = Onchain.ABI.encode_call(independent_signature, params)
+      assert {:ok, "0x" <> calldata} = ABI.encode_hex_call(independent_signature, params)
       <<expected_selector::binary-size(8), _::binary>> = calldata
       <<actual_selector::binary-size(4), _::binary>> = ExKeccak.hash_256(signature)
       assert Base.encode16(actual_selector, case: :lower) == expected_selector
@@ -38,7 +38,7 @@ defmodule Onchain.Aerodrome.Bindings.AbiTest do
 
       <<_selector::binary-size(4), encoded::binary>> = payload
 
-      assert {:ok, _values} = Onchain.ABI.decode_response(return_type, Onchain.Hex.encode(encoded)),
+      assert {:ok, _values} = ABI.decode_response(return_type, Cartouche.Hex.encode(encoded)),
              "#{file}: #{independent_signature}"
     end
   end
@@ -65,7 +65,7 @@ defmodule Onchain.Aerodrome.Bindings.AbiTest do
     assert {:ok, type} = Abi.return_type("slipstream_helper.json", "getSqrtRatioAtTick")
 
     assert {:ok, [79_228_162_514_264_337_593_543_950_336]} =
-             Onchain.ABI.decode_response(type, golden)
+             ABI.decode_response(type, golden)
   end
 
   test "named decoding raises for a field atom that has never been interned" do
@@ -75,7 +75,7 @@ defmodule Onchain.Aerodrome.Bindings.AbiTest do
     signature = "(uint256 " <> field <> ")"
     data = <<42::unsigned-size(256)>>
     assert [42] = ABI.decode(signature, data)
-    assert {:ok, [42]} = Onchain.ABI.decode_response(signature, Onchain.Hex.encode(data))
+    assert {:ok, [42]} = ABI.decode_response(signature, Cartouche.Hex.encode(data))
 
     assert_raise ArgumentError, ~r/decode_structs: true requires/, fn ->
       ABI.decode(signature, data, decode_structs: true)

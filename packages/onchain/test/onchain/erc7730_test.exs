@@ -1,10 +1,9 @@
 defmodule Onchain.ERC7730Test do
   use ExUnit.Case, async: true
 
-  alias Onchain.ABI
+  alias Cartouche.Hex
   alias Onchain.ERC7730
   alias Onchain.ERC7730.Descriptor
-  alias Onchain.Hex
 
   @fixtures "test/support/fixtures/erc7730"
   @usdc "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
@@ -45,7 +44,7 @@ defmodule Onchain.ERC7730Test do
   describe "format/3 — ERC-20 transfer" do
     setup do
       {:ok, descriptor} = ERC7730.load(fixture("erc20-transfer.json"))
-      calldata = ABI.encode_call!("transfer(address,uint256)", [Hex.decode!(@recipient), 1_500_000])
+      calldata = ABI.encode_hex_call!("transfer(address,uint256)", [Hex.decode!(@recipient), 1_500_000])
       %{descriptor: descriptor, calldata: calldata}
     end
 
@@ -92,7 +91,7 @@ defmodule Onchain.ERC7730Test do
       {:ok, descriptor} = ERC7730.load(fixture("uniswap-v3-router.json"))
 
       calldata =
-        ABI.encode_call!("sweepToken(address,uint256,address)", [
+        ABI.encode_hex_call!("sweepToken(address,uint256,address)", [
           Hex.decode!(@usdc),
           2_000_000,
           Hex.decode!(@recipient)
@@ -106,7 +105,7 @@ defmodule Onchain.ERC7730Test do
       {:ok, descriptor} = ERC7730.load(fixture("uniswap-v3-router.json"))
 
       calldata =
-        ABI.encode_call!("unwrapWETH9(uint256,address)", [500_000_000_000_000_000, Hex.decode!(@recipient)])
+        ABI.encode_hex_call!("unwrapWETH9(uint256,address)", [500_000_000_000_000_000, Hex.decode!(@recipient)])
 
       assert {:ok, fields} = ERC7730.format(descriptor, {:calldata, @router, 1, calldata})
       assert [%{label: "Minimum received", formatted_value: "0.5 ETH"}, %{label: "Recipient"}] = fields
@@ -116,7 +115,7 @@ defmodule Onchain.ERC7730Test do
   describe "format!/3" do
     test "returns the field list directly" do
       {:ok, descriptor} = ERC7730.load(fixture("erc20-transfer.json"))
-      calldata = ABI.encode_call!("transfer(address,uint256)", [Hex.decode!(@recipient), 1_000_000])
+      calldata = ABI.encode_hex_call!("transfer(address,uint256)", [Hex.decode!(@recipient), 1_000_000])
 
       assert [%{label: "To"}, %{label: "Amount"}] =
                ERC7730.format!(descriptor, {:calldata, @usdc, 1, calldata}, tokens: @usdc_tokens)
@@ -124,7 +123,7 @@ defmodule Onchain.ERC7730Test do
 
     test "raises on a binding error" do
       {:ok, descriptor} = ERC7730.load(fixture("erc20-transfer.json"))
-      calldata = ABI.encode_call!("transfer(address,uint256)", [Hex.decode!(@recipient), 1])
+      calldata = ABI.encode_hex_call!("transfer(address,uint256)", [Hex.decode!(@recipient), 1])
 
       assert_raise RuntimeError, ~r/no_deployment_match/, fn ->
         ERC7730.format!(descriptor, {:calldata, @usdc, 42, calldata})

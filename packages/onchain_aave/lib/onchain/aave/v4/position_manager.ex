@@ -29,7 +29,7 @@ defmodule Onchain.Aave.V4.PositionManager do
   | Amount / reserve id / flag | `{:error, {:invalid_amount, input}}`, `{:error, {:invalid_reserve_id, input}}`, `{:error, {:invalid_flag, input}}` |
   | `Onchain.Aave.Contracts.address/2` | `{:error, {:unsupported_network, network}}`, `{:error, {:unknown_contract, key}}` |
   | Taker allowance reverts | `{:error, {:insufficient_borrow_allowance, allowance, required}}`, `{:error, {:insufficient_withdraw_allowance, allowance, required}}` |
-  | `Onchain.ABI.encode_call/2` | `{:error, {:encode_error, reason}}` |
+  | `ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
   | `Onchain.Contract.call/5` | `{:error, {:rpc_error, map}}`, `{:error, {:decode_error, reason}}` |
   | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
 
@@ -60,13 +60,12 @@ defmodule Onchain.Aave.V4.PositionManager do
 
   use Descripex, namespace: "/aave/v4/position_manager"
 
+  alias Cartouche.Hex
   alias Cartouche.Signer
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.Opts
-  alias Onchain.ABI
   alias Onchain.Address
   alias Onchain.Contract
-  alias Onchain.Hex
 
   @type address :: String.t() | binary()
   @type result(value) :: {:ok, value} | {:error, term()}
@@ -86,6 +85,7 @@ defmodule Onchain.Aave.V4.PositionManager do
   @borrow_allowance_sig "borrowAllowance(address,uint256,address,address)"
   @withdraw_allowance_sig "withdrawAllowance(address,uint256,address,address)"
   @set_user_position_manager_sig "setUserPositionManager(address,bool)"
+
   @set_using_as_collateral_sig "setUsingAsCollateral(uint256,bool,address)"
   @set_using_as_collateral_obo_sig "setUsingAsCollateralOnBehalfOf(address,uint256,bool,address)"
   @update_risk_premium_sig "updateUserRiskPremiumOnBehalfOf(address,address)"
@@ -96,6 +96,7 @@ defmodule Onchain.Aave.V4.PositionManager do
 
   @borrow_allowance_error "InsufficientBorrowAllowance(uint256,uint256)"
   @withdraw_allowance_error "InsufficientWithdrawAllowance(uint256,uint256)"
+
   @allowance_errors [@borrow_allowance_error, @withdraw_allowance_error]
 
   @spoke_desc "Spoke contract address as 0x hex string or 20-byte binary"
@@ -105,6 +106,7 @@ defmodule Onchain.Aave.V4.PositionManager do
   @spender_desc "Address receiving (or holding) the Taker allowance"
   @manager_desc "Position manager address to authorize or revoke"
   @delegatee_desc "Address receiving (or holding) a Config permission"
+
   @flag_desc "Boolean flag; rejected unless it is exactly true or false"
   @write_opts_desc "Required: :private_key, :nonce, :chain_id, :rpc_url. Optional: :network (default :ethereum), :gas_limit"
   @read_opts_desc "Options: :network (default :ethereum), :rpc_url, :timeout, :block"
@@ -280,6 +282,7 @@ defmodule Onchain.Aave.V4.PositionManager do
       spender: [kind: :value, description: @spender_desc],
       opts: [kind: :value, default: [], description: @read_opts_desc]
     ],
+    # --- set_using_as_collateral_on_behalf_of ---
     returns: %{type: "{:ok, non_neg_integer()} | {:error, term()}", description: "Current withdraw allowance"}
   )
 
@@ -309,6 +312,8 @@ defmodule Onchain.Aave.V4.PositionManager do
     end
   end
 
+  # --- update_user_risk_premium_on_behalf_of ---
+
   # --- set_using_as_collateral ---
 
   api(:set_using_as_collateral, "Toggle a Spoke reserve as collateral on behalf of a position owner.",
@@ -325,14 +330,13 @@ defmodule Onchain.Aave.V4.PositionManager do
   @spec set_using_as_collateral(address(), non_neg_integer(), boolean(), address(), keyword()) :: result(String.t())
   def set_using_as_collateral(spoke, reserve_id, using_as_collateral, on_behalf_of, opts) do
     with {:ok, _spoke_bin} <- Address.validate(spoke),
+         # --- update_user_dynamic_config_on_behalf_of ---
          {:ok, reserve_id} <- validate_uint(reserve_id, :invalid_reserve_id),
          {:ok, using_as_collateral} <- validate_bool(using_as_collateral),
          {:ok, owner_bin} <- Address.validate(on_behalf_of) do
       send_spoke_tx(spoke, @set_using_as_collateral_sig, [reserve_id, using_as_collateral, owner_bin], opts)
     end
   end
-
-  # --- set_using_as_collateral_on_behalf_of ---
 
   api(
     :set_using_as_collateral_on_behalf_of,
@@ -344,6 +348,7 @@ defmodule Onchain.Aave.V4.PositionManager do
       on_behalf_of: [kind: :value, description: @owner_desc],
       opts: [kind: :value, description: @write_opts_desc]
     ],
+    # --- set_can_set_using_as_collateral_permission ---
     returns: %{type: "{:ok, String.t()} | {:error, term()}", description: @tx_hash_desc}
   )
 
@@ -363,8 +368,6 @@ defmodule Onchain.Aave.V4.PositionManager do
     end
   end
 
-  # --- update_user_risk_premium_on_behalf_of ---
-
   api(
     :update_user_risk_premium_on_behalf_of,
     "Refresh a position owner's Spoke risk premium via the Config Position Manager.",
@@ -381,8 +384,6 @@ defmodule Onchain.Aave.V4.PositionManager do
     config_on_behalf_of_tx(@update_risk_premium_sig, spoke, on_behalf_of, opts)
   end
 
-  # --- update_user_dynamic_config_on_behalf_of ---
-
   api(
     :update_user_dynamic_config_on_behalf_of,
     "Refresh a position owner's Spoke dynamic config via the Config Position Manager.",
@@ -398,8 +399,6 @@ defmodule Onchain.Aave.V4.PositionManager do
   def update_user_dynamic_config_on_behalf_of(spoke, on_behalf_of, opts) do
     config_on_behalf_of_tx(@update_dynamic_config_sig, spoke, on_behalf_of, opts)
   end
-
-  # --- set_can_set_using_as_collateral_permission ---
 
   api(
     :set_can_set_using_as_collateral_permission,
@@ -473,7 +472,7 @@ defmodule Onchain.Aave.V4.PositionManager do
           | {:error, {:insufficient_withdraw_allowance, non_neg_integer(), non_neg_integer()}}
           | {:error, {:unknown_revert, term()}}
   def decode_revert(revert_data) do
-    case ABI.decode_error(revert_hex(revert_data), @allowance_errors) do
+    case ABI.decode_hex_error(revert_hex(revert_data), @allowance_errors) do
       {:ok, %{error: "InsufficientBorrowAllowance", args: [allowance, required]}} ->
         {:error, {:insufficient_borrow_allowance, allowance, required}}
 
@@ -550,7 +549,7 @@ defmodule Onchain.Aave.V4.PositionManager do
   defp send_spoke_tx(spoke, signature, args, opts) do
     {_network_opts, signer_opts} = Opts.split_network(opts)
 
-    with {:ok, calldata_hex} <- ABI.encode_call(signature, args) do
+    with {:ok, calldata_hex} <- ABI.encode_hex_call(signature, args) do
       spoke
       |> Signer.send_transaction(Hex.decode!(calldata_hex), signer_opts)
       |> map_rpc_error()
@@ -562,7 +561,7 @@ defmodule Onchain.Aave.V4.PositionManager do
     {network_opts, signer_opts} = Opts.split_network(opts)
 
     with {:ok, addr} <- Contracts.address(contract_key, network_opts),
-         {:ok, calldata_hex} <- ABI.encode_call(signature, args) do
+         {:ok, calldata_hex} <- ABI.encode_hex_call(signature, args) do
       addr
       |> Signer.send_transaction(Hex.decode!(calldata_hex), signer_opts)
       |> map_rpc_error()

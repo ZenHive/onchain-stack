@@ -25,7 +25,7 @@ defmodule Cartouche.Signer.Secp256k1 do
 
       iex> priv_key = "800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf" |> Base.decode16!(case: :mixed)
       iex> {:ok, pub} = Cartouche.Signer.Secp256k1.public_key(priv_key)
-      iex> Cartouche.Hex.to_address(Cartouche.Address.from_public_key(pub))
+      iex> Cartouche.Hex.to_address(Onchain.Address.from_public_key(pub))
       "0x63Cc7c25e0cdb121aBb0fE477a6b9901889F99A7"
   """
   @impl true
@@ -47,7 +47,7 @@ defmodule Cartouche.Signer.Secp256k1 do
   @spec get_address(binary()) :: {:ok, binary()} | {:error, atom()}
   def get_address(private_key) do
     with {:ok, pub} <- public_key(private_key) do
-      {:ok, Cartouche.Address.from_public_key(pub)}
+      {:ok, Onchain.Address.from_public_key(pub)}
     end
   end
 

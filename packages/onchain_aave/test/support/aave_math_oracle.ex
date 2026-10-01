@@ -8,7 +8,6 @@ defmodule Onchain.Aave.MathOracle do
   alias Onchain.Aave.Math
   alias Onchain.Aave.Math.V4
   alias Onchain.Aave.MathDomains
-  alias Onchain.ABI
   alias Onchain.EVM
 
   @fixtures_dir Path.expand("../fixtures", __DIR__)
@@ -111,7 +110,7 @@ defmodule Onchain.Aave.MathOracle do
           {:ok, non_neg_integer()} | {:error, term()}
   def call_revm(protocol, op, args, opts) do
     address = wrapper_address(protocol)
-    calldata = ABI.encode_call!(signature(protocol, op), args)
+    calldata = ABI.encode_hex_call!(signature(protocol, op), args)
 
     case EVM.simulate_call(address, calldata, opts) do
       {:ok, hex} ->

@@ -73,14 +73,15 @@ defmodule Onchain.AA do
   import Bitwise
 
   alias Cartouche.Hash
+  alias Cartouche.Hex
   alias Cartouche.Signer.Secp256k1, as: Secp256k1Signer
   alias Onchain.AA.UserOperation
   alias Onchain.Address
-  alias Onchain.Hex
   alias Onchain.RPC
 
   @entry_point_v0_6 "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"
   @entry_point_v0_7 "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
+
   @versions [:v0_6, :v0_7]
   @eip191_prefix "\x19Ethereum Signed Message:\n32"
   @tx_hash_hex_length 66
@@ -89,6 +90,7 @@ defmodule Onchain.AA do
   @uint256_fields ~w(nonce call_gas_limit verification_gas_limit pre_verification_gas
                      max_fee_per_gas max_priority_fee_per_gas)a
   @optional_uint128_fields ~w(paymaster_verification_gas_limit paymaster_post_op_gas_limit)a
+
   @hex_fields ~w(init_code call_data paymaster_and_data signature)a
   @optional_hex_fields ~w(factory factory_data paymaster paymaster_data)a
   @known_keys [:sender | @uint256_fields ++ @optional_uint128_fields ++ @hex_fields ++ @optional_hex_fields]
@@ -255,6 +257,7 @@ defmodule Onchain.AA do
 
   @spec send_user_operation(UserOperation.t(), String.t() | binary(), keyword()) ::
           {:ok, term()} | {:error, term()}
+
   def send_user_operation(%UserOperation{} = user_op, entry_point, opts \\ []) do
     bundler_call("eth_sendUserOperation", user_op, entry_point, opts)
   end

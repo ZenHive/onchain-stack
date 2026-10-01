@@ -17,6 +17,10 @@ defmodule ABI do
   hieroglyph.manifest` wrapper ships in 1.2.0 alongside Phase 3 of the agent
   economy work — see CHANGELOG). Downstream consumers may diff that manifest
   across hieroglyph version bumps as a contract-stability check.
+
+  Hex-string callers can use `encode_hex_call/2`, `decode_hex_call/3`,
+  `decode_hex_error/3`, and `decode_response/3` (also `decode_types/3`). These
+  conveniences share the binary codecs and return tagged error tuples.
   """
 
   use Descripex, namespace: "/abi"
@@ -1149,6 +1153,7 @@ defmodule ABI do
   defp resolve_abi_item_matches(matches, nil), do: {:error, {:ambiguous, matches}}
 
   @spec input_types(FunctionSelector.t()) :: [FunctionSelector.type()]
+
   defp input_types(%FunctionSelector{types: types}), do: Enum.map(types, & &1.type)
 
   api(
@@ -1227,8 +1232,310 @@ defmodule ABI do
       ...> |> ABI.parse_specification
       [%ABI.FunctionSelector{function: nil, function_type: :fallback, state_mutability: :nonpayable, returns: nil, types: []}]
   """
+
   @spec parse_specification([map()]) :: [FunctionSelector.t()]
   def parse_specification(doc) do
     Enum.map(doc, &FunctionSelector.parse_specification_item/1)
   end
+
+  # Exceptions hieroglyph raises on malformed signatures, params, or payloads. These
+  # are the *input* failure modes this module converts into `{:error, {_, reason}}`
+  # tuples; anything outside the list (UndefinedFunctionError from a typo'd call,
+  # BadArityError, KeyError) is a bug here and must propagate.
+  #
+  # Verified against hieroglyph by probing each entry point:
+  #   MatchError                       unparseable signature / truncated or malformed payload
+  #   RuntimeError                     signature/params arity mismatch
+  #   FunctionClauseError              unknown type, nil/map param
+  #   CaseClauseError                  word outside the type's domain (e.g. bool /= 0|1)
+  #   ArgumentError                    explicit spec violations (packed mode, parser)
+  #   ABI.TypeDecoder.StrictViolation  strict-mode decode violation
+  @abi_errors [
+    StrictViolation,
+    ArgumentError,
+    CaseClauseError,
+    FunctionClauseError,
+    MatchError,
+    RuntimeError
+  ]
+
+  api(:encode_hex_call, "Encode a function call to 0x-prefixed hex calldata.",
+    params: [
+      signature: [kind: :value, description: "Function signature, e.g. \"balanceOf(address)\""],
+      params: [kind: :value, description: "List of parameter values matching the signature"]
+    ],
+    returns: %{
+      type: "{:ok, hex_string} | {:error, {:encode_error, reason}}",
+      description: "0x-prefixed hex-encoded calldata",
+      example: "0x70a08231..."
+    }
+  )
+
+  @spec encode_hex_call(String.t(), list()) :: {:ok, String.t()} | {:error, {:encode_error, term()}}
+  def encode_hex_call(signature, params) do
+    {:ok, Cartouche.Hex.encode(ABI.encode(signature, params))}
+  rescue
+    e in @abi_errors -> {:error, {:encode_error, Exception.message(e)}}
+  end
+
+  api(:encode_hex_call!, "Encode a function call to 0x-prefixed hex calldata. Raises on error.",
+    params: [
+      signature: [kind: :value, description: "Function signature, e.g. \"balanceOf(address)\""],
+      params: [kind: :value, description: "List of parameter values matching the signature"]
+    ],
+    returns: %{type: :string, description: "0x-prefixed hex-encoded calldata"}
+  )
+
+  @spec encode_hex_call!(String.t(), list()) :: String.t()
+  def encode_hex_call!(signature, params) do
+    Cartouche.Hex.encode(ABI.encode(signature, params))
+  end
+
+  api(:decode_response, "Decode hex-encoded ABI response data to Elixir values.",
+    params: [
+      type_signature: [
+        kind: :value,
+        description:
+          ~s{Tuple type signature wrapped in parentheses, e.g. "(uint256)" or "(uint256,bool)". Bare comma-separated types like "uint256,bool" are NOT accepted and raise an unhelpful upstream error.}
+      ],
+      hex_data: [kind: :value, description: "0x-prefixed hex string of ABI-encoded data"],
+      opts: [
+        kind: :value,
+        default: [],
+        description:
+          ~s|Forwarded to hieroglyph's `ABI.decode/3`. Pass `strict: true` to reject non-canonical padding, trailing bytes, and over-long dynamic length prefixes (`{:error, {:decode_error, {:strict_violation, detail}}}`). Pass `decode_structs: true` for a named-field map instead of a positional list.|
+      ]
+    ],
+    returns: %{
+      type: "{:ok, list | map} | {:error, {:decode_error, reason}}",
+      description:
+        "List of decoded values (or map when `decode_structs: true`). `reason` may be `{:strict_violation, detail}` when `strict: true`."
+    }
+  )
+
+  @spec decode_response(String.t(), String.t(), keyword()) ::
+          {:ok, list() | map()} | {:error, {:decode_error, term()}}
+  def decode_response(type_signature, hex_data, opts \\ []) do
+    case Cartouche.Hex.decode(hex_data) do
+      {:ok, binary} ->
+        wrap_decoded(ABI.decode(type_signature, binary, opts))
+
+      {:error, {:invalid_hex, _} = reason} ->
+        {:error, {:decode_error, reason}}
+    end
+  rescue
+    e in @abi_errors -> {:error, {:decode_error, Exception.message(e)}}
+  end
+
+  api(:decode_response!, "Decode hex-encoded ABI response data to Elixir values. Raises on error.",
+    params: [
+      type_signature: [
+        kind: :value,
+        description:
+          ~s{Tuple type signature wrapped in parentheses, e.g. "(uint256)" or "(uint256,bool)". Bare comma-separated types are NOT accepted.}
+      ],
+      hex_data: [kind: :value, description: "0x-prefixed hex string of ABI-encoded data"],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "Forwarded to hieroglyph's `ABI.decode/3` (e.g. `strict: true`)"
+      ]
+    ],
+    returns: %{type: :union, description: "List of decoded values (or map when `decode_structs: true`)"}
+  )
+
+  @spec decode_response!(String.t(), String.t(), keyword()) :: list() | map()
+  def decode_response!(type_signature, hex_data, opts \\ []) do
+    case ABI.decode(type_signature, Cartouche.Hex.decode!(hex_data), opts) do
+      {:error, {:strict_violation, _} = reason} ->
+        raise "decode_response failed: #{inspect({:decode_error, reason})}"
+
+      decoded ->
+        decoded
+    end
+  end
+
+  api(:decode_types, "Decode arbitrary ABI-encoded hex data. Alias of decode_response/3.",
+    params: [
+      type_signature: [
+        kind: :value,
+        description:
+          ~s{Tuple type signature wrapped in parentheses, e.g. "(uint256)" or "(uint256,bool)". Bare comma-separated types are NOT accepted.}
+      ],
+      hex_data: [kind: :value, description: "0x-prefixed hex string of ABI-encoded data"],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "Forwarded to decode_response/3 (e.g. `strict: true`)"
+      ]
+    ],
+    returns: %{
+      type: "{:ok, list | map} | {:error, {:decode_error, reason}}",
+      description:
+        "List of decoded values. Identical to decode_response/3 — use this name when the input isn't an RPC response (mempool calldata, custom ABI payloads)."
+    }
+  )
+
+  @spec decode_types(String.t(), String.t(), keyword()) ::
+          {:ok, list() | map()} | {:error, {:decode_error, term()}}
+  def decode_types(type_signature, hex_data, opts \\ []), do: decode_response(type_signature, hex_data, opts)
+
+  api(:decode_types!, "Decode arbitrary ABI-encoded hex data. Alias of decode_response!/3.",
+    params: [
+      type_signature: [
+        kind: :value,
+        description:
+          ~s{Tuple type signature wrapped in parentheses, e.g. "(uint256)" or "(uint256,bool)". Bare comma-separated types are NOT accepted.}
+      ],
+      hex_data: [kind: :value, description: "0x-prefixed hex string of ABI-encoded data"],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "Forwarded to decode_response!/3 (e.g. `strict: true`)"
+      ]
+    ],
+    returns: %{type: :union, description: "List of decoded values (or map when `decode_structs: true`)"}
+  )
+
+  @spec decode_types!(String.t(), String.t(), keyword()) :: list() | map()
+  def decode_types!(type_signature, hex_data, opts \\ []), do: decode_response!(type_signature, hex_data, opts)
+
+  api(:decode_hex_call, "Decode selector-prefixed calldata to function args.",
+    params: [
+      signature_or_selector: [
+        kind: :value,
+        description:
+          ~s{Function signature like "transfer(address,uint256)" OR a hieroglyph FunctionSelector struct. The 4-byte selector of the signature must match the first 4 bytes of calldata.}
+      ],
+      hex_calldata: [
+        kind: :value,
+        description: "0x-prefixed hex string of selector-prefixed ABI-encoded calldata"
+      ],
+      opts: [
+        kind: :value,
+        default: [],
+        description:
+          ~s|Forwarded to hieroglyph's `ABI.decode_call/3`. Pass `decode_structs: true` for a named-field map instead of a positional list. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`).|
+      ]
+    ],
+    returns: %{
+      type: "{:ok, list | map} | {:error, {:decode_error, reason}}",
+      description:
+        ~s|List of args (or map when `decode_structs: true`). Error reasons: `:calldata_too_short`, `:selector_mismatch`, `:no_function_name`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string.|
+    }
+  )
+
+  @spec decode_hex_call(String.t() | FunctionSelector.t(), String.t(), keyword()) ::
+          {:ok, list() | map()} | {:error, {:decode_error, term()}}
+  def decode_hex_call(signature_or_selector, hex_calldata, opts \\ []) do
+    with {:ok, binary} <- Cartouche.Hex.decode(hex_calldata),
+         {:ok, decoded} <- ABI.decode_call(signature_or_selector, binary, opts) do
+      {:ok, decoded}
+    else
+      {:error, reason} -> {:error, {:decode_error, reason}}
+    end
+  rescue
+    e in @abi_errors -> {:error, {:decode_error, Exception.message(e)}}
+  end
+
+  api(:decode_hex_call!, "Decode selector-prefixed calldata. Raises on error.",
+    params: [
+      signature_or_selector: [
+        kind: :value,
+        description: "Function signature string or hieroglyph FunctionSelector struct"
+      ],
+      hex_calldata: [
+        kind: :value,
+        description: "0x-prefixed hex string of selector-prefixed calldata"
+      ],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "Forwarded to hieroglyph's `ABI.decode_call/3` (e.g. `decode_structs: true`, `strict: true`)"
+      ]
+    ],
+    returns: %{
+      type: "list | map",
+      description: "List of decoded args (or map when `decode_structs: true`)"
+    }
+  )
+
+  @spec decode_hex_call!(String.t() | FunctionSelector.t(), String.t(), keyword()) ::
+          list() | map()
+  def decode_hex_call!(signature_or_selector, hex_calldata, opts \\ []) do
+    {:ok, decoded} = ABI.decode_call(signature_or_selector, Cartouche.Hex.decode!(hex_calldata), opts)
+    decoded
+  end
+
+  api(
+    :decode_hex_error,
+    "Decode Solidity 0.8.4+ custom-error revert data against a list of candidate error signatures.",
+    params: [
+      hex_revert_data: [
+        kind: :value,
+        description: "0x-prefixed hex string of revert data (4-byte error selector + ABI-encoded args)"
+      ],
+      error_definitions: [
+        kind: :value,
+        description:
+          ~s{List of candidate error signatures like ["InsufficientBalance(uint256,uint256)", "Unauthorized()"] (or hieroglyph FunctionSelector structs). The first one whose 4-byte selector matches the prefix of `hex_revert_data` decodes the args.}
+      ],
+      opts: [
+        kind: :value,
+        default: [],
+        description:
+          ~s|Forwarded to hieroglyph's `ABI.decode_error/3`. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`).|
+      ]
+    ],
+    returns: %{
+      type: "{:ok, %{error: name, args: list}} | {:error, {:decode_error, reason}}",
+      description:
+        ~s|Map with the matched error name (or `nil`) and decoded args. Error reasons: `:calldata_too_short`, `:no_match`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string.|
+    }
+  )
+
+  @spec decode_hex_error(String.t(), [String.t() | FunctionSelector.t()], keyword()) ::
+          {:ok, %{error: String.t() | nil, args: list() | map()}}
+          | {:error, {:decode_error, term()}}
+  def decode_hex_error(hex_revert_data, error_definitions, opts \\ []) do
+    with {:ok, binary} <- Cartouche.Hex.decode(hex_revert_data),
+         {:ok, decoded} <- ABI.decode_error(binary, error_definitions, opts) do
+      {:ok, decoded}
+    else
+      {:error, reason} -> {:error, {:decode_error, reason}}
+    end
+  rescue
+    e in @abi_errors -> {:error, {:decode_error, Exception.message(e)}}
+  end
+
+  api(:decode_hex_error!, "Decode custom-error revert data. Raises on error.",
+    params: [
+      hex_revert_data: [kind: :value, description: "0x-prefixed hex string of revert data"],
+      error_definitions: [
+        kind: :value,
+        description: "List of candidate error signatures or FunctionSelector structs"
+      ],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "Forwarded to hieroglyph's `ABI.decode_error/3` (e.g. `strict: true`)"
+      ]
+    ],
+    returns: %{
+      type: "%{error: name, args: list}",
+      description: "Map with the matched error name and decoded args"
+    }
+  )
+
+  @spec decode_hex_error!(String.t(), [String.t() | FunctionSelector.t()], keyword()) ::
+          %{error: String.t() | nil, args: list() | map()}
+  def decode_hex_error!(hex_revert_data, error_definitions, opts \\ []) do
+    {:ok, decoded} = ABI.decode_error(Cartouche.Hex.decode!(hex_revert_data), error_definitions, opts)
+    decoded
+  end
+
+  @doc false
+  @spec wrap_decoded(term()) :: {:ok, list() | map()} | {:error, {:decode_error, term()}}
+  defp wrap_decoded({:error, {:strict_violation, _} = reason}), do: {:error, {:decode_error, reason}}
+  defp wrap_decoded(decoded), do: {:ok, decoded}
 end

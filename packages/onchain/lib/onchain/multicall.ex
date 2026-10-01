@@ -24,10 +24,9 @@ defmodule Onchain.Multicall do
 
   use Descripex, namespace: "/multicall"
 
-  alias Onchain.ABI
+  alias Cartouche.Hex
   alias Onchain.Address
   alias Onchain.Contract
-  alias Onchain.Hex
 
   @multicall3_address "0xcA11bde05977b3631167028862bE2a173976CA11"
 
@@ -75,6 +74,7 @@ defmodule Onchain.Multicall do
   )
 
   @spec aggregate3!([{String.t(), boolean(), String.t()}], keyword()) :: [{boolean(), binary()}]
+
   def aggregate3!(calls, opts \\ []) do
     case aggregate3(calls, opts) do
       {:ok, results} -> results
@@ -122,6 +122,7 @@ defmodule Onchain.Multicall do
     returns: %{type: "[result]", description: "List of {:ok, values} or {:error, data}"}
   )
 
+  # --- Private helpers ---
   @spec call_many!([{String.t() | binary(), String.t(), list(), String.t()}], keyword()) ::
           [{:ok, list()} | {:error, String.t()}]
   def call_many!(calls, opts \\ []) do
@@ -130,8 +131,6 @@ defmodule Onchain.Multicall do
       {:error, reason} -> raise "call_many failed: #{inspect(reason)}"
     end
   end
-
-  # --- Private helpers ---
 
   @doc false
   # Decodes a single multicall result against its call spec.
@@ -170,7 +169,7 @@ defmodule Onchain.Multicall do
     calls
     |> Enum.reduce_while({:ok, []}, fn {addr, signature, params, _return_type}, {:ok, acc} ->
       with {:ok, hex_addr} <- validate_and_hex(addr),
-           {:ok, calldata} <- ABI.encode_call(signature, params) do
+           {:ok, calldata} <- ABI.encode_hex_call(signature, params) do
         {:cont, {:ok, [{hex_addr, true, calldata} | acc]}}
       else
         error -> {:halt, error}

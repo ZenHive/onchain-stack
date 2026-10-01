@@ -31,6 +31,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
 
   use ExUnit.Case, async: false
 
+  alias Cartouche.Hex
   alias Cartouche.Signer
   alias Cartouche.Transaction
   alias Cartouche.Transaction.V2
@@ -39,9 +40,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
   alias Onchain.Aave.V4.PositionManager
   alias Onchain.Aave.V4.Spoke
   alias Onchain.Aave.V4.TokenizationSpoke
-  alias Onchain.ABI
   alias Onchain.EVM
-  alias Onchain.Hex
   alias Onchain.RPCCase
   alias Onchain.RPCStub
 
@@ -667,7 +666,7 @@ defmodule Onchain.Aave.V4.DeployedIntegrationTest do
 
   @spec encoded_call(String.t(), String.t(), [term()]) :: {String.t(), String.t()}
   defp encoded_call(address, signature, args) do
-    assert {:ok, data} = ABI.encode_call(signature, args)
+    assert {:ok, data} = ABI.encode_hex_call(signature, args)
     {address, data}
   end
 

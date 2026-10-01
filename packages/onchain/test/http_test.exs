@@ -1,5 +1,5 @@
 defmodule Cartouche.HTTPTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Cartouche.HTTP
 
@@ -31,6 +31,30 @@ defmodule Cartouche.HTTPTest do
     test "maps unknown (non-exception) errors into an error string" do
       assert {:error, "[Cartouche] Unknown error: :nope"} =
                HTTP.normalize_response({:error, :nope})
+    end
+  end
+
+  test "CCIP and RPC keep their application seams and option precedence" do
+    for {app, owner} <- [{:onchain, Onchain.ENS}, {:cartouche, Cartouche.RPC}] do
+      original_owner = Application.fetch_env(app, owner)
+      original_global = Application.fetch_env(app, :req_options)
+
+      on_exit(fn ->
+        for {key, value} <- [{owner, original_owner}, {:req_options, original_global}] do
+          case value do
+            {:ok, config} -> Application.put_env(app, key, config)
+            :error -> Application.delete_env(app, key)
+          end
+        end
+      end)
+
+      Application.put_env(app, owner, receive_timeout: 2, plug: :owner)
+      Application.put_env(app, :req_options, receive_timeout: 3)
+
+      assert HTTP.req_options(owner, [receive_timeout: 1, retry: false], []) ==
+               [retry: false, plug: :owner, receive_timeout: 3]
+
+      assert HTTP.req_options(owner, [], req_options: [receive_timeout: 4])[:receive_timeout] == 4
     end
   end
 end

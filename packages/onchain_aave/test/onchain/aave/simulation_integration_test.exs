@@ -14,11 +14,10 @@ defmodule Onchain.Aave.SimulationIntegrationTest do
 
   use ExUnit.Case, async: false
 
+  alias Cartouche.Hex
   alias Onchain.Aave.Oracle
   alias Onchain.Aave.Types.UserAccountData
-  alias Onchain.ABI
   alias Onchain.EVM
-  alias Onchain.Hex
   alias Onchain.RPC
   alias Onchain.RPCCase
 
@@ -63,7 +62,7 @@ defmodule Onchain.Aave.SimulationIntegrationTest do
       # getReserveNormalizedIncome runs MathUtils.calculateLinearInterest, which
       # subtracts the reserve's lastUpdateTimestamp from block.timestamp. A fork
       # left at a 1970 clock underflows here instead of returning an index.
-      {:ok, data} = ABI.encode_call("getReserveNormalizedIncome(address)", [address_bin(@weth)])
+      {:ok, data} = ABI.encode_hex_call("getReserveNormalizedIncome(address)", [address_bin(@weth)])
       {:ok, out} = EVM.simulate_call(@pool, data, [block: @block] ++ rpc_opts())
       {:ok, [index]} = ABI.decode_types("(uint256)", out)
 
@@ -77,7 +76,7 @@ defmodule Onchain.Aave.SimulationIntegrationTest do
       overrides = %{@weth => %{"storage" => weth_balance_override(@supply_amount)}}
       opts = [block: @block, state_overrides: overrides] ++ rpc_opts()
 
-      {:ok, balance_data} = ABI.encode_call("balanceOf(address)", [address_bin(@user)])
+      {:ok, balance_data} = ABI.encode_hex_call("balanceOf(address)", [address_bin(@user)])
       {:ok, balance_out} = EVM.simulate_call(@weth, balance_data, opts)
       {:ok, [balance]} = ABI.decode_types("(uint256)", balance_out)
 
@@ -93,17 +92,17 @@ defmodule Onchain.Aave.SimulationIntegrationTest do
 
   describe "Aave write paths on a fork" do
     test "approve, supply and read back the position on one fork" do
-      {:ok, approve} = ABI.encode_call("approve(address,uint256)", [address_bin(@pool), @supply_amount])
+      {:ok, approve} = ABI.encode_hex_call("approve(address,uint256)", [address_bin(@pool), @supply_amount])
 
       {:ok, supply} =
-        ABI.encode_call("supply(address,uint256,address,uint16)", [
+        ABI.encode_hex_call("supply(address,uint256,address,uint16)", [
           address_bin(@weth),
           @supply_amount,
           address_bin(@user),
           0
         ])
 
-      {:ok, query} = ABI.encode_call("getUserAccountData(address)", [address_bin(@user)])
+      {:ok, query} = ABI.encode_hex_call("getUserAccountData(address)", [address_bin(@user)])
 
       {:ok, [approve_result, supply_result, query_result]} =
         EVM.simulate_batch(

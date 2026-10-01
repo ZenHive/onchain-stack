@@ -15,7 +15,7 @@ defmodule Onchain.ERC20 do
   |--------|-------------|
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
   | `Onchain.Contract.call/5` | `{:error, {:encode_error, ...}}`, `{:error, {:rpc_error, ...}}`, `{:error, {:decode_error, ...}}` |
-  | `Onchain.ABI.encode_call/2` | `{:error, {:encode_error, ...}}` |
+  | `ABI.encode_hex_call/2` | `{:error, {:encode_error, ...}}` |
   | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
 
   ## Functions
@@ -38,12 +38,11 @@ defmodule Onchain.ERC20 do
 
   use Descripex, namespace: "/erc20"
 
+  alias Cartouche.Hex
   alias Cartouche.Signer
-  alias Onchain.ABI
   alias Onchain.Address
   alias Onchain.Contract
   alias Onchain.ERC.Helpers
-  alias Onchain.Hex
 
   # --- balance_of ---
 
@@ -270,7 +269,7 @@ defmodule Onchain.ERC20 do
           {:ok, String.t()} | {:error, term()}
   def approve(token, spender, amount, opts) do
     with {:ok, spender_bin} <- Address.validate(spender),
-         {:ok, calldata_hex} <- ABI.encode_call("approve(address,uint256)", [spender_bin, amount]) do
+         {:ok, calldata_hex} <- ABI.encode_hex_call("approve(address,uint256)", [spender_bin, amount]) do
       Signer.send_transaction(token, Hex.decode!(calldata_hex), opts)
     end
   end
@@ -323,7 +322,7 @@ defmodule Onchain.ERC20 do
           {:ok, String.t()} | {:error, term()}
   def transfer(token, to, amount, opts) do
     with {:ok, to_bin} <- Address.validate(to),
-         {:ok, calldata_hex} <- ABI.encode_call("transfer(address,uint256)", [to_bin, amount]) do
+         {:ok, calldata_hex} <- ABI.encode_hex_call("transfer(address,uint256)", [to_bin, amount]) do
       Signer.send_transaction(token, Hex.decode!(calldata_hex), opts)
     end
   end
@@ -350,6 +349,255 @@ defmodule Onchain.ERC20 do
     case transfer(token, to, amount, opts) do
       {:ok, tx_hash} -> tx_hash
       {:error, reason} -> raise "transfer failed: #{inspect(reason)}"
+    end
+  end
+
+  @type call_opts() :: Keyword.t()
+  @type exec_opts() :: Keyword.t()
+
+  @errors []
+
+  api(:errors, "Return the ERC-20 error signatures known to this wrapper.",
+    returns: %{
+      type: :abi_error_signatures,
+      description: "List of ABI error signature strings to merge into RPC error parsing."
+    }
+  )
+
+  @doc ~S"""
+  Returns a list of known error codes (ABI signatures), which can be used
+  when parsing error messages from contract calls.
+  """
+  @spec errors() :: [String.t()]
+  def errors, do: @errors
+
+  api(:exec_trx, "Execute ABI-encoded ERC-20 calldata as a signed transaction.",
+    params: [
+      token: [
+        kind: :value,
+        description: "ERC-20 token contract address or configured contract atom."
+      ],
+      call_data: [
+        kind: :value,
+        description: "ABI-encoded ERC-20 calldata bytes, such as `transfer(address,uint256)` calldata."
+      ],
+      exec_opts: [
+        kind: :value,
+        description:
+          "Execution options forwarded to `Cartouche.RPC.execute_trx/3`; `:errors` defaults to ERC-20 signatures when absent."
+      ]
+    ],
+    returns: %{
+      type: :rpc_result,
+      description: "Result returned by `Cartouche.RPC.execute_trx/3`, usually `{:ok, tx_hash}` or `{:error, reason}`."
+    }
+  )
+
+  @doc ~S"""
+  Executes a transaction against the given ERC-20 token, using the provided
+  ABI-encoded `call_data`. The configured Cartouche signer signs and submits
+  the transaction; `exec_opts` is forwarded to `Cartouche.RPC.execute_trx/3`
+  with this module's known error signatures merged in.
+  """
+  @spec exec_trx(Cartouche.contract(), binary(), exec_opts()) ::
+          {:ok, binary()} | {:error, term()}
+  def exec_trx(token, call_data, exec_opts) do
+    Cartouche.RPC.execute_trx(
+      Cartouche.get_contract_address(token),
+      call_data,
+      Keyword.put_new(exec_opts, :errors, errors())
+    )
+  end
+
+  api(:call_trx, "Run ABI-encoded ERC-20 calldata as a read-only `eth_call`.",
+    params: [
+      token: [
+        kind: :value,
+        description: "ERC-20 token contract address or configured contract atom."
+      ],
+      call_data: [
+        kind: :value,
+        description: "ABI-encoded ERC-20 calldata bytes for the read-only call."
+      ],
+      call_opts: [
+        kind: :value,
+        description:
+          "Call options forwarded to `Cartouche.RPC.call_trx/2`; `:errors` defaults to ERC-20 signatures when absent."
+      ]
+    ],
+    returns: %{
+      type: :rpc_result,
+      description: "Result returned by `Cartouche.RPC.call_trx/2`, decoded according to `call_opts[:decode]`."
+    }
+  )
+
+  @doc ~S"""
+  Performs an `eth_call` against the given ERC-20 token with the provided
+  ABI-encoded `call_data` and zero value/gas. Returns the call's return data
+  without sending a transaction. `call_opts` is forwarded to
+  `Cartouche.RPC.call_trx/2` with this module's known error signatures
+  merged in.
+  """
+  @spec call_trx(Cartouche.contract(), binary(), call_opts()) :: term()
+  def call_trx(token, call_data, call_opts) do
+    token
+    |> Cartouche.get_contract_address()
+    |> Cartouche.Transaction.build_trx(0, call_data, 0, 0, 0)
+    |> Cartouche.RPC.call_trx(Keyword.put_new(call_opts, :errors, errors()))
+  end
+
+  defmodule CallData do
+    @moduledoc """
+    Module to encode `calldata` for given adaptor operations.
+    """
+
+    use Descripex, namespace: "/ethereum/erc20/call_data"
+
+    api(:balance_of, "Encode ERC-20 `balanceOf(address)` calldata.",
+      params: [
+        address: [
+          kind: :value,
+          description: "20-byte Ethereum owner address whose token balance will be queried."
+        ]
+      ],
+      returns: %{
+        type: :abi_calldata,
+        description: "ABI-encoded calldata bytes for `balanceOf(address)`."
+      }
+    )
+
+    @doc ~S"""
+    Encodes the call data for a `balanceOf` operation.
+
+    ## Examples
+
+        iex> Onchain.ERC20.CallData.balance_of(<<0xDD>>) |> Cartouche.Hex.encode_hex()
+        "0x"
+    """
+    @spec balance_of(Cartouche.address()) :: binary()
+    def balance_of(address) do
+      ABI.encode("balanceOf(address)", [address])
+    end
+
+    api(:transfer, "Encode ERC-20 `transfer(address,uint256)` calldata.",
+      params: [
+        destination: [
+          kind: :value,
+          description: "20-byte Ethereum recipient address."
+        ],
+        amount_wei: [
+          kind: :value,
+          description: "Token base-unit amount to transfer; already scaled by the token's decimals."
+        ]
+      ],
+      returns: %{
+        type: :abi_calldata,
+        description: "ABI-encoded calldata bytes for `transfer(address,uint256)`."
+      }
+    )
+
+    @doc ~S"""
+    Encodes the call data for a `transfer` operation.
+
+    ## Examples
+
+        iex> Onchain.ERC20.CallData.transfer(<<0xDD>>, 100_000)
+        ...> |> Cartouche.Hex.encode_hex()
+        "0x8035f0ce"
+    """
+    @spec transfer(Cartouche.address(), non_neg_integer()) :: binary()
+    def transfer(destination, amount_wei) do
+      ABI.encode("transfer(address,uint256)", [destination, amount_wei])
+    end
+  end
+
+  defmodule Call do
+    @moduledoc """
+    Module to call operations and receive return value, without sending a transaction.
+    """
+
+    use Descripex, namespace: "/ethereum/erc20/call"
+
+    api(:balance_of, "Call ERC-20 `balanceOf(address)` and decode the token base-unit balance.",
+      params: [
+        token: [
+          kind: :value,
+          description: "ERC-20 token contract address or configured contract atom."
+        ],
+        address: [
+          kind: :value,
+          description: "20-byte Ethereum owner address whose token balance will be queried."
+        ],
+        call_opts: [
+          kind: :value,
+          default: [],
+          description: "RPC call options; this helper forces `decode: :hex_unsigned` for the returned balance."
+        ]
+      ],
+      returns: %{
+        type: :ok_error_tuple,
+        description: "`{:ok, amount_wei}` with the token base-unit balance, or `{:error, reason}`."
+      }
+    )
+
+    @doc ~S"""
+    Calls the `balanceOf` operation, returning the result of the Ethereum function call.
+
+    ## Examples
+
+        iex> Onchain.ERC20.Call.balance_of(<<0xCC>>, <<0xDD>>)
+        {:ok, <<>>}
+    """
+    @spec balance_of(Cartouche.contract(), Cartouche.address(), Onchain.ERC20.call_opts()) ::
+            {:ok, number()} | {:error, term()}
+    def balance_of(token, address, call_opts \\ []) do
+      call_opts = Keyword.put(call_opts, :decode, :hex_unsigned)
+      Onchain.ERC20.call_trx(token, CallData.balance_of(address), call_opts)
+    end
+
+    api(:transfer, "Call ERC-20 `transfer(address,uint256)` without sending a transaction.",
+      params: [
+        token: [
+          kind: :value,
+          description: "ERC-20 token contract address or configured contract atom."
+        ],
+        destination: [
+          kind: :value,
+          description: "20-byte Ethereum recipient address."
+        ],
+        amount_wei: [
+          kind: :value,
+          description: "Token base-unit amount to transfer; already scaled by the token's decimals."
+        ],
+        call_opts: [
+          kind: :value,
+          default: [],
+          description: "RPC call options; this helper forces `decode: :hex` for the returned bytes."
+        ]
+      ],
+      returns: %{
+        type: :ok_error_tuple,
+        description: "`{:ok, raw_return_bytes}` from the simulated transfer call, or `{:error, reason}`."
+      }
+    )
+
+    @doc ~S"""
+    Calls the `transfer` operation, returning the result of the Ethereum function call.
+
+    ## Examples
+
+        iex> Onchain.ERC20.Call.transfer(<<0xCC>>, <<0xDD>>, 100_000)
+        {:ok, <<>>}
+    """
+    @spec transfer(
+            Cartouche.contract(),
+            Cartouche.address(),
+            non_neg_integer(),
+            Onchain.ERC20.call_opts()
+          ) :: {:ok, binary()} | {:error, term()}
+    def transfer(token, destination, amount_wei, call_opts \\ []) do
+      call_opts = Keyword.put(call_opts, :decode, :hex)
+      Onchain.ERC20.call_trx(token, CallData.transfer(destination, amount_wei), call_opts)
     end
   end
 end

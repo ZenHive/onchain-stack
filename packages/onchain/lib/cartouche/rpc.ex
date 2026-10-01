@@ -968,7 +968,7 @@ defmodule Cartouche.RPC do
 
   @spec maybe_put_revert_from_error_data(map()) :: map()
   defp maybe_put_revert_from_error_data(%{code: 3, data: data} = map) when is_binary(data) do
-    case Onchain.Hex.decode(data) do
+    case Cartouche.Hex.decode(data) do
       {:ok, revert} -> Map.put_new(map, :revert, revert)
       {:error, _reason} -> map
     end
@@ -1906,7 +1906,7 @@ defmodule Cartouche.RPC do
           gas_used: 0xb4c8,
           contract_address: nil,
           logs: [
-            %Cartouche.Receipt.Log{
+            %Cartouche.Filter.Log{
               log_index: 1,
               block_number: 0x01b4,
               block_hash: ~h[0xaa8216c5785ac562ff41e2dcfdf5785ac562ff41e2dcfdf829c5a142f1fccd7d],
@@ -1939,7 +1939,7 @@ defmodule Cartouche.RPC do
           gas_used: 0xb4c8,
           contract_address: nil,
           logs: [
-            %Cartouche.Receipt.Log{
+            %Cartouche.Filter.Log{
               log_index: 1,
               block_number: 0x01b4,
               block_hash: ~h[0xaa8216c5785ac562ff41e2dcfdf5785ac562ff41e2dcfdf829c5a142f1fccd7d],
@@ -1971,7 +1971,8 @@ defmodule Cartouche.RPC do
         gas_used: 222642,
         contract_address: nil,
         logs: [
-          %Cartouche.Receipt.Log{
+          %Cartouche.Filter.Log{
+            removed: false,
             log_index: 0,
             block_number: 10493428,
             block_hash: ~h[0x4bc3c26b1a599ced9876d9bf9a17c9bd58ec8b71a68e75335de7f2820e9336ca],
@@ -1985,7 +1986,8 @@ defmodule Cartouche.RPC do
               ~h[0x0000000000000000000000002326aba712500ae3114b664aeb51dba2c2fb416d]
             ]
           },
-          %Cartouche.Receipt.Log{
+          %Cartouche.Filter.Log{
+            removed: false,
             log_index: 1,
             block_number: 10493428,
             block_hash: ~h[0x4bc3c26b1a599ced9876d9bf9a17c9bd58ec8b71a68e75335de7f2820e9336ca],
@@ -2000,7 +2002,8 @@ defmodule Cartouche.RPC do
               ~h[0x0000000000000000000000000000000000000000000000000000000000000000]
             ]
           },
-          %Cartouche.Receipt.Log{
+          %Cartouche.Filter.Log{
+            removed: false,
             log_index: 2,
             block_number: 10493428,
             block_hash: ~h[0x4bc3c26b1a599ced9876d9bf9a17c9bd58ec8b71a68e75335de7f2820e9336ca],
@@ -2205,7 +2208,7 @@ defmodule Cartouche.RPC do
   defp normalize_transaction_index(index) when is_integer(index) and index >= 0, do: {:ok, Hex.encode_quantity(index)}
 
   defp normalize_transaction_index("0x" <> _ = index) do
-    if Onchain.Hex.valid?(index),
+    if Cartouche.Hex.valid?(index),
       do: {:ok, index},
       else: {:error, {:invalid_transaction_index, index}}
   end
@@ -3824,13 +3827,13 @@ defmodule Cartouche.RPC do
   defp put_block_param(result, _key, _error_label, nil), do: {:ok, result}
 
   defp put_block_param(result, key, _error_label, n) when is_integer(n) and n >= 0,
-    do: {:ok, Map.put(result, key, Onchain.Hex.from_integer(n))}
+    do: {:ok, Map.put(result, key, Cartouche.Hex.from_integer(n))}
 
   defp put_block_param(result, key, _error_label, tag) when tag in @log_filter_block_tags,
     do: {:ok, Map.put(result, key, tag)}
 
   defp put_block_param(result, key, error_label, "0x" <> _ = hex) do
-    if Onchain.Hex.valid?(hex),
+    if Cartouche.Hex.valid?(hex),
       do: {:ok, Map.put(result, key, hex)},
       else: {:error, {:invalid_filter, {error_label, hex}}}
   end

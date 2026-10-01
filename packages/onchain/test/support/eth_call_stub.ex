@@ -45,11 +45,11 @@ defmodule Onchain.EthCallStub do
   # Builds an eth_call-shaped result hex by ABI-encoding `value` against a
   # throwaway `stub(<type>)` selector and stripping the 4-byte function
   # selector — the parameter encoding for a call and for a `(type)` return
-  # tuple are byte-identical, so this yields exactly what `Onchain.ABI.decode_response/3`
+  # tuple are byte-identical, so this yields exactly what `ABI.decode_response/3`
   # expects from a real eth_call result.
   @spec queue_response(String.t(), term()) :: :ok
   def queue_response(type, value) do
-    calldata = Onchain.ABI.encode_call!("stub(#{type})", [value])
+    calldata = ABI.encode_hex_call!("stub(#{type})", [value])
     <<"0x", _selector::binary-size(8), rest::binary>> = calldata
     Process.put(@stub_key, "0x" <> rest)
     :ok

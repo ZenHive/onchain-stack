@@ -8,10 +8,9 @@ defmodule Onchain.Aave.PoolInterestRateModeIntegrationTest do
 
   use ExUnit.Case, async: false
 
+  alias Cartouche.Hex
   alias Onchain.Aave.Types.UserAccountData
-  alias Onchain.ABI
   alias Onchain.EVM
-  alias Onchain.Hex
   alias Onchain.RPCCase
 
   @moduletag :integration
@@ -30,20 +29,20 @@ defmodule Onchain.Aave.PoolInterestRateModeIntegrationTest do
 
   describe "deployed Pool rejects interest-rate mode 1" do
     test "a borrowable position reverts mode 1 and accepts mode 2 on the same fork" do
-      {:ok, approve} = ABI.encode_call("approve(address,uint256)", [address_bin(@pool), @supply_amount])
+      {:ok, approve} = ABI.encode_hex_call("approve(address,uint256)", [address_bin(@pool), @supply_amount])
 
       {:ok, supply} =
-        ABI.encode_call("supply(address,uint256,address,uint16)", [
+        ABI.encode_hex_call("supply(address,uint256,address,uint16)", [
           address_bin(@weth),
           @supply_amount,
           address_bin(@user),
           0
         ])
 
-      {:ok, query} = ABI.encode_call("getUserAccountData(address)", [address_bin(@user)])
+      {:ok, query} = ABI.encode_hex_call("getUserAccountData(address)", [address_bin(@user)])
 
       {:ok, borrow_stable} =
-        ABI.encode_call("borrow(address,uint256,uint256,uint16,address)", [
+        ABI.encode_hex_call("borrow(address,uint256,uint256,uint16,address)", [
           address_bin(@weth),
           @borrow_amount,
           1,
@@ -52,7 +51,7 @@ defmodule Onchain.Aave.PoolInterestRateModeIntegrationTest do
         ])
 
       {:ok, borrow_variable} =
-        ABI.encode_call("borrow(address,uint256,uint256,uint16,address)", [
+        ABI.encode_hex_call("borrow(address,uint256,uint256,uint16,address)", [
           address_bin(@weth),
           @borrow_amount,
           2,

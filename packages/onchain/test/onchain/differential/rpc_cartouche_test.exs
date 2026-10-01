@@ -1,10 +1,7 @@
 defmodule Onchain.RPC.Differential.CartoucheTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.ABI
   alias Onchain.RPC
-
-  @moduletag :differential
 
   # Task 65 requested signet as the first oracle. The project has since migrated
   # from signet to cartouche (see CHANGELOG Task 67), so this uses the current
@@ -13,6 +10,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   # Known divergences: none annotated. If a case fails because Cartouche.RPC and
   # Onchain.RPC intentionally expose different shapes, document that difference
   # near the case instead of weakening the assertion.
+  @moduletag :differential
 
   @enabled_values ~w(1 true TRUE yes YES)
   @rpc_timeout_ms 30_000
@@ -90,7 +88,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   end
 
   test "eth_call map params and block id match the oracle", %{rpc_url: rpc_url} do
-    {:ok, calldata} = ABI.encode_call("totalSupply()", [])
+    {:ok, calldata} = ABI.encode_hex_call("totalSupply()", [])
     opts = onchain_opts(rpc_url, block: @test_block)
 
     assert {:ok, actual} = RPC.eth_call(@weth_address, calldata, opts)
@@ -215,7 +213,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
       "eth_feeHistory"
       |> reference!(
         [
-          Onchain.Hex.from_integer(@fee_history_block_count),
+          Cartouche.Hex.from_integer(@fee_history_block_count),
           @test_block_hex,
           @fee_history_reward_percentiles
         ],
@@ -423,12 +421,12 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
 
   defp expected_proof(proof) do
     %Cartouche.RPC.Proof{
-      address: Onchain.Hex.decode!(proof["address"]),
+      address: Cartouche.Hex.decode!(proof["address"]),
       balance: hex_to_integer(proof["balance"]),
       nonce: hex_to_integer(proof["nonce"]),
-      code_hash: Onchain.Hex.decode!(proof["codeHash"]),
-      storage_hash: Onchain.Hex.decode!(proof["storageHash"]),
-      account_proof: Enum.map(proof["accountProof"], &Onchain.Hex.decode!/1),
+      code_hash: Cartouche.Hex.decode!(proof["codeHash"]),
+      storage_hash: Cartouche.Hex.decode!(proof["storageHash"]),
+      account_proof: Enum.map(proof["accountProof"], &Cartouche.Hex.decode!/1),
       storage_proof: Enum.map(proof["storageProof"], &expected_storage_proof_entry/1)
     }
   end
@@ -437,7 +435,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
     %Cartouche.RPC.Proof.StorageProof{
       key: hex_to_integer(entry["key"]),
       value: hex_to_integer(entry["value"]),
-      proof: Enum.map(entry["proof"], &Onchain.Hex.decode!/1)
+      proof: Enum.map(entry["proof"], &Cartouche.Hex.decode!/1)
     }
   end
 end

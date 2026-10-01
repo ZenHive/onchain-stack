@@ -58,16 +58,16 @@
                 "description": "Keyword options forwarded to decode/3, including strict: true.",
                 "kind": "value"
               },
+              "signature_or_selector": {
+                "description": "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct. The first 4 bytes of calldata are checked against this selector.",
+                "kind": "value"
+              },
               "calldata": {
                 "description": "Full selector-prefixed calldata bytes. Must be at least 4 bytes; first 4 bytes are the method ID and the remainder is the ABI-encoded payload.",
                 "kind": "value",
                 "schema": {
                   "type": "string"
                 }
-              },
-              "signature_or_selector": {
-                "description": "Either a raw signature string or a pre-parsed ABI.FunctionSelector struct. The first 4 bytes of calldata are checked against this selector.",
-                "kind": "value"
               }
             },
             "errors": [
@@ -113,16 +113,16 @@
                 "description": "Keyword options forwarded to decode/3, including strict: true.",
                 "kind": "value"
               },
+              "error_definitions": {
+                "description": "List of candidate error signatures, each either a raw signature string (\"InsufficientBalance(uint256,uint256)\") or a pre-parsed ABI.FunctionSelector. The first definition whose 4-byte selector matches revert_data[0..3] is used to decode the payload. The built-in Error(string) (0x08c379a0) and Panic(uint256) (0x4e487b71) errors are recognized implicitly as a fallback, so they resolve even when this list is empty; a user definition colliding with a built-in selector still wins.",
+                "kind": "value"
+              },
               "revert_data": {
                 "description": "Selector-prefixed revert payload (4-byte error ID + ABI-encoded args), e.g. the data field returned by a Solidity 0.8.4+ custom-error revert.",
                 "kind": "value",
                 "schema": {
                   "type": "string"
                 }
-              },
-              "error_definitions": {
-                "description": "List of candidate error signatures, each either a raw signature string (\"InsufficientBalance(uint256,uint256)\") or a pre-parsed ABI.FunctionSelector. The first definition whose 4-byte selector matches revert_data[0..3] is used to decode the payload. The built-in Error(string) (0x08c379a0) and Panic(uint256) (0x4e487b71) errors are recognized implicitly as a fallback, so they resolve even when this list is empty; a user definition colliding with a built-in selector still wins.",
-                "kind": "value"
               }
             },
             "errors": [
@@ -170,6 +170,10 @@
                 "description": "Keyword options. check_event_signature: false skips the topics[0] verification (useful when topics[0] has already been stripped).",
                 "kind": "value"
               },
+              "function_signature": {
+                "description": "Either a raw event signature string or a pre-parsed ABI.FunctionSelector struct.",
+                "kind": "value"
+              },
               "topics": {
                 "description": "List of 32-byte topic hashes (the topics field of the log). topics[0] is verified against the event signature unless check_event_signature: false is passed.",
                 "kind": "value",
@@ -179,10 +183,6 @@
                   },
                   "type": "array"
                 }
-              },
-              "function_signature": {
-                "description": "Either a raw event signature string or a pre-parsed ABI.FunctionSelector struct.",
-                "kind": "value"
               }
             },
             "errors": [
@@ -206,6 +206,282 @@
             "composes_with": [
               "event_signature"
             ]
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_hex_call",
+          "description": "Decode selector-prefixed calldata to function args.\n\n## Parameters\n\n  * `signature_or_selector` - Function signature like \"transfer(address,uint256)\" OR a hieroglyph FunctionSelector struct. The 4-byte selector of the signature must match the first 4 bytes of calldata. (value)\n  * `hex_calldata` - 0x-prefixed hex string of selector-prefixed ABI-encoded calldata (value)\n  * `opts` - Forwarded to hieroglyph's `ABI.decode_call/3`. Pass `decode_structs: true` for a named-field map instead of a positional list. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`). (default: `[]`, value)\n\n## Returns\n\nList of args (or map when `decode_structs: true`). Error reasons: `:calldata_too_short`, `:selector_mismatch`, `:no_function_name`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string. (`{:ok, list | map} | {:error, {:decode_error, reason}}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to hieroglyph's `ABI.decode_call/3`. Pass `decode_structs: true` for a named-field map instead of a positional list. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`).\",\n      kind: :value\n    },\n    signature_or_selector: %{\n      description: \"Function signature like \\\"transfer(address,uint256)\\\" OR a hieroglyph FunctionSelector struct. The 4-byte selector of the signature must match the first 4 bytes of calldata.\",\n      kind: :value\n    },\n    hex_calldata: %{\n      description: \"0x-prefixed hex string of selector-prefixed ABI-encoded calldata\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"{:ok, list | map} | {:error, {:decode_error, reason}}\",\n    description: \"List of args (or map when `decode_structs: true`). Error reasons: `:calldata_too_short`, `:selector_mismatch`, `:no_function_name`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string.\"\n  }\n}\n```",
+          "signature": "decode_hex_call(signature_or_selector, hex_calldata, opts \\\\ [])",
+          "spec": "decode_hex_call(String.t() | ABI.FunctionSelector.t(), String.t(), keyword()) ::\n  {:ok, list() | map()} | {:error, {:decode_error, term()}}",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode selector-prefixed calldata to function args.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Forwarded to hieroglyph's `ABI.decode_call/3`. Pass `decode_structs: true` for a named-field map instead of a positional list. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`).",
+                "kind": "value"
+              },
+              "hex_calldata": {
+                "description": "0x-prefixed hex string of selector-prefixed ABI-encoded calldata",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "signature_or_selector": {
+                "description": "Function signature like \"transfer(address,uint256)\" OR a hieroglyph FunctionSelector struct. The 4-byte selector of the signature must match the first 4 bytes of calldata.",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "{:ok, list | map} | {:error, {:decode_error, reason}}",
+              "description": "List of args (or map when `decode_structs: true`). Error reasons: `:calldata_too_short`, `:selector_mismatch`, `:no_function_name`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string."
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_hex_call!",
+          "description": "Decode selector-prefixed calldata. Raises on error.\n\n## Parameters\n\n  * `signature_or_selector` - Function signature string or hieroglyph FunctionSelector struct (value)\n  * `hex_calldata` - 0x-prefixed hex string of selector-prefixed calldata (value)\n  * `opts` - Forwarded to hieroglyph's `ABI.decode_call/3` (e.g. `decode_structs: true`, `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded args (or map when `decode_structs: true`) (`list | map`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to hieroglyph's `ABI.decode_call/3` (e.g. `decode_structs: true`, `strict: true`)\",\n      kind: :value\n    },\n    signature_or_selector: %{\n      description: \"Function signature string or hieroglyph FunctionSelector struct\",\n      kind: :value\n    },\n    hex_calldata: %{\n      description: \"0x-prefixed hex string of selector-prefixed calldata\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"list | map\",\n    description: \"List of decoded args (or map when `decode_structs: true`)\"\n  }\n}\n```",
+          "signature": "decode_hex_call!(signature_or_selector, hex_calldata, opts \\\\ [])",
+          "spec": "decode_hex_call!(String.t() | ABI.FunctionSelector.t(), String.t(), keyword()) :: list() | map()",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode selector-prefixed calldata. Raises on error.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Forwarded to hieroglyph's `ABI.decode_call/3` (e.g. `decode_structs: true`, `strict: true`)",
+                "kind": "value"
+              },
+              "hex_calldata": {
+                "description": "0x-prefixed hex string of selector-prefixed calldata",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "signature_or_selector": {
+                "description": "Function signature string or hieroglyph FunctionSelector struct",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "list | map",
+              "description": "List of decoded args (or map when `decode_structs: true`)"
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_hex_error",
+          "description": "Decode Solidity 0.8.4+ custom-error revert data against a list of candidate error signatures.\n\n## Parameters\n\n  * `hex_revert_data` - 0x-prefixed hex string of revert data (4-byte error selector + ABI-encoded args) (value)\n  * `error_definitions` - List of candidate error signatures like [\"InsufficientBalance(uint256,uint256)\", \"Unauthorized()\"] (or hieroglyph FunctionSelector structs). The first one whose 4-byte selector matches the prefix of `hex_revert_data` decodes the args. (value)\n  * `opts` - Forwarded to hieroglyph's `ABI.decode_error/3`. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`). (default: `[]`, value)\n\n## Returns\n\nMap with the matched error name (or `nil`) and decoded args. Error reasons: `:calldata_too_short`, `:no_match`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string. (`{:ok, %{error: name, args: list}} | {:error, {:decode_error, reason}}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to hieroglyph's `ABI.decode_error/3`. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`).\",\n      kind: :value\n    },\n    error_definitions: %{\n      description: \"List of candidate error signatures like [\\\"InsufficientBalance(uint256,uint256)\\\", \\\"Unauthorized()\\\"] (or hieroglyph FunctionSelector structs). The first one whose 4-byte selector matches the prefix of `hex_revert_data` decodes the args.\",\n      kind: :value\n    },\n    hex_revert_data: %{\n      description: \"0x-prefixed hex string of revert data (4-byte error selector + ABI-encoded args)\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"{:ok, %{error: name, args: list}} | {:error, {:decode_error, reason}}\",\n    description: \"Map with the matched error name (or `nil`) and decoded args. Error reasons: `:calldata_too_short`, `:no_match`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string.\"\n  }\n}\n```",
+          "signature": "decode_hex_error(hex_revert_data, error_definitions, opts \\\\ [])",
+          "spec": "decode_hex_error(String.t(), [String.t() | ABI.FunctionSelector.t()], keyword()) ::\n  {:ok, %{error: String.t() | nil, args: list() | map()}} | {:error, {:decode_error, term()}}",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode Solidity 0.8.4+ custom-error revert data against a list of candidate error signatures.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Forwarded to hieroglyph's `ABI.decode_error/3`. Pass `strict: true` to reject non-canonical payloads (`{:error, {:decode_error, {:strict_violation, detail}}}`).",
+                "kind": "value"
+              },
+              "error_definitions": {
+                "description": "List of candidate error signatures like [\"InsufficientBalance(uint256,uint256)\", \"Unauthorized()\"] (or hieroglyph FunctionSelector structs). The first one whose 4-byte selector matches the prefix of `hex_revert_data` decodes the args.",
+                "kind": "value"
+              },
+              "hex_revert_data": {
+                "description": "0x-prefixed hex string of revert data (4-byte error selector + ABI-encoded args)",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "{:ok, %{error: name, args: list}} | {:error, {:decode_error, reason}}",
+              "description": "Map with the matched error name (or `nil`) and decoded args. Error reasons: `:calldata_too_short`, `:no_match`, `{:invalid_hex, _}`, `{:strict_violation, detail}`, or upstream exception message string."
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_hex_error!",
+          "description": "Decode custom-error revert data. Raises on error.\n\n## Parameters\n\n  * `hex_revert_data` - 0x-prefixed hex string of revert data (value)\n  * `error_definitions` - List of candidate error signatures or FunctionSelector structs (value)\n  * `opts` - Forwarded to hieroglyph's `ABI.decode_error/3` (e.g. `strict: true`) (default: `[]`, value)\n\n## Returns\n\nMap with the matched error name and decoded args (`%{error: name, args: list}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to hieroglyph's `ABI.decode_error/3` (e.g. `strict: true`)\",\n      kind: :value\n    },\n    error_definitions: %{\n      description: \"List of candidate error signatures or FunctionSelector structs\",\n      kind: :value\n    },\n    hex_revert_data: %{\n      description: \"0x-prefixed hex string of revert data\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"%{error: name, args: list}\",\n    description: \"Map with the matched error name and decoded args\"\n  }\n}\n```",
+          "signature": "decode_hex_error!(hex_revert_data, error_definitions, opts \\\\ [])",
+          "spec": "decode_hex_error!(String.t(), [String.t() | ABI.FunctionSelector.t()], keyword()) :: %{\n  error: String.t() | nil,\n  args: list() | map()\n}",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode custom-error revert data. Raises on error.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Forwarded to hieroglyph's `ABI.decode_error/3` (e.g. `strict: true`)",
+                "kind": "value"
+              },
+              "error_definitions": {
+                "description": "List of candidate error signatures or FunctionSelector structs",
+                "kind": "value"
+              },
+              "hex_revert_data": {
+                "description": "0x-prefixed hex string of revert data",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "%{error: name, args: list}",
+              "description": "Map with the matched error name and decoded args"
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_response",
+          "description": "Decode hex-encoded ABI response data to Elixir values.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types like \"uint256,bool\" are NOT accepted and raise an unhelpful upstream error. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to hieroglyph's `ABI.decode/3`. Pass `strict: true` to reject non-canonical padding, trailing bytes, and over-long dynamic length prefixes (`{:error, {:decode_error, {:strict_violation, detail}}}`). Pass `decode_structs: true` for a named-field map instead of a positional list. (default: `[]`, value)\n\n## Returns\n\nList of decoded values (or map when `decode_structs: true`). `reason` may be `{:strict_violation, detail}` when `strict: true`. (`{:ok, list | map} | {:error, {:decode_error, reason}}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to hieroglyph's `ABI.decode/3`. Pass `strict: true` to reject non-canonical padding, trailing bytes, and over-long dynamic length prefixes (`{:error, {:decode_error, {:strict_violation, detail}}}`). Pass `decode_structs: true` for a named-field map instead of a positional list.\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types like \\\"uint256,bool\\\" are NOT accepted and raise an unhelpful upstream error.\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"{:ok, list | map} | {:error, {:decode_error, reason}}\",\n    description: \"List of decoded values (or map when `decode_structs: true`). `reason` may be `{:strict_violation, detail}` when `strict: true`.\"\n  }\n}\n```",
+          "signature": "decode_response(type_signature, hex_data, opts \\\\ [])",
+          "spec": "decode_response(String.t(), String.t(), keyword()) ::\n  {:ok, list() | map()} | {:error, {:decode_error, term()}}",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode hex-encoded ABI response data to Elixir values.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Forwarded to hieroglyph's `ABI.decode/3`. Pass `strict: true` to reject non-canonical padding, trailing bytes, and over-long dynamic length prefixes (`{:error, {:decode_error, {:strict_violation, detail}}}`). Pass `decode_structs: true` for a named-field map instead of a positional list.",
+                "kind": "value"
+              },
+              "hex_data": {
+                "description": "0x-prefixed hex string of ABI-encoded data",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "type_signature": {
+                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types like \"uint256,bool\" are NOT accepted and raise an unhelpful upstream error.",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "{:ok, list | map} | {:error, {:decode_error, reason}}",
+              "description": "List of decoded values (or map when `decode_structs: true`). `reason` may be `{:strict_violation, detail}` when `strict: true`."
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_response!",
+          "description": "Decode hex-encoded ABI response data to Elixir values. Raises on error.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to hieroglyph's `ABI.decode/3` (e.g. `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded values (or map when `decode_structs: true`) (`union`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to hieroglyph's `ABI.decode/3` (e.g. `strict: true`)\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types are NOT accepted.\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: :union,\n    description: \"List of decoded values (or map when `decode_structs: true`)\"\n  }\n}\n```",
+          "signature": "decode_response!(type_signature, hex_data, opts \\\\ [])",
+          "spec": "decode_response!(String.t(), String.t(), keyword()) :: list() | map()",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode hex-encoded ABI response data to Elixir values. Raises on error.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Forwarded to hieroglyph's `ABI.decode/3` (e.g. `strict: true`)",
+                "kind": "value"
+              },
+              "hex_data": {
+                "description": "0x-prefixed hex string of ABI-encoded data",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "type_signature": {
+                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted.",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "union",
+              "description": "List of decoded values (or map when `decode_structs: true`)"
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_types",
+          "description": "Decode arbitrary ABI-encoded hex data. Alias of decode_response/3.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to decode_response/3 (e.g. `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded values. Identical to decode_response/3 — use this name when the input isn't an RPC response (mempool calldata, custom ABI payloads). (`{:ok, list | map} | {:error, {:decode_error, reason}}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to decode_response/3 (e.g. `strict: true`)\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types are NOT accepted.\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"{:ok, list | map} | {:error, {:decode_error, reason}}\",\n    description: \"List of decoded values. Identical to decode_response/3 — use this name when the input isn't an RPC response (mempool calldata, custom ABI payloads).\"\n  }\n}\n```",
+          "signature": "decode_types(type_signature, hex_data, opts \\\\ [])",
+          "spec": "decode_types(String.t(), String.t(), keyword()) ::\n  {:ok, list() | map()} | {:error, {:decode_error, term()}}",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode arbitrary ABI-encoded hex data. Alias of decode_response/3.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Forwarded to decode_response/3 (e.g. `strict: true`)",
+                "kind": "value"
+              },
+              "hex_data": {
+                "description": "0x-prefixed hex string of ABI-encoded data",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "type_signature": {
+                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted.",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "{:ok, list | map} | {:error, {:decode_error, reason}}",
+              "description": "List of decoded values. Identical to decode_response/3 — use this name when the input isn't an RPC response (mempool calldata, custom ABI payloads)."
+            }
+          }
+        },
+        {
+          "arity": 3,
+          "name": "decode_types!",
+          "description": "Decode arbitrary ABI-encoded hex data. Alias of decode_response!/3.\n\n## Parameters\n\n  * `type_signature` - Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted. (value)\n  * `hex_data` - 0x-prefixed hex string of ABI-encoded data (value)\n  * `opts` - Forwarded to decode_response!/3 (e.g. `strict: true`) (default: `[]`, value)\n\n## Returns\n\nList of decoded values (or map when `decode_structs: true`) (`union`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    opts: %{\n      default: [],\n      description: \"Forwarded to decode_response!/3 (e.g. `strict: true`)\",\n      kind: :value\n    },\n    type_signature: %{\n      description: \"Tuple type signature wrapped in parentheses, e.g. \\\"(uint256)\\\" or \\\"(uint256,bool)\\\". Bare comma-separated types are NOT accepted.\",\n      kind: :value\n    },\n    hex_data: %{\n      description: \"0x-prefixed hex string of ABI-encoded data\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: :union,\n    description: \"List of decoded values (or map when `decode_structs: true`)\"\n  }\n}\n```",
+          "signature": "decode_types!(type_signature, hex_data, opts \\\\ [])",
+          "spec": "decode_types!(String.t(), String.t(), keyword()) :: list() | map()",
+          "defaults": 1,
+          "hints": {
+            "description": "Decode arbitrary ABI-encoded hex data. Alias of decode_response!/3.",
+            "params": {
+              "opts": {
+                "default": [],
+                "description": "Forwarded to decode_response!/3 (e.g. `strict: true`)",
+                "kind": "value"
+              },
+              "hex_data": {
+                "description": "0x-prefixed hex string of ABI-encoded data",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "type_signature": {
+                "description": "Tuple type signature wrapped in parentheses, e.g. \"(uint256)\" or \"(uint256,bool)\". Bare comma-separated types are NOT accepted.",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "returns": {
+              "type": "union",
+              "description": "List of decoded values (or map when `decode_structs: true`)"
+            }
           }
         },
         {
@@ -400,6 +676,63 @@
         },
         {
           "arity": 2,
+          "name": "encode_hex_call",
+          "description": "Encode a function call to 0x-prefixed hex calldata.\n\n## Parameters\n\n  * `signature` - Function signature, e.g. \"balanceOf(address)\" (value)\n  * `params` - List of parameter values matching the signature (value)\n\n## Returns\n\n0x-prefixed hex-encoded calldata (`{:ok, hex_string} | {:error, {:encode_error, reason}}`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    signature: %{\n      description: \"Function signature, e.g. \\\"balanceOf(address)\\\"\",\n      kind: :value\n    },\n    params: %{\n      description: \"List of parameter values matching the signature\",\n      kind: :value\n    }\n  },\n  returns: %{\n    type: \"{:ok, hex_string} | {:error, {:encode_error, reason}}\",\n    description: \"0x-prefixed hex-encoded calldata\",\n    example: \"0x70a08231...\"\n  }\n}\n```",
+          "signature": "encode_hex_call(signature, params)",
+          "spec": "encode_hex_call(String.t(), list()) :: {:ok, String.t()} | {:error, {:encode_error, term()}}",
+          "defaults": 0,
+          "hints": {
+            "description": "Encode a function call to 0x-prefixed hex calldata.",
+            "params": {
+              "signature": {
+                "description": "Function signature, e.g. \"balanceOf(address)\"",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "params": {
+                "description": "List of parameter values matching the signature",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "{:ok, hex_string} | {:error, {:encode_error, reason}}",
+              "description": "0x-prefixed hex-encoded calldata",
+              "example": "0x70a08231..."
+            }
+          }
+        },
+        {
+          "arity": 2,
+          "name": "encode_hex_call!",
+          "description": "Encode a function call to 0x-prefixed hex calldata. Raises on error.\n\n## Parameters\n\n  * `signature` - Function signature, e.g. \"balanceOf(address)\" (value)\n  * `params` - List of parameter values matching the signature (value)\n\n## Returns\n\n0x-prefixed hex-encoded calldata (`string`)\n\n```elixir\n# descripex:contract\n%{\n  params: %{\n    signature: %{\n      description: \"Function signature, e.g. \\\"balanceOf(address)\\\"\",\n      kind: :value\n    },\n    params: %{\n      description: \"List of parameter values matching the signature\",\n      kind: :value\n    }\n  },\n  returns: %{type: :string, description: \"0x-prefixed hex-encoded calldata\"}\n}\n```",
+          "signature": "encode_hex_call!(signature, params)",
+          "spec": "encode_hex_call!(String.t(), list()) :: String.t()",
+          "defaults": 0,
+          "hints": {
+            "description": "Encode a function call to 0x-prefixed hex calldata. Raises on error.",
+            "params": {
+              "signature": {
+                "description": "Function signature, e.g. \"balanceOf(address)\"",
+                "kind": "value",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "params": {
+                "description": "List of parameter values matching the signature",
+                "kind": "value"
+              }
+            },
+            "returns": {
+              "type": "string",
+              "description": "0x-prefixed hex-encoded calldata"
+            }
+          }
+        },
+        {
+          "arity": 2,
           "name": "encode_packed",
           "description": "Encodes a list of values using Solidity's\n[non-standard packed mode](https://docs.soliditylang.org/en/stable/abi-spec.html#non-standard-packed-mode).\n\nUsed primarily for `keccak256(abi.encodePacked(...))` Merkle leaves and\nsignature schemes; never used for actual function calls (the spec defines\nno decoding function — encoding is ambiguous with multiple dynamic args).\n\nTuple/struct values and nested arrays raise `ArgumentError` — the spec\ndoes not define their packed encoding.\n\n> #### Warning {: .warning}\n>\n> If both `a` and `b` are dynamic types, `abi.encodePacked(a, b)` is\n> ambiguous: `abi.encodePacked(\"a\", \"bc\") == abi.encodePacked(\"ab\", \"c\")`.\n> Do not feed multiple dynamic args into packed-mode signature schemes\n> without controlling for that collision.\n\n## Examples\n\n    iex> ABI.encode_packed(\"foo(int16,bytes1,uint16,string)\", [-1, <<0x42>>, 3, \"Hello, world!\"])\n    ...> |> Base.encode16(case: :lower)\n    \"ffff42000348656c6c6f2c20776f726c6421\"\n\n    iex> ABI.encode_packed(\"leaf(address,uint256)\", [<<1::160>>, 100])\n    ...> |> Base.encode16(case: :lower)\n    \"00000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000064\"\n\n    iex> ABI.encode_packed(\"foo(uint8[])\", [[1, 2, 3]])\n    ...> |> Base.encode16(case: :lower)\n    \"000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003\"",
           "signature": "encode_packed(signature_or_selector, values)",
@@ -579,7 +912,7 @@
         }
       ],
       "module": "ABI",
-      "description": "Documentation for ABI, the function interface language for Solidity.\nGenerally, the ABI describes how to take binary Ethereum and transform\nit to or from types that Solidity understands.\n\n## Agent Discovery\n\nUse `ABI.describe/0..2` for progressive API discovery:\n\n    ABI.describe()                    # Level 1: all annotated modules\n    ABI.describe(:abi)                # Level 2: functions in this module\n    ABI.describe(:abi, :encode)       # Level 3: full contract for encode/2\n\nA static `api_manifest.json` covering every public function is emitted by\n`mix descripex.manifest --app hieroglyph` (a dedicated `mix\nhieroglyph.manifest` wrapper ships in 1.2.0 alongside Phase 3 of the agent\neconomy work — see CHANGELOG). Downstream consumers may diff that manifest\nacross hieroglyph version bumps as a contract-stability check.\n\n\n## API Functions\n| Function | Arity | Description | Param Kinds |\n| --- | --- | --- | --- |\n| `parse_specification` | 1 | Parses an ABI specification document into a list of ABI.FunctionSelector structs. | `doc: value` |\n| `get_abi_item` | 3 | Finds an ABI fragment by name with optional input-type disambiguation for overloads. | `abi: value`, `name: value`, `arg_types: value` |\n| `format_abi_item` | 1 | Renders a FunctionSelector as its canonical Solidity signature string. | `function_selector: value` |\n| `event_signature` | 1 | Returns the 32-byte topic hash for an event signature. | `function_signature: value` |\n| `encode_event_topics` | 2 | Builds an eth_getLogs topic filter list from an event signature and indexed values. | `function_signature: value`, `indexed_values: value` |\n| `decode_event` | 4 | Decodes an event from raw log data and indexed topics. | `function_signature: value`, `data: value`, `topics: value`, `opts: value` |\n| `encode_packed` | 2 | Encodes values using Solidity's non-standard packed mode (abi.encodePacked). | `signature_or_selector: value`, `values: value` |\n| `decode_error` | 3 | Decodes selector-prefixed revert data against known custom-error definitions, plus the Solidity built-in Error(string)/Panic(uint256) errors. | `revert_data: value`, `error_definitions: value`, `opts: value` |\n| `encode_error` | 3 | Encodes args into selector-prefixed revert data for a named custom error. | `signature_or_selector: value`, `data: value`, `opts: value` |\n| `decode_call` | 3 | Decodes selector-prefixed calldata (4-byte method ID + ABI-encoded args) and verifies the selector matches. | `signature_or_selector: value`, `calldata: value`, `opts: value` |\n| `decode` | 3 | Decodes the given data based on the function or tuple signature. | `function_signature: value`, `data: value`, `opts: value` |\n| `method_id` | 1 | Returns the 4-byte function selector (method ID) for a function signature. | `signature: value` |\n| `encode_constructor` | 2 | Encodes constructor arguments for contract deployment (no selector prefix). | `selector: value`, `data: value` |\n| `encode_call` | 3 | Encodes args into selector-prefixed calldata for a named function. | `signature_or_selector: value`, `data: value`, `opts: value` |\n| `encode` | 2 | Encodes the given data into the function signature or tuple signature. | `function_signature: value`, `data: value` |",
+      "description": "Documentation for ABI, the function interface language for Solidity.\nGenerally, the ABI describes how to take binary Ethereum and transform\nit to or from types that Solidity understands.\n\n## Agent Discovery\n\nUse `ABI.describe/0..2` for progressive API discovery:\n\n    ABI.describe()                    # Level 1: all annotated modules\n    ABI.describe(:abi)                # Level 2: functions in this module\n    ABI.describe(:abi, :encode)       # Level 3: full contract for encode/2\n\nA static `api_manifest.json` covering every public function is emitted by\n`mix descripex.manifest --app hieroglyph` (a dedicated `mix\nhieroglyph.manifest` wrapper ships in 1.2.0 alongside Phase 3 of the agent\neconomy work — see CHANGELOG). Downstream consumers may diff that manifest\nacross hieroglyph version bumps as a contract-stability check.\n\nHex-string callers can use `encode_hex_call/2`, `decode_hex_call/3`,\n`decode_hex_error/3`, and `decode_response/3` (also `decode_types/3`). These\nconveniences share the binary codecs and return tagged error tuples.\n\n\n## API Functions\n| Function | Arity | Description | Param Kinds |\n| --- | --- | --- | --- |\n| `decode_hex_error!` | 3 | Decode custom-error revert data. Raises on error. | `hex_revert_data: value`, `error_definitions: value`, `opts: value` |\n| `decode_hex_error` | 3 | Decode Solidity 0.8.4+ custom-error revert data against a list of candidate error signatures. | `hex_revert_data: value`, `error_definitions: value`, `opts: value` |\n| `decode_hex_call!` | 3 | Decode selector-prefixed calldata. Raises on error. | `signature_or_selector: value`, `hex_calldata: value`, `opts: value` |\n| `decode_hex_call` | 3 | Decode selector-prefixed calldata to function args. | `signature_or_selector: value`, `hex_calldata: value`, `opts: value` |\n| `decode_types!` | 3 | Decode arbitrary ABI-encoded hex data. Alias of decode_response!/3. | `type_signature: value`, `hex_data: value`, `opts: value` |\n| `decode_types` | 3 | Decode arbitrary ABI-encoded hex data. Alias of decode_response/3. | `type_signature: value`, `hex_data: value`, `opts: value` |\n| `decode_response!` | 3 | Decode hex-encoded ABI response data to Elixir values. Raises on error. | `type_signature: value`, `hex_data: value`, `opts: value` |\n| `decode_response` | 3 | Decode hex-encoded ABI response data to Elixir values. | `type_signature: value`, `hex_data: value`, `opts: value` |\n| `encode_hex_call!` | 2 | Encode a function call to 0x-prefixed hex calldata. Raises on error. | `signature: value`, `params: value` |\n| `encode_hex_call` | 2 | Encode a function call to 0x-prefixed hex calldata. | `signature: value`, `params: value` |\n| `parse_specification` | 1 | Parses an ABI specification document into a list of ABI.FunctionSelector structs. | `doc: value` |\n| `get_abi_item` | 3 | Finds an ABI fragment by name with optional input-type disambiguation for overloads. | `abi: value`, `name: value`, `arg_types: value` |\n| `format_abi_item` | 1 | Renders a FunctionSelector as its canonical Solidity signature string. | `function_selector: value` |\n| `event_signature` | 1 | Returns the 32-byte topic hash for an event signature. | `function_signature: value` |\n| `encode_event_topics` | 2 | Builds an eth_getLogs topic filter list from an event signature and indexed values. | `function_signature: value`, `indexed_values: value` |\n| `decode_event` | 4 | Decodes an event from raw log data and indexed topics. | `function_signature: value`, `data: value`, `topics: value`, `opts: value` |\n| `encode_packed` | 2 | Encodes values using Solidity's non-standard packed mode (abi.encodePacked). | `signature_or_selector: value`, `values: value` |\n| `decode_error` | 3 | Decodes selector-prefixed revert data against known custom-error definitions, plus the Solidity built-in Error(string)/Panic(uint256) errors. | `revert_data: value`, `error_definitions: value`, `opts: value` |\n| `encode_error` | 3 | Encodes args into selector-prefixed revert data for a named custom error. | `signature_or_selector: value`, `data: value`, `opts: value` |\n| `decode_call` | 3 | Decodes selector-prefixed calldata (4-byte method ID + ABI-encoded args) and verifies the selector matches. | `signature_or_selector: value`, `calldata: value`, `opts: value` |\n| `decode` | 3 | Decodes the given data based on the function or tuple signature. | `function_signature: value`, `data: value`, `opts: value` |\n| `method_id` | 1 | Returns the 4-byte function selector (method ID) for a function signature. | `signature: value` |\n| `encode_constructor` | 2 | Encodes constructor arguments for contract deployment (no selector prefix). | `selector: value`, `data: value` |\n| `encode_call` | 3 | Encodes args into selector-prefixed calldata for a named function. | `signature_or_selector: value`, `data: value`, `opts: value` |\n| `encode` | 2 | Encodes the given data into the function signature or tuple signature. | `function_signature: value`, `data: value` |",
       "namespace": "/abi"
     },
     {
@@ -633,6 +966,10 @@
                 "description": "Optional keyword list. Supports check_event_signature: false to skip topics[0] verification (anonymous events or pre-stripped topics), and strict: true to reject non-canonical payloads.",
                 "kind": "value"
               },
+              "function_selector": {
+                "description": "Pre-parsed FunctionSelector with type metadata including indexed flags",
+                "kind": "value"
+              },
               "topics": {
                 "description": "List of topic binaries (each 32 bytes). topics[0] is the event signature hash unless check_event_signature is false",
                 "source": "eth_getLogs",
@@ -643,10 +980,6 @@
                   },
                   "type": "array"
                 }
-              },
-              "function_selector": {
-                "description": "Pre-parsed FunctionSelector with type metadata including indexed flags",
-                "kind": "value"
               }
             },
             "errors": [
@@ -691,12 +1024,12 @@
                 "description": "Event decode options",
                 "kind": "value"
               },
-              "logs": {
-                "description": "List of {data, topics} pairs",
-                "kind": "value"
-              },
               "function_selector": {
                 "description": "Parsed event selector",
+                "kind": "value"
+              },
+              "logs": {
+                "description": "List of {data, topics} pairs",
                 "kind": "value"
               }
             },
@@ -859,6 +1192,10 @@
                   "type": "boolean"
                 }
               },
+              "function_selector": {
+                "description": "FunctionSelector with :function and :types",
+                "kind": "value"
+              },
               "indexed": {
                 "default": false,
                 "description": "When true, append the indexed keyword after parameter types whose argument map carries indexed: true (event signatures)",
@@ -866,10 +1203,6 @@
                 "schema": {
                   "type": "boolean"
                 }
-              },
-              "function_selector": {
-                "description": "FunctionSelector with :function and :types",
-                "kind": "value"
               }
             },
             "returns": {
@@ -1068,18 +1401,18 @@
                   "type": "string"
                 }
               },
-              "size_in_bytes": {
-                "description": "Logical field width to extract from the padded slot",
-                "kind": "value",
-                "schema": {
-                  "type": "integer"
-                }
-              },
               "padding_direction": {
                 "description": "Side that was padded — :left for address/uint/int, :right for bytes<M>/string",
                 "kind": "value",
                 "schema": {
                   "type": "string"
+                }
+              },
+              "size_in_bytes": {
+                "description": "Logical field width to extract from the padded slot",
+                "kind": "value",
+                "schema": {
+                  "type": "integer"
                 }
               }
             },
@@ -1289,14 +1622,6 @@
                   "type": "string"
                 }
               },
-              "size_in_bytes": {
-                "description": "Logical field width to extract from the padded slot",
-                "kind": "value",
-                "schema": {
-                  "minimum": 0,
-                  "type": "integer"
-                }
-              },
               "padding_direction": {
                 "description": "Side that was padded — :left for address/uint/int, :right for bytes<M>/string",
                 "kind": "value",
@@ -1306,6 +1631,14 @@
                     "right"
                   ],
                   "type": "string"
+                }
+              },
+              "size_in_bytes": {
+                "description": "Logical field width to extract from the padded slot",
+                "kind": "value",
+                "schema": {
+                  "minimum": 0,
+                  "type": "integer"
                 }
               }
             },
@@ -1321,5 +1654,5 @@
       "namespace": "/math"
     }
   ],
-  "generated_at": "2026-09-29T09:18:59.751836Z"
+  "generated_at": "2026-10-01T04:33:04.058424Z"
 }

@@ -1,12 +1,11 @@
 defmodule Onchain.Aerodrome.Integration.VoterCalldataTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.ABI
+  alias Cartouche.Hex
   alias Onchain.Aerodrome.Bindings.Abi
   alias Onchain.Aerodrome.CalldataFixture
   alias Onchain.Aerodrome.Contracts
   alias Onchain.Aerodrome.RPCCase
-  alias Onchain.Hex
 
   @moduletag :integration
   @moduletag timeout: 180_000
@@ -17,7 +16,7 @@ defmodule Onchain.Aerodrome.Integration.VoterCalldataTest do
   test "cast-exact reset of unowned id 2 reverts NotApprovedOrOwner on both endpoints" do
     assert {:ok, signature} = Abi.signature("voter.json", "reset")
     assert {:ok, return_type} = Abi.return_type("voter.json", "reset")
-    assert {:ok, calldata} = ABI.encode_call(signature, [2])
+    assert {:ok, calldata} = ABI.encode_hex_call(signature, [2])
     assert CalldataFixture.assert_calldata(calldata, signature, ["2"])
     expected_revert = CalldataFixture.reference!("NotApprovedOrOwner()", [])
 

@@ -11,7 +11,6 @@ defmodule Onchain.Aave.Math.V4RevmTest do
   use ExUnit.Case, async: false
 
   alias Onchain.Aave.Math.V4
-  alias Onchain.ABI
   alias Onchain.EVM
   alias Onchain.RPCCase
 
@@ -84,7 +83,7 @@ defmodule Onchain.Aave.Math.V4RevmTest do
         ]) :: non_neg_integer()
   defp call_liquidation_bonus(ctx, args) do
     calldata =
-      ABI.encode_call!(
+      ABI.encode_hex_call!(
         "calculateLiquidationBonus(uint256,uint256,uint256,uint256)",
         args
       )

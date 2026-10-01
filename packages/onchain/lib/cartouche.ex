@@ -19,22 +19,22 @@ defmodule Cartouche do
 
   use Descripex, namespace: "/cartouche"
 
-  alias Cartouche.Erc20.Call
-  alias Cartouche.Erc20.CallData
   alias Cartouche.Transaction.V1
   alias Cartouche.Transaction.V2
+  alias Onchain.ERC20.Call
+  alias Onchain.ERC20.CallData
 
   @descripex_modules [
     Cartouche,
     Cartouche.Signer,
     Cartouche.Keys,
     Cartouche.Hex,
-    Cartouche.Erc20,
+    Onchain.ERC20,
     CallData,
     Call,
     Cartouche.Sleuth,
     Cartouche.Hash,
-    Cartouche.Address,
+    Onchain.Address,
     Cartouche.Wei,
     Cartouche.Chain,
     Cartouche.RecoveryBit,
@@ -45,7 +45,7 @@ defmodule Cartouche do
     Cartouche.Block,
     Cartouche.Block.Withdrawal,
     Cartouche.Receipt,
-    Cartouche.Receipt.Log,
+    Cartouche.Filter.Log,
     Cartouche.FeeHistory,
     Cartouche.DebugTrace,
     Cartouche.DebugTrace.StructLog,

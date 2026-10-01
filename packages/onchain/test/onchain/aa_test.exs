@@ -1,9 +1,9 @@
 defmodule Onchain.AATest do
   use ExUnit.Case, async: true
 
+  alias Cartouche.Hex
   alias Onchain.AA
   alias Onchain.AA.UserOperation
-  alias Onchain.Hex
 
   # Deterministic test keypair (shared with signer tests, from cartouche docs).
   @test_key_hex "0x800509fa3e80882ad0be77c27505bdc91380f800d51ed80897d22f9fcc75f4bf"
@@ -526,7 +526,7 @@ defmodule Onchain.AATest do
 
     digest
     |> Cartouche.Recover.recover_public_key_from_digest(signature)
-    |> Cartouche.Address.from_public_key()
+    |> Onchain.Address.from_public_key()
     |> Hex.encode()
   end
 end

@@ -461,7 +461,7 @@ defmodule Onchain.Contract.SolidityGeneratorTest do
       assert {:ok, user_bin} = Onchain.Address.validate(@user_address)
 
       assert {:ok, expected_calldata} =
-               Onchain.ABI.encode_call("getUserData(address)", [user_bin])
+               ABI.encode_hex_call("getUserData(address)", [user_bin])
 
       assert calldata == expected_calldata
 
@@ -614,6 +614,6 @@ defmodule Onchain.Contract.SolidityGeneratorTest do
   defp raw_result(type, values) do
     type
     |> ABI.encode([List.to_tuple(values)])
-    |> Onchain.Hex.encode()
+    |> Cartouche.Hex.encode()
   end
 end

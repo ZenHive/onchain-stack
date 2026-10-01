@@ -7,7 +7,7 @@ defmodule Onchain.PrivateKey do
   # string) and must reject malformed ones identically before handing off to
   # signing. Extracted to satisfy `mix ex_dna --max-clones 0`.
 
-  alias Onchain.Hex
+  alias Cartouche.Hex
 
   @doc false
   @spec decode(term()) :: {:ok, binary()} | {:error, {:invalid_private_key, term()}}

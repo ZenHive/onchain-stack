@@ -467,6 +467,7 @@ defmodule Cartouche.Sleuth do
   @spec obvious_results([{String.t() | nil, term()}], boolean()) :: [term()] | [{atom(), term()}]
   defp obvious_results(processed_results, true), do: Enum.map(processed_results, &to_named_pair/1)
   defp obvious_results(processed_results, false), do: Enum.map(processed_results, fn {_, v} -> v end)
+
   # --- query ---
 
   api(:deploy_query, "Execute a Sleuth deploy-as-call: encode ctor args, append to bytecode, eth_call, decode.",
@@ -502,11 +503,11 @@ defmodule Cartouche.Sleuth do
   @spec deploy_query(String.t(), String.t(), tuple(), String.t(), keyword()) ::
           {:ok, list()} | {:error, term()}
   def deploy_query(bytecode, constructor_types, constructor_args, return_type, opts \\ []) do
-    with {:ok, bytecode_bin} <- Onchain.Hex.decode(bytecode),
+    with {:ok, bytecode_bin} <- Cartouche.Hex.decode(bytecode),
          {:ok, ctor_bin} <- encode_ctor(constructor_types, constructor_args),
-         data_hex = Onchain.Hex.encode(bytecode_bin <> ctor_bin),
+         data_hex = Cartouche.Hex.encode(bytecode_bin <> ctor_bin),
          {:ok, response_hex} <- eth_call_no_to(data_hex, opts) do
-      Onchain.ABI.decode_response(return_type, response_hex)
+      ABI.decode_response(return_type, response_hex)
     end
   end
 
@@ -534,15 +535,15 @@ defmodule Cartouche.Sleuth do
   # --- private ---
 
   # Encode constructor args as a raw ABI tuple (no 4-byte selector).
-  # Onchain.ABI.encode_call/2 wraps abi's Onchain.ABI.encode/2 which, when given a type-only
+  # ABI.encode_hex_call/2 wraps abi's ABI.encode/2 which, when given a type-only
   # signature like "(uint,address)", produces a bare encoded tuple — see
-  # deps/abi/lib/abi.ex doctest (Onchain.ABI.encode("(uint,address)", [{50, <<1::160>>}])).
+  # deps/abi/lib/abi.ex doctest (ABI.encode("(uint,address)", [{50, <<1::160>>}])).
   @spec encode_ctor(String.t(), tuple()) :: {:ok, binary()} | {:error, term()}
   defp encode_ctor("()", {}), do: {:ok, <<>>}
 
   defp encode_ctor(types, args) do
-    with {:ok, hex} <- Onchain.ABI.encode_call(types, [args]) do
-      Onchain.Hex.decode(hex)
+    with {:ok, hex} <- ABI.encode_hex_call(types, [args]) do
+      Cartouche.Hex.decode(hex)
     end
   end
 

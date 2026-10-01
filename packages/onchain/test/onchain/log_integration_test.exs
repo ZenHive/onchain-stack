@@ -1,7 +1,6 @@
-defmodule Onchain.Log.IntegrationTest do
+defmodule ABI.LogIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.Log
   alias Onchain.RPC
 
   @moduletag :integration
@@ -28,23 +27,13 @@ defmodule Onchain.Log.IntegrationTest do
       log = hd(logs)
       signature = "Transfer(address indexed from, address indexed to, uint256 value)"
 
-      raw = %{
-        topics: Enum.map(log.topics, &Onchain.Hex.encode/1),
-        data: Onchain.Hex.encode(log.data)
-      }
-
-      assert {:ok, decoded} = Log.decode_event(raw, signature)
-      assert is_map(decoded)
-
-      # from and to should be checksummed addresses
-      assert String.starts_with?(decoded.from, "0x")
-      assert String.starts_with?(decoded.to, "0x")
-      assert byte_size(decoded.from) == 42
-      assert byte_size(decoded.to) == 42
+      assert {:ok, "Transfer", decoded} = ABI.decode_event(signature, log.data, log.topics)
+      assert byte_size(decoded["from"]) == 20
+      assert byte_size(decoded["to"]) == 20
 
       # value should be a non-negative integer
-      assert is_integer(decoded.value)
-      assert decoded.value >= 0
+      assert is_integer(decoded["value"])
+      assert decoded["value"] >= 0
     end
   end
 end

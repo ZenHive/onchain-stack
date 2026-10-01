@@ -154,7 +154,7 @@ defmodule Onchain.RPC.BatchTest do
 
     test "honors a per-call :req_options transport override (regression: to_rpc_opts dropped it)" do
       # Remove the app-config seam so the ONLY way the stub plug reaches Req is
-      # the per-call `req_options:` (Onchain.HTTP.req_options/3 level 4). Before
+      # the per-call `req_options:` (Cartouche.HTTP.req_options/3 level 4). Before
       # the fix, to_rpc_opts/1 stripped :req_options and this hit the network.
       previous = Application.get_env(:cartouche, Cartouche.RPC)
       Application.delete_env(:cartouche, Cartouche.RPC)

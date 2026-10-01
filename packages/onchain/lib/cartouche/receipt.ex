@@ -11,112 +11,7 @@ defmodule Cartouche.Receipt do
   use Descripex, namespace: "/ethereum/receipt"
   use Cartouche.Hex
 
-  defmodule Log do
-    @moduledoc """
-    An event log entry emitted during the transaction referenced by a
-    `Cartouche.Receipt` — address, data, indexed topics, and the block/tx
-    position needed to locate the log on chain.
-    """
-    use Descripex, namespace: "/ethereum/receipt/log"
-
-    @type t() :: %__MODULE__{
-            # QUANTITY - integer of the log index position in the block. null when its pending log.
-            log_index: integer(),
-            # QUANTITY - the block number where this log was in. null when its pending log.
-            block_number: integer(),
-            # DATA, 32 Bytes - hash of the block where this log was in.
-            # null when its pending. null when its pending log.
-            block_hash: <<_::256>>,
-            # DATA, 32 Bytes - hash of the transactions this log was created from. null when its pending log.
-            transaction_hash: <<_::256>>,
-            # QUANTITY - integer of the transactions index position log was created from. null when its pending log.
-            transaction_index: integer(),
-            # DATA, 20 Bytes - address from which this log originated.
-            address: <<_::160>>,
-            # DATA - contains zero or more 32 Bytes non-indexed arguments of the log.
-            data: binary,
-            # Array of DATA - Array of 0 to 4 32 Bytes DATA of indexed log arguments.
-            # (In solidity: The first topic is the hash of the signature of the event
-            # (e.g. Deposit(address,bytes32,uint256)), except you declared the event
-            # with the anonymous specifier.)
-            topics: [<<_::256>>]
-          }
-
-    defstruct [
-      :log_index,
-      :block_number,
-      :block_hash,
-      :transaction_hash,
-      :transaction_index,
-      :address,
-      :data,
-      :topics
-    ]
-
-    api(:deserialize, "Deserialize an Ethereum transaction receipt log from a JSON-RPC object.",
-      params: [
-        params: [
-          kind: :exchange_data,
-          source: "Cartouche.RPC.get_trx_receipt/2",
-          description:
-            "Receipt log object with hex quantity fields, block and transaction hashes, emitting address, data, and topics."
-        ]
-      ],
-      returns: %{
-        type: :receipt_log,
-        description:
-          "%Cartouche.Receipt.Log{} with decoded log index, block/transaction location, emitting address, data bytes, and topic words."
-      }
-    )
-
-    @doc ~S"""
-    Deserializes a transaction receipt as serialized by an Ethereum JSON-RPC response.
-
-    See also https://ethereum.org/en/developers/docs/apis/json-rpc#eth_gettransactionreceipt
-
-    ## Examples
-
-        iex> use Cartouche.Hex
-        iex> %{
-        ...>   "logIndex" => "0x1",
-        ...>   "blockNumber" => "0x1b4",
-        ...>   "blockHash" => "0xa957d47df264a31badc3ae823e10ac1d444b098d9b73d204c40426e57f47e8c3",
-        ...>   "transactionHash" =>  "0xaadf829c5a142f1fccd7d8216c5785ac562ff41e2dcfdf5785ac562ff41e2dcf",
-        ...>   "transactionIndex" => "0x0",
-        ...>   "address" => "0x16c5785ac562ff41e2dcfdf829c5a142f1fccd7d",
-        ...>   "data" => "0x0000000000000000000000000000000000000000000000000000000000000000",
-        ...>   "topics" => [
-        ...>     "0x59ebeb90bc63057b6515673c3ecf9438e5058bca0f92585014eced636878c9a5"
-        ...>   ]
-        ...> }
-        ...> |> Cartouche.Receipt.Log.deserialize()
-        %Cartouche.Receipt.Log{
-          log_index: 1,
-          block_number: 0x01b4,
-          block_hash: ~h[0xa957d47df264a31badc3ae823e10ac1d444b098d9b73d204c40426e57f47e8c3],
-          transaction_hash: ~h[0xaadf829c5a142f1fccd7d8216c5785ac562ff41e2dcfdf5785ac562ff41e2dcf],
-          transaction_index: 0,
-          address: ~h[0x16c5785ac562ff41e2dcfdf829c5a142f1fccd7d],
-          data: ~h[0x0000000000000000000000000000000000000000000000000000000000000000],
-          topics: [
-            ~h[0x59ebeb90bc63057b6515673c3ecf9438e5058bca0f92585014eced636878c9a5]
-          ]
-        }
-    """
-    @spec deserialize(map()) :: t() | no_return()
-    def deserialize(%{} = params) do
-      %__MODULE__{
-        log_index: Hex.decode_hex_number!(params["logIndex"]),
-        block_number: Hex.decode_hex_number!(params["blockNumber"]),
-        block_hash: Hex.decode_word!(params["blockHash"]),
-        transaction_hash: Hex.decode_word!(params["transactionHash"]),
-        transaction_index: Hex.decode_hex_number!(params["transactionIndex"]),
-        address: Hex.decode_address!(params["address"]),
-        data: Hex.decode_hex!(params["data"]),
-        topics: Enum.map(params["topics"], &Hex.decode_word!/1)
-      }
-    end
-  end
+  alias Cartouche.Filter.Log
 
   @type t() :: %__MODULE__{
           # DATA, 32 Bytes - hash of the transaction.
@@ -184,7 +79,7 @@ defmodule Cartouche.Receipt do
     returns: %{
       type: :receipt,
       description:
-        "%Cartouche.Receipt{} with decoded transaction and block hashes, sender/recipient addresses, gas totals, optional blob gas fields, and embedded %Cartouche.Receipt.Log{} entries."
+        "%Cartouche.Receipt{} with decoded transaction and block hashes, sender/recipient addresses, gas totals, optional blob gas fields, and embedded %Cartouche.Filter.Log{} entries."
     }
   )
 
@@ -239,7 +134,7 @@ defmodule Cartouche.Receipt do
         gas_used: 0xb4c8,
         contract_address: nil,
         logs: [
-          %Cartouche.Receipt.Log{
+          %Cartouche.Filter.Log{
             log_index: 1,
             block_number: 0x01b4,
             block_hash: ~h[0xaa8216c5785ac562ff41e2dcfdf5785ac562ff41e2dcfdf829c5a142f1fccd7d],
@@ -338,7 +233,8 @@ defmodule Cartouche.Receipt do
         gas_used: 222642,
         contract_address: nil,
         logs: [
-          %Cartouche.Receipt.Log{
+          %Cartouche.Filter.Log{
+          removed: false,
             log_index: 0,
             block_number: 10493428,
             block_hash: ~h[0x4bc3c26b1a599ced9876d9bf9a17c9bd58ec8b71a68e75335de7f2820e9336ca],
@@ -352,7 +248,8 @@ defmodule Cartouche.Receipt do
               ~h[0x0000000000000000000000002326aba712500ae3114b664aeb51dba2c2fb416d]
             ]
           },
-          %Cartouche.Receipt.Log{
+          %Cartouche.Filter.Log{
+          removed: false,
             log_index: 1,
             block_number: 10493428,
             block_hash: ~h[0x4bc3c26b1a599ced9876d9bf9a17c9bd58ec8b71a68e75335de7f2820e9336ca],
@@ -367,7 +264,8 @@ defmodule Cartouche.Receipt do
               ~h[0x0000000000000000000000000000000000000000000000000000000000000000]
             ]
           },
-          %Cartouche.Receipt.Log{
+          %Cartouche.Filter.Log{
+          removed: false,
             log_index: 2,
             block_number: 10493428,
             block_hash: ~h[0x4bc3c26b1a599ced9876d9bf9a17c9bd58ec8b71a68e75335de7f2820e9336ca],

@@ -1,7 +1,7 @@
-defmodule Onchain.Block.IntegrationTest do
+defmodule Cartouche.Block.IntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.Block
+  alias Cartouche.Block
 
   @moduletag :integration
 
@@ -19,7 +19,7 @@ defmodule Onchain.Block.IntegrationTest do
       assert block.number == @known_block_number
       assert block.timestamp == @known_block_timestamp
       assert is_binary(block.hash)
-      assert String.starts_with?(block.hash, "0x")
+      assert byte_size(block.hash) == 32
     end
 
     test "accepts 'latest' tag and returns valid block" do

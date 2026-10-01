@@ -27,10 +27,10 @@ defmodule Onchain.Solidity do
   ### Selectors & Topics
 
   Selectors and topic hashes are `0x`-prefixed hex strings (e.g. `"0x70a08231"`),
-  consistent with the `Onchain.Hex` convention used throughout the codebase.
+  consistent with the `Cartouche.Hex` convention used throughout the codebase.
 
   The `:return_type` field on each function produces tuple-type strings compatible
-  with `Onchain.ABI.decode_response/2` (e.g. `"(uint256,uint256,bool)"`).
+  with `ABI.decode_response/2` (e.g. `"(uint256,uint256,bool)"`).
 
   ## Error Format
 

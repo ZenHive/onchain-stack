@@ -19,9 +19,9 @@ defmodule Onchain.Aave.UiPoolDataProvider do
   | Source | Error Shape |
   |--------|-------------|
   | `Onchain.Aave.Contracts.address/2` | `{:error, {:unsupported_network, network}}` |
-  | `Onchain.ABI.encode_call/2` | `{:error, {:encode_error, reason}}` |
+  | `ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
   | `Onchain.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
-  | `Onchain.ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
+  | `ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
 
   ## Functions
@@ -43,7 +43,6 @@ defmodule Onchain.Aave.UiPoolDataProvider do
   alias Onchain.Aave.Types.AggregatedReserveData
   alias Onchain.Aave.Types.BaseCurrencyInfo
   alias Onchain.Aave.Types.UserReserveData
-  alias Onchain.ABI
   alias Onchain.Address
   alias Onchain.RPC
 
@@ -86,12 +85,13 @@ defmodule Onchain.Aave.UiPoolDataProvider do
   )
 
   @spec get_reserves_list(keyword()) :: {:ok, [String.t()]} | {:error, term()}
+
   def get_reserves_list(opts \\ []) do
     {network_opts, rpc_opts} = Opts.split_network(opts)
 
     with {:ok, ui_addr} <- Contracts.address(:ui_pool_data_provider, network_opts),
          {:ok, provider_bin} <- provider_address(network_opts),
-         {:ok, calldata} <- ABI.encode_call("getReservesList(address)", [provider_bin]),
+         {:ok, calldata} <- ABI.encode_hex_call("getReservesList(address)", [provider_bin]),
          {:ok, hex_result} <- RPC.eth_call(ui_addr, calldata, rpc_opts),
          {:ok, [addresses]} <- ABI.decode_response(@reserves_list_response, hex_result) do
       {:ok, Enum.map(addresses, &Address.checksum!/1)}
@@ -142,7 +142,7 @@ defmodule Onchain.Aave.UiPoolDataProvider do
 
     with {:ok, ui_addr} <- Contracts.address(:ui_pool_data_provider, network_opts),
          {:ok, provider_bin} <- provider_address(network_opts),
-         {:ok, calldata} <- ABI.encode_call("getReservesData(address)", [provider_bin]),
+         {:ok, calldata} <- ABI.encode_hex_call("getReservesData(address)", [provider_bin]),
          {:ok, hex_result} <- RPC.eth_call(ui_addr, calldata, rpc_opts),
          {:ok, [reserves_raw, base_raw]} <-
            ABI.decode_response(@reserves_data_response, hex_result) do
@@ -198,6 +198,7 @@ defmodule Onchain.Aave.UiPoolDataProvider do
 
   @spec get_user_reserves_data(String.t() | binary(), keyword()) ::
           {:ok, {[UserReserveData.t()], non_neg_integer()}} | {:error, term()}
+
   def get_user_reserves_data(user_address, opts \\ []) do
     {network_opts, rpc_opts} = Opts.split_network(opts)
 
@@ -205,7 +206,7 @@ defmodule Onchain.Aave.UiPoolDataProvider do
          {:ok, ui_addr} <- Contracts.address(:ui_pool_data_provider, network_opts),
          {:ok, provider_bin} <- provider_address(network_opts),
          {:ok, calldata} <-
-           ABI.encode_call("getUserReservesData(address,address)", [provider_bin, user_bin]),
+           ABI.encode_hex_call("getUserReservesData(address,address)", [provider_bin, user_bin]),
          {:ok, hex_result} <- RPC.eth_call(ui_addr, calldata, rpc_opts),
          {:ok, [reserves_raw, e_mode_id]} <-
            ABI.decode_response(@user_reserves_data_response, hex_result) do

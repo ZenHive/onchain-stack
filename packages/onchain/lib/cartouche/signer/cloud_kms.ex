@@ -59,7 +59,7 @@ if Code.ensure_loaded?(Goth) do
             {:ok, binary()} | {:error, term()}
     def get_address(cred, project, location, keychain, key, version) do
       with {:ok, pub} <- public_key({cred, project, location, keychain, key, version}) do
-        {:ok, Cartouche.Address.from_public_key(pub)}
+        {:ok, Onchain.Address.from_public_key(pub)}
       end
     end
 

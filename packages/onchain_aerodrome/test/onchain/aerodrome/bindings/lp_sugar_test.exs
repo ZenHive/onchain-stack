@@ -1,7 +1,6 @@
 defmodule Onchain.Aerodrome.Bindings.LpSugarTest do
   use ExUnit.Case, async: true
 
-  alias Onchain.ABI
   alias Onchain.Aerodrome.Bindings.Abi
   alias Onchain.Aerodrome.Bindings.LpSugar
   alias Onchain.Aerodrome.Fixtures
@@ -315,7 +314,7 @@ defmodule Onchain.Aerodrome.Bindings.LpSugarTest do
 
   defp encode_return(function, values) do
     {:ok, types} = Abi.return_type("lp_sugar.json", function)
-    {:ok, "0x" <> <<_selector::binary-size(8), payload::binary>>} = ABI.encode_call("fixture" <> types, values)
+    {:ok, "0x" <> <<_selector::binary-size(8), payload::binary>>} = ABI.encode_hex_call("fixture" <> types, values)
     "0x" <> payload
   end
 end

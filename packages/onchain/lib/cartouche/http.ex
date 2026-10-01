@@ -4,6 +4,7 @@ defmodule Cartouche.HTTP do
 
   `Cartouche.RPC.send_rpc/3` and `Cartouche.RPC.send_batch/2` both use
   `Cartouche.RPC` as owner and the `:cartouche` configuration keys below.
+  The CCIP-Read owner `Onchain.ENS` retains its `:onchain` configuration.
   """
 
   @doc """
@@ -24,9 +25,11 @@ defmodule Cartouche.HTTP do
   """
   @spec req_options(module(), Keyword.t(), Keyword.t()) :: Keyword.t()
   def req_options(owner, base, call_opts) do
+    app = if owner == Onchain.ENS, do: :onchain, else: :cartouche
+
     base
-    |> Keyword.merge(Application.get_env(:cartouche, owner, []))
-    |> Keyword.merge(Application.get_env(:cartouche, :req_options, []))
+    |> Keyword.merge(Application.get_env(app, owner, []))
+    |> Keyword.merge(Application.get_env(app, :req_options, []))
     |> Keyword.merge(Keyword.get(call_opts, :req_options, []))
   end
 

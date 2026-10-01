@@ -2,8 +2,8 @@ defmodule Cartouche.ReceiptTest do
   use ExUnit.Case, async: true
   use Cartouche.Hex
 
+  alias Cartouche.Filter.Log
   alias Cartouche.Receipt
-  alias Cartouche.Receipt.Log
 
   doctest Receipt
   doctest Log

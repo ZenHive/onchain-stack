@@ -40,7 +40,6 @@ defmodule Onchain.Aave.MathRevmTest do
   use ExUnitProperties
 
   alias Onchain.Aave.Math
-  alias Onchain.ABI
   alias Onchain.EVM
   alias Onchain.RPCCase
 
@@ -65,6 +64,7 @@ defmodule Onchain.Aave.MathRevmTest do
   @meta_path Path.join(@fixtures_dir, "wad_ray_wrapper.json")
 
   # --- Aave V3 constants (must match Math module + Solidity wrapper) ---
+
   @ray 1_000_000_000_000_000_000_000_000_000
   @half_ray 500_000_000_000_000_000_000_000_000
   @wad 1_000_000_000_000_000_000
@@ -73,6 +73,7 @@ defmodule Onchain.Aave.MathRevmTest do
   @seconds_per_year 31_536_000
 
   # --- Property bounds (chosen to stay safely below Aave's overflow reverts) ---
+
   # 10 * RAY ≈ 1e28; 10_000 * RAY ≈ 1e31; 10_000 * WAD ≈ 1e22.
   # rayMul/wadMul overflow trips when a*b > 2^256 − HALF. All bounds below
   # keep a*b ≤ 1e63, which is ~14 orders of magnitude from uint256 max.
@@ -437,6 +438,8 @@ defmodule Onchain.Aave.MathRevmTest do
       )
     end
 
+    # --- Helpers --------------------------------------------------------------
+
     property "matches Solidity for random rate/elapsed inputs", ctx do
       check all(
               triples <-
@@ -455,8 +458,6 @@ defmodule Onchain.Aave.MathRevmTest do
       end
     end
   end
-
-  # --- Helpers --------------------------------------------------------------
 
   @spec property_runs() :: pos_integer()
   defp property_runs do
@@ -520,7 +521,7 @@ defmodule Onchain.Aave.MathRevmTest do
   defp call_wrapper_batch(ctx, signature, args_list) do
     calls =
       Enum.map(args_list, fn args ->
-        {@wrapper_address, ABI.encode_call!(signature, args)}
+        {@wrapper_address, ABI.encode_hex_call!(signature, args)}
       end)
 
     case EVM.simulate_batch(calls, ctx.opts) do

@@ -4,7 +4,7 @@ defmodule Onchain.Solana.Token do
   and ATA management.
 
   Combines RPC calls with PDA derivation and instruction building.
-  Analogous to `Cartouche.Erc20` on the Ethereum side.
+  Analogous to `Onchain.ERC20` on the Ethereum side.
 
   ## Examples
 

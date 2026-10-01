@@ -20,9 +20,9 @@ defmodule Onchain.Aave.DebtToken do
   |--------|-------------|
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
   | `Onchain.Aave.Contracts.address/2` | `{:error, {:unsupported_network, network}}` |
-  | `Onchain.ABI.encode_call/2` | `{:error, {:encode_error, reason}}` |
+  | `ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
   | `Onchain.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
-  | `Onchain.ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
+  | `ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
   | `Cartouche.Signer.send_transaction/3` | `{:error, {:missing_option, ...}}`, `{:error, {:sign_error, ...}}`, etc. |
   | Interest rate mode validation | `{:error, {:invalid_interest_rate_mode, value}}`, `{:error, {:unsupported_interest_rate_mode, :stable}}` |
 
@@ -37,12 +37,11 @@ defmodule Onchain.Aave.DebtToken do
 
   use Descripex, namespace: "/aave/debt_token"
 
+  alias Cartouche.Hex
   alias Cartouche.Signer
   alias Onchain.Aave.Pool
-  alias Onchain.ABI
   alias Onchain.Address
   alias Onchain.Contract
-  alias Onchain.Hex
 
   # --- debt_token_address ---
 
@@ -102,7 +101,7 @@ defmodule Onchain.Aave.DebtToken do
     with {:ok, _debt_token_bin} <- Address.validate(debt_token),
          {:ok, delegatee_bin} <- Address.validate(delegatee),
          {:ok, calldata_hex} <-
-           ABI.encode_call("approveDelegation(address,uint256)", [delegatee_bin, amount]) do
+           ABI.encode_hex_call("approveDelegation(address,uint256)", [delegatee_bin, amount]) do
       Signer.send_transaction(debt_token, Hex.decode!(calldata_hex), opts)
     end
   end

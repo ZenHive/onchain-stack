@@ -31,7 +31,7 @@ defmodule Onchain.Contract.Generator do
   - **Read functions** (`view`/`pure`): `fn_name(contract, ...params, opts \\\\ [])`
     delegates to `Onchain.Contract.call/5`
   - **Write functions** (`nonpayable`/`payable`): `fn_name(contract, ...params, opts)`
-    encodes calldata via `Onchain.ABI.encode_call/2` and delegates to
+    encodes calldata via `ABI.encode_hex_call/2` and delegates to
     `Cartouche.Signer.send_transaction/3`
   - **Bang variants**: `fn_name!` that raises on error
   - **`Multicall` helpers**: typed call builders and result decoders for
@@ -643,14 +643,14 @@ defmodule Onchain.Contract.Generator do
       {:<-, [],
        [
          {:ok, calldata_var},
-         quote(do: Onchain.ABI.encode_call(unquote(signature), unquote(call_params)))
+         quote(do: ABI.encode_hex_call(unquote(signature), unquote(call_params)))
        ]}
 
     body =
       quote do
         Cartouche.Signer.send_transaction(
           contract,
-          Onchain.Hex.decode!(unquote(calldata_var)),
+          Cartouche.Hex.decode!(unquote(calldata_var)),
           opts
         )
       end
@@ -732,7 +732,7 @@ defmodule Onchain.Contract.Generator do
         @doc "Decodes an aggregate3 result for `#{unquote(func.signature)}`."
         @spec unquote(decoder_name)(raw_result()) :: unquote(result_spec)
         def unquote(decoder_name)({true, data_hex}) do
-          Onchain.ABI.decode_response(unquote(func.return_type), data_hex)
+          ABI.decode_response(unquote(func.return_type), data_hex)
         end
 
         def unquote(decoder_name)({false, data_hex}), do: {:error, data_hex}
@@ -764,12 +764,12 @@ defmodule Onchain.Contract.Generator do
       {:<-, [],
        [
          {:ok, calldata_hex},
-         quote(do: Onchain.ABI.encode_call(unquote(signature), unquote(call_params)))
+         quote(do: ABI.encode_hex_call(unquote(signature), unquote(call_params)))
        ]}
 
     body =
       quote do
-        {:ok, {Onchain.Hex.encode(unquote(contract_bin)), unquote(allow_failure), unquote(calldata_hex)}}
+        {:ok, {Cartouche.Hex.encode(unquote(contract_bin)), unquote(allow_failure), unquote(calldata_hex)}}
       end
 
     {:with, [], [contract_clause] ++ validation_clauses ++ [encode_clause] ++ [[do: body]]}
@@ -1009,7 +1009,7 @@ defmodule Onchain.Contract.Generator do
         "0x" <> hex
       end
 
-    Onchain.Hex.decode!(hex)
+    Cartouche.Hex.decode!(hex)
   end
 
   @doc false
@@ -1054,7 +1054,7 @@ defmodule Onchain.Contract.Generator do
     input_vars = build_input_vars(func.inputs)
     var_asts = Enum.map(input_vars, fn {vname, _ty} -> Macro.var(vname, nil) end)
     encode_params = Enum.map(input_vars, fn {vname, _ty} -> Macro.var(vname, nil) end)
-    prefix = Onchain.Hex.decode!(func.selector)
+    prefix = Cartouche.Hex.decode!(func.selector)
     signature = func.signature
     encode_def = sleuth_encode_def(encode_name, selector_name, signature, input_vars, var_asts, encode_params)
 
@@ -1110,7 +1110,7 @@ defmodule Onchain.Contract.Generator do
     clauses =
       Enum.map(functions, fn func ->
         decode_name = to_identifier_atom("decode_" <> func.elixir_name <> "_call")
-        prefix = Onchain.Hex.decode!(func.selector)
+        prefix = Cartouche.Hex.decode!(func.selector)
 
         quote do
           def decode_call(unquote(Macro.escape(prefix)) <> _ = calldata) do
