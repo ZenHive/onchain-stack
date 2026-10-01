@@ -5318,7 +5318,7 @@
       "bundle": "cartouche_rpc_correctness",
       "target_repo": "onchain",
       "milestone": "stack_read_surface_boundary",
-      "status": "pending",
+      "status": "in_progress",
       "title": "One base_fee/1 in the merged core — probe the hosted eth_baseFee refusal, keep the pending-header read",
       "scores": {
         "d": 3,
@@ -5364,6 +5364,7 @@
       ],
       "body": "Context (post-9030): hieroglyph and cartouche now live inside packages/onchain, namespaces unchanged, so Cartouche.RPC (lib/cartouche/rpc.ex) and Onchain.RPC (lib/onchain/rpc.ex) are two modules in one package, and task 9036 will rename both to one Onchain.RPC. The milestone is RPC unification inside the merged core before 9036: each spec'd method gets exactly one wrapper, one decoder and one struct, built on the single transport from task 2137. Put the surviving implementation in Cartouche.RPC for now (9036 does the rename), and delete the Onchain.RPC copy in the same diff. There is no second package, so there is no re-presenting wrapper to keep.\n\nThe package has two base_fee/1 functions with different semantics:\n- Cartouche.RPC.base_fee/1 calls eth_baseFee (packages/onchain/lib/cartouche/rpc.ex:1897).\n- Onchain.RPC.base_fee/1 reads baseFeePerGas from the pending block header (packages/onchain/lib/onchain/rpc.ex:1223-1252). It was verified equal to eth_baseFee against reth v2.5.1 in a single batch: 71_739_926 for both, while latest was 68_871_658.\n\neth_baseFee is Erigon-origin (erigontech/erigon#11992), adopted by reth, Nethermind and go-ethereum v1.17.4, and merged to execution-apis main on 2026-06-15 (#795). It is in no tagged release: the newest is v1.0.0-beta.7 from 2026-06-10. Alchemy mainnet answered -32600 \"eth_baseFee is not available on the ETH_MAINNET\" on 2026-08-25. Infura is expected to refuse but has not been probed. The caveat is already in docs/cartouche/README.md:116.\n\nThe mocked unsupported-node test (packages/onchain/test/rpc_test.exs:180, :458) asserts an assumed -32601 message that no provider was observed to send. It ratifies a guess.\n\nDefault outcome: one base_fee/1 that reads the pending header, because it works on every EIP-1559 endpoint. Only choose otherwise if the probe shows every major hosted provider serves eth_baseFee. Rule 1 of node-portability.md: read a tagged release, not main.\n\n(2026-09-29 review) Weigh a third portable construction before choosing: `eth_feeHistory(1, \"latest\", [])`. Its `baseFeePerGas` array includes the next block after the newest in range (execution-apis v1.0.0-beta.7 src/eth/fee_market.yaml:86), so the last element is the base fee eth_baseFee returns. It is in every tagged release since beta.4 and avoids the `pending` block tag, which some hosted providers and L2 endpoints answer with the latest block or refuse. Record in the CHANGELOG which of pending-header, feeHistory and eth_baseFee survives and why.\n",
       "created_at": "2026-08-25",
+      "started_at": "2026-10-01",
       "scored_at": "2026-09-29",
       "cross_repo": []
     },
