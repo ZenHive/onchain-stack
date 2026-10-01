@@ -12,7 +12,12 @@ defmodule Cartouche.RPCTransactionReadsLiveTest do
 
   @moduletag :integration
 
-  # Observed 2026-10-01 against ethereum.publicnode.com. Block 20_000_000 index 0.
+  # Observed 2026-10-01. Block 20_000_000 index 0.
+  # The archive node returns `blockTimestamp`. Alchemy mainnet sometimes omits
+  # the key, including across methods for one transaction, so that field may be nil.
+  # The same endpoint also answers a burst of these reads with
+  # `{:error, {:unavailable, %{code: -32001}}}` after about 10s, then serves the
+  # identical call. Retry only that tag; the decoded body still has to match.
   @type2_hash "0xbb4b3fc2b746877dce70862850602f1d19bd890ab4db47e6b7ee1da1fe578a0d"
   @type2_block_hash "0xd24fd73f794058a3807db926d8898c6481e902b7edb91ce0d479d6760f276183"
   @type2_from "0xae2fc483527b8ef99eb5d9b44875f005ba1fae13"
@@ -40,31 +45,36 @@ defmodule Cartouche.RPCTransactionReadsLiveTest do
   end
 
   test "a known mainnet type-2 transaction decodes on both lanes" do
-    assert_portability!(&RPC.eth_get_transaction_by_hash(@type2_hash, &1),
+    assert_portability!(
+      &until_served(fn -> RPC.eth_get_transaction_by_hash(@type2_hash, &1) end),
       archive: &type2?/1,
       alchemy: &type2?/1
     )
 
-    assert_portability!(&RPC.eth_get_transaction_by_block_hash_and_index(@type2_block_hash, 0, &1),
+    assert_portability!(
+      &until_served(fn -> RPC.eth_get_transaction_by_block_hash_and_index(@type2_block_hash, 0, &1) end),
       archive: &type2?/1,
       alchemy: &type2?/1
     )
 
-    assert_portability!(&RPC.eth_get_transaction_by_block_number_and_index(@type2_block, 0, &1),
+    assert_portability!(
+      &until_served(fn -> RPC.eth_get_transaction_by_block_number_and_index(@type2_block, 0, &1) end),
       archive: &type2?/1,
       alchemy: &type2?/1
     )
   end
 
   test "a known mainnet legacy transaction decodes on both lanes" do
-    assert_portability!(&RPC.eth_get_transaction_by_hash(@legacy_hash, &1),
+    assert_portability!(
+      &until_served(fn -> RPC.eth_get_transaction_by_hash(@legacy_hash, &1) end),
       archive: &legacy?/1,
       alchemy: &legacy?/1
     )
   end
 
   test "an unknown hash is not found on both lanes" do
-    assert_portability!(&RPC.eth_get_transaction_by_hash(@missing_hash, &1),
+    assert_portability!(
+      &until_served(fn -> RPC.eth_get_transaction_by_hash(@missing_hash, &1) end),
       archive: &match?({:error, :not_found}, &1),
       alchemy: &match?({:error, :not_found}, &1)
     )
@@ -73,14 +83,29 @@ defmodule Cartouche.RPCTransactionReadsLiveTest do
   test "eth_getBlockReceipts for block 20_000_000 matches the single-receipt decoder on both lanes" do
     assert_portability!(
       fn opts ->
-        with {:ok, receipts} <- RPC.eth_get_block_receipts(@type2_block, opts),
-             {:ok, single} <- RPC.get_trx_receipt(@type2_hash, opts) do
-          {:ok, receipts, single}
-        end
+        until_served(fn ->
+          with {:ok, receipts} <- RPC.eth_get_block_receipts(@type2_block, opts),
+               {:ok, single} <- RPC.get_trx_receipt(@type2_hash, opts) do
+            {:ok, receipts, single}
+          end
+        end)
       end,
       archive: &receipts?/1,
       alchemy: &receipts?/1
     )
+  end
+
+  # Alchemy's `-32001` "Unable to complete request" is a capacity blip, not a
+  # refusal of the method. One immediate retry is enough (observed 2026-10-01:
+  # the retry returned in 11ms after a 10s failure).
+  defp until_served(fun, attempts \\ 2)
+  defp until_served(fun, 1), do: fun.()
+
+  defp until_served(fun, attempts) do
+    case fun.() do
+      {:error, {:unavailable, _}} -> until_served(fun, attempts - 1)
+      result -> result
+    end
   end
 
   defp type2?(
@@ -88,7 +113,7 @@ defmodule Cartouche.RPCTransactionReadsLiveTest do
           %Info{
             block_hash: block_hash,
             block_number: @type2_block,
-            block_timestamp: 0x665BA27F,
+            block_timestamp: block_timestamp,
             transaction_index: 0,
             transaction: %V2{
               chain_id: 1,
@@ -101,7 +126,8 @@ defmodule Cartouche.RPCTransactionReadsLiveTest do
               access_list: [{weth, _} | _]
             }
           } = info}
-       ) do
+       )
+       when block_timestamp in [nil, 0x665BA27F] do
     info.hash == word(@type2_hash) and info.from == address(@type2_from) and
       block_hash == word(@type2_block_hash) and info.transaction.destination == address(@type2_to) and
       weth == address(@weth)
@@ -114,7 +140,7 @@ defmodule Cartouche.RPCTransactionReadsLiveTest do
           %Info{
             block_hash: block_hash,
             block_number: 0xB443,
-            block_timestamp: 0x55C42659,
+            block_timestamp: block_timestamp,
             transaction_index: 0,
             transaction:
               %V1{
@@ -128,7 +154,8 @@ defmodule Cartouche.RPCTransactionReadsLiveTest do
                 s: 0x45E0AFF800961CFCE805DAEF7016B9B675C137A6A41A548F7B60A3484C06A33A
               } = transaction
           } = info}
-       ) do
+       )
+       when block_timestamp in [nil, 0x55C42659] do
     info.hash == word(@legacy_hash) and info.from == address(@legacy_from) and
       block_hash == word(@legacy_block_hash) and transaction.to == address(@legacy_to)
   end

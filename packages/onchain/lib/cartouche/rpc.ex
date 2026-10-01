@@ -2067,6 +2067,8 @@ defmodule Cartouche.RPC do
   `eth_getTransactionByHash`). The result is a `Cartouche.Transaction.Info`
   envelope: inclusion metadata plus the typed transaction from
   `Vn.from_json/1`. Block fields are `nil` when the transaction is pending.
+  `block_timestamp` is also `nil` when the node omits `blockTimestamp`
+  (Alchemy mainnet sometimes does, observed 2026-10-01).
   A null result is `{:error, :not_found}`.
   """
   @spec eth_get_transaction_by_hash(String.t(), Keyword.t()) ::

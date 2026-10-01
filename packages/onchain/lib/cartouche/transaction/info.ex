@@ -7,6 +7,9 @@ defmodule Cartouche.Transaction.Info do
   `blockTimestamp`, `from`, `hash`, and `transactionIndex` (TransactionInfo in
   execution-apis v1.0.0-beta.7, `src/schemas/transaction.yaml`). Those fields
   live here. Block fields are `nil` when the transaction is pending.
+  `block_timestamp` is also `nil` when the node omits `blockTimestamp`.
+  Alchemy mainnet sometimes does that for mined transactions (observed
+  2026-10-01), even though the beta.7 schema lists the field as required.
   """
 
   alias Cartouche.Hex
@@ -113,7 +116,14 @@ defmodule Cartouche.Transaction.Info do
   defp decode_body(module, params) do
     {:ok, module.from_json(params)}
   rescue
-    e in [Hex.InvalidHex, ArgumentError, KeyError, FunctionClauseError, MatchError] ->
+    e in [
+      Hex.InvalidHex,
+      ArgumentError,
+      KeyError,
+      FunctionClauseError,
+      MatchError,
+      Protocol.UndefinedError
+    ] ->
       {:error, {:invalid_transaction, Exception.message(e)}}
   end
 

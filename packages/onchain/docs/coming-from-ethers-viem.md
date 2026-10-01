@@ -139,7 +139,7 @@ client struct is roadmap task 9017 in `onchain`.
 | `getNetwork().chainId` | `getChainId` | `Cartouche.RPC.eth_chain_id/1` | — |
 | `getBlock(tag, prefetchTxs)` | `getBlock` | `Cartouche.RPC.get_block_by_number/2`, `get_block_by_hash/2` → `%Cartouche.Block{}` | `include_transaction_details: true` for full transactions |
 | `getTransactionReceipt(hash)` | `getTransactionReceipt` | `Cartouche.RPC.get_trx_receipt/2` → `%Cartouche.Receipt{} \| nil` | — |
-| `getTransaction(hash)` | `getTransaction` | `Cartouche.RPC.eth_get_transaction_by_hash/2` → `%Cartouche.Transaction.Info{}` | `{:error, :not_found}` when the node returns null; block fields are `nil` while pending |
+| `getTransaction(hash)` | `getTransaction` | `Cartouche.RPC.eth_get_transaction_by_hash/2` → `%Cartouche.Transaction.Info{}` | `{:error, :not_found}` when the node returns null; block fields are `nil` while pending, and `block_timestamp` is `nil` when the node omits `blockTimestamp` |
 | `waitForTransaction(hash)` | `waitForTransactionReceipt` | — | roadmap task 9017 |
 | `getFeeData()` | `estimateFeesPerGas` | `Cartouche.RPC.gas_price/1`, `max_priority_fee_per_gas/1`, `base_fee/1`, `fee_history/1` → `%Cartouche.FeeHistory{}` | no combined fee struct; `execute_trx/3` derives fees itself (`base_fee_buffer`, `priority_fee` options) |
 | `estimateGas(tx)` | `estimateGas` | `Cartouche.RPC.estimate_gas/2` | takes a V1/V2/`%Cartouche.Transaction.Call{}` struct |

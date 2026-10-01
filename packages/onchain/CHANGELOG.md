@@ -8,6 +8,15 @@ Completed roadmap tasks.
 
 ### Added
 
+- `Cartouche.RPC.eth_get_transaction_by_hash/2`,
+  `eth_get_transaction_by_block_hash_and_index/3`, and
+  `eth_get_transaction_by_block_number_and_index/3` return
+  `%Cartouche.Transaction.Info{}`: `hash`, `from`, `block_hash`, `block_number`,
+  `block_timestamp`, `transaction_index`, and the typed transaction from
+  `Vn.from_json/1`. Pending block fields are `nil`. `block_timestamp` is also
+  `nil` when the node omits `blockTimestamp` (Alchemy mainnet sometimes does,
+  observed 2026-10-01). A null result is `{:error, :not_found}`.
+  `eth_get_block_receipts/2` decodes with `Cartouche.Receipt.deserialize/1`.
 - `Cartouche.RPC` node introspection: `eth_syncing/1`,
   `eth_get_block_transaction_count_by_hash/2`,
   `eth_get_block_transaction_count_by_number/2`, `net_listening/1`,
@@ -35,6 +44,20 @@ Completed roadmap tasks.
   `docs/state-read-portability.md`.
 
 ### Breaking behaviour
+
+- Remove `Onchain.RPC.get_transaction_by_hash/2`, `get_transaction_by_hash!/2`,
+  `get_transaction_by_block_hash_and_index/3`,
+  `get_transaction_by_block_hash_and_index!/3`,
+  `get_transaction_by_block_number_and_index/3`,
+  `get_transaction_by_block_number_and_index!/3`, `get_block_receipts/2`, and
+  `get_block_receipts!/2`. The reads are `Cartouche.RPC.eth_get_transaction_by_hash/2`,
+  `eth_get_transaction_by_block_hash_and_index/3`,
+  `eth_get_transaction_by_block_number_and_index/3`, and
+  `eth_get_block_receipts/2`. Transaction reads return
+  `{:ok, %Cartouche.Transaction.Info{}}` (inclusion metadata plus the typed
+  transaction). An unknown hash or an out-of-range index is
+  `{:error, :not_found}` (previously `{:ok, nil}`). Block receipts return
+  `{:ok, [%Cartouche.Receipt{}]}` or `{:ok, nil}` (previously parsed maps).
 
 - **One `base_fee/1`.** `Onchain.RPC.base_fee/1` and `base_fee!/1` are removed,
   including the `:block` option. `Cartouche.RPC.base_fee/1` is the remaining

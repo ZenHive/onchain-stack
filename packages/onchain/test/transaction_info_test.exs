@@ -204,6 +204,26 @@ defmodule Cartouche.Transaction.InfoTest do
     assert message =~ "invalid hex"
   end
 
+  test "a non-list access-list storage key returns an error and does not raise" do
+    body = %{
+      "type" => "0x2",
+      "chainId" => "0x1",
+      "nonce" => "0x1",
+      "maxPriorityFeePerGas" => "0x0",
+      "maxFeePerGas" => "0x1",
+      "gas" => "0x5208",
+      "to" => "0x0000000000000000000000000000000000000002",
+      "value" => "0x0",
+      "input" => "0x",
+      "accessList" => [%{"address" => @weth, "storageKeys" => "0x01"}],
+      "yParity" => "0x1",
+      "r" => "0x1",
+      "s" => "0x2"
+    }
+
+    assert {:error, {:invalid_transaction, _message}} = Info.decode(with_inclusion(body))
+  end
+
   test "a non-object result is an error" do
     assert {:error, {:unexpected_transaction, nil}} = Info.decode(nil)
   end
