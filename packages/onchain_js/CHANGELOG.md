@@ -4,7 +4,7 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## Unreleased — v0.5.0
+## v0.5.0 — onchain 0.16 namespace (2026-10-01)
 
 ### Changed
 
