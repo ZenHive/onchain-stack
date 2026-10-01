@@ -57,7 +57,6 @@ defmodule Onchain.RPC.Codegen do
          [
            nil,
            :hex_unsigned,
-           :nullable_hex_unsigned,
            :receipt_list,
            :transaction,
            :block_access_list
@@ -65,7 +64,7 @@ defmodule Onchain.RPC.Codegen do
       default: nil,
       doc:
         "Result decoder. nil leaves the raw result untouched; :hex_unsigned uses cartouche; " <>
-          "nullable quantities, receipt lists, and transactions use Onchain's existing parsers; " <>
+          "receipt lists and transactions use Onchain's existing parsers; " <>
           ":block_access_list keeps the node's camelCase EIP-7928 maps."
     ]
   ]
@@ -228,9 +227,6 @@ defmodule Onchain.RPC.Codegen do
             Keyword.put(to_rpc_opts(opts), :decode, :hex_unsigned)
           )
         end
-
-      :nullable_hex_unsigned ->
-        quote(do: decode_nullable_quantity_result(unquote(rpc_call)))
 
       :receipt_list ->
         quote(do: decode_receipt_list_result(unquote(rpc_call)))
