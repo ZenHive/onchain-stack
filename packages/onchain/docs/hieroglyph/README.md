@@ -1,4 +1,10 @@
-# Hieroglyph — Ethereum ABI for Elixir
+# Hieroglyph — Ethereum ABI for Elixir (historical standalone guide)
+
+This guide records the retired standalone package. Current `ABI.*` modules ship
+in `onchain` and use alloy through the core NIF. See the [onchain README](../../README.md)
+for installation and the [native build notes](../../CLAUDE.md#core-abi-native-build-and-release-verification)
+for source-build and precompiled-artifact requirements. The dependency and parser
+descriptions below belong to the old release.
 
 [![Hex.pm](https://img.shields.io/hexpm/v/hieroglyph.svg)](https://hex.pm/packages/hieroglyph)
 [![HexDocs](https://img.shields.io/badge/docs-hexdocs-blue.svg)](https://hexdocs.pm/hieroglyph)

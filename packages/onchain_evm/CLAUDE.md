@@ -21,8 +21,8 @@ EVM simulation, Solidity parsing, debug/trace APIs, and contract codegen for Eli
 
 See the root `CLAUDE.md` for the family layout, the sibling/3 mechanism, and
 the shared gate adjudications (reach #36, cowlib/gun, sobelow). This file
-carries only what's specific to this package — the one with native Rust
-builds in the family, which is the source of most of what follows.
+carries only what's specific to this package's EVM and Solidity Rust crates.
+Core and Tempo have their own native crates and build notes.
 
 ## Toolchain & check commands
 

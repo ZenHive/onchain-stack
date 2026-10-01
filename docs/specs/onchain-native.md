@@ -24,4 +24,4 @@ NIF-6: `fixed`/`ufixed` types, bare, `MxN` and nested, are rejected with an expl
 
 NIF-7: Parsed schemas and signature hashes are cached under separate `:persistent_term` keys, each cache holding at most 1,024 entries; misses beyond the bound compile without retention.
   Source: packages/onchain/lib/abi/alloy.ex (commit 66af428); packages/onchain/CLAUDE.md.
-  Note: the existing test covers the separate keys, not the 1,024 cap.
+  Tests: `packages/onchain/test/abi/alloy_cache_test.exs` covers separate keys, concurrent inserts (including event schemas), and the signature cache's 1,024-entry cap with continued answers after overflow.

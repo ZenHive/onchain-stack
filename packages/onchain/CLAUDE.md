@@ -105,9 +105,10 @@ users run Alchemy, Infura, or a pruned Geth. What is specific to this repo:
   instructions when unset. Success-path dual-endpoint verification still has no
   automatic seam — `rpc_url!/0` returns a single string — so a portability claim
   on a *successful* read still means you ran it against a hosted endpoint by hand.
-- **Two surfaces legitimately need more than a default endpoint** and are documented as
-  such in `README.md` § "Node compatibility": historical reads need an archive node,
-  and `Onchain.Subscription` needs a WebSocket URL. Adding a third means adding a row.
+- **Endpoint requirements belong in `README.md` § "Node compatibility".**
+  It covers historical reads, WebSocket subscriptions, tracing namespaces and
+  methods a provider does not implement. Document any additional requirement
+  there; the portable next-block base-fee read needs no special endpoint.
 
 ## Toolchain & check commands
 
@@ -244,8 +245,8 @@ and the Cartouche signer modules retain a separate 95% floor; Onchain retains 70
 The original strict Doctor policies are retained in `.doctor-hieroglyph.exs`
 and `.doctor-cartouche.exs`. The ABI manifest check remains in full QA.
 
-Reach includes all hand-written `lib`, `dev`, `sol/src`, and `test/support` sources,
-excluding generated Erlang under `src` as hieroglyph did. The merged 109-file scope reproduces cartouche's `--dead-code` timeout:
+Reach includes all hand-written `lib`, `dev`, `sol/src`, and `test/support` sources.
+The old generated Erlang parser under `src` was removed by the alloy migration. The merged 109-file scope reproduces cartouche's `--dead-code` timeout:
 `Task.Supervised.stream(30000)` exits from `Reach.CLI.Pipe.safely/1` under reach
 2.8.4 after Architecture Policy reports OK. Full QA therefore runs
 `reach.check --arch --smells`, just as cartouche did. Re-test dead-code after a

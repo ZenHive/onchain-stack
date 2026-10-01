@@ -5,6 +5,7 @@ configuration and APIs, use the [onchain README](../../README.md) and
 [signer migration guide](../signer-consolidation.md). The `cartouche` dependency,
 `mix cartouche.gen`, `Cartouche.VM` and generated `exec_vm_*` examples below
 belong to the old release; current bindings use `Onchain.Contract.Generator`.
+The transport configuration and node-compatibility notes below describe the merged core.
 
 [![Hex.pm](https://img.shields.io/hexpm/v/cartouche.svg)](https://hex.pm/packages/cartouche)
 
@@ -56,7 +57,7 @@ Each entry under `:signer` becomes a supervised `Cartouche.Signer` GenServer; th
 | Key | Default | Purpose |
 | --- | --- | --- |
 | `:chain_id` | `1` | Default Ethereum chain ID for signers and transactions |
-| `:ethereum_node` | `"https://mainnet.infura.io"` | Ethereum JSON-RPC endpoint |
+| `:ethereum_node` | unset | Ethereum JSON-RPC endpoint; required unless supplied per call |
 | `:signer` | `[]` | List of `{name, signer_spec}` for Ethereum signers |
 | `:contracts` | `[]` | Named contract address registry — see `Cartouche.get_contract_address/1` |
 | `:req_options` | `[]` | Global [Req](https://hex.pm/packages/req) options merged into every HTTP request (see HTTP transport below) |
@@ -67,8 +68,8 @@ Each entry under `:signer` becomes a supervised `Cartouche.Signer` GenServer; th
 
 Cartouche issues all JSON-RPC and OpenChain requests through [Req](https://hex.pm/packages/req); it does **not** start an HTTP connection pool of its own. Three layers of [Req options](https://hexdocs.pm/req/Req.html#new/1) are merged into every request, lowest to highest precedence:
 
-1. **Global** — `config :cartouche, :req_options, [...]`
-2. **Per-transport** — `config :cartouche, Cartouche.RPC | Cartouche.OpenChain.API, <req options>`
+1. **Per-transport** — `config :cartouche, Cartouche.RPC | Cartouche.OpenChain.API, <req options>`
+2. **Global** — `config :cartouche, :req_options, [...]`
 3. **Per-call** — `req_options: [...]` in the opts keyword passed to any RPC function
 
 ```elixir
@@ -131,9 +132,8 @@ and is in no tagged release; Alchemy and Infura mainnet refuse it. The wrapper d
 not use the `pending` block tag. Verbatim refusals and the same-batch comparison with
 `eth_baseFee` are in [base-fee-portability.md](../base-fee-portability.md).
 
-Note that the `:ethereum_node` default (`https://mainnet.infura.io`) is a placeholder, not
-a recommendation — it carries no API key and will not serve real traffic. Always set
-`:ethereum_node` explicitly, or pass `rpc_url:` per call.
+There is no default endpoint. Set `:ethereum_node` explicitly or pass `rpc_url:`
+per call. Without either, RPC returns `{:error, {:missing_option, :ethereum_node}}`.
 
 ## Quick start: send your first transaction
 

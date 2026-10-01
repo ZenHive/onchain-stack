@@ -1,6 +1,6 @@
 # Onchain
 
-Ethereum library with RPC, ABI encoding/decoding and transaction signing. The former hieroglyph and cartouche libraries now ship here with their `ABI.*` and `Cartouche.*` names unchanged. Cryptography uses the existing Keccak and secp256k1 NIF dependencies.
+Ethereum library with RPC, ABI encoding/decoding and transaction signing. The former hieroglyph and cartouche libraries now ship here with their `ABI.*` and `Cartouche.*` names unchanged. ABI, transaction and EIP-712 codecs use the core alloy Rust NIF. Cryptography uses the existing Keccak and secp256k1 NIF dependencies.
 
 ## Package Family
 
@@ -8,6 +8,8 @@ Ethereum library with RPC, ABI encoding/decoding and transaction signing. The fo
 |---------|---------|------|
 | **onchain** (this) | Core Ethereum primitives, RPC, ABI, signing | descripex, zen_websocket, crypto dependencies |
 | [onchain_aave](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_aave) | Aave V3 protocol wrappers | onchain |
+| [onchain_aerodrome](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_aerodrome) | Aerodrome bindings and analytics on Base | onchain |
+| [onchain_solana](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_solana) | Solana RPC, transactions, tokens and Ed25519 signing | onchain |
 | [onchain_evm](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_evm) | Rust NIFs: revm simulation, Solidity parsing, codegen | onchain + rustler |
 | [onchain_js](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_js) | JS bridge: npm packages on the BEAM via QuickBEAM | onchain + quickbeam |
 | [onchain_tempo](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain_tempo) | Tempo chain primitives: 0x76 transactions, TIP-20 encoding | onchain |

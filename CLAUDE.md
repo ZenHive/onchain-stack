@@ -43,13 +43,13 @@ gotchas. Everything family-wide lives here, once.
 
 | Package (`packages/…`) | Hex package | Role | Native |
 |---|---|---|---|
-| onchain | `onchain` | Core primitives: RPC, ABI (`ABI.*`), ERC, signing (`Cartouche.*`) | yecc/leex; crypto NIF dependencies |
+| onchain | `onchain` | Core primitives: RPC, ABI (`ABI.*`), ERC, signing (`Cartouche.*`) | Rust ABI/transaction/EIP-712 NIF; crypto NIF dependencies |
 | onchain_aave | `onchain_aave` | Aave V3 + V4 wrappers | — |
 | onchain_aerodrome | `onchain_aerodrome` | Aerodrome Finance (Base) bindings, Sugar-backed reads + analytics | — |
 | onchain_evm | `onchain_evm` | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
 | onchain_js | `onchain_js` | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
 | onchain_solana | `onchain_solana` | Solana RPC, transactions, token programs, Ed25519 signing | — |
-| onchain_tempo | `onchain_tempo` | Tempo chain primitives (0x76 tx, TIP-20) | — |
+| onchain_tempo | `onchain_tempo` | Tempo chain primitives (0x76 tx, TIP-20) | Rust (Rustler) |
 
 **Standalone siblings** (not in `packages/`): `descripex`, `zen_websocket`
 (shared upstreams), `mpp` (leaf app) — see above.
@@ -290,8 +290,11 @@ is safe for `deps.update`, `hex.audit`, and anything read-only.
 Unchanged in shape from the standalone era — each package keeps its own
 `.reach.exs`, `.doctor.exs`, sobelow config, and coverage threshold (see that
 package's `CLAUDE.md`). `cd packages/<name> && mix ci` for full post-merge QA; that
-alias is `precommit.full` under a different name in every package, still
-gated on `MIX_ENV=test` via each package's `def cli`.
+alias is `precommit.full` under a different name in every package. Core, EVM
+and Solana select `MIX_ENV=test` through `def cli`; Aave, Aerodrome, JS and
+Tempo use the default dev environment for analyzers and explicitly select
+`MIX_ENV=test` for their coverage command. Preserve those environments when
+running individual steps after an alias failure.
 
 **Shared gate helpers** live once at `shared/mix_helpers.exs`
 (`OnchainMonorepo.MixHelpers`, `agents_check/1` + `advisory_freshness/1` +
@@ -306,7 +309,7 @@ there shouldn't be one; if you find one, it's drift from before this file
 existed and should be migrated to load `shared/mix_helpers.exs` instead.
 
 **Consolidated config, root-owned:** `.tool-versions`, `.mix_audit_ignore`
-(one shared entry, six per-package symlinks — see the adjudication below),
+(one shared entry, seven per-package symlinks — see the adjudication below),
 and the ExSlop/`.credo.exs` base policy now live once at the repo root instead
 of eight near-identical copies. There is no per-package override left: every
 `packages/<name>/.credo.exs` are symlinks to the root `.credo.exs`, so
@@ -433,10 +436,10 @@ pass** down before reporting a single finding. 2.8.3's CHANGELOG records
 crashing during analysis"; both sites now use `function.meta[:module]`. What
 remains:
 
-- **onchain** preserves hieroglyph’s generated-Erlang exclusion in `.reach.exs`,
-  retaining `lib`, `dev`, `sol/src`, and `test/support` as hand-written sources. That is **not** a #36 workaround and
-  should stay: a smell in yecc/leex-generated Erlang under `src/` is unfixable
-  by definition, so the scope is right regardless of the bug.
+- **onchain** retains `lib`, `dev`, `sol/src`, and `test/support` as
+  hand-written sources in `.reach.exs`. The old `src/` yecc/leex parser was
+  removed by the alloy migration; its generated-Erlang exclusion is now
+  historical. Keep the hand-written scope intact.
 - **onchain_js** ran `reach.check --arch` **only** for the same crash (JS nodes
   the QuickBEAM plugin contributes carry `source: nil`, and `plugins:` is not a
   `.reach.exs` key, so there was nothing to exclude). Restored 2026-09-16 under
