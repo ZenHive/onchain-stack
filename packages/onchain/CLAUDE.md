@@ -77,13 +77,14 @@ The family-wide law is `node-portability.md` (`@`-imported above): our archive n
 privileged environment, not the reference one, and this is an open-source package whose
 users run Alchemy, Infura, or a pruned Geth. What is specific to this repo:
 
-- **`Onchain.RPC.base_fee/1` is the worked example.** Read the `NOTE (portability):`
-  comment above it in `lib/onchain/rpc.ex` — it records why the wrapper reads
-  `baseFeePerGas` from the **pending** block header instead of calling cartouche's
-  `eth_baseFee` (an Erigon extension Alchemy rejects with `-32600`), and the batch request
-  that proved the two equivalent on reth v2.5.1. That comment tag is the convention:
-  a non-obvious portability decision gets a `NOTE (portability):` comment naming the
-  method, who serves it, and the consumer-visible error.
+- **`Cartouche.RPC.base_fee/1` is the worked example.** It reads the final
+  `baseFeePerGas` from `eth_feeHistory(1, "latest", [])`. `eth_baseFee` is on
+  execution-apis `main` since 2026-06-15 and in no tagged release; Alchemy and
+  Infura mainnet refuse it. `Onchain.RPC.base_fee/1` (the pending-header read)
+  is removed. Verbatim refusals and the same-batch equality check are in
+  `docs/base-fee-portability.md`. A non-obvious portability decision still gets
+  a `NOTE (portability):` comment naming the method, who serves it, and the
+  consumer-visible error.
 - **Node-capability refusals are classified in `Cartouche.RPC` (`send_rpc/3` and
   `send_batch/2`).** `Onchain.RPC` `do_rpc/3` and `batch/2` both call that transport. A method the node does not implement is `{:error, {:method_not_found, map}}`,
   a plan-disabled namespace is `{:error, {:namespace_unavailable, map}}`, and a
@@ -130,7 +131,7 @@ lib/onchain/
   abi.ex            # encode_call/2, decode_response/2, decode_types/2, decode_call/3, decode_error/2
   decimal.ex        # to_decimal/2, to_basis_points/1, div_pow10/2
   fees.ex           # suggest_fees/2 — EIP-1559 fee recommendation over Cartouche.FeeHistory.t()
-  rpc.ex            # eth_call, eth_estimateGas, eth_getBalance, receipts, nonces, fee_history, base_fee (portable, via the block header), blob_base_fee, get_proof, generic call/3 passthrough; do_rpc and batch delegate to Cartouche.RPC, which classifies node refusals (:method_not_found / :namespace_unavailable / :unavailable). eth_syncing, block transaction counts, net_listening, net_peerCount, and web3_clientVersion are Cartouche.RPC. Stateless eth_getLogs is Cartouche.RPC.eth_get_logs/2
+  rpc.ex            # eth_call, eth_estimateGas, eth_getBalance, receipts, nonces, fee_history, blob_base_fee. Next-block base fee is Cartouche.RPC.base_fee/1 via eth_feeHistory, get_proof, generic call/3 passthrough; do_rpc and batch delegate to Cartouche.RPC, which classifies node refusals (:method_not_found / :namespace_unavailable / :unavailable). eth_syncing, block transaction counts, net_listening, net_peerCount, and web3_clientVersion are Cartouche.RPC. Stateless eth_getLogs is Cartouche.RPC.eth_get_logs/2
   rpc/codegen.ex    # defrpc/defrpc_bang macros — NimbleOptions-backed codegen for uniform RPC wrapper bodies
   rpc/helpers.ex    # shared RPC helpers; parse_block_response/1, parse_transaction_map/1; do_rpc enriches revert maps with :data hex for decode_error/2
   erc20.ex          # reads + writes: balanceOf, allowance, decimals, symbol, totalSupply, approve, transfer

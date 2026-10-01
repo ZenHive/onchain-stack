@@ -74,7 +74,7 @@ your provider serves:
 | Historical reads — any `block` parameter older than ~128 blocks (`eth_call`, `eth_getBalance`, `eth_getProof`, `eth_feeHistory` at an old block) | an **archive** node, or a hosted plan that retains history | `{:error, {:unavailable, map}}` (`-32001 Unable to complete request` on Alchemy), or a "missing trie node" error, depending on client |
 | `Onchain.Subscription` (`eth_subscribe`) | a **WebSocket** endpoint (`wss://`), which not every plan includes | connection refused, or `{:error, {:method_not_found, map}}` over HTTP |
 | `trace_*` / `debug_*` on a free hosted plan | a plan that serves that namespace | `{:error, {:namespace_unavailable, map}}` (Alchemy: `-32600` "...not available on the Free tier") |
-| Methods the node does not implement (`eth_getBlockAccessList`, `eth_baseFee`, …) | a node that serves them, or a portable construction (`base_fee/1` reads the block header instead of `eth_baseFee`) | `{:error, {:method_not_found, map}}` |
+| Methods the node does not implement (`eth_getBlockAccessList`, `eth_baseFee`, …) | a node that serves them. The next-block base fee does not need `eth_baseFee`: `Cartouche.RPC.base_fee/1` reads `eth_feeHistory(1, "latest", [])` | `{:error, {:method_not_found, map}}` |
 
 Each of those error terms is classified on the shared `Cartouche.RPC` transport path
 so a codegen'd wrapper, a hand-written wrapper, `call/3` and `batch/2` apply the
@@ -86,10 +86,11 @@ See `Onchain.RPC`'s moduledoc § "Node-capability refusals" for the pinned
 message shapes and for the finding that `-32001` is **not** uniquely pruned
 history (Alchemy answers it for some unimplemented methods too).
 
-Notably *not* on that list: `Onchain.RPC.base_fee/1` and `blob_base_fee/1`. Both read
-from the block header rather than calling the client-specific `eth_baseFee` /
-`eth_blobBaseFee` extensions, so they work on any EIP-1559 (resp. EIP-4844) node. See the
-`NOTE (portability)` comment in `lib/onchain/rpc.ex` for the equivalence check.
+`Onchain.RPC.base_fee/1` is gone. `Cartouche.RPC.base_fee/1` returns the next block's
+fee from `eth_feeHistory`, which Alchemy and Infura mainnet serve; it does not call
+`eth_baseFee` or read the `pending` header. `Onchain.RPC.blob_base_fee/1` still wraps
+`eth_blobBaseFee`. The probe, the hosted refusals, and why fee history won are in
+`docs/base-fee-portability.md`.
 
 If you hit a method that works on your node but not on a common hosted provider, that's a
 portability bug worth reporting.

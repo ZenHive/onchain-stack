@@ -123,11 +123,13 @@ Three caveats worth knowing before you pick an endpoint:
 | `Cartouche.RPC.trace_trx/2`, `trace_call/2`, `trace_call_many/2`, `debug_trace_call/2` | the `trace_*` namespace (OpenEthereum-origin; served by Erigon and reth) and `debug_traceCall` — **none of them in `ethereum/execution-apis`** | hosted endpoints that do not expose the tracing namespaces reject the call; the exact code and message vary by provider and have not been probed |
 | Historical-state reads (a `block` parameter older than ~128 blocks) | an **archive** node, or a hosted plan that retains history | `-32001 Unable to complete request`, or a "missing trie node" error, depending on client |
 
-For the base fee specifically, the portable construction is to read `baseFeePerGas` from
-the **pending** block header — every EIP-1559 node serves it, and it carries the same
-"next block" semantics that `eth_baseFee` does. `Onchain.RPC.base_fee/1` in the
-[`onchain`](https://github.com/ZenHive/onchain-stack/tree/main/packages/onchain) package does exactly that if you'd rather
-not hand-roll it.
+`Cartouche.RPC.base_fee/1` is that read. `eth_feeHistory(1, "latest", [])` returns one
+extra `baseFeePerGas` after the newest block in range (execution-apis v1.0.0-beta.7),
+so the final entry is the next block's fee. The method has been in every tagged
+release since beta.4. `eth_baseFee` has been on execution-apis `main` since 2026-06-15
+and is in no tagged release; Alchemy and Infura mainnet refuse it. The wrapper does
+not use the `pending` block tag. Verbatim refusals and the same-batch comparison with
+`eth_baseFee` are in [base-fee-portability.md](../base-fee-portability.md).
 
 Note that the `:ethereum_node` default (`https://mainnet.infura.io`) is a placeholder, not
 a recommendation — it carries no API key and will not serve real traffic. Always set

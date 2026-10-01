@@ -29,6 +29,23 @@ Completed roadmap tasks.
 
 ### Breaking behaviour
 
+- **One `base_fee/1`.** `Onchain.RPC.base_fee/1` and `base_fee!/1` are removed,
+  including the `:block` option. `Cartouche.RPC.base_fee/1` is the remaining
+  wrapper. It returns the next block's base fee from
+  `eth_feeHistory(1, "latest", [])` — the final `baseFeePerGas` entry, per
+  execution-apis v1.0.0-beta.7 — and does not call `eth_baseFee` or read the
+  `pending` header.
+
+  `eth_baseFee` merged to execution-apis `main` on 2026-06-15 (#795) and is in
+  no tagged release (latest v1.0.0-beta.7). Live probes on 2026-10-01: Alchemy
+  mainnet answered `-32600` `"eth_baseFee is not available on the ETH_MAINNET. For more information see our docs: https://docs.alchemy.com/alchemy/documentation/apis/ethereum"`;
+  Infura mainnet answered `-32601` `"The method eth_baseFee does not exist/is not available"`.
+  On the archive node, one JSON-RPC batch of `eth_baseFee`, that fee-history
+  call, and the pending header agreed. Fee history is the survivor because it
+  is in every tagged release since beta.4, both hosted providers serve it, and
+  it does not depend on `pending`. A mined block's fee is that block's
+  `base_fee_per_gas`. Evidence: `docs/base-fee-portability.md`.
+
 - Remove `Onchain.RPC.syncing/1`, `syncing!/1`,
   `get_block_transaction_count_by_hash/2`, `get_block_transaction_count_by_hash!/2`,
   `get_block_transaction_count_by_number/2`, and

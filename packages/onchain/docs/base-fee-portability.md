@@ -69,8 +69,8 @@ CARTOUCHE_LIVE_NODE_URL="$ETHEREUM_API_URL" mix test --only base_fee_portability
 mix check.dispatch
 ```
 
-Harness prohibits changelog edits in implementer worktrees. This note carries
-the decision and evidence for the release changelog without editing that file.
+The decision is also recorded under Unreleased in `CHANGELOG.md`. This note
+keeps the verbatim probe evidence.
 
 Verification on the implementation revision:
 
