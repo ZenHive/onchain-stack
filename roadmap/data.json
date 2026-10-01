@@ -16458,6 +16458,42 @@
       "verified_by": "claude",
       "verification_ref": "harness-run:run-1790735365351-2b6b76cd",
       "cross_repo": []
+    },
+    {
+      "id": "9051",
+      "phase": 9100,
+      "bundle": "onchain_core_consolidation",
+      "target_repo": "onchain",
+      "status": "pending",
+      "title": "Make onchain api_manifest.json render identically in dev and test",
+      "scores": {
+        "d": 3,
+        "b": 4,
+        "u": 4
+      },
+      "eff": 1.33,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "`MIX_ENV=dev mix onchain.manifest a.json` and `MIX_ENV=test mix onchain.manifest b.json` produce byte-identical files",
+        "The manifest freshness check passes after regenerating with the plain dev command",
+        "A focused test pins the deterministic ordering of the affected description fields"
+      ],
+      "out_of_scope": [
+        "Changing the manifest schema or which functions it lists"
+      ],
+      "touches": [
+        "packages/onchain/lib/mix/tasks/onchain.manifest.ex",
+        "packages/onchain/api_manifest.json"
+      ],
+      "body": "Observed 2026-10-01 during the 0.16.0 pre-release QA: `mix onchain.manifest` produces a different api_manifest.json under MIX_ENV=dev than under MIX_ENV=test — map keys inside some descriptions render in a different order. The freshness gate runs in test env, so a manifest regenerated with the plain dev command fails the gate even though nothing changed. Find where env-dependent ordering enters (likely inspect/to_string of a map inside descripex metadata, or JSON encoding of unsorted maps) and make the output deterministic regardless of env, so `mix onchain.manifest` in either env yields byte-identical output.",
+      "created_at": "2026-10-01",
+      "scored_at": "2026-10-01",
+      "cross_repo": []
     }
   ]
 }
