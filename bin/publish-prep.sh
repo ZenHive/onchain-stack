@@ -277,15 +277,11 @@ cmd_check() {
 
   # 4. retired deps
   #
-  # Capture first, grep second. `mix hex.audit | grep -q` under `set -o
-  # pipefail` is a race: grep -q exits on the first match, mix dies on
-  # SIGPIPE, and the pipeline reports failure even though the output said
-  # "No retired ..." — hex.audit's trailing ignore_advisories warnings made
-  # that race a near-certain loss.
-  local ha
-  ha="$(mix hex.audit 2>&1)"
-  if printf '%s' "$ha" | grep -qi "No retired"; then ok "hex.audit clean"
-  else warn "hex.audit flagged retired deps (review)"; fi
+  # Judge by exit status: hex.audit exits non-zero on retired or vulnerable
+  # deps, and its text no longer always says "No retired" when clean (an
+  # "Ignored advisories:" block replaces it).
+  if mix hex.audit >/dev/null 2>&1; then ok "hex.audit clean"
+  else warn "hex.audit flagged retired or vulnerable deps (review)"; fi
 
   # 4b. dependency currency — every lib updated before a release, no exceptions
   #
