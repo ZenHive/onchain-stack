@@ -12,9 +12,6 @@ defmodule Onchain.RPCCodegenTest do
     :blob_base_fee
   ]
   @block_wrappers [
-    :get_block_receipts,
-    :get_transaction_by_block_hash_and_index,
-    :get_transaction_by_block_number_and_index,
     :get_block_access_list
   ]
 

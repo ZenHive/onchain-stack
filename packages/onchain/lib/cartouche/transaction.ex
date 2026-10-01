@@ -1233,6 +1233,42 @@ defmodule Cartouche.Transaction do
     end
   end
 
+  api(:from_json_module, "Select the envelope module for a JSON-RPC transaction type.",
+    params: [
+      type: [
+        kind: :value,
+        description:
+          ~s(Transaction `type` from a JSON-RPC object. `nil` and `"0x0"` are legacy; `"0x1"` through `"0x4"` select the typed envelopes.)
+      ]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, module}` (`V1`, `V_2930`, `V2`, `V3`, or `V4`) or `{:error, {:unknown_transaction_type, type}}`."
+    }
+  )
+
+  @doc """
+  Returns the envelope module for a JSON-RPC transaction `type`.
+
+  `nil` and `"0x0"` are legacy (`V1`). `"0x1"` through `"0x4"` select
+  `V_2930`, `V2`, `V3`, and `V4`.
+  """
+  @spec from_json_module(term()) ::
+          {:ok, V1}
+          | {:ok, V_2930}
+          | {:ok, V2}
+          | {:ok, V3}
+          | {:ok, V4}
+          | {:error, {:unknown_transaction_type, term()}}
+  def from_json_module(nil), do: {:ok, V1}
+  def from_json_module("0x0"), do: {:ok, V1}
+  def from_json_module("0x1"), do: {:ok, V_2930}
+  def from_json_module("0x2"), do: {:ok, V2}
+  def from_json_module("0x3"), do: {:ok, V3}
+  def from_json_module("0x4"), do: {:ok, V4}
+  def from_json_module(other), do: {:error, {:unknown_transaction_type, other}}
+
   api(
     :encode,
     "Encode a concrete transaction struct (V1/V_2930/V2/V3/V4) into raw RLP/typed-RLP transaction bytes by dispatching on struct.",

@@ -178,15 +178,17 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
     assert actual == expected
   end
 
-  test "eth_getTransactionByHash sparse fields match the oracle", %{rpc_url: rpc_url, tx_hash: tx_hash} do
-    assert {:ok, actual} = RPC.get_transaction_by_hash(tx_hash, onchain_opts(rpc_url))
+  # Task 2129: this read returns `%Cartouche.Transaction.Info{}`. Full block
+  # transactions still use the sparse map from `expected_transaction/1`.
+  test "eth_getTransactionByHash decodes to the same envelope as the oracle JSON", %{
+    rpc_url: rpc_url,
+    tx_hash: tx_hash
+  } do
+    assert {:ok, actual} =
+             Cartouche.RPC.eth_get_transaction_by_hash(tx_hash, ethereum_node: rpc_url, timeout: @rpc_timeout_ms)
 
-    expected =
-      "eth_getTransactionByHash"
-      |> reference!([tx_hash], rpc_url)
-      |> expected_transaction()
-
-    assert actual == expected
+    raw = reference!("eth_getTransactionByHash", [tx_hash], rpc_url)
+    assert {:ok, ^actual} = Cartouche.Transaction.Info.decode(raw)
   end
 
   test "eth_getTransactionReceipt sparse fields match the oracle", %{rpc_url: rpc_url, tx_hash: tx_hash} do
@@ -365,8 +367,6 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   end
 
   defp expected_withdrawals(_other), do: nil
-
-  defp expected_transaction(nil), do: nil
 
   defp expected_transaction(tx) do
     %{

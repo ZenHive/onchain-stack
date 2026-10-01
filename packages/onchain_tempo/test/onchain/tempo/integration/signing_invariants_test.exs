@@ -3,7 +3,7 @@ defmodule Onchain.Tempo.Integration.SigningInvariantsTest do
   use ExUnit.Case, async: false
 
   alias Cartouche.Hash
-  alias Onchain.RPC
+  alias Cartouche.RPC
   alias Onchain.Tempo.Faucet
   alias Onchain.Tempo.RPC, as: TempoRPC
   alias Onchain.Tempo.Transaction
@@ -52,11 +52,12 @@ defmodule Onchain.Tempo.Integration.SigningInvariantsTest do
     assert {:ok, hash, %{status: 1}} = TempoRPC.broadcast_sync(raw, rpc)
     assert hash == keccak_raw(raw)
 
-    assert {:ok, onchain} = RPC.get_transaction_by_hash(hash, rpc_url: rpc)
-    assert onchain.type == 0x76
-    assert onchain.chain_id == @chain_id
-    assert normalize_addr(onchain.from) == "0x" <> Base.encode16(sender, case: :lower)
-    assert onchain.hash == hash
+    # Tempo type 0x76 is outside the execution-apis envelope. Read the raw object.
+    assert {:ok, onchain} = RPC.send_rpc("eth_getTransactionByHash", [hash], rpc_url: rpc)
+    assert onchain["type"] == "0x76"
+    assert hex_quantity(onchain["chainId"]) == @chain_id
+    assert String.downcase(onchain["from"]) == "0x" <> Base.encode16(sender, case: :lower)
+    assert onchain["hash"] == hash
   end
 
   test "live error: malformed 0x76 envelope is rejected", %{rpc_url: rpc} do
@@ -76,7 +77,8 @@ defmodule Onchain.Tempo.Integration.SigningInvariantsTest do
 
   defp tx_hash(raw), do: keccak_raw(raw)
 
-  defp normalize_addr("0x" <> rest), do: "0x" <> String.downcase(rest)
-  defp normalize_addr(<<addr::binary-size(20)>>), do: "0x" <> Base.encode16(addr, case: :lower)
-  defp normalize_addr(other) when is_binary(other), do: String.downcase(other)
+  defp hex_quantity("0x" <> hex) do
+    {quantity, ""} = Integer.parse(hex, 16)
+    quantity
+  end
 end

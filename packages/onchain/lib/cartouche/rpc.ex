@@ -2048,6 +2048,168 @@ defmodule Cartouche.RPC do
     )
   end
 
+  api(:eth_get_transaction_by_hash, "Fetch one transaction by hash (eth_getTransactionByHash).",
+    params: [
+      tx_hash: [kind: :value, description: "0x-prefixed 32-byte transaction hash."],
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, %Cartouche.Transaction.Info{}}`, `{:error, :not_found}` when the node returns null, or `{:error, reason}`."
+    }
+  )
+
+  @doc """
+  Returns the transaction identified by `tx_hash`.
+
+  Defined by `execution-apis` v1.0.0-beta.7 (`src/eth/transaction.yaml`,
+  `eth_getTransactionByHash`). The result is a `Cartouche.Transaction.Info`
+  envelope: inclusion metadata plus the typed transaction from
+  `Vn.from_json/1`. Block fields are `nil` when the transaction is pending.
+  A null result is `{:error, :not_found}`.
+  """
+  @spec eth_get_transaction_by_hash(String.t(), Keyword.t()) ::
+          {:ok, Transaction.Info.t()} | {:error, term()}
+  def eth_get_transaction_by_hash(tx_hash, opts \\ []) do
+    with {:ok, tx_hash} <- Helpers.ensure_tx_hash(tx_hash),
+         {:ok, result} <- send_rpc("eth_getTransactionByHash", [tx_hash], opts) do
+      decode_transaction_info(result)
+    end
+  end
+
+  api(
+    :eth_get_transaction_by_block_hash_and_index,
+    "Fetch one transaction by block hash and position (eth_getTransactionByBlockHashAndIndex).",
+    params: [
+      block_hash: [kind: :value, description: "0x-prefixed 32-byte block hash."],
+      transaction_index: [kind: :value, description: "Zero-based non-negative integer or 0x quantity."],
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, %Cartouche.Transaction.Info{}}`, `{:error, :not_found}` when the node returns null, or `{:error, reason}`."
+    }
+  )
+
+  @doc """
+  Returns the transaction at `transaction_index` in the block identified by `block_hash`.
+
+  Defined by `execution-apis` v1.0.0-beta.7 (`src/eth/transaction.yaml`,
+  `eth_getTransactionByBlockHashAndIndex`). Same envelope as
+  `eth_get_transaction_by_hash/2`. A null result is `{:error, :not_found}`.
+  """
+  @spec eth_get_transaction_by_block_hash_and_index(String.t(), non_neg_integer() | String.t(), Keyword.t()) ::
+          {:ok, Transaction.Info.t()} | {:error, term()}
+  def eth_get_transaction_by_block_hash_and_index(block_hash, transaction_index, opts \\ []) do
+    with {:ok, block_hash} <- ensure_block_hash(block_hash),
+         {:ok, transaction_index} <- normalize_transaction_index(transaction_index),
+         {:ok, result} <-
+           send_rpc("eth_getTransactionByBlockHashAndIndex", [block_hash, transaction_index], opts) do
+      decode_transaction_info(result)
+    end
+  end
+
+  api(
+    :eth_get_transaction_by_block_number_and_index,
+    "Fetch one transaction by block number or tag and position (eth_getTransactionByBlockNumberAndIndex).",
+    params: [
+      block: [kind: :value, description: "Non-negative block number, 0x quantity, or block tag."],
+      transaction_index: [kind: :value, description: "Zero-based non-negative integer or 0x quantity."],
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, %Cartouche.Transaction.Info{}}`, `{:error, :not_found}` when the node returns null, or `{:error, reason}`."
+    }
+  )
+
+  @doc """
+  Returns the transaction at `transaction_index` in the block identified by number or tag.
+
+  Defined by `execution-apis` v1.0.0-beta.7 (`src/eth/transaction.yaml`,
+  `eth_getTransactionByBlockNumberAndIndex`). Same envelope as
+  `eth_get_transaction_by_hash/2`. A null result is `{:error, :not_found}`.
+  """
+  @spec eth_get_transaction_by_block_number_and_index(integer() | String.t(), non_neg_integer() | String.t(), Keyword.t()) ::
+          {:ok, Transaction.Info.t()} | {:error, term()}
+  def eth_get_transaction_by_block_number_and_index(block, transaction_index, opts \\ []) do
+    with {:ok, block} <- Helpers.normalize_block(block),
+         {:ok, transaction_index} <- normalize_transaction_index(transaction_index),
+         {:ok, result} <-
+           send_rpc("eth_getTransactionByBlockNumberAndIndex", [block, transaction_index], opts) do
+      decode_transaction_info(result)
+    end
+  end
+
+  api(:eth_get_block_receipts, "Fetch every receipt in a block (eth_getBlockReceipts).",
+    params: [
+      block: [
+        kind: :value,
+        description: "Block number, tag, or 0x-prefixed block hash."
+      ],
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, [%Cartouche.Receipt{}]}` decoded by `Cartouche.Receipt.deserialize/1`, `{:ok, nil}` when the block is unknown, or `{:error, reason}`."
+    }
+  )
+
+  @doc """
+  Returns every receipt in the block identified by number, tag, or hash.
+
+  Defined by `execution-apis` v1.0.0-beta.7 (`src/eth/block.yaml`,
+  `eth_getBlockReceipts`). Each receipt is decoded by
+  `Cartouche.Receipt.deserialize/1`, the same decoder as `get_trx_receipt/2`.
+  A null result is `{:ok, nil}`.
+  """
+  @spec eth_get_block_receipts(integer() | String.t(), Keyword.t()) ::
+          {:ok, [Cartouche.Receipt.t()] | nil} | {:error, term()}
+  def eth_get_block_receipts(block, opts \\ []) do
+    with {:ok, block} <- Helpers.normalize_block(block) do
+      send_rpc(
+        "eth_getBlockReceipts",
+        [block],
+        Keyword.put(opts, :decode, &decode_block_receipts/1)
+      )
+    end
+  end
+
+  # Null is an unknown hash or index, distinct from a pending transaction whose
+  # block fields are nil. Decode after `send_rpc/3` so a malformed object stays
+  # `{:error, reason}` instead of being wrapped by the transport decode callback.
+  @spec decode_transaction_info(term()) :: {:ok, Transaction.Info.t()} | {:error, term()}
+  defp decode_transaction_info(nil), do: {:error, :not_found}
+  defp decode_transaction_info(%{} = transaction), do: Transaction.Info.decode(transaction)
+  defp decode_transaction_info(other), do: {:error, {:unexpected_transaction, other}}
+
+  @spec decode_block_receipts(term()) :: [Cartouche.Receipt.t()] | nil
+  defp decode_block_receipts(nil), do: nil
+
+  defp decode_block_receipts(receipts) when is_list(receipts) do
+    Enum.map(receipts, &Cartouche.Receipt.deserialize/1)
+  end
+
+  defp decode_block_receipts(other) do
+    raise ArgumentError, "eth_getBlockReceipts result must be a list or null, got: #{inspect(other)}"
+  end
+
+  @spec normalize_transaction_index(term()) ::
+          {:ok, String.t()} | {:error, {:invalid_transaction_index, term()}}
+  defp normalize_transaction_index(index) when is_integer(index) and index >= 0, do: {:ok, Hex.encode_quantity(index)}
+
+  defp normalize_transaction_index("0x" <> _ = index) do
+    if Onchain.Hex.valid?(index),
+      do: {:ok, index},
+      else: {:error, {:invalid_transaction_index, index}}
+  end
+
+  defp normalize_transaction_index(index), do: {:error, {:invalid_transaction_index, index}}
+
   api(:trace_trx, "Fetch parity-style traces for a transaction by transaction hash.",
     params: [
       trx_id: [

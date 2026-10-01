@@ -1,6 +1,10 @@
 defmodule Onchain.RPC.BlockReadsIntegrationTest do
   use ExUnit.Case, async: false
 
+  alias Cartouche.Hex
+  alias Cartouche.Receipt
+  alias Cartouche.RPC, as: CartoucheRPC
+  alias Cartouche.Transaction.Info
   alias Onchain.RPC
 
   @moduletag :integration
@@ -16,39 +20,42 @@ defmodule Onchain.RPC.BlockReadsIntegrationTest do
 
   defp rpc_opts, do: [rpc_url: Onchain.RPCCase.rpc_url!()]
 
-  test "bulk block receipts are byte-identical to the single-receipt result" do
-    assert {:ok, receipts} = RPC.get_block_receipts(@known_block, rpc_opts())
+  test "bulk block receipts match the single-receipt decoder" do
+    assert {:ok, receipts} = CartoucheRPC.eth_get_block_receipts(@known_block, rpc_opts())
     assert length(receipts) == @known_transaction_count
 
-    bulk_receipt = Enum.find(receipts, &(&1.transaction_hash == @known_transaction_hash))
-    assert is_map(bulk_receipt)
+    hash = Hex.decode_word!(@known_transaction_hash)
+    bulk_receipt = Enum.find(receipts, &(&1.transaction_hash == hash))
+    assert %Receipt{} = bulk_receipt
 
-    assert {:ok, single_receipt} =
-             RPC.get_transaction_receipt(@known_transaction_hash, rpc_opts())
+    assert {:ok, single_receipt} = CartoucheRPC.get_trx_receipt(@known_transaction_hash, rpc_opts())
 
     assert bulk_receipt === single_receipt
-    assert :erlang.term_to_binary(bulk_receipt) == :erlang.term_to_binary(single_receipt)
   end
 
   test "by-index reads return the known transaction from both block selectors" do
-    assert {:ok, %{hash: @known_transaction_hash, transaction_index: @known_transaction_index}} =
-             RPC.get_transaction_by_block_hash_and_index(
+    assert {:ok, %Info{transaction_index: @known_transaction_index} = by_hash} =
+             CartoucheRPC.eth_get_transaction_by_block_hash_and_index(
                @known_block_hash,
                @known_transaction_index,
                rpc_opts()
              )
 
-    assert {:ok, %{hash: @known_transaction_hash, transaction_index: @known_transaction_index}} =
-             RPC.get_transaction_by_block_number_and_index(
+    assert by_hash.hash == Hex.decode_word!(@known_transaction_hash)
+
+    assert {:ok, %Info{transaction_index: @known_transaction_index} = by_number} =
+             CartoucheRPC.eth_get_transaction_by_block_number_and_index(
                @known_block,
                @known_transaction_index,
                rpc_opts()
              )
+
+    assert by_number.hash == by_hash.hash
   end
 
-  test "an out-of-range transaction index returns nil" do
-    assert {:ok, nil} =
-             RPC.get_transaction_by_block_number_and_index(
+  test "an out-of-range transaction index is not found" do
+    assert {:error, :not_found} =
+             CartoucheRPC.eth_get_transaction_by_block_number_and_index(
                @known_block,
                @out_of_range_transaction_index,
                rpc_opts()

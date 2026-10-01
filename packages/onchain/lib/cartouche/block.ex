@@ -391,26 +391,11 @@ defmodule Cartouche.Block do
   end
 
   defp deserialize_transaction(%{} = params) do
-    case params["type"] do
-      nil ->
-        V1.from_json(params)
+    case Cartouche.Transaction.from_json_module(params["type"]) do
+      {:ok, module} ->
+        module.from_json(params)
 
-      "0x0" ->
-        V1.from_json(params)
-
-      "0x1" ->
-        V_2930.from_json(params)
-
-      "0x2" ->
-        V2.from_json(params)
-
-      "0x3" ->
-        V3.from_json(params)
-
-      "0x4" ->
-        V4.from_json(params)
-
-      other ->
+      {:error, {:unknown_transaction_type, other}} ->
         raise ArgumentError,
               "unsupported transaction envelope type #{inspect(other)} in block JSON"
     end

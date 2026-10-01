@@ -39,17 +39,14 @@ defmodule Onchain.RPC.Codegen do
            :none,
            :address,
            :data,
-           :block,
-           :block_hash,
-           :block_and_index,
-           :block_hash_and_index
+           :block
          ]},
       default: :none,
       doc:
         "Leading positional argument shape. :none → no args (params []); " <>
           ":address → validated address + normalized :block option (params [hex_addr, block]); " <>
-          ":data → 0x-hex gate on the raw value (params [data]); block shapes normalize " <>
-          "block references and optional transaction indexes."
+          ":data → 0x-hex gate on the raw value (params [data]); " <>
+          ":block → normalized block number, tag, or hash (params [block])."
     ],
     decode: [
       type:
@@ -57,14 +54,11 @@ defmodule Onchain.RPC.Codegen do
          [
            nil,
            :hex_unsigned,
-           :receipt_list,
-           :transaction,
            :block_access_list
          ]},
       default: nil,
       doc:
         "Result decoder. nil leaves the raw result untouched; :hex_unsigned uses cartouche; " <>
-          "receipt lists and transactions use Onchain's existing parsers; " <>
           ":block_access_list keeps the node's camelCase EIP-7928 maps."
     ]
   ]
@@ -171,44 +165,6 @@ defmodule Onchain.RPC.Codegen do
     end
   end
 
-  defp build_block_rpc(name, method, :block_hash, decode) do
-    result = block_rpc_result(method, quote(do: [block_hash]), decode)
-
-    quote do
-      def unquote(name)(block_hash, opts \\ []) do
-        with {:ok, block_hash} <- ensure_block_hash(block_hash) do
-          unquote(result)
-        end
-      end
-    end
-  end
-
-  defp build_block_rpc(name, method, :block_and_index, decode) do
-    result = block_rpc_result(method, quote(do: [block, transaction_index]), decode)
-
-    quote do
-      def unquote(name)(block, transaction_index, opts \\ []) do
-        with {:ok, block} <- normalize_block(block),
-             {:ok, transaction_index} <- normalize_transaction_index(transaction_index) do
-          unquote(result)
-        end
-      end
-    end
-  end
-
-  defp build_block_rpc(name, method, :block_hash_and_index, decode) do
-    result = block_rpc_result(method, quote(do: [block_hash, transaction_index]), decode)
-
-    quote do
-      def unquote(name)(block_hash, transaction_index, opts \\ []) do
-        with {:ok, block_hash} <- ensure_block_hash(block_hash),
-             {:ok, transaction_index} <- normalize_transaction_index(transaction_index) do
-          unquote(result)
-        end
-      end
-    end
-  end
-
   defp block_rpc_result(method, params, decode) do
     rpc_call =
       quote do
@@ -227,12 +183,6 @@ defmodule Onchain.RPC.Codegen do
             Keyword.put(to_rpc_opts(opts), :decode, :hex_unsigned)
           )
         end
-
-      :receipt_list ->
-        quote(do: decode_receipt_list_result(unquote(rpc_call)))
-
-      :transaction ->
-        quote(do: decode_transaction_result(unquote(rpc_call)))
 
       :block_access_list ->
         quote(do: decode_block_access_list_result(unquote(rpc_call)))
