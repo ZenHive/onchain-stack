@@ -15401,7 +15401,7 @@
       "bundle": "onchain_core_consolidation",
       "target_repo": "onchain",
       "milestone": "onchain_core_consolidation",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Merge Cartouche.RPC and Onchain.RPC: the twelve residual duplicate methods and one defrpc convention",
       "scores": {
         "d": 4,
@@ -15451,6 +15451,7 @@
       ],
       "body": "(2026-09-29 review: split) This task now owns only the RPC merge. The utility pairs moved to \"Remove the utility duplicate pairs between Cartouche.* / ABI.* and Onchain.* (Hex, Address, HTTP, Block, ERC20, Log, ABI) and write the full module mapping for 9036\", the signer pair to \"Remove the Onchain.Signer / Cartouche.Signer duplicate pair on top of the {backend, config} carrier\", and the Sleuth pair to 9034.\n\nThe stack_read_surface_boundary tasks move six method groups into Cartouche.RPC: transport (2137), getLogs (2128), tx/receipt read-back (2129), state reads (2130), introspection (2131) and base_fee (2127). Twelve methods are wrapped in both modules and are owned by none of those tasks:\n- eth_call: Onchain.RPC.eth_call/3 vs Cartouche.RPC.call_trx\n- eth_estimateGas: eth_estimate_gas vs estimate_gas\n- eth_getBalance: get_balance in both\n- eth_blockNumber: block_number vs eth_block_number\n- eth_chainId: chain_id vs eth_chain_id\n- eth_getBlockByNumber: get_block_by_number in both\n- eth_getTransactionReceipt: get_transaction_receipt (lib/onchain/rpc.ex:812, decoding through parse_receipt :1883) vs get_trx_receipt (lib/cartouche/rpc.ex:1348)\n- eth_getTransactionCount: get_transaction_count vs get_transaction_count / get_nonce\n- eth_getCode: eth_get_code vs get_code\n- eth_feeHistory: fee_history in both\n- eth_blobBaseFee: blob_base_fee in both\n- eth_sendRawTransaction: eth_send_raw_transaction vs send_trx\nFor each method, keep the better-tested implementation in Cartouche.RPC (9036 renames it), delete the other and update in-repo callers. Where return shapes differ, keep the richer one and record the change in the CHANGELOG as part of the 0.16.0 break. Onchain-only methods (get_block_access_list, call/3, batch/2) move over unchanged.\n\nThere are two defrpc macros with different conventions: Onchain.RPC.Codegen.defrpc/2 plus defrpc_bang (lib/onchain/rpc/codegen.ex:85, :115, driven by the OpenRPC specs in lib/onchain/rpc/specs.ex) and Cartouche.RPC.DSL.defrpc/3 (lib/cartouche/rpc/dsl.ex:57). Leave exactly one, keep spec-driven generation, and migrate every defrpc call site to it.\n\nAfter this task Onchain.RPC has no remaining function bodies of its own, which is what lets 9036 rename Cartouche.RPC to Onchain.RPC without a collision.",
       "created_at": "2026-09-29",
+      "started_at": "2026-10-01",
       "scored_at": "2026-09-29",
       "cross_repo": []
     },
