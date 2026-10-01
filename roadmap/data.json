@@ -15395,7 +15395,8 @@
         "Exactly one defrpc macro remains, spec-driven through lib/onchain/rpc/specs.ex; every former call site of the other macro uses it; any bang-variant convention it carries is documented",
         "Onchain.RPC defines no function body that duplicates a Cartouche.RPC method; the outcome lists what remains in Onchain.RPC (aliases only) for 9036 to rename away",
         "CHANGELOG lists every removed function and any return-shape change as breaking for 0.16.0",
-        "Focused tests of the core and every in-repo dependent pass and `mix check.dispatch` is green in every touched package (full `mix ci` is post-merge QA)"
+        "Focused tests of the core and every in-repo dependent pass and `mix check.dispatch` is green in every touched package (full `mix ci` is post-merge QA)",
+        "One log shape: receipt logs (get_transaction_receipt/parse_receipt) and Onchain.Subscription.Parser decode through Cartouche.Filter.Log (deserialize/decode_logs, tolerating pending-log fields), Onchain.RPC.Helpers.parse_log is deleted, and the map->struct change is recorded as breaking in the 0.16.0 CHANGELOG (2128 review, run run-1790735637825-7315b918)"
       ],
       "out_of_scope": [
         "The rename itself (9036)",
