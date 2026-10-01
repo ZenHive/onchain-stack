@@ -30,14 +30,6 @@ defmodule Onchain.RPC.BlockReadsIntegrationTest do
     assert :erlang.term_to_binary(bulk_receipt) == :erlang.term_to_binary(single_receipt)
   end
 
-  test "block transaction counts match the known mainnet block" do
-    assert {:ok, @known_transaction_count} =
-             RPC.get_block_transaction_count_by_hash(@known_block_hash, rpc_opts())
-
-    assert {:ok, @known_transaction_count} =
-             RPC.get_block_transaction_count_by_number(@known_block, rpc_opts())
-  end
-
   test "by-index reads return the known transaction from both block selectors" do
     assert {:ok, %{hash: @known_transaction_hash, transaction_index: @known_transaction_index}} =
              RPC.get_transaction_by_block_hash_and_index(

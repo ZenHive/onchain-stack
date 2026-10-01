@@ -146,16 +146,10 @@ defmodule Onchain.RPC do
   | `get_balance!/2` | Same, raises on error |
   | `block_number/1` | Current block height |
   | `block_number!/1` | Same, raises on error |
-  | `syncing/1` | Node sync status (`false` or sync-status map) |
-  | `syncing!/1` | Same, raises on error |
   | `get_block_by_number/2` | Fetch block by number or tag → atom-keyed decoded map (same conventions as `get_transaction_by_hash`) |
   | `get_block_by_number!/2` | Same, raises on error |
   | `get_block_receipts/2` | Fetch every receipt in a block → parsed receipt maps |
   | `get_block_receipts!/2` | Same, raises on error |
-  | `get_block_transaction_count_by_hash/2` | Transaction count for a block hash |
-  | `get_block_transaction_count_by_hash!/2` | Same, raises on error |
-  | `get_block_transaction_count_by_number/2` | Transaction count for a block number or tag |
-  | `get_block_transaction_count_by_number!/2` | Same, raises on error |
   | `get_transaction_by_block_hash_and_index/3` | Fetch one transaction by block hash and position |
   | `get_transaction_by_block_hash_and_index!/3` | Same, raises on error |
   | `get_transaction_by_block_number_and_index/3` | Fetch one transaction by block number/tag and position |
@@ -413,34 +407,6 @@ defmodule Onchain.RPC do
   @spec block_number!(keyword()) :: non_neg_integer()
   defrpc_bang(:block_number)
 
-  # --- syncing ---
-
-  api(:syncing, "Get the node's sync status (eth_syncing).",
-    params: [
-      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
-    ],
-    returns: %{
-      type: "{:ok, false | map} | {:error, term}",
-      description:
-        "`false` when the node is fully synced; otherwise a raw sync-status map with hex-encoded fields (`startingBlock`, `currentBlock`, `highestBlock`, sometimes snap-sync fields). Field shape varies by client — caller decodes."
-    }
-  )
-
-  @spec syncing(keyword()) :: {:ok, false | map()} | {:error, term()}
-  defrpc(:syncing, method: "eth_syncing")
-
-  # --- syncing! ---
-
-  api(:syncing!, "Get the node's sync status. Raises on error.",
-    params: [
-      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
-    ],
-    returns: %{type: "false | map", description: "`false` when synced, sync-status map otherwise"}
-  )
-
-  @spec syncing!(keyword()) :: false | map()
-  defrpc_bang(:syncing)
-
   # --- get_block_by_number ---
 
   api(:get_block_by_number, "Fetch a block by number or tag (eth_getBlockByNumber).",
@@ -548,76 +514,6 @@ defmodule Onchain.RPC do
 
   @spec get_block_receipts!(integer() | String.t(), keyword()) :: [map()] | nil
   defrpc_bang(:get_block_receipts, args: [:block])
-
-  api(
-    :get_block_transaction_count_by_hash,
-    "Get a block's transaction count by hash (eth_getBlockTransactionCountByHash).",
-    params: [
-      block_hash: [kind: :value, description: "0x-prefixed 32-byte block hash"],
-      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
-    ],
-    returns: %{
-      type: "{:ok, non_neg_integer | nil} | {:error, term}",
-      description: "Transaction count, or nil when the block is unknown"
-    }
-  )
-
-  @spec get_block_transaction_count_by_hash(String.t(), keyword()) ::
-          {:ok, non_neg_integer() | nil} | {:error, term()}
-  defrpc(:get_block_transaction_count_by_hash,
-    method: "eth_getBlockTransactionCountByHash",
-    arg: :block_hash,
-    decode: :nullable_hex_unsigned
-  )
-
-  api(
-    :get_block_transaction_count_by_hash!,
-    "Get a block's transaction count by hash. Raises on error.",
-    params: [
-      block_hash: [kind: :value, description: "0x-prefixed 32-byte block hash"],
-      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
-    ],
-    returns: %{type: "non_neg_integer | nil", description: "Transaction count or nil"}
-  )
-
-  @spec get_block_transaction_count_by_hash!(String.t(), keyword()) ::
-          non_neg_integer() | nil
-  defrpc_bang(:get_block_transaction_count_by_hash, args: [:block_hash])
-
-  api(
-    :get_block_transaction_count_by_number,
-    "Get a block's transaction count by number or tag (eth_getBlockTransactionCountByNumber).",
-    params: [
-      block: [kind: :value, description: "Block number, tag, or 0x-prefixed quantity"],
-      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
-    ],
-    returns: %{
-      type: "{:ok, non_neg_integer | nil} | {:error, term}",
-      description: "Transaction count, or nil when the block is unknown"
-    }
-  )
-
-  @spec get_block_transaction_count_by_number(integer() | String.t(), keyword()) ::
-          {:ok, non_neg_integer() | nil} | {:error, term()}
-  defrpc(:get_block_transaction_count_by_number,
-    method: "eth_getBlockTransactionCountByNumber",
-    arg: :block,
-    decode: :nullable_hex_unsigned
-  )
-
-  api(
-    :get_block_transaction_count_by_number!,
-    "Get a block's transaction count by number or tag. Raises on error.",
-    params: [
-      block: [kind: :value, description: "Block number, tag, or 0x-prefixed quantity"],
-      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
-    ],
-    returns: %{type: "non_neg_integer | nil", description: "Transaction count or nil"}
-  )
-
-  @spec get_block_transaction_count_by_number!(integer() | String.t(), keyword()) ::
-          non_neg_integer() | nil
-  defrpc_bang(:get_block_transaction_count_by_number, args: [:block])
 
   api(
     :get_transaction_by_block_hash_and_index,
@@ -1304,22 +1200,6 @@ defmodule Onchain.RPC do
   end
 
   defp normalize_transaction_index(index), do: {:error, {:invalid_transaction_index, index}}
-
-  @doc false
-  @spec decode_nullable_quantity_result({:ok, term()} | {:error, term()}) ::
-          {:ok, non_neg_integer() | nil} | {:error, term()}
-  defp decode_nullable_quantity_result({:ok, nil}), do: {:ok, nil}
-
-  defp decode_nullable_quantity_result({:ok, quantity}) when is_binary(quantity) do
-    case Onchain.Hex.to_integer(quantity) do
-      {:ok, count} -> {:ok, count}
-      {:error, _reason} -> unexpected_rpc_result("block transaction count", quantity)
-    end
-  end
-
-  defp decode_nullable_quantity_result({:ok, result}), do: unexpected_rpc_result("block transaction count", result)
-
-  defp decode_nullable_quantity_result({:error, _reason} = error), do: error
 
   @doc false
   @spec decode_receipt_list_result({:ok, term()} | {:error, term()}) ::

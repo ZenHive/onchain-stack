@@ -297,6 +297,43 @@ defmodule Cartouche.RPC do
     defp decode_word(word), do: Hex.decode_word!(word)
   end
 
+  defmodule SyncStatus do
+    @moduledoc """
+    Progress object from `eth_syncing`.
+
+    `execution-apis` v1.0.0-beta.7 defines `SyncingStatus` as one union:
+    the boolean `false` when the node is not syncing, or this object.
+    `false` is not a `t:t/0`. The three fields are the spec's quantity
+    properties (`startingBlock`, `currentBlock`, `highestBlock`), decoded
+    to integers. Fields the schema does not name are ignored, so a client
+    snap-sync object still yields this struct.
+    """
+
+    alias Cartouche.Hex
+
+    @enforce_keys [:starting_block, :current_block, :highest_block]
+    defstruct [:starting_block, :current_block, :highest_block]
+
+    @type t :: %__MODULE__{
+            starting_block: non_neg_integer(),
+            current_block: non_neg_integer(),
+            highest_block: non_neg_integer()
+          }
+
+    @doc """
+    Decodes the sync-progress object from the `eth_syncing` spec example shape.
+    """
+    @spec deserialize(map()) :: t()
+    def deserialize(%{"startingBlock" => starting, "currentBlock" => current, "highestBlock" => highest})
+        when is_binary(starting) and is_binary(current) and is_binary(highest) do
+      %__MODULE__{
+        starting_block: Hex.decode_hex_number!(starting),
+        current_block: Hex.decode_hex_number!(current),
+        highest_block: Hex.decode_hex_number!(highest)
+      }
+    end
+  end
+
   @default_timeout Application.compile_env(:cartouche, :timeout, 30_000)
 
   @default_gas_price nil
@@ -1397,6 +1434,265 @@ defmodule Cartouche.RPC do
         {:ok, 0x44}
     """
   )
+
+  api(:eth_syncing, "Fetch the node's sync status.",
+    params: [
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, false}` when the node is not syncing, `{:ok, %Cartouche.RPC.SyncStatus{}}` while it is, or `{:error, reason}`."
+    }
+  )
+
+  @doc """
+  Returns the node's sync status from `eth_syncing`.
+
+  `execution-apis` v1.0.0-beta.7 (`src/eth/client.yaml`, schema `SyncingStatus`)
+  defines one union: `false` when the node is not syncing, or a progress object
+  whose quantity fields are `startingBlock`, `currentBlock`, and `highestBlock`.
+  This decodes that union to `false` or `%Cartouche.RPC.SyncStatus{}`.
+
+  ## Examples
+
+      iex> Cartouche.RPC.eth_syncing()
+      {:ok, false}
+  """
+  @spec eth_syncing(Keyword.t()) :: {:ok, false | SyncStatus.t()} | {:error, term()}
+  def eth_syncing(opts \\ []) do
+    send_rpc("eth_syncing", [], Keyword.put(opts, :decode, &decode_syncing/1))
+  end
+
+  api(:eth_get_block_transaction_count_by_hash, "Count transactions in the block with the given hash.",
+    params: [
+      block_hash: [kind: :value, description: "0x-prefixed 32-byte block hash."],
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, count}` as a non-negative integer, `{:ok, nil}` when the block is unknown, or `{:error, reason}`."
+    }
+  )
+
+  @doc """
+  Returns how many transactions are in the block identified by `block_hash`.
+
+  Defined by `execution-apis` v1.0.0-beta.7 (`src/eth/block.yaml`,
+  `eth_getBlockTransactionCountByHash`). The result is a hex quantity, or
+  `null` when the node does not know the block.
+
+  ## Examples
+
+      iex> Cartouche.RPC.eth_get_block_transaction_count_by_hash("0x" <> String.duplicate("cd", 32))
+      {:ok, 2}
+  """
+  @spec eth_get_block_transaction_count_by_hash(String.t(), Keyword.t()) ::
+          {:ok, non_neg_integer() | nil} | {:error, term()}
+  def eth_get_block_transaction_count_by_hash(block_hash, opts \\ []) do
+    with {:ok, block_hash} <- ensure_block_hash(block_hash) do
+      send_rpc(
+        "eth_getBlockTransactionCountByHash",
+        [block_hash],
+        Keyword.put(opts, :decode, &decode_nullable_quantity/1)
+      )
+    end
+  end
+
+  api(:eth_get_block_transaction_count_by_number, "Count transactions in the block with the given number or tag.",
+    params: [
+      block: [kind: :value, description: "Non-negative block number, 0x quantity, or block tag."],
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, count}` as a non-negative integer, `{:ok, nil}` when the block is unknown, or `{:error, reason}`."
+    }
+  )
+
+  @doc """
+  Returns how many transactions are in the block identified by number or tag.
+
+  Defined by `execution-apis` v1.0.0-beta.7 (`src/eth/block.yaml`,
+  `eth_getBlockTransactionCountByNumber`). The result is a hex quantity, or
+  `null` when the node does not know the block.
+
+  ## Examples
+
+      iex> Cartouche.RPC.eth_get_block_transaction_count_by_number("latest")
+      {:ok, 2}
+  """
+  @spec eth_get_block_transaction_count_by_number(integer() | String.t(), Keyword.t()) ::
+          {:ok, non_neg_integer() | nil} | {:error, term()}
+  def eth_get_block_transaction_count_by_number(block, opts \\ []) do
+    with {:ok, block} <- Helpers.normalize_block(block) do
+      send_rpc(
+        "eth_getBlockTransactionCountByNumber",
+        [block],
+        Keyword.put(opts, :decode, &decode_nullable_quantity/1)
+      )
+    end
+  end
+
+  api(:net_listening, "Ask whether the node is listening for network connections.",
+    params: [
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, listening?}` from `net_listening`, or `{:error, reason}`. A node refusal is the shared `send_rpc/3` classification."
+    }
+  )
+
+  @doc """
+  Returns whether the node is listening for peer connections (`net_listening`).
+
+  `net_listening` is not in any tagged `execution-apis` release. It landed on
+  `main` after v1.0.0-beta.7 in commit `7c58b32` (#843, 2026-08-24). This
+  wrapper does not make the method standard.
+
+  Observed 2026-10-01 on the hosted lanes from the multi-endpoint seam: Alchemy
+  (`ETHEREUM_ALCHEMY_URL`) and Infura (`ETHEREUM_INFURA_URL`) both answered
+  HTTP 200 with JSON `true`. Neither lane refused the method.
+
+  A refusing endpoint's JSON-RPC error is classified by `send_rpc/3`, not by a
+  per-method probe. `-32601`, and `-32600` whose message says the method is
+  unsupported or not available, become
+  `{:error, {:method_not_found, map}}`. A plan-disabled namespace becomes
+  `{:error, {:namespace_unavailable, map}}`. `-32001` whose message says the
+  node is unable to complete the request becomes
+  `{:error, {:unavailable, map}}`.
+
+  ## Examples
+
+      iex> Cartouche.RPC.net_listening()
+      {:ok, true}
+  """
+  @spec net_listening(Keyword.t()) :: {:ok, boolean()} | {:error, term()}
+  def net_listening(opts \\ []) do
+    send_rpc("net_listening", [], Keyword.put(opts, :decode, &decode_boolean/1))
+  end
+
+  api(:net_peer_count, "Fetch the number of peers currently connected to the node.",
+    params: [
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, peer_count}` decoded from `net_peerCount`, or `{:error, reason}`. Alchemy's refusal is `{:error, {:method_not_found, map}}`."
+    }
+  )
+
+  @doc """
+  Returns the node's connected peer count (`net_peerCount`).
+
+  `net_peerCount` is not in any tagged `execution-apis` release. It landed on
+  `main` after v1.0.0-beta.7 in commit `7c58b32` (#843, 2026-08-24). This
+  wrapper does not make the method standard.
+
+  Observed 2026-10-01 on Alchemy mainnet (`ETHEREUM_ALCHEMY_URL`), HTTP 400:
+
+      {"code":-32600,"message":"net_peerCount is not available on the ETH_MAINNET. For more information see our docs: https://docs.alchemy.com/alchemy/documentation/apis/ethereum"}
+
+  That refusal surfaces as
+  `{:error, {:method_not_found, %{code: -32600, message: "net_peerCount is not available on the ETH_MAINNET. For more information see our docs: https://docs.alchemy.com/alchemy/documentation/apis/ethereum"}}}`.
+  The same classification is `send_rpc/3`'s shared refusal tag. There is no
+  separate capability probe. Infura answered a peer-count quantity on the same
+  day; a hosted success is not evidence the method is standard.
+
+  ## Examples
+
+      iex> Cartouche.RPC.net_peer_count()
+      {:ok, 2}
+  """
+  @spec net_peer_count(Keyword.t()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def net_peer_count(opts \\ []) do
+    send_rpc("net_peerCount", [], Keyword.put(opts, :decode, :hex_unsigned))
+  end
+
+  api(:web3_client_version, "Fetch the node client version string.",
+    params: [
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options."]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description:
+        "`{:ok, client_version}` from `web3_clientVersion`, or `{:error, reason}`. A node refusal is the shared `send_rpc/3` classification."
+    }
+  )
+
+  @doc """
+  Returns the node client's version string (`web3_clientVersion`).
+
+  `web3_clientVersion` is not in `execution-apis` at any tag or on `main`.
+  EIP-1474 is the only definition.
+
+  Observed 2026-10-01, HTTP 200, no JSON-RPC refusal. Alchemy
+  (`ETHEREUM_ALCHEMY_URL`) returned
+  `"reth/v2.5.2-5a6940e/x86_64-unknown-linux-gnu"`. Infura
+  (`ETHEREUM_INFURA_URL`) returned
+  `"Geth/v1.17.6-stable-3d84c6b2/linux-arm64/go1.27.1"`.
+
+  A refusing endpoint's JSON-RPC error is classified by `send_rpc/3`, not by a
+  per-method probe: `{:error, {:method_not_found, map}}`,
+  `{:error, {:namespace_unavailable, map}}`, or
+  `{:error, {:unavailable, map}}`.
+
+  ## Examples
+
+      iex> Cartouche.RPC.web3_client_version()
+      {:ok, "TestClient/v1"}
+  """
+  @spec web3_client_version(Keyword.t()) :: {:ok, String.t()} | {:error, term()}
+  def web3_client_version(opts \\ []) do
+    send_rpc("web3_clientVersion", [], Keyword.put(opts, :decode, &decode_client_version/1))
+  end
+
+  @spec decode_syncing(term()) :: false | SyncStatus.t()
+  defp decode_syncing(false), do: false
+
+  defp decode_syncing(%{} = status) do
+    SyncStatus.deserialize(status)
+  end
+
+  defp decode_syncing(other) do
+    raise ArgumentError, "eth_syncing result must be false or a sync-status object, got: #{inspect(other)}"
+  end
+
+  @spec decode_nullable_quantity(term()) :: non_neg_integer() | nil
+  defp decode_nullable_quantity(nil), do: nil
+
+  defp decode_nullable_quantity(quantity) when is_binary(quantity), do: Hex.decode_hex_number!(quantity)
+
+  defp decode_nullable_quantity(other) do
+    raise ArgumentError, "expected a hex quantity or null, got: #{inspect(other)}"
+  end
+
+  @spec decode_boolean(term()) :: boolean()
+  defp decode_boolean(value) when is_boolean(value), do: value
+
+  defp decode_boolean(other) do
+    raise ArgumentError, "expected a boolean, got: #{inspect(other)}"
+  end
+
+  @spec decode_client_version(term()) :: String.t()
+  defp decode_client_version(value) when is_binary(value), do: value
+
+  defp decode_client_version(other) do
+    raise ArgumentError, "expected a client version string, got: #{inspect(other)}"
+  end
+
+  @spec ensure_block_hash(term()) :: {:ok, String.t()} | {:error, {:invalid_block_hash, term()}}
+  defp ensure_block_hash(block_hash) do
+    case Helpers.ensure_tx_hash(block_hash) do
+      {:ok, hash} -> {:ok, hash}
+      {:error, {:invalid_tx_hash, input}} -> {:error, {:invalid_block_hash, input}}
+    end
+  end
 
   api(:get_block_by_number, "Fetch a block by block number or block tag.",
     params: [

@@ -168,20 +168,6 @@ defmodule Onchain.RPCTest do
     end
   end
 
-  describe "syncing/1 (connection failure)" do
-    test "returns rpc_error tuple when RPC unavailable" do
-      assert {:error, {:rpc_error, %{message: _}}} = RPC.syncing(rpc_url: "http://localhost:1")
-    end
-  end
-
-  describe "syncing!/1" do
-    test "raises when RPC unavailable" do
-      assert_raise RuntimeError, ~r/syncing failed/, fn ->
-        RPC.syncing!(rpc_url: "http://localhost:1")
-      end
-    end
-  end
-
   describe "get_block_by_number/2 input validation" do
     test "rejects negative integer" do
       assert {:error, {:invalid_block_id, -1}} = RPC.get_block_by_number(-1)

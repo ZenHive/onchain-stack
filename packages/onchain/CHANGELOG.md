@@ -6,7 +6,37 @@ Completed roadmap tasks.
 
 ## Unreleased — v0.16.0
 
+### Added
+
+- `Cartouche.RPC` node introspection: `eth_syncing/1`,
+  `eth_get_block_transaction_count_by_hash/2`,
+  `eth_get_block_transaction_count_by_number/2`, `net_listening/1`,
+  `net_peer_count/1`, and `web3_client_version/1`. `eth_syncing` decodes the
+  execution-apis v1.0.0-beta.7 `SyncingStatus` union (`false` or
+  `%Cartouche.RPC.SyncStatus{}`). `net_listening` and `net_peerCount` are on
+  execution-apis `main` after beta.7 via #843 (`7c58b32`), not in the beta.7
+  tag. `web3_clientVersion` is defined only by EIP-1474. A refusing endpoint
+  uses `send_rpc/3`'s refusal tags. Alchemy mainnet refuses `net_peerCount`
+  with `-32600` `"net_peerCount is not available on the ETH_MAINNET. For more information see our docs: https://docs.alchemy.com/alchemy/documentation/apis/ethereum"`.
+- Re-vendor `priv/specs/openrpc-v1.0.0-beta.7.json` from execution-apis tag
+  v1.0.0-beta.7 (`5aebdfdd45cadeb723be4bd45b4611b71c8b1c85`). The previous
+  `openrpc-v1.0.0-beta.4.json` name was wrong: its `x_pinnedSource` was
+  `1ad4d255`, the v1.0.0-beta.5 tag commit. `make build` at the beta.7 tag
+  produces the same 78 method names (`eth` 42, `engine` 25, `debug` 6,
+  `txpool` 3, `testing` 1, `net` 1). Codegen gains no methods and loses none.
+  `net_listening`, `net_peerCount`, `web3_clientVersion`, and `eth_baseFee`
+  stay out of the vendored file.
+
 ### Breaking behaviour
+
+- Remove `Onchain.RPC.syncing/1`, `syncing!/1`,
+  `get_block_transaction_count_by_hash/2`, `get_block_transaction_count_by_hash!/2`,
+  `get_block_transaction_count_by_number/2`, and
+  `get_block_transaction_count_by_number!/2`. Node introspection lives on
+  `Cartouche.RPC`: `eth_syncing/1` decodes `false | %Cartouche.RPC.SyncStatus{}`,
+  and the block transaction counts are
+  `eth_get_block_transaction_count_by_hash/2` and
+  `eth_get_block_transaction_count_by_number/2`.
 
 - `Onchain.RPC.eth_get_logs/2` and `eth_get_logs!/2` are removed. Stateless
   `eth_getLogs` is `Cartouche.RPC.eth_get_logs/2`. It returns

@@ -6,7 +6,6 @@ defmodule Onchain.RPCCodegenTest do
     :eth_send_raw_transaction,
     :get_balance,
     :block_number,
-    :syncing,
     :chain_id,
     :get_transaction_count,
     :eth_get_code,
@@ -14,8 +13,6 @@ defmodule Onchain.RPCCodegenTest do
   ]
   @block_wrappers [
     :get_block_receipts,
-    :get_block_transaction_count_by_hash,
-    :get_block_transaction_count_by_number,
     :get_transaction_by_block_hash_and_index,
     :get_transaction_by_block_number_and_index,
     :get_block_access_list

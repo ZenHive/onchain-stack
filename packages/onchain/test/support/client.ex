@@ -1065,6 +1065,30 @@ defmodule Cartouche.Test.Client do
   def eth_chainId, do: "0x22"
 
   @doc false
+  @spec eth_syncing() :: false
+  def eth_syncing, do: false
+
+  @doc false
+  @spec eth_getBlockTransactionCountByHash(term()) :: String.t()
+  def eth_getBlockTransactionCountByHash(_block_hash), do: "0x2"
+
+  @doc false
+  @spec eth_getBlockTransactionCountByNumber(term()) :: String.t()
+  def eth_getBlockTransactionCountByNumber(_block), do: "0x2"
+
+  @doc false
+  @spec net_listening() :: true
+  def net_listening, do: true
+
+  @doc false
+  @spec net_peerCount() :: String.t()
+  def net_peerCount, do: "0x2"
+
+  @doc false
+  @spec web3_clientVersion() :: String.t()
+  def web3_clientVersion, do: "TestClient/v1"
+
+  @doc false
   @spec eth_config() :: map()
   def eth_config do
     %{

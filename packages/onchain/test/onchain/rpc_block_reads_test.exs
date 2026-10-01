@@ -20,23 +20,6 @@ defmodule Onchain.RPC.BlockReadsTest do
     assert_request("eth_getBlockReceipts", [@block_hash])
   end
 
-  test "block transaction count wrappers normalize inputs and nullable quantities" do
-    assert {:ok, @transaction_index} =
-             RPC.get_block_transaction_count_by_hash(@block_hash, rpc_opts("0x2"))
-
-    assert_request("eth_getBlockTransactionCountByHash", [@block_hash])
-
-    assert {:ok, @transaction_index} =
-             RPC.get_block_transaction_count_by_number(@block_number, rpc_opts("0x2"))
-
-    assert_request("eth_getBlockTransactionCountByNumber", ["0x10"])
-
-    assert {:ok, nil} =
-             RPC.get_block_transaction_count_by_number("latest", rpc_opts(nil))
-
-    assert_request("eth_getBlockTransactionCountByNumber", ["latest"])
-  end
-
   test "by-index wrappers normalize positions and reuse transaction parsing" do
     assert {:ok, transaction_by_hash} =
              RPC.get_transaction_by_block_hash_and_index(
@@ -89,12 +72,6 @@ defmodule Onchain.RPC.BlockReadsTest do
   test "block read validation rejects malformed block hashes and indexes" do
     assert {:error, {:invalid_block, -1}} = RPC.get_block_receipts(-1)
 
-    assert {:error, {:invalid_block_hash, "0xshort"}} =
-             RPC.get_block_transaction_count_by_hash("0xshort")
-
-    assert {:error, {:invalid_block, :unknown}} =
-             RPC.get_block_transaction_count_by_number(:unknown)
-
     assert {:error, {:invalid_transaction_index, -1}} =
              RPC.get_transaction_by_block_hash_and_index(@block_hash, -1)
 
@@ -105,11 +82,6 @@ defmodule Onchain.RPC.BlockReadsTest do
   end
 
   test "typed block reads reject malformed successful RPC payloads" do
-    assert {:error, {:rpc_error, %{message: count_message}}} =
-             RPC.get_block_transaction_count_by_number(@block_number, rpc_opts("not-a-quantity"))
-
-    assert count_message =~ "unexpected block transaction count response"
-
     assert {:error, {:rpc_error, %{message: receipts_message}}} =
              RPC.get_block_receipts(@block_number, rpc_opts([nil]))
 
@@ -138,12 +110,6 @@ defmodule Onchain.RPC.BlockReadsTest do
   test "bang variants unwrap successful block reads" do
     assert [receipt] = RPC.get_block_receipts!(@block_number, rpc_opts([raw_receipt()]))
     assert receipt.transaction_hash == @transaction_hash
-
-    assert @transaction_index ==
-             RPC.get_block_transaction_count_by_hash!(@block_hash, rpc_opts("0x2"))
-
-    assert @transaction_index ==
-             RPC.get_block_transaction_count_by_number!(@block_number, rpc_opts("0x2"))
 
     assert %{hash: @transaction_hash} =
              RPC.get_transaction_by_block_hash_and_index!(

@@ -9,8 +9,8 @@
       "url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
     },
     "title": "Ethereum JSON-RPC Specification",
-    "version": "v1.0.0-beta.4+main.1ad4d255",
-    "x_pinnedSource": "ethereum/execution-apis@1ad4d25520875162d24c85480ef01e286d791e7a"
+    "version": "v1.0.0-beta.7",
+    "x_pinnedSource": "ethereum/execution-apis@5aebdfdd45cadeb723be4bd45b4611b71c8b1c85"
   },
   "methods": [
     {

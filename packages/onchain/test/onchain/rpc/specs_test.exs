@@ -30,6 +30,20 @@ defmodule Onchain.RPC.SpecsTest do
     assert 78 = length(openrpc_methods)
   end
 
+  test "pins execution-apis v1.0.0-beta.7 and keeps untagged methods out of codegen" do
+    path = Application.app_dir(:onchain, "priv/specs/openrpc-v1.0.0-beta.7.json")
+    spec = path |> File.read!() |> Jason.decode!()
+
+    assert spec["info"]["version"] == "v1.0.0-beta.7"
+
+    assert spec["info"]["x_pinnedSource"] ==
+             "ethereum/execution-apis@5aebdfdd45cadeb723be4bd45b4611b71c8b1c85"
+
+    for method <- ["net_listening", "net_peerCount", "web3_clientVersion", "eth_baseFee"] do
+      assert is_nil(Specs.lookup(method))
+    end
+  end
+
   test "loads every block-level read used by RPC codegen" do
     methods = [
       "eth_getBlockReceipts",
