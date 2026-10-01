@@ -10118,7 +10118,7 @@ phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain"
 milestone = "onchain_core_consolidation"
-status = "in_progress"
+status = "done"
 title = "Rename ABI.* and Cartouche.* to Onchain.* and prepare the single breaking release"
 scores = { d = 5, b = 8, u = 7 }
 depends_on = [9032, 9034, 9035, "9039", "9040", "9043"]
@@ -10141,9 +10141,13 @@ Prepare, but do not run, the publish and the retirement of the old packages. No 
 
 (2026-09-30, spec setup; trimmed after 5ff423c) NIF-1..6 and TEMPO-* tags are set; NIF-7 goes with 9050. Still owed: packages/onchain/test/onchain/precompiled_test.exs (added by 9043): "core source-builds with committed checksums in the monorepo" -> DIST-4, "missing and mismatched ABI checksums fail integrity checks" -> DIST-2, "build overrides are scoped to their crates" -> DIST-7, "unsupported hosts reject core ..." -> DIST-6. Tag only where the test checks the rule; keep all existing `# spec-tags:` comments through the rename.
 """
+implemented = "ABI.* -> Onchain.ABI.*, Cartouche.* -> Onchain.* (root -> Onchain.Configuration, Cartouche.Trace -> Onchain.RPC.Trace because onchain_evm owns Onchain.Trace); NIF Elixir.Onchain.ABI.Native; legacy fixture atoms translated on replay; gate configs and coverage floors repointed; migration CHANGELOG with 74-row map; dependents on onchain ~> 0.16; publish order + hex.retire in docs/task-outcomes/9036-onchain-0.16.0.md"
+delivered_by = "claude"
 created_at = "2026-09-29"
 started_at = "2026-10-01"
 scored_at = "2026-09-29"
+done_at = "2026-10-01"
+shipped_in = "7b1013726733e109768de1d09c250e9adbbab3dd"
 spec_changes = [{ rule = "NIF-1", op = "change" }, { rule = "NIF-4", op = "change" }, { rule = "NIF-5", op = "change" }, { rule = "DIST-8", op = "change" }]
 
 [[task]]

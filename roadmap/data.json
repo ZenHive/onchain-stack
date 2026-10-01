@@ -15468,7 +15468,7 @@
       "bundle": "onchain_core_consolidation",
       "target_repo": "onchain",
       "milestone": "onchain_core_consolidation",
-      "status": "in_progress",
+      "status": "done",
       "title": "Rename ABI.* and Cartouche.* to Onchain.* and prepare the single breaking release",
       "scores": {
         "d": 5,
@@ -15512,10 +15512,14 @@
         "CLAUDE.md",
         "AGENTS.md"
       ],
+      "shipped_in": "7b1013726733e109768de1d09c250e9adbbab3dd",
       "body": "Version decided by the operator on 2026-09-29: the breaking release is onchain 0.16.0 (0.x semantics — a minor bump carries the break). onchain_solana starts at 0.1.0. Every in-repo dependent raises its onchain bound to ~> 0.16 and takes its own minor bump.\n\nApply the module mapping written by the utility-pairs dedupe task, together with 9035 (RPC), the Signer-pair task and 9034 (Sleuth). Every ABI.* and Cartouche.* module becomes its Onchain.* name, in the core and in every in-repo dependent (onchain_aave, onchain_aerodrome, onchain_evm, onchain_js, onchain_tempo, onchain_solana). Cartouche.RPC can only become Onchain.RPC because 9035 merged the two; if a collision remains, stop.\n\nThis is the one breaking release consumers migrate through, so onchain's CHANGELOG carries a complete old->new module table plus the behaviour changes a cartouche/hieroglyph user has never been told about:\n- Task 2133's EIP-712 bytesN padding flip (c3c6ff1) shipped unannounced in cartouche 0.9.1. A short bytesN value used to be left-padded and is now right-padded, so struct hashes, digests and signatures differ with no error.\n- docs/cartouche/CHANGELOG.md carries a '[Unreleased] / Breaking — 0.10.0' heading, but cartouche 0.10.0 is already on Hex (tag cartouche-v0.10.0 at a6981d9). That published 0.10.0 predates the Solana split (cc62f75) and still contains Cartouche.Solana. Correct the heading and move the Solana entry out of 0.10.0.\n\nPrepare, but do not run, the publish and the retirement of the old packages. No final hieroglyph or cartouche release is needed: `mix hex.retire hieroglyph <ver> renamed --message \"merged into onchain\"` and the same for cartouche are handed to the human.\n\n(2026-09-29 review) Module names change and application-env keys do not. `config :cartouche, ...` keys (e.g. :ethereum_node, :req_options) stay unchanged, per the root CLAUDE.md (\"Module names and :cartouche configuration keys remain unchanged\"), unless task 2137 has already settled a different key set. The migration section says so explicitly. The 9033 edge was dropped: the Tempo NIF does not gate the core breaking release.\n\n(2026-09-30, spec setup; trimmed after 5ff423c) NIF-1..6 and TEMPO-* tags are set; NIF-7 goes with 9050. Still owed: packages/onchain/test/onchain/precompiled_test.exs (added by 9043): \"core source-builds with committed checksums in the monorepo\" -> DIST-4, \"missing and mismatched ABI checksums fail integrity checks\" -> DIST-2, \"build overrides are scoped to their crates\" -> DIST-7, \"unsupported hosts reject core ...\" -> DIST-6. Tag only where the test checks the rule; keep all existing `# spec-tags:` comments through the rename.\n",
       "created_at": "2026-09-29",
       "started_at": "2026-10-01",
+      "done_at": "2026-10-01",
       "scored_at": "2026-09-29",
+      "implemented": "ABI.* -> Onchain.ABI.*, Cartouche.* -> Onchain.* (root -> Onchain.Configuration, Cartouche.Trace -> Onchain.RPC.Trace because onchain_evm owns Onchain.Trace); NIF Elixir.Onchain.ABI.Native; legacy fixture atoms translated on replay; gate configs and coverage floors repointed; migration CHANGELOG with 74-row map; dependents on onchain ~> 0.16; publish order + hex.retire in docs/task-outcomes/9036-onchain-0.16.0.md",
+      "delivered_by": "claude",
       "spec_changes": [
         {
           "rule": "NIF-1",
