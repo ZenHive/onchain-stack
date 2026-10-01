@@ -10,7 +10,7 @@ Requires no Rust toolchain on hosts with a matching precompiled artifact (macOS 
 def deps do
   [
     {:onchain, "~> 0.16"},
-    {:onchain_evm, "~> 0.7"}
+    {:onchain_evm, "~> 0.8"}
   ]
 end
 ```

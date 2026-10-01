@@ -1,7 +1,7 @@
 %{
-  "libonchain_solidity-v0.7.1-nif-2.15-aarch64-apple-darwin.so.tar.gz" => "sha256:061657dd681cf81dae293abf09c1a9c2c41db62f83c425b73869188686fc7aab",
-  "libonchain_solidity-v0.7.1-nif-2.15-aarch64-unknown-linux-gnu.so.tar.gz" => "sha256:8b1af3c44397d0c5e533db9447e95152c7b529c3d6f307aef89f6d9d566f0986",
-  "libonchain_solidity-v0.7.1-nif-2.15-x86_64-apple-darwin.so.tar.gz" => "sha256:d66faf609baa4e224f2ab34c4a67716027bbdbb77da849a80e1f49fa64540541",
-  "libonchain_solidity-v0.7.1-nif-2.15-x86_64-unknown-linux-gnu.so.tar.gz" => "sha256:a383d1e7810aff3c4c84c279976cf529a305f723bdd134e6e3aa1e28129a709c",
-  "libonchain_solidity-v0.7.1-nif-2.15-x86_64-unknown-linux-musl.so.tar.gz" => "sha256:d1511c522bd12be5a6887236502144280a38c41c0b38fb64eca04977b1596bec",
+  "libonchain_solidity-v0.8.0-nif-2.15-aarch64-apple-darwin.so.tar.gz" => "sha256:9b850e997f18b6cc8b177605ca7f41d8141688f1b25de14e1c3cbad84ede60b2",
+  "libonchain_solidity-v0.8.0-nif-2.15-aarch64-unknown-linux-gnu.so.tar.gz" => "sha256:9e13a65a270efbb31ed0c7436d245b8fc55cccaa90114876a0bfa601de9fcbb4",
+  "libonchain_solidity-v0.8.0-nif-2.15-x86_64-apple-darwin.so.tar.gz" => "sha256:56c362c60d7992a70ec56c234f0e49ac5f962450d2d8fe40f52720db03c0840d",
+  "libonchain_solidity-v0.8.0-nif-2.15-x86_64-unknown-linux-gnu.so.tar.gz" => "sha256:006fb241c7657b6630a80f31af4d9b7a1919e43062f0def5d7cfe788d05e1743",
+  "libonchain_solidity-v0.8.0-nif-2.15-x86_64-unknown-linux-musl.so.tar.gz" => "sha256:cb31874d7aeca82d58d532db83b4c4d5f40966b43a2e35e8e4a16005c1be156a",
 }

@@ -1,7 +1,7 @@
 %{
-  "libonchain_evm-v0.7.1-nif-2.15-aarch64-apple-darwin.so.tar.gz" => "sha256:7d3afd2b94d53c893ceb2fe7504d43ac5be5264ac0d807fc712f33e82668051c",
-  "libonchain_evm-v0.7.1-nif-2.15-aarch64-unknown-linux-gnu.so.tar.gz" => "sha256:baf93112dec00d85d836f21d26ef36245dafefe7062285188b8d976a137d9896",
-  "libonchain_evm-v0.7.1-nif-2.15-x86_64-apple-darwin.so.tar.gz" => "sha256:2b907e7d50a5ab69e9f5fb8fc5d5ab4e90dccd79c97c6dc2c89fa408fc7c3877",
-  "libonchain_evm-v0.7.1-nif-2.15-x86_64-unknown-linux-gnu.so.tar.gz" => "sha256:3b168252083519ab99c09b9fbf24ad6b42aee9d14b1f90c9d0119f8608938e0b",
-  "libonchain_evm-v0.7.1-nif-2.15-x86_64-unknown-linux-musl.so.tar.gz" => "sha256:c74cfa0b3447cbd89a509286552a21e16a70027016f3c51b910926cca3f83d48",
+  "libonchain_evm-v0.8.0-nif-2.15-aarch64-apple-darwin.so.tar.gz" => "sha256:2480f0fdb8aabe29e7036b809f2f9a2e8b4e09c0e4179eb5d5ce5e55458a9910",
+  "libonchain_evm-v0.8.0-nif-2.15-aarch64-unknown-linux-gnu.so.tar.gz" => "sha256:32471324da9a8974f781337268ef7f0aaa7320783be98cd153757c518afff760",
+  "libonchain_evm-v0.8.0-nif-2.15-x86_64-apple-darwin.so.tar.gz" => "sha256:9cde36ec7433a58c36063b73bac3f238998b3bdeafa04ec04ae2d8d35d9c5c6f",
+  "libonchain_evm-v0.8.0-nif-2.15-x86_64-unknown-linux-gnu.so.tar.gz" => "sha256:e23a1c5a272401c4f34fe5ca79f235b6d5b80d5835b0cb850519dcffdd7d8bb3",
+  "libonchain_evm-v0.8.0-nif-2.15-x86_64-unknown-linux-musl.so.tar.gz" => "sha256:b8b329ed0965e58eafae985b4e6f6b4537c16be53bdb3cfcf4a1e1ebfc41f198",
 }
