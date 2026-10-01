@@ -15794,7 +15794,7 @@
       "bundle": "onchain_core_consolidation",
       "target_repo": "onchain",
       "milestone": "onchain_core_consolidation",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Remove the utility duplicate pairs between Cartouche.* / ABI.* and Onchain.* (Hex, Address, HTTP, Block, ERC20, Log, ABI) and write the full module mapping for 9036",
       "scores": {
         "d": 5,
@@ -15847,6 +15847,7 @@
       ],
       "body": "Split from 9035 (2026-09-29 review). After the fold (9030), packages/onchain has module pairs that do the same job, and 9036 needs every module to map to exactly one Onchain.* name. This task owns the utility pairs and the full inventory. Known pairs, to be extended by a full inventory rather than stopped at:\n- Onchain.ABI over ABI\n- Onchain.Hex / Onchain.Address over Cartouche.Hex / Cartouche.Address\n- Onchain.ERC20 vs Cartouche.Erc20\n- Onchain.Block vs Cartouche.Block\n- Onchain.HTTP vs Cartouche.HTTP\n- Onchain.Log vs ABI.decode_event. Onchain.Log is a third event decoder: a comma-splitting parser with no tuple support (packages/onchain/lib/onchain/log.ex:1-12). Its callers are Onchain.Transfer and onchain_tempo's transfer.ex.\n\nCandidates for the inventory to settle: Onchain.PrivateKey vs Cartouche.Keys, and Onchain.Fees over Cartouche.FeeHistory (probably a consumer, not a duplicate).\n\nOwned elsewhere: RPC methods (9035), Onchain.Signer vs Cartouche.Signer (the Signer-pair task), Onchain.Sleuth vs Cartouche.Sleuth (9034). The mapping still lists them, naming their owner.\n\nSequenced after 2128, 2129 and 2137 because they edit Cartouche.Block, the log decoder and the HTTP modules this task merges.\n\nFor each pair, keep the better-tested implementation, delete the other and update in-repo callers. Where return shapes differ, keep the richer one and record the change in the CHANGELOG as part of the 0.16.0 break.",
       "created_at": "2026-09-29",
+      "started_at": "2026-10-01",
       "scored_at": "2026-09-29",
       "cross_repo": []
     },
