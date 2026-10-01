@@ -3668,7 +3668,7 @@ phase = 2000
 bundle = "cartouche_rpc_read_surface"
 target_repo = "onchain"
 milestone = "stack_read_surface_boundary"
-status = "in_progress"
+status = "done"
 title = "One transaction and receipt read-back in the merged core — 4 methods on Cartouche.RPC, Onchain.RPC decoders deleted"
 scores = { d = 4, b = 7, u = 6 }
 depends_on = [2136, 2137]
@@ -3686,9 +3686,16 @@ The substantive design work is the envelope, not the per-type decoder. (2026-09-
 
 Authority: the tagged execution-apis spec plus the live node.
 """
+implemented = "Landed by grok via merge-train; reviewer-approved (run run-1790824008404-8947038a, ae1693baeafc0cc183853e40bfd1fb357513c774)."
+delivered_by = "grok"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1790824008404-8947038a"
 created_at = "2026-08-26"
 started_at = "2026-10-01"
 scored_at = "2026-09-29"
+done_at = "2026-10-01"
+shipped_in = "ae1693baeafc0cc183853e40bfd1fb357513c774"
 
 [[task]]
 id = 2130
