@@ -46,11 +46,11 @@ defmodule Cartouche.Signer do
 
   import Cartouche.Hash, only: [keccak: 1]
 
+  alias Cartouche.RPC
   alias Cartouche.Signer.Backend
   alias Cartouche.Signer.Default
   alias Cartouche.Signer.Secp256k1
   alias Cartouche.Transaction.V2
-  alias Onchain.RPC
 
   require Logger
 

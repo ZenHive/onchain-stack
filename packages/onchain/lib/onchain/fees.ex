@@ -2,7 +2,7 @@ defmodule Onchain.Fees do
   @moduledoc """
   EIP-1559 fee suggestion math over `Cartouche.FeeHistory.t()`.
 
-  Pure functions — no RPC, no I/O. Pair with `Onchain.RPC.fee_history/2` to
+  Pure functions — no RPC, no I/O. Pair with `Cartouche.RPC.fee_history/2` to
   fetch the input struct.
 
   ## Algorithm
@@ -50,7 +50,7 @@ defmodule Onchain.Fees do
     params: [
       history: [
         kind: :value,
-        description: "Cartouche.FeeHistory.t() — typically from Onchain.RPC.fee_history/2"
+        description: "Cartouche.FeeHistory.t() — typically from Cartouche.RPC.fee_history/2"
       ],
       opts: [
         kind: :value,

@@ -174,8 +174,8 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
         Keyword.get(opts, :raw_call, fn address, data, pinned ->
           live_eth_call(address, data, pinned, rpc_opts)
         end),
-      chain_id: Keyword.get(opts, :chain_id, fn -> Onchain.RPC.chain_id(rpc_opts) end),
-      get_block: Keyword.get(opts, :get_block, fn n -> Onchain.RPC.get_block_by_number(n, rpc_opts) end)
+      chain_id: Keyword.get(opts, :chain_id, fn -> Cartouche.RPC.chain_id(rpc_opts) end),
+      get_block: Keyword.get(opts, :get_block, fn n -> Cartouche.RPC.get_block_by_number(n, rpc_opts) end)
     }
   end
 
@@ -529,7 +529,7 @@ defmodule Mix.Tasks.Aerodrome.CaptureFixtures do
 
   defp live_eth_call(address, data, block, rpc_opts) do
     retry_transient(
-      fn -> Onchain.RPC.eth_call(address, data, Keyword.put(rpc_opts, :block, block)) end,
+      fn -> Cartouche.RPC.eth_call(address, data, Keyword.put(rpc_opts, :block, block)) end,
       8
     )
   end

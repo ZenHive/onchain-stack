@@ -306,7 +306,7 @@ defmodule Cartouche.Receipt do
           do: nil,
           else: Hex.decode_address!(params["contractAddress"])
         ),
-      logs: Enum.map(params["logs"], &Log.deserialize/1),
+      logs: Log.decode_logs(params["logs"] || []),
       logs_bloom: Hex.decode_sized!(params["logsBloom"], 256),
       type: Hex.decode_hex_number!(params["type"]),
       status: Hex.decode_hex_number!(params["status"])

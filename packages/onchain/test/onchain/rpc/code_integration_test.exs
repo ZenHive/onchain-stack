@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.CodeIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.RPC
+  alias Cartouche.RPC
 
   @moduletag :integration
 

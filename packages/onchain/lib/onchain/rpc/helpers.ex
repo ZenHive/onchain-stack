@@ -26,12 +26,26 @@ defmodule Onchain.RPC.Helpers do
   @dialyzer {:no_match, do_rpc: 3}
   @spec do_rpc(String.t(), list(), keyword()) :: {:ok, term()} | {:error, term()}
   def do_rpc(method, params, opts) do
-    case Cartouche.RPC.send_rpc(method, params, opts) do
+    method |> Cartouche.RPC.send_rpc(params, opts) |> normalize_rpc_result()
+  end
+
+  @doc false
+  @spec normalize_rpc_result({:ok, term()} | {:error, term()}) :: {:ok, term()} | {:error, term()}
+  def normalize_rpc_result(result) do
+    case result do
       {:ok, result} ->
         {:ok, result}
 
       {:error, {tag, _}} = error
-      when tag in [:method_not_found, :namespace_unavailable, :unavailable, :missing_option, :invalid_retry_policy] ->
+      when tag in [
+             :method_not_found,
+             :namespace_unavailable,
+             :unavailable,
+             :missing_option,
+             :invalid_retry_policy,
+             :invalid_address,
+             :invalid_block
+           ] ->
         error
 
       {:error, %{} = map} ->
@@ -94,6 +108,7 @@ defmodule Onchain.RPC.Helpers do
   # Accepts tag strings, non-negative integers (converted to hex), and "0x..." hex strings.
   @spec normalize_block(term()) :: {:ok, String.t()} | {:error, term()}
   def normalize_block(tag) when tag in @block_tags, do: {:ok, tag}
+  def normalize_block(tag) when tag in [:latest, :finalized, :pending, :earliest, :safe], do: {:ok, Atom.to_string(tag)}
   def normalize_block(n) when is_integer(n) and n >= 0, do: {:ok, Cartouche.Hex.from_integer(n)}
 
   def normalize_block("0x" <> _ = hex) do
@@ -193,23 +208,6 @@ defmodule Onchain.RPC.Helpers do
 
   # Used by Onchain.RPC and Onchain.Subscription.Parser to convert
   # raw JSON-RPC response fields into normalized Elixir values.
-
-  @doc false
-  # Parses hex fields in a raw log map. Receipt and subscription logs still use
-  # this map shape. `eth_getLogs` decodes through `Cartouche.Filter.Log`.
-  @spec parse_log(map()) :: map()
-  def parse_log(log) when is_map(log) do
-    %{
-      address: parse_address(log["address"]),
-      topics: log["topics"] || [],
-      data: log["data"],
-      block_number: parse_hex_integer(log["blockNumber"]),
-      transaction_hash: log["transactionHash"],
-      log_index: parse_hex_integer(log["logIndex"]),
-      transaction_index: parse_hex_integer(log["transactionIndex"]),
-      removed: log["removed"] || false
-    }
-  end
 
   @doc false
   # Parses a hex address string to checksummed format.

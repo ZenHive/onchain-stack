@@ -159,10 +159,10 @@ defmodule Onchain.SubscriptionTest do
              "subscription" => "0xsub_logs",
              "result" => %{
                "address" => "0x0000000000000000000000000000000000000002",
-               "topics" => ["0xtopic1"],
+               "topics" => ["0x" <> String.duplicate("ab", 32)],
                "data" => "0xdeadbeef",
                "blockNumber" => "0x10",
-               "transactionHash" => "0xtxhash",
+               "transactionHash" => "0x" <> String.duplicate("cd", 32),
                "logIndex" => "0x0",
                "transactionIndex" => "0x0",
                "removed" => false
@@ -173,7 +173,7 @@ defmodule Onchain.SubscriptionTest do
 
       assert_receive {:event, {:logs, "0xsub_logs", log}}, 100
       assert log.block_number == 16
-      assert log.topics == ["0xtopic1"]
+      assert log.topics == [:binary.copy(<<0xAB>>, 32)]
       refute log.removed
     end
 

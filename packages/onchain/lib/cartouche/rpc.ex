@@ -11,9 +11,79 @@ defmodule Cartouche.RPC do
 
   Both paths emit `[:onchain, :rpc, :request]` telemetry spans. Refusals now
   uniformly return `:method_not_found`, `:namespace_unavailable`, or `:unavailable`
-  tags; other single-call error shapes remain unchanged. See `Onchain.RPC`'s
+  tags; other single-call error shapes remain unchanged. See `Cartouche.RPC`'s
   node-capability refusal documentation for the live Alchemy provenance and
   message-sensitive meaning of -32600 and -32001.
+
+  ### Node-capability refusals
+
+  A weaker node than this repo's archive endpoint routinely refuses a call for
+  one of three reasons: the method is not implemented, the provider has disabled
+  that namespace on the current plan, or the node cannot complete the request
+  (historical state pruned, method the gateway does not route, transient
+  overload). Classification runs in `Cartouche.RPC` on the shared single-call and
+  batch paths (both item-level and top-level batch errors),
+  so a codegen'd wrapper, a hand-written wrapper, `call/3` and a batched call
+  apply the same rules to the same wire response.
+
+  The classifier is uniform; the provider's wire response is not. Verified live
+  on Alchemy mainnet 2026-08-25: historical `eth_feeHistory` at block 20_000_000
+  answers `-32001 "Unable to complete request at this time."` as a single call
+  (classified `{:unavailable, map}`), but the byte-identical request inside a
+  JSON-RPC array batch answers `-32000 "Internal error"` — alone or alongside a
+  healthy call — which stays `{:rpc_error, map}`. That is not a gap in the
+  classifier: `-32000 "Internal error"` is indistinguishable from a genuine
+  internal failure, and tagging it would invent a distinction the node does not
+  make. Batching can therefore downgrade a classifiable refusal to an
+  unclassifiable one; when a caller needs the capability signal, issue that
+  probe as a single call. Unrecognized codes keep `{:error, {:rpc_error, map}}`
+  unchanged — the classifier names distinguishable cases, it does not guess.
+
+  Each classified map retains the observed `:code` and `:message` (and `:data`
+  when the node sent it). Branch on the tag; inspect the map when you need the
+  wire detail.
+
+  - `{:error, {:method_not_found, map}}` — this node does not implement the
+    method. The reliable standard signal is JSON-RPC `-32601` ("Method not
+    found"). Hosted providers often misuse `-32600` ("Invalid Request") instead:
+    Alchemy mainnet answers `-32600` `"Unsupported method: <method> on ETH_MAINNET"`
+    and `-32600` `"eth_baseFee is not available on the ETH_MAINNET..."`. Those
+    two message shapes are pinned from live responses; a bare `-32600` without
+    them still passes through as `{:rpc_error, map}`, because other nodes use
+    that code for genuinely malformed requests. Callers should pick a portable
+    construction (see `Cartouche.RPC.base_fee/1`) or a different method.
+
+  - `{:error, {:namespace_unavailable, map}}` — the method exists but this
+    provider plan has disabled the namespace. Observed on Alchemy mainnet as
+    `-32600` `"<method> is not available on the Free tier - upgrade to Pay As
+    You Go, or Enterprise for access."` for `trace_*` and `debug_*`. Callers
+    should use a plan that serves the namespace, or avoid it.
+
+  - `{:error, {:unavailable, map}}` — the node refused to complete a request it
+    otherwise accepts. Observed on Alchemy mainnet as HTTP 503 / `-32001`
+    `"Unable to complete request at this time."` for `eth_feeHistory` at block
+    20_000_000, while `eth_feeHistory` at `"latest"` succeeds on the same URL.
+    The identical wire error is also returned for some unimplemented methods
+    (`erigon_getHeaderByNumber`), so this is **not** a unique pruned-history
+    signal — treat it as "this node cannot serve this request". Callers that
+    need historical state should retry against an archive endpoint.
+
+  Codes the classifier does not name, including `-32602` ("Invalid params" —
+  also what reth answers for `eth_getStorageValues` with empty params, which is
+  indistinguishable from a genuine bad-params error), reach the caller as
+  `{:error, {:rpc_error, map}}` exactly as before.
+
+
+  ## Input adapters and bang functions
+
+  `eth_call/3`, `eth_estimate_gas/2`, `eth_get_code/2`, and
+  `eth_send_raw_transaction/2` accept the former Onchain inputs and delegate
+  to the typed methods. Hex-returning adapters preserve hex results and wrap
+  unclassified RPC errors as `{:rpc_error, map}`. The typed methods keep their
+  native error shapes. Both surfaces preserve classified node refusals.
+  `get_transaction_receipt/2` returns `Cartouche.Receipt`, and
+  `get_block_by_number/2` returns `Cartouche.Block`; logs use `Cartouche.Filter.Log`.
+  Bang variants unwrap `{:ok, value}` and raise `RuntimeError` on `{:error, reason}`.
 
   Local signing through `Cartouche.Signer` is the normal route for submitting
   transactions (`eth_sendRawTransaction`). The node-custody methods
@@ -34,8 +104,9 @@ defmodule Cartouche.RPC do
   use Cartouche.Hex
 
   import Cartouche.HTTP, only: [normalize_response: 1]
-  import Cartouche.RPC.DSL, only: [defrpc: 3]
   import Cartouche.Wei, only: [to_wei: 1]
+  import Onchain.RPC.Codegen
+  import Onchain.RPC.Helpers
 
   alias Cartouche.Filter.Log, as: FilterLog
   alias Cartouche.RPC.Proof
@@ -1044,15 +1115,7 @@ defmodule Cartouche.RPC do
       {:ok, 4}
   """
   @spec get_nonce(<<_::160>>, Keyword.t()) :: {:ok, non_neg_integer()} | {:error, term()}
-  def get_nonce(account, opts \\ []) do
-    block_number = opts |> Keyword.get(:block_number, "latest") |> normalize_block_param()
-
-    send_rpc(
-      "eth_getTransactionCount",
-      [Hex.encode_big_hex(account), block_number],
-      Keyword.put(opts, :decode, :hex_unsigned)
-    )
-  end
+  def get_nonce(account, opts \\ []), do: get_transaction_count(account, opts)
 
   api(:send_trx, "Submit a signed Ethereum transaction to the network.",
     params: [
@@ -1088,24 +1151,18 @@ defmodule Cartouche.RPC do
       iex> {nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, to}
       {5, 50000000000, 10000000000, 100000, <<1::160>>}
   """
-  @spec send_trx(V1.t() | V2.t(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
+  @spec send_trx(V1.t() | V2.t() | String.t(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def send_trx(trx, opts \\ [])
 
-  def send_trx(%V1{} = trx, opts) do
-    send_rpc(
-      "eth_sendRawTransaction",
-      [Hex.encode_big_hex(V1.encode(trx))],
-      Keyword.put(opts, :decode, :hex)
-    )
-  end
+  def send_trx(%V1{} = trx, opts), do: send_trx(Hex.encode_big_hex(V1.encode(trx)), opts)
 
   def send_trx(%V2{signature_y_parity: v, signature_r: r, signature_s: s} = trx, opts)
-      when not is_nil(v) and not is_nil(r) and not is_nil(s) do
-    send_rpc(
-      "eth_sendRawTransaction",
-      [Hex.encode_big_hex(V2.encode(trx))],
-      Keyword.put(opts, :decode, :hex)
-    )
+      when not is_nil(v) and not is_nil(r) and not is_nil(s), do: send_trx(Hex.encode_big_hex(V2.encode(trx)), opts)
+
+  def send_trx(data, opts) when is_binary(data) do
+    with {:ok, data} <- ensure_hex_data(data) do
+      send_rpc("eth_sendRawTransaction", [data], Keyword.put_new(opts, :decode, :hex))
+    end
   end
 
   api(:call_trx, "Run `eth_call` against a transaction or call object without submitting it.",
@@ -1169,7 +1226,7 @@ defmodule Cartouche.RPC do
       iex> |> Cartouche.RPC.call_trx()
       {:error, %{code: -32602, message: "Failed to decode transaction"}}
   """
-  @spec call_trx(V1.t() | V2.t() | Call.t(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
+  @spec call_trx(V1.t() | V2.t() | Call.t() | map(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def call_trx(trx, opts \\ []) do
     from = Keyword.get(opts, :from)
     block_number = opts |> Keyword.get(:block_number, "latest") |> normalize_block_param()
@@ -1292,7 +1349,7 @@ defmodule Cartouche.RPC do
       iex> |> Cartouche.RPC.estimate_gas()
       {:error, %{code: 3, message: "execution reverted: Dai/insufficient-balance", revert: ~h[0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000184461692f696e73756666696369656e742d62616c616e63650000000000000000]}}
   """
-  @spec estimate_gas(V1.t() | V2.t() | Call.t(), Keyword.t()) :: {:ok, non_neg_integer()} | {:error, term()}
+  @spec estimate_gas(V1.t() | V2.t() | Call.t() | map(), Keyword.t()) :: {:ok, non_neg_integer()} | {:error, term()}
   def estimate_gas(trx, opts \\ []) do
     from = Keyword.get(opts, :from)
     block_number = opts |> Keyword.get(:block_number, "latest") |> normalize_block_param()
@@ -1304,7 +1361,8 @@ defmodule Cartouche.RPC do
     )
   end
 
-  defrpc(:eth_chain_id, "eth_chainId",
+  defrpc(:eth_chain_id,
+    method: "eth_chainId",
     decode: :hex_unsigned,
     summary: "Fetch the current Ethereum chain id.",
     returns_desc: "`{:ok, chain_id}` as a non-negative integer decoded from `eth_chainId`, or `{:error, reason}`.",
@@ -1368,8 +1426,8 @@ defmodule Cartouche.RPC do
     send_rpc("eth_capabilities", [], Keyword.put(opts, :decode, &Capabilities.deserialize/1))
   end
 
-  defrpc(:get_code, "eth_getCode",
-    encode: :big_hex,
+  defrpc(:get_code,
+    method: "eth_getCode",
     decode: :hex,
     summary: "Fetch contract bytecode at an address and block selector.",
     address_desc: "20-byte Ethereum contract or account address.",
@@ -1384,7 +1442,8 @@ defmodule Cartouche.RPC do
     """
   )
 
-  defrpc(:get_balance, "eth_getBalance",
+  defrpc(:get_balance,
+    method: "eth_getBalance",
     decode: :hex_unsigned,
     summary: "Fetch an account ETH balance at a block selector.",
     address_desc: "20-byte Ethereum account or contract address.",
@@ -1401,7 +1460,8 @@ defmodule Cartouche.RPC do
     """
   )
 
-  defrpc(:get_transaction_count, "eth_getTransactionCount",
+  defrpc(:get_transaction_count,
+    method: "eth_getTransactionCount",
     decode: :hex_unsigned,
     summary: "Fetch an account transaction count at a block selector.",
     address_desc: "20-byte Ethereum account address.",
@@ -1419,7 +1479,8 @@ defmodule Cartouche.RPC do
     """
   )
 
-  defrpc(:eth_block_number, "eth_blockNumber",
+  defrpc(:eth_block_number,
+    method: "eth_blockNumber",
     decode: :hex_unsigned,
     summary: "Fetch the current Ethereum block number.",
     returns_desc:
@@ -1763,20 +1824,24 @@ defmodule Cartouche.RPC do
   - `:include_transaction_details` — when `true`, the node returns full transaction
     objects in `transactions`; when `false` (default), just hashes. Forwarded to
     `eth_getBlockByNumber` as the second wire param. Note: `Cartouche.Block.deserialize/1`
-    currently returns `transactions: []` regardless — see ROADMAP Task 2066.
+    decodes full transaction objects when requested and retains hashes otherwise.
 
   Plus any option accepted by `send_rpc/3` (e.g. `:ethereum_node`, `:timeout`, `:req_options`).
   """
   @spec get_block_by_number(non_neg_integer() | String.t(), Keyword.t()) ::
-          {:ok, Cartouche.Block.t()} | {:error, term()}
+          {:ok, Cartouche.Block.t() | nil} | {:error, term()}
   def get_block_by_number(block_number, opts \\ []) do
-    {include_transaction_details, opts} = Keyword.pop(opts, :include_transaction_details, false)
+    case Helpers.normalize_block(block_number) do
+      {:ok, block} ->
+        send_rpc(
+          "eth_getBlockByNumber",
+          [block, Keyword.get(opts, :include_transaction_details, false)],
+          Keyword.put(opts, :decode, &Cartouche.Block.deserialize/1)
+        )
 
-    send_rpc(
-      "eth_getBlockByNumber",
-      [normalize_block_param(block_number), include_transaction_details],
-      Keyword.put(opts, :decode, &Cartouche.Block.deserialize/1)
-    )
+      {:error, _} ->
+        {:error, {:invalid_block_id, block_number}}
+    end
   end
 
   # Normalises a block-tag parameter for JSON-RPC: integers become lowercase
@@ -1855,12 +1920,12 @@ defmodule Cartouche.RPC do
     objects in `transactions`; when `false` (default), just hashes. Forwarded to
     `eth_getBlockByHash` as the second wire param (real nodes reject single-param
     calls with `-32602 Invalid params`). Note: `Cartouche.Block.deserialize/1`
-    currently returns `transactions: []` regardless — see ROADMAP Task 2066.
+    decodes full transaction objects when requested and retains hashes otherwise.
 
   Plus any option accepted by `send_rpc/3` (e.g. `:ethereum_node`, `:timeout`, `:req_options`).
   """
   @spec get_block_by_hash(binary(), Keyword.t()) ::
-          {:ok, Cartouche.Block.t()} | {:error, term()}
+          {:ok, Cartouche.Block.t() | nil} | {:error, term()}
   def get_block_by_hash(block_hash, opts \\ []) do
     {include_transaction_details, opts} = Keyword.pop(opts, :include_transaction_details, false)
 
@@ -2731,7 +2796,8 @@ defmodule Cartouche.RPC do
     )
   end
 
-  defrpc(:gas_price, "eth_gasPrice",
+  defrpc(:gas_price,
+    method: "eth_gasPrice",
     decode: :hex_unsigned,
     summary: "Fetch the current legacy gas price.",
     returns_desc: "`{:ok, wei_per_gas}` decoded from `eth_gasPrice`, or `{:error, reason}`.",
@@ -2865,7 +2931,8 @@ defmodule Cartouche.RPC do
     end
   end
 
-  defrpc(:blob_base_fee, "eth_blobBaseFee",
+  defrpc(:blob_base_fee,
+    method: "eth_blobBaseFee",
     decode: :hex_unsigned,
     summary: "Fetch the current base fee per blob gas.",
     returns_desc: "`{:ok, wei_per_blob_gas}` decoded from `eth_blobBaseFee`, or the node's unchanged `{:error, reason}`.",
@@ -2879,7 +2946,8 @@ defmodule Cartouche.RPC do
     """
   )
 
-  defrpc(:max_priority_fee_per_gas, "eth_maxPriorityFeePerGas",
+  defrpc(:max_priority_fee_per_gas,
+    method: "eth_maxPriorityFeePerGas",
     decode: :hex_unsigned,
     summary: "Fetch the current max priority fee per gas.",
     returns_desc: "`{:ok, max_priority_fee_per_gas}` decoded from `eth_maxPriorityFeePerGas`, or `{:error, reason}`.",
@@ -2931,15 +2999,18 @@ defmodule Cartouche.RPC do
         reward: [[1000000000, 1000000000, 1500000000], [1000000000, 1000000000, 2000000000], [1000000000, 1000000000, 1000000000], [780000000, 1000000000, 2000000000], [1000000000, 1000000000, 1500000000]]
       }}
   """
-  @spec fee_history(Keyword.t()) :: {:ok, Cartouche.FeeHistory.t()} | {:error, term()}
-  def fee_history(opts \\ []) do
+  @spec fee_history(Keyword.t() | pos_integer()) :: {:ok, Cartouche.FeeHistory.t()} | {:error, term()}
+  def fee_history(opts \\ [])
+  def fee_history(block_count) when is_integer(block_count), do: fee_history(block_count, [])
+
+  def fee_history(opts) when is_list(opts) do
     block_count = Keyword.get(opts, :block_count, 1)
     newest_block = opts |> Keyword.get(:newest_block, "latest") |> normalize_block_param()
     reward_percentiles = Keyword.get(opts, :reward_percentiles, [])
 
     send_rpc(
       "eth_feeHistory",
-      [block_count, newest_block, reward_percentiles],
+      [normalize_block_param(block_count), newest_block, reward_percentiles],
       Keyword.put(opts, :decode, &Cartouche.FeeHistory.deserialize/1)
     )
   end
@@ -3876,6 +3947,7 @@ defmodule Cartouche.RPC do
   # signing payload is not recoverable from those bytes), an already-signed
   # transaction, or a malformed mix. Re-encoding any of them would hash
   # different bytes than were signed, and the signature would recover to an
+
   # address that never signed anything.
   @spec assert_unsigned_raw!(struct()) :: struct()
   defp assert_unsigned_raw!(%V1{v: v, r: 0, s: 0} = transaction) when is_integer(v) and v > 0, do: transaction
@@ -3949,6 +4021,7 @@ defmodule Cartouche.RPC do
   # already emit as the payload a caller signs. The placeholders here only exist
   # to get past `from_json/1`, which stays strict for `eth_getBlockBy*`.
   @spec put_unsigned_signature_fields(map(), atom() | integer() | nil) :: map()
+
   defp put_unsigned_signature_fields(%{"type" => type} = params, _chain_id) when type not in [nil, "0x0"],
     do: Map.merge(params, %{"yParity" => "0x0", "r" => "0x0", "s" => "0x0"})
 
@@ -3975,6 +4048,7 @@ defmodule Cartouche.RPC do
   # caller who just said which chain it means to sign for — and `Cartouche.Signer`
   # takes that chain id from the caller, not from this struct, so the EIP-155
   # digest signed and the `[chain_id, 0, 0]` payload encoded would disagree and
+
   # the signature would recover to an address that never signed it. That is the
   # same wrong-address hazard the `raw` and malformed-`chainId` refusals exist
   # for, so it is refused the same way.
@@ -3995,6 +4069,7 @@ defmodule Cartouche.RPC do
   # blames the caller rather than the response, because that is where a bad
   # value came from.
   @spec option_chain_id(atom() | integer() | nil) :: pos_integer() | nil
+
   defp option_chain_id(nil), do: nil
 
   defp option_chain_id(chain_id) do
@@ -4014,6 +4089,7 @@ defmodule Cartouche.RPC do
   # atom escapes as a `KeyError` before the check above can name the option that
   # carried it — the caller is told the response failed to decode. Funnel it into
   # the same refusal instead: `quantity/1` reads `:unknown_chain` as malformed.
+
   @spec parse_option_chain_id(atom() | integer()) :: term()
   defp parse_option_chain_id(chain_id) do
     Cartouche.Chain.parse_id(chain_id)
@@ -4026,6 +4102,7 @@ defmodule Cartouche.RPC do
   # response cartouche never actually understood. `v` and `yParity` are checked
   # for shape here even though only `r`/`s` decide signedness.
   @spec validate_signature_quantities!(map()) :: :ok
+
   defp validate_signature_quantities!(params) do
     case Enum.filter(@filled_signature_fields, &(quantity(params[&1]) == :malformed)) do
       [] ->
@@ -4119,6 +4196,7 @@ defmodule Cartouche.RPC do
   # leading zeros. `Hex.encode_short_hex/1` strips leading zeros but emits
   # uppercase, which the pattern rejects.
   @spec encode_quantity(non_neg_integer()) :: String.t()
+
   defp encode_quantity(value) when is_integer(value) and value >= 0,
     do: "0x" <> String.downcase(Integer.to_string(value, 16))
 
@@ -4136,7 +4214,7 @@ defmodule Cartouche.RPC do
   end
 
   @doc false
-  @spec to_call_params(V1.t() | V2.t() | Call.t(), <<_::160>> | nil) :: map()
+  @spec to_call_params(V1.t() | V2.t() | Call.t() | map(), <<_::160>> | nil) :: map()
   def to_call_params(%V1{} = trx, from) do
     %{
       from: nil_map(from, &Hex.encode_big_hex/1),
@@ -4172,6 +4250,8 @@ defmodule Cartouche.RPC do
       data: Hex.encode_big_hex(call.data)
     }
   end
+
+  def to_call_params(%{} = params, _from) when not is_struct(params), do: params
 
   @spec v1_gas_parameters(nil | number() | {number(), atom()}, number(), Keyword.t()) ::
           {:ok, {:v1, non_neg_integer()}} | {:error, term()}
@@ -4266,5 +4346,595 @@ defmodule Cartouche.RPC do
         Logger.error("Failed to trace revert by `#{label}`: #{inspect(err)}")
         trx_res
     end
+  end
+
+  api(:eth_call, "Execute a read-only contract call (eth_call).",
+    params: [
+      address: [kind: :value, description: "Contract address as 0x hex string or 20-byte binary"],
+      data: [kind: :value, description: "0x-prefixed hex-encoded calldata (from ABI.encode_call)"],
+      opts: [
+        kind: :value,
+        default: [],
+        description:
+          ~s|Options: :rpc_url, :timeout, :block, :errors. :errors is a list of Solidity custom-error signatures (e.g. ["InsufficientBalance(uint256,uint256)"]). When the call reverts with matching revert data, the error map carries decoded :error_abi + :error_params alongside the always-present :revert binary. See @moduledoc "Error Format" for the full shape and pattern-match examples.|
+      ]
+    ],
+    returns: %{
+      type: "{:ok, hex_string} | {:error, term}",
+      description: "Raw 0x-prefixed hex response from the contract",
+      example: "0x000000000000000000000000000000000000000000000000000000000000002a"
+    }
+  )
+
+  @doc """
+  Execute a read-only contract call (`eth_call`).
+
+  ## Options
+
+  - `:rpc_url` — node URL (overrides `Application.get_env(:cartouche, :ethereum_node)`)
+  - `:timeout` — request timeout in ms (default 30_000)
+  - `:block` — block number / tag / 0x hex (default `"latest"`)
+  - `:errors` — list of Solidity custom-error signatures, e.g.
+    `["InsufficientBalance(uint256,uint256)", "Unauthorized()"]`. When the call
+    reverts with matching revert data, the error map carries decoded
+    `:error_abi` + `:error_params` alongside the raw `:revert` binary and its
+    hex mirror `:data`.
+
+  ## Revert handling
+
+  On `code: 3` reverts the inner map widens — see the module's "Error Format"
+  section. Quick pattern-match shape:
+
+      case Cartouche.RPC.eth_call(token, calldata, errors: ["InsufficientBalance(uint256,uint256)"]) do
+        {:ok, hex_result} ->
+          # Decode hex_result with ABI.decode_response/2
+          :ok
+
+        {:error, {:rpc_error, %{code: 3, error_abi: "InsufficientBalance(uint256,uint256)", error_params: [requested, available]}}} ->
+          {:insufficient, requested, available}
+
+        {:error, {:rpc_error, %{code: 3, data: hex_data}}} ->
+          # Custom error not in :errors list (or :errors omitted) — fall back
+          # to the hex-mirrored revert payload and decode out-of-band.
+          # `ABI.decode_hex_error/2` expects 0x hex, which is exactly :data.
+          ABI.decode_hex_error(hex_data, ["MyError(uint256)"])
+
+        {:error, {:rpc_error, %{message: msg}}} ->
+          {:rpc, msg}
+      end
+  """
+
+  @spec eth_call(String.t() | binary(), String.t(), keyword()) ::
+          {:ok, String.t()} | {:error, term()}
+  def eth_call(address, data, opts \\ []) do
+    with {:ok, hex_addr} <- ensure_hex_address(address),
+         {:ok, hex_data} <- ensure_hex_data(data),
+         {:ok, block} <- normalize_block(Keyword.get(opts, :block, "latest")) do
+      %{"to" => hex_addr, "data" => hex_data}
+      |> call_trx(Keyword.merge(opts, block_number: block, decode: nil))
+      |> Helpers.normalize_rpc_result()
+    end
+  end
+
+  api(:eth_call!, "Execute a read-only contract call. Raises on error.",
+    params: [
+      address: [kind: :value, description: "Contract address as 0x hex string or 20-byte binary"],
+      data: [kind: :value, description: "0x-prefixed hex-encoded calldata"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
+    ],
+    returns: %{type: :string, description: "Raw 0x-prefixed hex response"}
+  )
+
+  @spec eth_call!(String.t() | binary(), String.t(), keyword()) :: String.t()
+  def eth_call!(address, data, opts \\ []) do
+    case eth_call(address, data, opts) do
+      {:ok, result} -> result
+      {:error, reason} -> raise "eth_call failed: #{inspect(reason)}"
+    end
+  end
+
+  api(:eth_estimate_gas, "Estimate the gas a transaction would consume.",
+    params: [
+      tx_params: [
+        kind: :value,
+        description:
+          "Transaction-params map with atom keys. Recognized: :from, :to, :data, :value, :gas, :gas_price, :max_fee_per_gas, :max_priority_fee_per_gas, :access_list. Absent keys are omitted from the call object."
+      ],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
+    ],
+    returns: %{
+      type: "{:ok, non_neg_integer()} | {:error, term()}",
+      description: "Estimated gas units as an integer"
+    }
+  )
+
+  @spec eth_estimate_gas(map(), keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def eth_estimate_gas(tx_params, opts \\ []) when is_map(tx_params) do
+    with {:ok, call_object} <- build_estimate_gas_params(tx_params),
+         {:ok, block} <- normalize_block(Keyword.get(opts, :block, "latest")) do
+      call_object
+      |> estimate_gas(Keyword.put(opts, :block_number, block))
+      |> Helpers.normalize_rpc_result()
+    end
+  end
+
+  api(:eth_estimate_gas!, "Estimate the gas a transaction would consume. Raises on error.",
+    params: [
+      tx_params: [
+        kind: :value,
+        description: "Transaction-params map with atom keys (see eth_estimate_gas/2)"
+      ],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
+    ],
+    returns: %{type: :integer, description: "Estimated gas units"}
+  )
+
+  @spec eth_estimate_gas!(map(), keyword()) :: non_neg_integer()
+  def eth_estimate_gas!(tx_params, opts \\ []) do
+    case eth_estimate_gas(tx_params, opts) do
+      {:ok, gas} -> gas
+      {:error, reason} -> raise "eth_estimate_gas failed: #{inspect(reason)}"
+    end
+  end
+
+  api(:eth_send_raw_transaction, "Broadcast a signed transaction.",
+    params: [
+      data: [kind: :value, description: "0x-prefixed hex-encoded signed transaction"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{
+      type: "{:ok, tx_hash} | {:error, term}",
+      description: "Transaction hash as 0x hex string",
+      example: "0xabc123..."
+    }
+  )
+
+  @spec eth_send_raw_transaction(String.t(), keyword()) :: {:ok, String.t()} | {:error, term()}
+  def eth_send_raw_transaction(data, opts \\ []) do
+    with {:ok, data} <- ensure_hex_data(data) do
+      data |> send_trx(Keyword.put(opts, :decode, nil)) |> Helpers.normalize_rpc_result()
+    end
+  end
+
+  api(:eth_send_raw_transaction!, "Broadcast a signed transaction. Raises on error.",
+    params: [
+      data: [kind: :value, description: "0x-prefixed hex-encoded signed transaction"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{type: :string, description: "Transaction hash as 0x hex string"}
+  )
+
+  @spec eth_send_raw_transaction!(String.t(), keyword()) :: String.t()
+  defrpc_bang(:eth_send_raw_transaction, args: [:data])
+
+  api(:get_balance!, "Get the ETH balance of an address in wei. Raises on error.",
+    params: [
+      address: [kind: :value, description: "Account address as 0x hex string or 20-byte binary"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
+    ],
+    returns: %{type: :non_neg_integer, description: "Balance in wei"}
+  )
+
+  @spec get_balance!(String.t() | binary(), keyword()) :: non_neg_integer()
+  defrpc_bang(:get_balance, args: [:address])
+
+  api(:block_number!, "Get the current block height. Raises on error.",
+    params: [
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{type: :non_neg_integer, description: "Current block number"}
+  )
+
+  @spec block_number!(keyword()) :: non_neg_integer()
+  defrpc_bang(:block_number)
+
+  api(:get_block_by_number!, "Fetch a block by number or tag. Raises on error.",
+    params: [
+      block_id: [
+        kind: :value,
+        description: "Block number (integer) or tag string"
+      ],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{type: "map | nil", description: "Decoded Cartouche.Block struct"}
+  )
+
+  @spec get_block_by_number!(integer() | String.t(), keyword()) :: Cartouche.Block.t() | nil
+  def get_block_by_number!(block_id, opts \\ []) do
+    case get_block_by_number(block_id, opts) do
+      {:ok, result} -> result
+      {:error, reason} -> raise "get_block_by_number failed: #{inspect(reason)}"
+    end
+  end
+
+  api(:get_block_access_list, "Fetch an EIP-7928 block access list (eth_getBlockAccessList).",
+    params: [
+      block: [
+        kind: :value,
+        description: "Block number, tag, or 0x-prefixed 32-byte block hash"
+      ],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{
+      type: "{:ok, [map] | nil} | {:error, term}",
+      description: "Raw camelCase EIP-7928 account-access entries, or nil when unavailable"
+    }
+  )
+
+  @spec get_block_access_list(integer() | String.t(), keyword()) ::
+          {:ok, [map()] | nil} | {:error, term()}
+  defrpc(:get_block_access_list,
+    method: "eth_getBlockAccessList",
+    arg: :block,
+    decode: :block_access_list
+  )
+
+  api(:get_block_access_list!, "Fetch an EIP-7928 block access list. Raises on error.",
+    params: [
+      block: [kind: :value, description: "Block number, tag, or 0x-prefixed 32-byte block hash"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{type: "[map] | nil", description: "Raw camelCase account-access entries or nil"}
+  )
+
+  @spec get_block_access_list!(integer() | String.t(), keyword()) :: [map()] | nil
+  defrpc_bang(:get_block_access_list, args: [:block])
+
+  api(:chain_id!, "Get the network chain ID. Raises on error.",
+    params: [
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{type: :non_neg_integer, description: "Chain ID integer"}
+  )
+
+  @spec chain_id!(keyword()) :: non_neg_integer()
+  defrpc_bang(:chain_id)
+
+  api(:get_transaction_receipt, "Get a transaction receipt by hash (eth_getTransactionReceipt).",
+    params: [
+      tx_hash: [kind: :value, description: "0x-prefixed hex transaction hash"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{
+      type: "{:ok, map | nil} | {:error, term}",
+      description: "Cartouche.Receipt struct, or nil if the transaction is pending/unknown"
+    }
+  )
+
+  @spec get_transaction_receipt(String.t(), keyword()) :: {:ok, Cartouche.Receipt.t() | nil} | {:error, term()}
+  def get_transaction_receipt(tx_hash, opts \\ []) do
+    with {:ok, hash} <- ensure_tx_hash(tx_hash) do
+      hash |> get_trx_receipt(opts) |> Helpers.normalize_rpc_result()
+    end
+  end
+
+  api(:get_transaction_receipt!, "Get a transaction receipt by hash. Raises on error.",
+    params: [
+      tx_hash: [kind: :value, description: "0x-prefixed hex transaction hash"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{type: "map | nil", description: "Cartouche.Receipt struct or nil"}
+  )
+
+  @spec get_transaction_receipt!(String.t(), keyword()) :: Cartouche.Receipt.t() | nil
+  def get_transaction_receipt!(tx_hash, opts \\ []) do
+    case get_transaction_receipt(tx_hash, opts) do
+      {:ok, result} -> result
+      {:error, reason} -> raise "get_transaction_receipt failed: #{inspect(reason)}"
+    end
+  end
+
+  api(
+    :get_transaction_count!,
+    "Get the transaction count (nonce) of an address. Raises on error.",
+    params: [
+      address: [kind: :value, description: "Account address as 0x hex string or 20-byte binary"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
+    ],
+    returns: %{type: :non_neg_integer, description: "Transaction count (nonce)"}
+  )
+
+  @spec get_transaction_count!(String.t() | binary(), keyword()) :: non_neg_integer()
+  defrpc_bang(:get_transaction_count, args: [:address])
+
+  api(:eth_get_code, "Fetch contract bytecode at an address (eth_getCode).",
+    params: [
+      address: [kind: :value, description: "Account address as 0x hex string or 20-byte binary"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
+    ],
+    returns: %{
+      type: "{:ok, hex_string} | {:error, term}",
+      description: "0x-prefixed bytecode hex string, or \"0x\" for EOA addresses",
+      example: ~s("0x" for EOAs, "0x6080604052..." for contracts)
+    }
+  )
+
+  @spec eth_get_code(String.t() | binary(), keyword()) :: {:ok, String.t()} | {:error, term()}
+  def eth_get_code(address, opts \\ []) do
+    case address |> get_code(opts) |> Helpers.normalize_rpc_result() do
+      {:ok, bytes} -> {:ok, Hex.encode(bytes)}
+      error -> error
+    end
+  end
+
+  api(:eth_get_code!, "Fetch contract bytecode at an address. Raises on error.",
+    params: [
+      address: [kind: :value, description: "Account address as 0x hex string or 20-byte binary"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout, :block"]
+    ],
+    returns: %{type: :string, description: "0x-prefixed bytecode hex string"}
+  )
+
+  @spec eth_get_code!(String.t() | binary(), keyword()) :: String.t()
+  defrpc_bang(:eth_get_code, args: [:address])
+
+  api(:call, "Generic JSON-RPC passthrough — invoke any method not covered by a named wrapper.",
+    params: [
+      method: [
+        kind: :value,
+        description:
+          ~s|JSON-RPC method name, e.g. "eth_getStorageAt", "debug_traceTransaction", "trace_call", "eth_feeHistory"|
+      ],
+      params: [
+        kind: :value,
+        description: "List of params for the method, in the order the JSON-RPC spec requires"
+      ],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{
+      type: "{:ok, term} | {:error, term}",
+      description:
+        "Raw decoded JSON result (no further decoding — caller knows what they asked for) or wrapped error tuple"
+    }
+  )
+
+  @spec call(String.t(), [term()], keyword()) :: {:ok, term()} | {:error, term()}
+  def call(method, params, opts \\ []) when is_binary(method) and is_list(params) do
+    do_rpc(method, params, to_rpc_opts(opts))
+  end
+
+  api(:call!, "Generic JSON-RPC passthrough. Raises on error.",
+    params: [
+      method: [kind: :value, description: "JSON-RPC method name"],
+      params: [kind: :value, description: "List of params for the method"],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{type: :term, description: "Raw decoded JSON result"}
+  )
+
+  @spec call!(String.t(), [term()], keyword()) :: term()
+  def call!(method, params, opts \\ []) do
+    case call(method, params, opts) do
+      {:ok, result} -> result
+      {:error, reason} -> raise "RPC #{method} failed: #{inspect(reason)}"
+    end
+  end
+
+  api(:batch, "Generic JSON-RPC array batch — invoke many methods in one HTTP request.",
+    params: [
+      requests: [
+        kind: :value,
+        description:
+          ~s|List of {method, params} tuples, e.g. [{"eth_blockNumber", []}, {"eth_chainId", []}]. Results are returned in the same order as requests even if the node responds out of order.|
+      ],
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{
+      type: "{:ok, [term]} | {:error, term}",
+      description:
+        "Raw decoded JSON results in request order, or a wrapped RPC/transport error. If any response item is a JSON-RPC error, the batch returns that error."
+    }
+  )
+
+  @doc """
+  Invoke many raw JSON-RPC calls in one HTTP request.
+
+  Each request is a `{method, params}` tuple. Results are returned in request
+  order even when the node returns the JSON-RPC response array out of order.
+  """
+  @spec batch([{String.t(), [term()]}], keyword()) :: {:ok, [term()]} | {:error, term()}
+  def batch(requests, opts \\ []) do
+    Cartouche.RPC.send_batch(requests, to_rpc_opts(opts))
+  end
+
+  api(
+    :fee_history,
+    "Fetch base-fee history and per-block priority-fee percentiles (eth_feeHistory).",
+    params: [
+      block_count: [
+        kind: :value,
+        description: "Number of recent blocks to query, 1..1024 (EIP-1474 cap)"
+      ],
+      opts: [
+        kind: :value,
+        default: [],
+        description:
+          "Options: :newest_block (default \"latest\"), :reward_percentiles (default [50] — list of ints 0..100, monotonically non-decreasing), :rpc_url, :timeout"
+      ]
+    ],
+    returns: %{
+      type: "{:ok, Cartouche.FeeHistory.t()} | {:error, term}",
+      description:
+        "Deserialized fee history struct: oldest_block, base_fee_per_gas (block_count + 1 entries), gas_used_ratio, reward (block_count rows × length(reward_percentiles) cols)"
+    }
+  )
+
+  @spec fee_history(pos_integer(), keyword()) ::
+          {:ok, Cartouche.FeeHistory.t()} | {:error, term()}
+  def fee_history(block_count, opts) do
+    percentiles = Keyword.get(opts, :reward_percentiles, [50])
+
+    with {:ok, _} <- ensure_block_count(block_count),
+         {:ok, newest} <- normalize_block(Keyword.get(opts, :newest_block, "latest")),
+         :ok <- ensure_reward_percentiles(percentiles) do
+      opts
+      |> Keyword.merge(block_count: block_count, newest_block: newest, reward_percentiles: percentiles)
+      |> fee_history()
+      |> Helpers.normalize_rpc_result()
+    end
+  end
+
+  api(:fee_history!, "Fetch fee history. Raises on error.",
+    params: [
+      block_count: [kind: :value, description: "Number of recent blocks to query, 1..1024"],
+      opts: [
+        kind: :value,
+        default: [],
+        description: "Options: :newest_block, :reward_percentiles, :rpc_url, :timeout"
+      ]
+    ],
+    returns: %{type: "Cartouche.FeeHistory.t()", description: "Deserialized fee history struct"}
+  )
+
+  @spec fee_history!(pos_integer(), keyword()) :: Cartouche.FeeHistory.t()
+  def fee_history!(block_count, opts \\ []) do
+    case fee_history(block_count, opts) do
+      {:ok, result} -> result
+      {:error, reason} -> raise "fee_history failed: #{inspect(reason)}"
+    end
+  end
+
+  api(:blob_base_fee!, "Get the current base fee per blob gas. Raises on error.",
+    params: [
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{type: :non_neg_integer, description: "Base fee per blob gas in wei"}
+  )
+
+  @spec blob_base_fee!(keyword()) :: non_neg_integer()
+  defrpc_bang(:blob_base_fee)
+
+  api(:block_number, "Get the current block height.",
+    params: [
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{
+      type: "{:ok, non_neg_integer} | {:error, term}",
+      description: "Current block number"
+    }
+  )
+
+  @spec block_number(keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
+  defdelegate block_number(opts \\ []), to: __MODULE__, as: :eth_block_number
+
+  api(:chain_id, "Get the network chain ID.",
+    params: [
+      opts: [kind: :value, default: [], description: "Options: :rpc_url, :timeout"]
+    ],
+    returns: %{
+      type: "{:ok, non_neg_integer} | {:error, term}",
+      description: "Chain ID (1 = mainnet, 11155111 = sepolia, etc.)"
+    }
+  )
+
+  @spec chain_id(keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
+  defdelegate chain_id(opts \\ []), to: __MODULE__, as: :eth_chain_id
+  @spec build_estimate_gas_params(map()) :: {:ok, map()} | {:error, term()}
+  defp build_estimate_gas_params(tx_params) do
+    with {:ok, result} <- put_estimate_address(%{}, "from", Map.get(tx_params, :from)),
+         {:ok, result} <- put_estimate_address(result, "to", Map.get(tx_params, :to)),
+         {:ok, result} <- put_estimate_data(result, Map.get(tx_params, :data)),
+         {:ok, result} <- put_estimate_quantity(result, "value", Map.get(tx_params, :value)),
+         {:ok, result} <- put_estimate_quantity(result, "gas", Map.get(tx_params, :gas)),
+         {:ok, result} <- put_estimate_quantity(result, "gasPrice", Map.get(tx_params, :gas_price)),
+         {:ok, result} <-
+           put_estimate_quantity(result, "maxFeePerGas", Map.get(tx_params, :max_fee_per_gas)),
+         {:ok, result} <-
+           put_estimate_quantity(
+             result,
+             "maxPriorityFeePerGas",
+             Map.get(tx_params, :max_priority_fee_per_gas)
+           ) do
+      put_estimate_access_list(result, Map.get(tx_params, :access_list))
+    end
+  end
+
+  @spec put_estimate_address(map(), String.t(), term()) :: {:ok, map()} | {:error, term()}
+  defp put_estimate_address(result, _key, nil), do: {:ok, result}
+
+  defp put_estimate_address(result, key, addr) do
+    with {:ok, hex} <- ensure_hex_address(addr), do: {:ok, Map.put(result, key, hex)}
+  end
+
+  @spec put_estimate_data(map(), term()) :: {:ok, map()} | {:error, term()}
+  defp put_estimate_data(result, nil), do: {:ok, result}
+
+  defp put_estimate_data(result, data) do
+    with {:ok, hex} <- ensure_hex_data(data), do: {:ok, Map.put(result, "data", hex)}
+  end
+
+  @spec put_estimate_quantity(map(), String.t(), term()) ::
+          {:ok, map()} | {:error, term()}
+  defp put_estimate_quantity(result, _key, nil), do: {:ok, result}
+
+  defp put_estimate_quantity(result, key, n) when is_integer(n) and n >= 0 do
+    {:ok, Map.put(result, key, Cartouche.Hex.from_integer(n))}
+  end
+
+  defp put_estimate_quantity(_result, key, other), do: {:error, {:invalid_quantity, key, other}}
+
+  # Serializes an EIP-2930 access list into the eth_estimateGas call object as
+  # [%{"address" => 0xhex, "storageKeys" => [0xhex, ...]}]. Accepts the cartouche
+  # canonical shape [{<<_::160>>, [<<_::256>>]}] (binary address + binary storage
+  # keys) and 0x-hex-string forms. An empty/absent list is omitted; a malformed
+  # entry returns an error rather than crashing.
+  @spec put_estimate_access_list(map(), term()) :: {:ok, map()} | {:error, term()}
+  defp put_estimate_access_list(result, nil), do: {:ok, result}
+  defp put_estimate_access_list(result, []), do: {:ok, result}
+
+  defp put_estimate_access_list(result, entries) when is_list(entries) do
+    with {:ok, serialized} <- serialize_access_list(entries, []) do
+      {:ok, Map.put(result, "accessList", serialized)}
+    end
+  end
+
+  defp put_estimate_access_list(_result, other), do: {:error, {:invalid_access_list, other}}
+
+  @spec serialize_access_list([term()], list()) :: {:ok, list()} | {:error, term()}
+  defp serialize_access_list([], acc), do: {:ok, Enum.reverse(acc)}
+
+  defp serialize_access_list([{address, storage_keys} | rest], acc) when is_list(storage_keys) do
+    with {:ok, addr_hex} <- ensure_hex_address(address),
+         {:ok, key_hexes} <- serialize_storage_keys(storage_keys, []) do
+      entry = %{"address" => addr_hex, "storageKeys" => key_hexes}
+      serialize_access_list(rest, [entry | acc])
+    end
+  end
+
+  defp serialize_access_list([entry | _rest], _acc), do: {:error, {:invalid_access_list_entry, entry}}
+
+  @spec serialize_storage_keys([term()], list()) :: {:ok, list()} | {:error, term()}
+  defp serialize_storage_keys([], acc), do: {:ok, Enum.reverse(acc)}
+
+  # 0x-string clause first: a "0x"-prefixed value is a binary, so it must be matched
+  # before the raw-32-byte-binary clause to avoid double-encoding a 32-byte hex string.
+  defp serialize_storage_keys(["0x" <> _ = key | rest], acc) do
+    with {:ok, hex} <- ensure_hex_data(key), do: serialize_storage_keys(rest, [hex | acc])
+  end
+
+  defp serialize_storage_keys([key | rest], acc) when is_binary(key) and byte_size(key) == 32 do
+    serialize_storage_keys(rest, [Cartouche.Hex.encode(key) | acc])
+  end
+
+  defp serialize_storage_keys([key | _rest], _acc), do: {:error, {:invalid_storage_key, key}}
+
+  @doc false
+  @spec decode_block_access_list_result({:ok, term()} | {:error, term()}) ::
+          {:ok, [map()] | nil} | {:error, term()}
+  defp decode_block_access_list_result({:ok, nil}), do: {:ok, nil}
+
+  defp decode_block_access_list_result({:ok, entries}) when is_list(entries) do
+    if Enum.all?(entries, &is_map/1),
+      do: {:ok, entries},
+      else: unexpected_rpc_result("block access list", entries)
+  end
+
+  defp decode_block_access_list_result({:ok, result}), do: unexpected_rpc_result("block access list", result)
+
+  defp decode_block_access_list_result({:error, _reason} = error), do: error
+
+  @spec unexpected_rpc_result(String.t(), term()) :: {:error, {:rpc_error, map()}}
+  defp unexpected_rpc_result(label, result) do
+    {:error, {:rpc_error, %{message: "unexpected #{label} response: #{inspect(result)}"}}}
   end
 end

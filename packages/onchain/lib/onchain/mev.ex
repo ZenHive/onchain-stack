@@ -10,7 +10,7 @@ defmodule Onchain.MEV do
 
   ## Endpoint and auth are caller-supplied
 
-  Unlike `Onchain.RPC`, there is **no fallback to the configured public node**.
+  Unlike `Cartouche.RPC`, there is **no fallback to the configured public node**.
   Silently leaking a would-be-private transaction to the public RPC defeats the
   entire purpose, so the relay URL is a required `:endpoint` option — omitting it
   returns `{:error, :missing_endpoint}` rather than broadcasting.

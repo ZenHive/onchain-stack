@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.TelemetryTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.RPC
+  alias Cartouche.RPC
 
   @event_prefix [:onchain, :rpc, :request]
   @start_event @event_prefix ++ [:start]
@@ -56,13 +56,13 @@ defmodule Onchain.RPC.TelemetryTest do
 
     test "emits exception event and preserves the raised exception" do
       method = "eth_blockNumber"
-      previous = Application.get_env(:cartouche, Cartouche.RPC)
-      Application.put_env(:cartouche, Cartouche.RPC, plug: &RaisingClient.call/1)
+      previous = Application.get_env(:cartouche, RPC)
+      Application.put_env(:cartouche, RPC, plug: &RaisingClient.call/1)
 
       on_exit(fn ->
         case previous do
-          nil -> Application.delete_env(:cartouche, Cartouche.RPC)
-          config -> Application.put_env(:cartouche, Cartouche.RPC, config)
+          nil -> Application.delete_env(:cartouche, RPC)
+          config -> Application.put_env(:cartouche, RPC, config)
         end
       end)
 

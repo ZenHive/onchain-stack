@@ -123,7 +123,8 @@ defmodule Cartouche.Block do
     :parent_beacon_block_root,
     # Cancun (EIP-4844).
     :blob_gas_used,
-    :excess_blob_gas
+    :excess_blob_gas,
+    :requests_hash
   ]
 
   @type t :: %__MODULE__{
@@ -189,7 +190,8 @@ defmodule Cartouche.Block do
           # blobGasUsed: QUANTITY - blob gas used in this block. Cancun+ (EIP-4844); nil pre-Cancun.
           blob_gas_used: integer() | nil,
           # excessBlobGas: QUANTITY - excess blob gas. Cancun+ (EIP-4844); nil pre-Cancun.
-          excess_blob_gas: integer() | nil
+          excess_blob_gas: integer() | nil,
+          requests_hash: <<_::256>> | nil
         }
 
   api(:deserialize, "Decode an Ethereum block JSON-RPC object into a Cartouche.Block struct.",
@@ -353,7 +355,8 @@ defmodule Cartouche.Block do
       withdrawals: map(get_in(params, ["withdrawals"]), fn ws -> Enum.map(ws, &Withdrawal.deserialize/1) end),
       parent_beacon_block_root: map(get_in(params, ["parentBeaconBlockRoot"]), &Hex.decode_word!/1),
       blob_gas_used: map(get_in(params, ["blobGasUsed"]), &Hex.decode_hex_number!/1),
-      excess_blob_gas: map(get_in(params, ["excessBlobGas"]), &Hex.decode_hex_number!/1)
+      excess_blob_gas: map(get_in(params, ["excessBlobGas"]), &Hex.decode_hex_number!/1),
+      requests_hash: map(params["requestsHash"], &Hex.decode_word!/1)
     }
   end
 

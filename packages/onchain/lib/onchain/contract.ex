@@ -14,7 +14,7 @@ defmodule Onchain.Contract do
   |--------|-------------|
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
   | `ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
-  | `Onchain.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` — on execution revert, `map` may include `:data` (0x hex) and `:revert` (bytes) for `ABI.decode_hex_error/3` |
+  | `Cartouche.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` — on execution revert, `map` may include `:data` (0x hex) and `:revert` (bytes) for `ABI.decode_hex_error/3` |
   | `ABI.decode_response/3` | `{:error, {:decode_error, reason}}` — including `{:strict_violation, detail}` when `opts` contains `strict: true` |
 
   ## Functions
@@ -27,8 +27,8 @@ defmodule Onchain.Contract do
 
   use Descripex, namespace: "/contract"
 
+  alias Cartouche.RPC
   alias Onchain.Address
-  alias Onchain.RPC
 
   # --- call ---
 

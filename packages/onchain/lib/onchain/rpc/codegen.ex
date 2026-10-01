@@ -1,28 +1,18 @@
 defmodule Onchain.RPC.Codegen do
-  @moduledoc false
+  @moduledoc """
+  Spec-checked JSON-RPC wrapper generation for `Cartouche.RPC`.
 
-  # Declarative codegen for the uniform `Onchain.RPC.*` wrappers.
-  #
-  # The named JSON-RPC wrappers in `Onchain.RPC` share a near-identical shape:
-  # optional per-arg validation, param construction, a `do_rpc/3` dispatch, and a
-  # mechanical bang variant. This module captures the two genuinely-uniform parts
-  # as macros so the shape is declared once rather than hand-copied per wrapper:
-  #
-  #   * `defrpc/2` — the read function for wrappers whose body reduces to
-  #     "validate positional args → do_rpc → maybe decode".
-  #   * `defrpc_bang/2` — the `name!` variant that unwraps `{:ok, v}` / raises on error.
-  #
-  # Wrappers outside the declared validator/decoder shapes (nested-map params,
-  # multi-clause dispatch, filter whitelists, bespoke deserialization) stay
-  # hand-written in `Onchain.RPC`; they still use `defrpc_bang/2` for their
-  # mechanical bang.
-  # This mirrors Ecto/Phoenix codegen: a narrow macro for the common case, plain
-  # functions for the outliers — rather than growing one macro past its contract.
-  #
-  # The `@doc`/`@spec`/`api/3` declarations stay hand-authored in `Onchain.RPC`
-  # so the Descripex hints and dialyzer specs remain byte-identical; these macros
-  # only emit the function bodies. Method names are checked against the vendored
-  # OpenRPC spec at compile time so declarations fail fast on typos.
+  `defrpc/2` takes a function name and keyword options including `:method`.
+  Every declaration is checked against `Onchain.RPC.Specs` at compile time,
+  including its vendored extension specs. Declarations with `:summary`, `:doc`,
+  and `:returns_desc` also generate Descripex metadata and specs; `:address_desc`
+  selects the validated address-at-block shape. Otherwise the caller supplies
+  metadata and selects `:arg` and `:decode` explicitly.
+
+  `defrpc_bang/2` generates `name!`, with the positional names in `:args` and
+  trailing optional `opts`. It unwraps `{:ok, value}` (including nil), and
+  raises `RuntimeError` with `"name failed: ..."` on `{:error, reason}`.
+  """
 
   alias Onchain.RPC.Specs
 
@@ -73,9 +63,39 @@ defmodule Onchain.RPC.Codegen do
     ]
   ]
 
-  @doc false
-  # Generates a uniform read wrapper. See @defrpc_schema for the option contract.
+  @doc "Defines a wrapper for a method in the vendored RPC specs."
+  @spec defrpc(atom(), keyword()) :: Macro.t()
   defmacro defrpc(name, opts) do
+    method = Keyword.fetch!(opts, :method)
+    ensure_known_method!(method)
+
+    if Keyword.has_key?(opts, :summary) do
+      build_documented(name, method, opts)
+    else
+      build_validated(name, opts)
+    end
+  end
+
+  defp build_documented(name, method, opts) do
+    decode = Keyword.fetch!(opts, :decode)
+
+    ctx = %{
+      name: name,
+      method: method,
+      decode: decode,
+      summary: Keyword.fetch!(opts, :summary),
+      returns_desc: Keyword.fetch!(opts, :returns_desc),
+      doc: Keyword.fetch!(opts, :doc),
+      return_type: return_type(decode)
+    }
+
+    case Keyword.fetch(opts, :address_desc) do
+      {:ok, address_desc} -> address_at_block(ctx, address_desc)
+      :error -> no_arg(ctx)
+    end
+  end
+
+  defp build_validated(name, opts) do
     opts = NimbleOptions.validate!(opts, @defrpc_schema)
     method = Keyword.fetch!(opts, :method)
     arg = Keyword.fetch!(opts, :arg)
@@ -103,8 +123,8 @@ defmodule Onchain.RPC.Codegen do
     end
   end
 
-  @doc false
-  # Generates the mechanical `name!` variant. See @defrpc_bang_schema.
+  @doc "Defines a bang variant that unwraps success and raises on error."
+  @spec defrpc_bang(atom(), keyword()) :: Macro.t()
   defmacro defrpc_bang(name, opts \\ []) do
     opts = NimbleOptions.validate!(opts, @defrpc_bang_schema)
     caller = __CALLER__.module
@@ -186,6 +206,75 @@ defmodule Onchain.RPC.Codegen do
 
       :block_access_list ->
         quote(do: decode_block_access_list_result(unquote(rpc_call)))
+    end
+  end
+
+  @block_opts_description "Block selector (:block or :block_number) and transport options."
+  @plain_opts_description "Common send_rpc/3 transport options."
+  @spec return_type(:hex | :hex_unsigned) :: Macro.t()
+  defp return_type(:hex), do: quote(do: binary())
+  defp return_type(:hex_unsigned), do: quote(do: non_neg_integer())
+
+  @spec address_at_block(map(), String.t()) :: Macro.t()
+  defp address_at_block(ctx, address_desc) do
+    %{
+      name: name,
+      method: method,
+      decode: decode,
+      summary: summary,
+      returns_desc: returns_desc,
+      doc: doc,
+      return_type: return_type
+    } =
+      ctx
+
+    quote do
+      api(unquote(name), unquote(summary),
+        params: [
+          address: [kind: :value, description: unquote(address_desc)],
+          opts: [kind: :value, default: [], description: unquote(@block_opts_description)]
+        ],
+        returns: %{type: :ok_error_tuple, description: unquote(returns_desc)}
+      )
+
+      @doc unquote(doc)
+      @spec unquote(name)(binary(), Keyword.t()) :: {:ok, unquote(return_type)} | {:error, term()}
+      def unquote(name)(address, opts \\ []) do
+        with {:ok, address} <- Onchain.RPC.Helpers.ensure_hex_address(address),
+             {:ok, block} <-
+               Onchain.RPC.Helpers.normalize_block(Keyword.get(opts, :block, Keyword.get(opts, :block_number, "latest"))) do
+          send_rpc(unquote(method), [address, block], Keyword.put(opts, :decode, unquote(decode)))
+        end
+      end
+    end
+  end
+
+  @spec no_arg(map()) :: Macro.t()
+  defp no_arg(ctx) do
+    %{
+      name: name,
+      method: method,
+      decode: decode,
+      summary: summary,
+      returns_desc: returns_desc,
+      doc: doc,
+      return_type: return_type
+    } =
+      ctx
+
+    quote do
+      api(unquote(name), unquote(summary),
+        params: [
+          opts: [kind: :value, default: [], description: unquote(@plain_opts_description)]
+        ],
+        returns: %{type: :ok_error_tuple, description: unquote(returns_desc)}
+      )
+
+      @doc unquote(doc)
+      @spec unquote(name)(Keyword.t()) :: {:ok, unquote(return_type)} | {:error, term()}
+      def unquote(name)(opts \\ []) do
+        send_rpc(unquote(method), [], Keyword.put(opts, :decode, unquote(decode)))
+      end
     end
   end
 end

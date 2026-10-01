@@ -20,7 +20,7 @@ defmodule Onchain.Aave.UiPoolDataProvider do
   |--------|-------------|
   | `Onchain.Aave.Contracts.address/2` | `{:error, {:unsupported_network, network}}` |
   | `ABI.encode_hex_call/2` | `{:error, {:encode_error, reason}}` |
-  | `Onchain.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
+  | `Cartouche.RPC.eth_call/3` | `{:error, {:rpc_error, map}}` |
   | `ABI.decode_response/2` | `{:error, {:decode_error, reason}}` |
   | `Onchain.Address.validate/1` | `{:error, {:invalid_address, input}}` |
 
@@ -38,13 +38,13 @@ defmodule Onchain.Aave.UiPoolDataProvider do
 
   use Descripex, namespace: "/aave/ui-pool-data-provider"
 
+  alias Cartouche.RPC
   alias Onchain.Aave.Contracts
   alias Onchain.Aave.Opts
   alias Onchain.Aave.Types.AggregatedReserveData
   alias Onchain.Aave.Types.BaseCurrencyInfo
   alias Onchain.Aave.Types.UserReserveData
   alias Onchain.Address
-  alias Onchain.RPC
 
   @reserves_list_response "(address[])"
 

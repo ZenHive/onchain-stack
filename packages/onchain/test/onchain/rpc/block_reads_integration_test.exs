@@ -3,9 +3,9 @@ defmodule Onchain.RPC.BlockReadsIntegrationTest do
 
   alias Cartouche.Hex
   alias Cartouche.Receipt
+  alias Cartouche.RPC
   alias Cartouche.RPC, as: CartoucheRPC
   alias Cartouche.Transaction.Info
-  alias Onchain.RPC
 
   @moduletag :integration
 
@@ -65,7 +65,7 @@ defmodule Onchain.RPC.BlockReadsIntegrationTest do
   test "block access list matches the configured node's observed EIP-7928 shape" do
     # Observed on 2026-08-25 from the configured Reth archive node. Its live
     # camelCase response uses blockAccessIndex/newValue and slot/changes keys.
-    case RPC.get_block_access_list(@known_block, rpc_opts()) do
+    case CartoucheRPC.get_block_access_list(@known_block, rpc_opts()) do
       {:ok, access_list} when is_list(access_list) ->
         assert length(access_list) == @known_access_list_entries
 

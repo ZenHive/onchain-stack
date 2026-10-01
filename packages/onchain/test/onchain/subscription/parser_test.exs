@@ -1,6 +1,7 @@
 defmodule Onchain.Subscription.ParserTest do
   use ExUnit.Case, async: true
 
+  alias Cartouche.Filter.Log
   alias Onchain.Subscription.Parser
 
   describe "parse_event(:new_heads, raw_map)" do
@@ -96,22 +97,47 @@ defmodule Onchain.Subscription.ParserTest do
       "removed" => false
     }
 
-    test "converts hex fields and checksums address" do
+    test "decodes fields into the shared log struct" do
       {:ok, log} = Parser.parse_event(:logs, @raw_log)
 
-      assert log.address == "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+      assert %Log{} = log
+      assert log.address == Cartouche.Hex.from_hex!(@raw_log["address"])
       assert log.block_number == 0x12A0B5F
       assert log.log_index == 0
       assert log.transaction_index == 5
       assert log.removed == false
     end
 
-    test "preserves topics and data as-is" do
+    test "decodes topics, data, and hashes to binaries" do
       {:ok, log} = Parser.parse_event(:logs, @raw_log)
 
-      assert [_, _, _] = log.topics
-      assert log.data == @raw_log["data"]
-      assert log.transaction_hash == @raw_log["transactionHash"]
+      assert log.topics == Enum.map(@raw_log["topics"], &Cartouche.Hex.from_hex!/1)
+      assert log.data == Cartouche.Hex.from_hex!(@raw_log["data"])
+      assert log.transaction_hash == Cartouche.Hex.from_hex!(@raw_log["transactionHash"])
+    end
+
+    test "pending logs share receipt and filter decoding with nullable location fields" do
+      raw = Map.drop(@raw_log, ["blockNumber", "blockHash", "logIndex", "transactionIndex", "transactionHash", "removed"])
+      assert {:ok, %Log{} = log} = Parser.parse_event(:logs, raw)
+      assert log == Log.deserialize(raw)
+      assert [log] == Log.decode_logs([raw])
+      assert is_nil(log.block_number)
+      assert is_nil(log.block_hash)
+      assert is_nil(log.transaction_hash)
+      assert is_nil(log.log_index)
+      assert is_nil(log.transaction_index)
+      assert is_nil(log.removed)
+
+      nulls =
+        Map.merge(raw, %{
+          "blockNumber" => nil,
+          "blockHash" => nil,
+          "logIndex" => nil,
+          "transactionIndex" => nil,
+          "transactionHash" => nil
+        })
+
+      assert {:ok, ^log} = Parser.parse_event(:logs, nulls)
     end
 
     test "returns error for non-map input" do

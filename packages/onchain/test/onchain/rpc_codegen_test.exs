@@ -1,56 +1,33 @@
 defmodule Onchain.RPCCodegenTest do
   use ExUnit.Case, async: true
 
-  @rpc_source Path.expand("../../lib/onchain/rpc.ex", __DIR__)
-  @uniform_wrappers [
-    :eth_send_raw_transaction,
-    :get_balance,
-    :block_number,
-    :chain_id,
-    :get_transaction_count,
-    :eth_get_code,
-    :blob_base_fee
-  ]
-  @block_wrappers [
-    :get_block_access_list
-  ]
+  test "the surviving generator checks the spec for metadata declarations too" do
+    assert_raise ArgumentError, ~r/unknown OpenRPC method/, fn ->
+      Code.compile_quoted(
+        quote do
+          defmodule UnknownDocumentedRPC do
+            @moduledoc false
+            import Onchain.RPC.Codegen
 
-  test "uniform and block RPC wrappers are declared through defrpc codegen" do
-    ast =
-      @rpc_source
-      |> File.read!()
-      |> Code.string_to_quoted!()
-
-    wrappers = @uniform_wrappers ++ @block_wrappers
-
-    assert imports_rpc_codegen?(ast)
-    assert Enum.sort(wrappers) == Enum.sort(macro_call_names(ast, :defrpc))
-    assert Enum.sort(wrappers) == Enum.sort(macro_call_names(ast, :defrpc_bang))
+            defrpc(:unknown, method: "eth_typo", summary: "Typo")
+          end
+        end
+      )
+    end
   end
 
-  defp imports_rpc_codegen?(ast) do
-    {_ast, imported?} =
-      Macro.prewalk(ast, false, fn
-        {:import, _meta, [{:__aliases__, _alias_meta, [:Onchain, :RPC, :Codegen]} | _]} = node, _acc ->
-          {node, true}
+  test "bang generation unwraps success and raises with the original error" do
+    assert Cartouche.RPC.chain_id!(
+             req_options: [
+               plug: fn conn ->
+                 request = conn |> Req.Test.raw_body() |> IO.iodata_to_binary() |> Jason.decode!()
+                 Req.Test.json(conn, %{id: request["id"], jsonrpc: "2.0", result: "0x1"})
+               end
+             ]
+           ) == 1
 
-        node, acc ->
-          {node, acc}
-      end)
-
-    imported?
-  end
-
-  defp macro_call_names(ast, macro_name) do
-    {_ast, names} =
-      Macro.prewalk(ast, [], fn
-        {^macro_name, _meta, [name | _]} = node, acc when is_atom(name) ->
-          {node, [name | acc]}
-
-        node, acc ->
-          {node, acc}
-      end)
-
-    names
+    assert_raise RuntimeError, ~r/get_balance failed:.*invalid_address/, fn ->
+      Cartouche.RPC.get_balance!("bad address")
+    end
   end
 end

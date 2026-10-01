@@ -1,7 +1,7 @@
 defmodule ABI.LogIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.RPC
+  alias Cartouche.RPC
 
   @moduletag :integration
 
@@ -21,7 +21,7 @@ defmodule ABI.LogIntegrationTest do
         to_block: latest
       }
 
-      {:ok, logs} = Cartouche.RPC.eth_get_logs(filter, rpc_opts())
+      {:ok, logs} = RPC.eth_get_logs(filter, rpc_opts())
       assert logs != [], "Expected at least one USDC Transfer log in last 10 blocks"
 
       log = hd(logs)

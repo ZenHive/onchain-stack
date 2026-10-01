@@ -1,14 +1,15 @@
 defmodule Onchain.RPC.Differential.CartoucheTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.RPC
+  alias Cartouche.Filter.Log
+  alias Cartouche.RPC
 
   # Task 65 requested signet as the first oracle. The project has since migrated
   # from signet to cartouche (see CHANGELOG Task 67), so this uses the current
   # in-tree raw RPC client as the zero-infra oracle.
   #
-  # Known divergences: none annotated. If a case fails because Cartouche.RPC and
-  # Onchain.RPC intentionally expose different shapes, document that difference
+  # The reference sends raw JSON-RPC and independently decodes the response.
+  # If a case fails due to an intentional shape change, document that difference
   # near the case instead of weakening the assertion.
   @moduletag :differential
 
@@ -156,7 +157,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
     }
 
     assert {:ok, actual} =
-             Cartouche.RPC.eth_get_logs(filter, ethereum_node: rpc_url, timeout: @rpc_timeout_ms)
+             RPC.eth_get_logs(filter, ethereum_node: rpc_url, timeout: @rpc_timeout_ms)
 
     expected =
       "eth_getLogs"
@@ -171,7 +172,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
         ],
         rpc_url
       )
-      |> Enum.map(&Cartouche.Filter.Log.deserialize/1)
+      |> Enum.map(&Log.deserialize/1)
 
     assert actual == expected
   end
@@ -183,7 +184,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
     tx_hash: tx_hash
   } do
     assert {:ok, actual} =
-             Cartouche.RPC.eth_get_transaction_by_hash(tx_hash, ethereum_node: rpc_url, timeout: @rpc_timeout_ms)
+             RPC.eth_get_transaction_by_hash(tx_hash, ethereum_node: rpc_url, timeout: @rpc_timeout_ms)
 
     raw = reference!("eth_getTransactionByHash", [tx_hash], rpc_url)
     assert {:ok, ^actual} = Cartouche.Transaction.Info.decode(raw)
@@ -227,7 +228,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   # Nodes cap eth_getProof to a recent proof window; use "latest" so both sides succeed.
   test "eth_getProof struct fields match the oracle", %{rpc_url: rpc_url} do
     assert {:ok, actual} =
-             Cartouche.RPC.eth_get_proof(@aave_v3_pool_proxy, [@eip1967_impl_slot], onchain_opts(rpc_url))
+             RPC.eth_get_proof(@aave_v3_pool_proxy, [@eip1967_impl_slot], onchain_opts(rpc_url))
 
     expected =
       "eth_getProof"
@@ -299,7 +300,7 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   defp reference!(method, params, rpc_url) do
     opts = [ethereum_node: rpc_url, timeout: @rpc_timeout_ms]
 
-    case Cartouche.RPC.send_rpc(method, params, opts) do
+    case RPC.send_rpc(method, params, opts) do
       {:ok, result} ->
         result
 
@@ -307,6 +308,9 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
         flunk("Oracle RPC #{method} failed: #{inspect(error)}")
     end
   end
+
+  defp decode_bytes(nil), do: nil
+  defp decode_bytes("0x" <> hex), do: Base.decode16!(hex, case: :mixed)
 
   defp hex_to_integer(nil), do: nil
   defp hex_to_integer("0x" <> hex), do: String.to_integer(hex, @hex_base)
@@ -317,34 +321,34 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   defp expected_block(nil), do: nil
 
   defp expected_block(raw) do
-    %{
+    %Cartouche.Block{
       number: hex_to_integer(raw["number"]),
-      hash: raw["hash"],
-      parent_hash: raw["parentHash"],
-      sha3_uncles: raw["sha3Uncles"],
-      logs_bloom: raw["logsBloom"],
-      transactions_root: raw["transactionsRoot"],
-      state_root: raw["stateRoot"],
-      receipts_root: raw["receiptsRoot"],
-      miner: checksum(raw["miner"]),
+      hash: decode_bytes(raw["hash"]),
+      parent_hash: decode_bytes(raw["parentHash"]),
+      sha3_uncles: decode_bytes(raw["sha3Uncles"]),
+      logs_bloom: decode_bytes(raw["logsBloom"]),
+      transactions_root: decode_bytes(raw["transactionsRoot"]),
+      state_root: decode_bytes(raw["stateRoot"]),
+      receipts_root: decode_bytes(raw["receiptsRoot"]),
+      miner: decode_bytes(raw["miner"]),
       difficulty: hex_to_integer(raw["difficulty"]),
       total_difficulty: hex_to_integer(raw["totalDifficulty"]),
-      extra_data: raw["extraData"],
+      extra_data: decode_bytes(raw["extraData"]),
       size: hex_to_integer(raw["size"]),
       gas_limit: hex_to_integer(raw["gasLimit"]),
       gas_used: hex_to_integer(raw["gasUsed"]),
       timestamp: hex_to_integer(raw["timestamp"]),
       transactions: Enum.map(raw["transactions"] || [], &expected_block_transaction/1),
-      uncles: raw["uncles"] || [],
-      mix_hash: raw["mixHash"],
-      nonce: raw["nonce"],
+      uncles: Enum.map(raw["uncles"] || [], &decode_bytes/1),
+      mix_hash: decode_bytes(raw["mixHash"]),
+      nonce: hex_to_integer(raw["nonce"]),
       base_fee_per_gas: hex_to_integer(raw["baseFeePerGas"]),
-      withdrawals_root: raw["withdrawalsRoot"],
+      withdrawals_root: decode_bytes(raw["withdrawalsRoot"]),
       withdrawals: expected_withdrawals(raw["withdrawals"]),
       blob_gas_used: hex_to_integer(raw["blobGasUsed"]),
       excess_blob_gas: hex_to_integer(raw["excessBlobGas"]),
-      parent_beacon_block_root: raw["parentBeaconBlockRoot"],
-      requests_hash: raw["requestsHash"]
+      parent_beacon_block_root: decode_bytes(raw["parentBeaconBlockRoot"]),
+      requests_hash: decode_bytes(raw["requestsHash"])
     }
   end
 
@@ -355,10 +359,10 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
 
   defp expected_withdrawals(withdrawals) when is_list(withdrawals) do
     Enum.map(withdrawals, fn withdrawal ->
-      %{
+      %Cartouche.Block.Withdrawal{
         index: hex_to_integer(withdrawal["index"]),
         validator_index: hex_to_integer(withdrawal["validatorIndex"]),
-        address: checksum(withdrawal["address"]),
+        address: decode_bytes(withdrawal["address"]),
         amount: hex_to_integer(withdrawal["amount"])
       }
     end)
@@ -389,33 +393,37 @@ defmodule Onchain.RPC.Differential.CartoucheTest do
   defp expected_receipt(nil), do: nil
 
   defp expected_receipt(receipt) do
-    %{
-      transaction_hash: receipt["transactionHash"],
+    %Cartouche.Receipt{
+      transaction_hash: decode_bytes(receipt["transactionHash"]),
       transaction_index: hex_to_integer(receipt["transactionIndex"]),
-      block_hash: receipt["blockHash"],
+      block_hash: decode_bytes(receipt["blockHash"]),
       block_number: hex_to_integer(receipt["blockNumber"]),
-      from: checksum(receipt["from"]),
-      to: checksum(receipt["to"]),
+      from: decode_bytes(receipt["from"]),
+      to: decode_bytes(receipt["to"]),
       cumulative_gas_used: hex_to_integer(receipt["cumulativeGasUsed"]),
       gas_used: hex_to_integer(receipt["gasUsed"]),
       effective_gas_price: hex_to_integer(receipt["effectiveGasPrice"]),
       status: hex_to_integer(receipt["status"]),
-      contract_address: checksum(receipt["contractAddress"]),
+      contract_address: decode_bytes(receipt["contractAddress"]),
       logs: Enum.map(receipt["logs"] || [], &expected_log/1),
-      type: hex_to_integer(receipt["type"])
+      type: hex_to_integer(receipt["type"]),
+      logs_bloom: decode_bytes(receipt["logsBloom"]),
+      blob_gas_used: hex_to_integer(receipt["blobGasUsed"]),
+      blob_gas_price: hex_to_integer(receipt["blobGasPrice"])
     }
   end
 
   defp expected_log(log) do
-    %{
-      address: checksum(log["address"]),
-      topics: log["topics"] || [],
-      data: log["data"],
+    %Log{
+      address: decode_bytes(log["address"]),
+      topics: Enum.map(log["topics"] || [], &decode_bytes/1),
+      data: decode_bytes(log["data"]),
       block_number: hex_to_integer(log["blockNumber"]),
-      transaction_hash: log["transactionHash"],
+      transaction_hash: decode_bytes(log["transactionHash"]),
       log_index: hex_to_integer(log["logIndex"]),
       transaction_index: hex_to_integer(log["transactionIndex"]),
-      removed: log["removed"] || false
+      block_hash: decode_bytes(log["blockHash"]),
+      removed: log["removed"]
     }
   end
 

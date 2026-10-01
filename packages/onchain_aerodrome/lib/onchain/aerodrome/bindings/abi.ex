@@ -2,7 +2,7 @@ defmodule Onchain.Aerodrome.Bindings.Abi do
   @moduledoc """
   Canonical signatures from the nine deployed ABI captures in `priv/abis`.
 
-  Decode positionally with `Onchain.RPC.eth_call/3` followed by
+  Decode positionally with `Cartouche.RPC.eth_call/3` followed by
   `ABI.decode_response/2` and hand-written `from_raw/1` constructors,
   matching onchain_aave. Named components are evidence for field-count and
   field-order drift tests, not instructions to decode maps.

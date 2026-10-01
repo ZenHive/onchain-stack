@@ -1,7 +1,7 @@
 defmodule Onchain.RPCTest do
   use ExUnit.Case, async: true
 
-  alias Onchain.RPC
+  alias Cartouche.RPC
 
   setup do
     # This suite exercised the real transport before Cartouche's fixtures moved here.
@@ -113,12 +113,11 @@ defmodule Onchain.RPCTest do
       assert {:error, {:invalid_data, "deadbeef"}} = RPC.eth_send_raw_transaction("deadbeef")
     end
 
+    # --- Bang variant tests (raise on invalid input) ---
     test "rejects data with invalid hex characters" do
       assert {:error, {:invalid_data, "0xZZZZ"}} = RPC.eth_send_raw_transaction("0xZZZZ")
     end
   end
-
-  # --- Bang variant tests (raise on invalid input) ---
 
   describe "eth_call!/3" do
     test "raises on invalid address" do
@@ -199,46 +198,46 @@ defmodule Onchain.RPCTest do
       filter = %{from_block: "bogus"}
 
       assert {:error, {:invalid_filter, {:fromBlock, "bogus"}}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
     end
 
     test "returns error for invalid to_block value" do
       filter = %{from_block: 100, to_block: :not_valid}
 
       assert {:error, {:invalid_filter, {:toBlock, :not_valid}}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
     end
 
     test "returns error for negative block number" do
       filter = %{from_block: -1}
 
       assert {:error, {:invalid_filter, {:fromBlock, -1}}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
     end
 
     test "returns error for invalid hex block string" do
       filter = %{from_block: "0xZZZZ"}
 
       assert {:error, {:invalid_filter, {:fromBlock, "0xZZZZ"}}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
     end
 
     test "accepts valid block tags" do
       # Will fail at RPC level but should pass filter validation
       filter = %{from_block: "latest", to_block: "finalized"}
-      result = Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+      result = RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
       refute match?({:error, {:invalid_filter, _}}, result)
     end
 
     test "accepts valid integer blocks" do
       filter = %{from_block: 100, to_block: 200}
-      result = Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+      result = RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
       refute match?({:error, {:invalid_filter, _}}, result)
     end
 
     test "accepts valid hex block strings" do
       filter = %{from_block: "0x64", to_block: "0xc8"}
-      result = Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+      result = RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
       refute match?({:error, {:invalid_filter, _}}, result)
     end
   end
@@ -251,7 +250,7 @@ defmodule Onchain.RPCTest do
       filter = %{"from_block" => 100, "to_block" => 200}
 
       assert {:error, {:invalid_filter_key, unknown}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
 
       assert unknown in ["from_block", "to_block"]
     end
@@ -262,24 +261,24 @@ defmodule Onchain.RPCTest do
       filter = %{blockHash: "0x" <> String.duplicate("ab", 32)}
 
       assert {:error, {:invalid_filter_key, :blockHash}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
     end
 
     test "rejects arbitrary unknown keys" do
       filter = %{from_block: 100, to_block: 200, foo: :bar}
 
       assert {:error, {:invalid_filter_key, :foo}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
     end
 
     test "empty filter still succeeds through key validation" do
-      result = Cartouche.RPC.eth_get_logs(%{}, req_options: [plug: rpc_result_plug([])])
+      result = RPC.eth_get_logs(%{}, req_options: [plug: rpc_result_plug([])])
       refute match?({:error, {:invalid_filter_key, _}}, result)
     end
 
     test "canonical atom keys pass key validation (regression guard)" do
       filter = %{from_block: 100, to_block: 200}
-      result = Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+      result = RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
       refute match?({:error, {:invalid_filter_key, _}}, result)
       refute match?({:error, {:invalid_filter, _}}, result)
     end
@@ -288,21 +287,21 @@ defmodule Onchain.RPCTest do
   describe "eth_get_logs/2 camelCase string-key aliases (Task 60)" do
     test ~s|accepts "fromBlock" / "toBlock" as aliases for :from_block / :to_block| do
       filter = %{"fromBlock" => 100, "toBlock" => 200}
-      result = Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+      result = RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
       refute match?({:error, {:invalid_filter_key, _}}, result)
       refute match?({:error, {:invalid_filter, _}}, result)
     end
 
     test ~s|accepts "address" string-key alias| do
       filter = %{"address" => "0x" <> String.duplicate("ab", 20)}
-      result = Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+      result = RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
       refute match?({:error, {:invalid_filter_key, _}}, result)
       refute match?({:error, {:invalid_filter, _}}, result)
     end
 
     test ~s|accepts "topics" string-key alias| do
       filter = %{"topics" => []}
-      result = Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+      result = RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
       refute match?({:error, {:invalid_filter_key, _}}, result)
       refute match?({:error, {:invalid_filter, _}}, result)
     end
@@ -314,7 +313,7 @@ defmodule Onchain.RPCTest do
       filter = %{"fromBlock" => 100, from_block: :bogus}
 
       assert {:error, {:invalid_filter, {:fromBlock, :bogus}}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
     end
   end
 
@@ -323,14 +322,14 @@ defmodule Onchain.RPCTest do
 
     test "accepts :block_hash as a valid 32-byte hex" do
       filter = %{block_hash: @valid_hash}
-      result = Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+      result = RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
       refute match?({:error, {:invalid_filter_key, _}}, result)
       refute match?({:error, {:invalid_filter, _}}, result)
     end
 
     test ~s|accepts "blockHash" string-key alias| do
       filter = %{"blockHash" => @valid_hash}
-      result = Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+      result = RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
       refute match?({:error, {:invalid_filter_key, _}}, result)
       refute match?({:error, {:invalid_filter, _}}, result)
     end
@@ -339,21 +338,21 @@ defmodule Onchain.RPCTest do
       filter = %{block_hash: "0xdeadbeef"}
 
       assert {:error, {:invalid_filter, {:blockHash, "0xdeadbeef"}}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
     end
 
     test "rejects non-hex block hash" do
       filter = %{block_hash: :not_a_hash}
 
       assert {:error, {:invalid_filter, {:blockHash, :not_a_hash}}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
     end
 
     test ":block_hash mutually exclusive with :from_block (EIP-1474)" do
       filter = %{block_hash: @valid_hash, from_block: 100}
 
       assert {:error, {:invalid_filter, {:block_hash_mutually_exclusive, present}}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
 
       assert :from_block in present
       assert :block_hash in present
@@ -363,7 +362,7 @@ defmodule Onchain.RPCTest do
       filter = %{block_hash: @valid_hash, to_block: 200}
 
       assert {:error, {:invalid_filter, {:block_hash_mutually_exclusive, present}}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
 
       assert :to_block in present
       assert :block_hash in present
@@ -373,7 +372,7 @@ defmodule Onchain.RPCTest do
       filter = %{block_hash: @valid_hash, from_block: 100, to_block: 200}
 
       assert {:error, {:invalid_filter, {:block_hash_mutually_exclusive, present}}} =
-               Cartouche.RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
+               RPC.eth_get_logs(filter, req_options: [plug: rpc_result_plug([])])
 
       assert :from_block in present
       assert :to_block in present
@@ -428,6 +427,7 @@ defmodule Onchain.RPCTest do
         "blockNumber" => "0x10",
         "from" => "0x" <> String.duplicate("11", 20),
         "to" => nil,
+        "logsBloom" => "0x" <> String.duplicate("00", 256),
         "cumulativeGasUsed" => "0x5208",
         "gasUsed" => "0x5208",
         "effectiveGasPrice" => "0x3b9aca00",
@@ -441,7 +441,7 @@ defmodule Onchain.RPCTest do
 
       assert {:ok, parsed} = RPC.get_transaction_receipt(tx_hash, opts)
       assert parsed == RPC.get_transaction_receipt!(tx_hash, opts)
-      assert parsed.transaction_hash == tx_hash
+      assert parsed.transaction_hash == Cartouche.Hex.from_hex!(tx_hash)
       assert parsed.transaction_index == 2
       assert parsed.block_number == 16
       assert parsed.gas_used == 21_000
@@ -497,8 +497,6 @@ defmodule Onchain.RPCTest do
     end
   end
 
-  # --- eth_get_code ---
-
   describe "eth_get_code/2 input validation" do
     test "rejects address with wrong byte size" do
       short_addr = "0x" <> String.duplicate("aa", 10)
@@ -533,6 +531,7 @@ defmodule Onchain.RPCTest do
       refute match?({:error, {:invalid_block, _}}, result)
     end
 
+    # --- eth_get_code ---
     test "accepts tag block (passes input validation)" do
       addr = "0x" <> String.duplicate("aa", 20)
       result = RPC.eth_get_code(addr, block: "finalized")
@@ -561,6 +560,7 @@ defmodule Onchain.RPCTest do
         "blockNumber" => "0x10",
         "from" => "0x" <> String.duplicate("11", 20),
         "to" => "0x" <> String.duplicate("22", 20),
+        "logsBloom" => "0x" <> String.duplicate("00", 256),
         "cumulativeGasUsed" => "0x5208",
         "gasUsed" => "0x5208",
         "effectiveGasPrice" => "0x3b9aca00",
@@ -584,19 +584,17 @@ defmodule Onchain.RPCTest do
       opts = [rpc_url: "http://stub.invalid", req_options: [plug: rpc_result_plug(raw_receipt)]]
 
       assert {:ok, receipt} = RPC.get_transaction_receipt(tx_hash, opts)
-      assert [log] = receipt.logs
-      assert log.address == Onchain.Address.checksum!(address)
-      assert log.topics == [topic]
-      assert log.data == "0x01"
+      assert [%Cartouche.Filter.Log{} = log] = receipt.logs
+      assert log.address == Cartouche.Hex.from_hex!(address)
+      assert log.topics == [Cartouche.Hex.from_hex!(topic)]
+      assert log.data == <<1>>
       assert log.block_number == 16
-      assert log.transaction_hash == tx_hash
+      assert log.transaction_hash == Cartouche.Hex.from_hex!(tx_hash)
       assert log.log_index == 3
       assert log.transaction_index == 2
       assert log.removed == false
     end
   end
-
-  # --- call (generic JSON-RPC passthrough) ---
 
   describe "call/3" do
     test "returns wrapped rpc_error tuple when transport fails" do
@@ -637,6 +635,8 @@ defmodule Onchain.RPCTest do
         RPC.call!("eth_blockNumber", [], rpc_url: "http://localhost:1")
       end
     end
+
+    # --- call (generic JSON-RPC passthrough) ---
 
     test "method name is interpolated into the raise message" do
       assert_raise RuntimeError, ~r/RPC debug_traceTransaction failed/, fn ->
@@ -714,47 +714,47 @@ defmodule Onchain.RPCTest do
     end
   end
 
-  # --- get_proof ---
-
   describe "get_proof/3 input validation" do
     @valid_address "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
     @valid_storage_key "0x" <> String.duplicate("00", 32)
 
     test "rejects address without 0x prefix" do
-      assert {:error, {:invalid_address, "abcd1234"}} = Cartouche.RPC.eth_get_proof("abcd1234", [])
+      assert {:error, {:invalid_address, "abcd1234"}} = RPC.eth_get_proof("abcd1234", [])
     end
 
     test "rejects non-list storage_keys" do
-      assert {:error, {:invalid_storage_keys, "0x00"}} = Cartouche.RPC.eth_get_proof(@valid_address, "0x00")
+      assert {:error, {:invalid_storage_keys, "0x00"}} = RPC.eth_get_proof(@valid_address, "0x00")
     end
 
     test "rejects storage key wider than 32 bytes" do
       bad_key = "0x" <> String.duplicate("12", 33)
-      assert {:error, {:invalid_storage_key, ^bad_key}} = Cartouche.RPC.eth_get_proof(@valid_address, [bad_key])
+      assert {:error, {:invalid_storage_key, ^bad_key}} = RPC.eth_get_proof(@valid_address, [bad_key])
     end
 
     test "rejects storage key with invalid hex chars" do
       bad_key = "0x" <> String.duplicate("ZZ", 32)
-      assert {:error, {:invalid_storage_key, ^bad_key}} = Cartouche.RPC.eth_get_proof(@valid_address, [bad_key])
+      assert {:error, {:invalid_storage_key, ^bad_key}} = RPC.eth_get_proof(@valid_address, [bad_key])
     end
 
     test "rejects non-binary storage key entry" do
-      assert {:error, {:invalid_storage_key, 123}} = Cartouche.RPC.eth_get_proof(@valid_address, [123])
+      assert {:error, {:invalid_storage_key, 123}} = RPC.eth_get_proof(@valid_address, [123])
     end
 
     test "rejects bad block tag" do
       assert {:error, {:invalid_block, "bogus"}} =
-               Cartouche.RPC.eth_get_proof(@valid_address, [], block: "bogus")
+               RPC.eth_get_proof(@valid_address, [], block: "bogus")
     end
 
     test "accepts empty storage_keys list (passes input validation)" do
-      result = Cartouche.RPC.eth_get_proof(@valid_address, [], rpc_url: "http://localhost:1")
+      result = RPC.eth_get_proof(@valid_address, [], rpc_url: "http://localhost:1")
       refute match?({:error, {:invalid_storage_keys, _}}, result)
       refute match?({:error, {:invalid_address, _}}, result)
     end
 
+    # --- get_proof ---
+
     test "accepts populated storage_keys list (passes input validation)" do
-      result = Cartouche.RPC.eth_get_proof(@valid_address, [@valid_storage_key], rpc_url: "http://localhost:1")
+      result = RPC.eth_get_proof(@valid_address, [@valid_storage_key], rpc_url: "http://localhost:1")
       refute match?({:error, {:invalid_storage_keys, _}}, result)
       refute match?({:error, {:invalid_storage_key, _}}, result)
     end
@@ -762,7 +762,7 @@ defmodule Onchain.RPCTest do
 
   describe "blob_base_fee/1 (connection failure)" do
     test "returns an rpc_error tuple when the node is unreachable" do
-      assert {:error, {:rpc_error, %{message: _}}} =
+      assert {:error, "[Cartouche] HTTP client error: :econnrefused"} =
                RPC.blob_base_fee(rpc_url: "http://localhost:1")
     end
   end

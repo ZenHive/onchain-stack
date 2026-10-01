@@ -548,13 +548,13 @@ defmodule Cartouche.Sleuth do
   end
 
   # eth_call with no `to` field — the Compound deploy-as-call pattern.
-  # Onchain.RPC.eth_call/3 requires an address, so drop to the generic
+  # Cartouche.RPC.eth_call/3 requires an address, so drop to the generic
   # passthrough (Task 59) and build the call object directly.
   @spec eth_call_no_to(String.t(), keyword()) :: {:ok, String.t()} | {:error, term()}
   defp eth_call_no_to(data_hex, opts) do
     with {:ok, block} <- Onchain.RPC.Helpers.normalize_block(Keyword.get(opts, :block, "latest")) do
       call_obj = %{"data" => data_hex}
-      Onchain.RPC.call("eth_call", [call_obj, block], opts)
+      Cartouche.RPC.call("eth_call", [call_obj, block], opts)
     end
   end
 end

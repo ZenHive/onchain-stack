@@ -74,10 +74,10 @@ defmodule Onchain.AA do
 
   alias Cartouche.Hash
   alias Cartouche.Hex
+  alias Cartouche.RPC
   alias Cartouche.Signer.Secp256k1, as: Secp256k1Signer
   alias Onchain.AA.UserOperation
   alias Onchain.Address
-  alias Onchain.RPC
 
   @entry_point_v0_6 "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"
   @entry_point_v0_7 "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
@@ -639,7 +639,7 @@ defmodule Onchain.AA do
   end
 
   # Bundler URL may arrive as :bundler_url (preferred) or :rpc_url; map to the
-  # :rpc_url key Onchain.RPC understands. :timeout passes through.
+  # :rpc_url key Cartouche.RPC understands. :timeout passes through.
   defp bundler_opts(opts) do
     url = Keyword.get(opts, :bundler_url) || Keyword.get(opts, :rpc_url)
 

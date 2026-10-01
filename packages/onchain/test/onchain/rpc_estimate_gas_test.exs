@@ -2,7 +2,7 @@ defmodule Onchain.RPC.EstimateGasTest do
   # Mutates global cartouche client config; cannot run async with other RPC tests.
   use ExUnit.Case, async: false
 
-  alias Onchain.RPC
+  alias Cartouche.RPC
 
   # Req function plug returning canned JSON-RPC responses from a queued payload,
   # capturing the decoded request so tests can assert on the serialized call
@@ -45,13 +45,13 @@ defmodule Onchain.RPC.EstimateGasTest do
   end
 
   setup_all do
-    previous = Application.get_env(:cartouche, Cartouche.RPC)
-    Application.put_env(:cartouche, Cartouche.RPC, plug: &StubClient.call/1)
+    previous = Application.get_env(:cartouche, RPC)
+    Application.put_env(:cartouche, RPC, plug: &StubClient.call/1)
 
     on_exit(fn ->
       case previous do
-        nil -> Application.delete_env(:cartouche, Cartouche.RPC)
-        config -> Application.put_env(:cartouche, Cartouche.RPC, config)
+        nil -> Application.delete_env(:cartouche, RPC)
+        config -> Application.put_env(:cartouche, RPC, config)
       end
     end)
 

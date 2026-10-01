@@ -226,7 +226,7 @@ defmodule Cartouche.RPCTest do
     test "fee_history/1 normalizes integer :newest_block opt" do
       {:ok, %Cartouche.FeeHistory{}} = Cartouche.RPC.fee_history(newest_block: 55)
 
-      assert_received {:rpc_request, %{"method" => "eth_feeHistory", "params" => [1, "0x37", []]}}
+      assert_received {:rpc_request, %{"method" => "eth_feeHistory", "params" => ["0x1", "0x37", []]}}
     end
 
     test "create_access_list/2 reuses call encoding and returns a V_2930-ready access list" do

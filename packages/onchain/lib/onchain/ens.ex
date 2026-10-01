@@ -60,11 +60,11 @@ defmodule Onchain.ENS do
   import Bitwise, only: [bor: 2]
 
   alias Cartouche.Hex
+  alias Cartouche.RPC
   alias Onchain.Address
   alias Onchain.Contract
   alias Onchain.ENS.CCIP
   alias Onchain.ENS.Normalize
-  alias Onchain.RPC
 
   @ens_registry "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
   @addr_reverse_suffix "addr.reverse"
@@ -78,7 +78,7 @@ defmodule Onchain.ENS do
   # ENSIP-11 derives an EVM chain's coin type from its chain id with this bit set.
   @evm_coin_type_flag 0x80000000
 
-  # HTTP plumbing for CCIP-Read gateway requests (mirrors Onchain.RPC.batch/2).
+  # HTTP plumbing for CCIP-Read gateway requests (mirrors Cartouche.RPC.batch/2).
   @default_gateway_timeout_ms 30_000
   @content_type_json {"Content-Type", "application/json"}
 
@@ -774,7 +774,7 @@ defmodule Onchain.ENS do
     end
   end
 
-  # Req transport (mirrors Onchain.RPC.batch/2). normalize_response/1 already maps
+  # Req transport (mirrors Cartouche.RPC.batch/2). normalize_response/1 already maps
   # 2xx -> {:ok, resp} and non-2xx -> {:error, resp}; retry: false keeps a single
   # gateway attempt so try_gateways/3 controls fallback across the URL list.
   @spec gateway_http(:get | :post, String.t(), binary() | nil, keyword()) ::

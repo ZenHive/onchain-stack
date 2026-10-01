@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.RetryTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.RPC
+  alias Cartouche.RPC
 
   @stub_rpc_url "http://stub.invalid"
   @no_backoff_ms 0
@@ -48,13 +48,13 @@ defmodule Onchain.RPC.RetryTest do
   end
 
   setup do
-    previous = Application.get_env(:cartouche, Cartouche.RPC)
-    Application.put_env(:cartouche, Cartouche.RPC, plug: &StubClient.call/1)
+    previous = Application.get_env(:cartouche, RPC)
+    Application.put_env(:cartouche, RPC, plug: &StubClient.call/1)
 
     on_exit(fn ->
       case previous do
-        nil -> Application.delete_env(:cartouche, Cartouche.RPC)
-        config -> Application.put_env(:cartouche, Cartouche.RPC, config)
+        nil -> Application.delete_env(:cartouche, RPC)
+        config -> Application.put_env(:cartouche, RPC, config)
       end
     end)
 

@@ -4,7 +4,9 @@ defmodule Cartouche.Filter.Log do
 
   Produced by `Cartouche.Filter` for `kind: :log` filters and returned by
   `Cartouche.RPC.eth_get_logs/2`, `Cartouche.RPC.get_filter_logs/2`, and
-  `Cartouche.Receipt` logs. `:removed` is nil when omitted by the node.
+  `Cartouche.Receipt` logs, and subscription notifications. `:removed` is nil
+  when omitted by the node. Pending logs may omit or null their block and
+  transaction location fields; these decode to nil.
   Addresses, hashes, and topics are decoded
   to raw binaries; `:block_number`, `:log_index`, and `:transaction_index` to
   integers. `:extra_data` is the opaque term a `Cartouche.Filter` was started
@@ -28,14 +30,14 @@ defmodule Cartouche.Filter.Log do
 
   @type t :: %__MODULE__{
           address: binary(),
-          block_hash: binary(),
-          block_number: non_neg_integer(),
+          block_hash: binary() | nil,
+          block_number: non_neg_integer() | nil,
           data: binary(),
-          log_index: non_neg_integer(),
+          log_index: non_neg_integer() | nil,
           removed: boolean() | nil,
           topics: [binary()],
-          transaction_hash: binary(),
-          transaction_index: non_neg_integer(),
+          transaction_hash: binary() | nil,
+          transaction_index: non_neg_integer() | nil,
           extra_data: term()
         }
 
@@ -90,30 +92,23 @@ defmodule Cartouche.Filter.Log do
       }
   """
   @spec deserialize(map()) :: t()
-  def deserialize(
-        %{
-          "address" => address,
-          "blockHash" => block_hash,
-          "blockNumber" => block_number,
-          "data" => data,
-          "logIndex" => log_index,
-          "topics" => topics,
-          "transactionHash" => transaction_hash,
-          "transactionIndex" => transaction_index
-        } = params
-      ) do
+  def deserialize(%{"address" => address, "data" => data, "topics" => topics} = params) do
     %__MODULE__{
       address: Hex.decode_address!(address),
-      block_hash: Hex.decode_word!(block_hash),
-      block_number: Hex.decode_hex_number!(block_number),
+      block_hash: decode_optional_word(params["blockHash"]),
+      block_number: Hex.decode_maybe_hex_number!(params["blockNumber"]),
       data: from_hex!(data),
-      log_index: Hex.decode_hex_number!(log_index),
+      log_index: Hex.decode_maybe_hex_number!(params["logIndex"]),
       removed: Map.get(params, "removed"),
       topics: Enum.map(topics, &Hex.decode_word!/1),
-      transaction_hash: Hex.decode_word!(transaction_hash),
-      transaction_index: Hex.decode_hex_number!(transaction_index)
+      transaction_hash: decode_optional_word(params["transactionHash"]),
+      transaction_index: Hex.decode_maybe_hex_number!(params["transactionIndex"])
     }
   end
+
+  @spec decode_optional_word(String.t() | nil) :: binary() | nil
+  defp decode_optional_word(nil), do: nil
+  defp decode_optional_word(word), do: Hex.decode_word!(word)
 
   @doc false
   @spec decode_logs(list()) :: [t()]

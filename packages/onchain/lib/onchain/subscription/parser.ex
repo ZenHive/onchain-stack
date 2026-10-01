@@ -5,7 +5,7 @@ defmodule Onchain.Subscription.Parser do
   # Converts raw JSON-RPC subscription results into normalized Elixir maps.
   # No WebSocket dependency — all functions are pure and testable in isolation.
 
-  import Onchain.RPC.Helpers, only: [parse_log: 1, parse_hex_integer: 1, parse_address: 1]
+  import Onchain.RPC.Helpers, only: [parse_hex_integer: 1, parse_address: 1]
 
   alias Onchain.Subscription
 
@@ -47,7 +47,7 @@ defmodule Onchain.Subscription.Parser do
   def parse_event(:pending_transactions, other), do: {:error, {:invalid_tx_hash, other}}
 
   def parse_event(:logs, raw) when is_map(raw) do
-    {:ok, parse_log(raw)}
+    {:ok, Cartouche.Filter.Log.deserialize(raw)}
   end
 
   def parse_event(:logs, other), do: {:error, {:invalid_log, other}}

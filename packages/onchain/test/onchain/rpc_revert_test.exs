@@ -2,7 +2,7 @@ defmodule Onchain.RPC.RevertTest do
   # Mutates global cartouche client config; cannot run async with other RPC tests.
   use ExUnit.Case, async: false
 
-  alias Onchain.RPC
+  alias Cartouche.RPC
 
   # Req function plug returning canned JSON-RPC responses queued in the calling
   # test's process dictionary. Single-call RPC flows through Cartouche.RPC, so the
@@ -45,13 +45,13 @@ defmodule Onchain.RPC.RevertTest do
   end
 
   setup_all do
-    previous = Application.get_env(:cartouche, Cartouche.RPC)
-    Application.put_env(:cartouche, Cartouche.RPC, plug: &StubClient.call/1)
+    previous = Application.get_env(:cartouche, RPC)
+    Application.put_env(:cartouche, RPC, plug: &StubClient.call/1)
 
     on_exit(fn ->
       case previous do
-        nil -> Application.delete_env(:cartouche, Cartouche.RPC)
-        config -> Application.put_env(:cartouche, Cartouche.RPC, config)
+        nil -> Application.delete_env(:cartouche, RPC)
+        config -> Application.put_env(:cartouche, RPC, config)
       end
     end)
 

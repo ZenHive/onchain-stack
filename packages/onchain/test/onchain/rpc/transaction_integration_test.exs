@@ -2,9 +2,9 @@ defmodule Onchain.RPC.TransactionIntegrationTest do
   use ExUnit.Case, async: false
 
   alias Cartouche.RPC
+  alias Cartouche.RPC, as: OnchainRPC
   alias Cartouche.Transaction.Info
   alias Cartouche.Transaction.V2
-  alias Onchain.RPC, as: OnchainRPC
 
   @moduletag :integration
 
@@ -24,7 +24,7 @@ defmodule Onchain.RPC.TransactionIntegrationTest do
              "Expected block #{@test_block} to have transactions"
 
       assert hd(tx_hashes) == @known_hash
-      assert {:ok, %Info{} = info} = RPC.eth_get_transaction_by_hash(@known_hash, rpc_opts())
+      assert {:ok, %Info{} = info} = OnchainRPC.eth_get_transaction_by_hash(@known_hash, rpc_opts())
       assert info.block_number == @test_block
       assert info.transaction_index == 0
       assert info.from == Cartouche.Hex.decode_address!("0xae2fc483527b8ef99eb5d9b44875f005ba1fae13")
@@ -34,7 +34,7 @@ defmodule Onchain.RPC.TransactionIntegrationTest do
 
     test "returns not_found for a hash that does not exist" do
       fake_hash = "0x" <> String.duplicate("00", 32)
-      assert {:error, :not_found} = RPC.eth_get_transaction_by_hash(fake_hash, rpc_opts())
+      assert {:error, :not_found} = OnchainRPC.eth_get_transaction_by_hash(fake_hash, rpc_opts())
     end
   end
 end

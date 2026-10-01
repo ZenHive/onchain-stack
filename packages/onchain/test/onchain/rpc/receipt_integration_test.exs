@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.ReceiptIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.RPC
+  alias Cartouche.RPC
 
   @moduletag :integration
 
@@ -24,16 +24,16 @@ defmodule Onchain.RPC.ReceiptIntegrationTest do
 
       # Verify all parsed fields
       assert is_binary(receipt.transaction_hash)
-      assert String.starts_with?(receipt.transaction_hash, "0x")
+      assert byte_size(receipt.transaction_hash) == 32
       assert is_integer(receipt.transaction_index)
       assert is_binary(receipt.block_hash)
-      assert String.starts_with?(receipt.block_hash, "0x")
+      assert byte_size(receipt.block_hash) == 32
       assert is_integer(receipt.block_number)
       assert receipt.block_number > 0
       assert is_binary(receipt.from)
-      assert String.starts_with?(receipt.from, "0x")
+      assert byte_size(receipt.from) == 20
       # `to` can be nil for contract creation txs
-      assert is_nil(receipt.to) or String.starts_with?(receipt.to, "0x")
+      assert is_nil(receipt.to) or byte_size(receipt.to) == 20
       assert is_integer(receipt.cumulative_gas_used)
       assert receipt.cumulative_gas_used > 0
       assert is_integer(receipt.gas_used)
@@ -43,19 +43,20 @@ defmodule Onchain.RPC.ReceiptIntegrationTest do
       # status: 1 = success, 0 = revert
       assert receipt.status in [0, 1]
       # contract_address is nil for non-creation txs
-      assert is_nil(receipt.contract_address) or String.starts_with?(receipt.contract_address, "0x")
+      assert is_nil(receipt.contract_address) or byte_size(receipt.contract_address) == 20
       assert is_list(receipt.logs)
       assert is_integer(receipt.type)
     end
 
-    test "decodes receipt logs as maps" do
+    test "decodes receipt logs as shared structs" do
       {:ok, block} = RPC.get_block_by_number(@test_block, rpc_opts())
       tx_hash = hd(block.transactions)
       {:ok, receipt} = RPC.get_transaction_receipt(tx_hash, rpc_opts())
 
       for log <- receipt.logs do
+        assert %Cartouche.Filter.Log{} = log
         assert is_binary(log.address)
-        assert String.starts_with?(log.address, "0x")
+        assert byte_size(log.address) == 20
         assert is_list(log.topics)
         assert is_binary(log.data)
         assert is_integer(log.block_number)
@@ -72,10 +73,13 @@ defmodule Onchain.RPC.ReceiptIntegrationTest do
 
       log = Enum.find(receipt.logs, &(&1.log_index == 8))
 
-      assert log.address == "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-      assert hd(log.topics) == "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+      assert log.address == Cartouche.Hex.from_hex!("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+
+      assert hd(log.topics) ==
+               Cartouche.Hex.from_hex!("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+
       assert log.block_number == 18_000_000
-      assert log.transaction_hash == tx_hash
+      assert log.transaction_hash == Cartouche.Hex.from_hex!(tx_hash)
       assert log.removed == false
       assert is_binary(log.data)
       assert is_integer(log.transaction_index)

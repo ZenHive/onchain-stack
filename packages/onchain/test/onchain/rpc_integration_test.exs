@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.IntegrationTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.RPC
+  alias Cartouche.RPC
 
   @moduletag :integration
 
@@ -107,8 +107,6 @@ defmodule Onchain.RPC.IntegrationTest do
     end
   end
 
-  # --- Bang variant integration tests ---
-
   describe "block_number!/1" do
     test "returns block number directly" do
       block = RPC.block_number!(rpc_opts())
@@ -116,6 +114,8 @@ defmodule Onchain.RPC.IntegrationTest do
       assert block > 0
     end
   end
+
+  # --- Bang variant integration tests ---
 
   describe "chain_id!/1" do
     test "returns chain ID directly" do
@@ -168,7 +168,7 @@ defmodule Onchain.RPC.IntegrationTest do
   describe "eth_get_logs/2" do
     test "returns Cartouche.Filter.Log structs for a one-block filter" do
       assert {:ok, logs} =
-               Cartouche.RPC.eth_get_logs(%{from_block: 20_000_000, to_block: 20_000_000}, rpc_opts())
+               RPC.eth_get_logs(%{from_block: 20_000_000, to_block: 20_000_000}, rpc_opts())
 
       assert [%Cartouche.Filter.Log{} | _] = logs
     end
@@ -276,11 +276,9 @@ defmodule Onchain.RPC.IntegrationTest do
     end
   end
 
-  # --- get_proof (eth_getProof) ---
-
   describe "get_proof/3" do
     test "returns account proof with empty storage_keys for an EOA" do
-      assert {:ok, proof} = Cartouche.RPC.eth_get_proof(@eoa_address, [], rpc_opts())
+      assert {:ok, proof} = RPC.eth_get_proof(@eoa_address, [], rpc_opts())
 
       assert is_integer(proof.balance) and proof.balance >= 0
       assert is_integer(proof.nonce) and proof.nonce >= 0
@@ -296,7 +294,7 @@ defmodule Onchain.RPC.IntegrationTest do
 
     test "returns storage_proof entry for a known proxy storage slot" do
       assert {:ok, proof} =
-               Cartouche.RPC.eth_get_proof(@aave_v3_pool_proxy, [@eip1967_impl_slot], rpc_opts())
+               RPC.eth_get_proof(@aave_v3_pool_proxy, [@eip1967_impl_slot], rpc_opts())
 
       assert match?([_ | _], proof.account_proof)
       assert [%{key: key, value: value, proof: storage_proof_nodes}] = proof.storage_proof
@@ -307,6 +305,8 @@ defmodule Onchain.RPC.IntegrationTest do
       # The Aave V3 Pool proxy is live → its EIP-1967 implementation slot is non-zero
       assert value > 0
     end
+
+    # --- get_proof (eth_getProof) ---
   end
 
   describe "blob_base_fee/1" do

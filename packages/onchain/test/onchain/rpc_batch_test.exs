@@ -1,7 +1,7 @@
 defmodule Onchain.RPC.BatchTest do
   use ExUnit.Case, async: false
 
-  alias Onchain.RPC
+  alias Cartouche.RPC
 
   # Process-local response queue injected through the shared RPC transport.
   defmodule StubClient do
@@ -28,13 +28,13 @@ defmodule Onchain.RPC.BatchTest do
   end
 
   setup_all do
-    previous = Application.get_env(:cartouche, Cartouche.RPC)
-    Application.put_env(:cartouche, Cartouche.RPC, plug: &StubClient.call/1)
+    previous = Application.get_env(:cartouche, RPC)
+    Application.put_env(:cartouche, RPC, plug: &StubClient.call/1)
 
     on_exit(fn ->
       case previous do
-        nil -> Application.delete_env(:cartouche, Cartouche.RPC)
-        config -> Application.put_env(:cartouche, Cartouche.RPC, config)
+        nil -> Application.delete_env(:cartouche, RPC)
+        config -> Application.put_env(:cartouche, RPC, config)
       end
     end)
 
@@ -84,7 +84,7 @@ defmodule Onchain.RPC.BatchTest do
     end
 
     # Same node refusal, same tag, whichever entry point the caller used: batch/2
-    # shares Onchain.RPC's classifier with call/3 rather than re-deriving it.
+    # shares Cartouche.RPC's classifier with call/3 rather than re-deriving it.
     test "an item-level -32601 is classified as {:method_not_found, map}" do
       StubClient.queue_response(fn _body ->
         [
@@ -156,9 +156,9 @@ defmodule Onchain.RPC.BatchTest do
       # Remove the app-config seam so the ONLY way the stub plug reaches Req is
       # the per-call `req_options:` (Cartouche.HTTP.req_options/3 level 4). Before
       # the fix, to_rpc_opts/1 stripped :req_options and this hit the network.
-      previous = Application.get_env(:cartouche, Cartouche.RPC)
-      Application.delete_env(:cartouche, Cartouche.RPC)
-      on_exit(fn -> if previous, do: Application.put_env(:cartouche, Cartouche.RPC, previous) end)
+      previous = Application.get_env(:cartouche, RPC)
+      Application.delete_env(:cartouche, RPC)
+      on_exit(fn -> if previous, do: Application.put_env(:cartouche, RPC, previous) end)
 
       StubClient.queue_response(fn _body ->
         [%{"id" => 1, "jsonrpc" => "2.0", "result" => "0x2a"}]

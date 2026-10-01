@@ -18,7 +18,7 @@ defmodule Onchain do
       ABI,
       Onchain.Address,
       Onchain.Decimal,
-      Onchain.RPC,
+      Cartouche.RPC,
       Cartouche.Block,
       Onchain.Contract,
       Onchain.DEX.Router,
