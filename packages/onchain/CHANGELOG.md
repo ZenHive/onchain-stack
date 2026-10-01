@@ -45,6 +45,10 @@ Completed roadmap tasks.
 - Transaction encoding and decoding now use alloy-consensus through the core NIF;
   EIP-712 value encoding and hashing use alloy-dyn-abi. Transaction structs and
   JSON entry points retain their shape, and signing stays on ex_secp256k1.
+  Transaction and EIP-712 values cross into the NIF as bounded BEAM terms rather
+  than JSON text. Malformed or over-budget terms return error tuples. Measured
+  medians improved 1.10x–1.26x against the JSON crossing, but they stay slower
+  than before the alloy migration (benchmarks are reporting-only).
 - Transaction nonce, gas limit and chain ID must fit unsigned 64-bit integers;
   gas price, priority fee, maximum fee and blob fee must fit unsigned 128-bit
   integers. Value/amount remains unsigned 256-bit. Encoding rejects out-of-range
