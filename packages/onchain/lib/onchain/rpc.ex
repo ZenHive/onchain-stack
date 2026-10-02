@@ -2294,6 +2294,85 @@ defmodule Onchain.RPC do
 
   defp normalize_transaction_index(index), do: {:error, {:invalid_transaction_index, index}}
 
+  # Empty call at the zero address. Observed 2026-10-02: the archive node answers
+  # both probes, and Alchemy/Infura refuse them before doing any tracing work.
+  @trace_probe_call %{"to" => "0x0000000000000000000000000000000000000000", "data" => "0x"}
+  # Tags produced by `classify_node_refusal/1` (task 2137). The probe matches
+  # these tags; it does not inspect the provider's message text.
+  @trace_capability_tags [:method_not_found, :namespace_unavailable, :unavailable]
+
+  api(:trace_available?, "Probe whether this endpoint serves the OpenEthereum trace_* namespace.",
+    params: [
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options. `:decode` is ignored."]
+    ],
+    returns: %{
+      type: :boolean,
+      description:
+        "`true` when a cheap `trace_call` returns `{:ok, _}`. `false` when `send_rpc/3` classifies `:method_not_found`, `:namespace_unavailable`, or `:unavailable`, and `false` for any other error."
+    }
+  )
+
+  @doc """
+  Probes whether this endpoint serves `trace_transaction`, `trace_call`, and
+  `trace_callMany`.
+
+  One cheap `trace_call` of an empty call to the zero address at `"latest"`,
+  through `send_rpc/3`. `true` only when that call returns `{:ok, _}`. `false`
+  when `send_rpc/3` classifies the answer as `:method_not_found`,
+  `:namespace_unavailable`, or `:unavailable`, and `false` for any other error
+  (missing URL, transport failure, unrecognized JSON-RPC code). Same boolean
+  shape as `Onchain.Trace.available?/1`. This probe does not speak for
+  `debug_traceCall`; use `debug_trace_available?/1` for that method.
+
+  The verbatim hosted refusals are on `trace_call/2`.
+  """
+  @spec trace_available?(keyword()) :: boolean()
+  def trace_available?(opts \\ []) do
+    capability_available?("trace_call", [@trace_probe_call, ["trace"], "latest"], opts)
+  end
+
+  api(:debug_trace_available?, "Probe whether this endpoint serves debug_traceCall.",
+    params: [
+      opts: [kind: :value, default: [], description: "Common `send_rpc/3` transport options. `:decode` is ignored."]
+    ],
+    returns: %{
+      type: :boolean,
+      description:
+        "`true` when a cheap `debug_traceCall` returns `{:ok, _}`. `false` when `send_rpc/3` classifies a node refusal, and `false` for any other error."
+    }
+  )
+
+  @doc """
+  Probes whether this endpoint serves `debug_traceCall`.
+
+  One cheap `debug_traceCall` of an empty call to the zero address at
+  `"latest"`, through `send_rpc/3`. `true` only when that call returns
+  `{:ok, _}`. `false` when `send_rpc/3` classifies the answer as
+  `:method_not_found`, `:namespace_unavailable`, or `:unavailable`, and
+  `false` for any other error. This probe does not speak for the
+  `trace_*` namespace; use `trace_available?/1` for those methods.
+
+  The verbatim hosted refusal is on `debug_trace_call/2`.
+  """
+  @spec debug_trace_available?(keyword()) :: boolean()
+  def debug_trace_available?(opts \\ []) do
+    capability_available?("debug_traceCall", [@trace_probe_call, "latest"], opts)
+  end
+
+  @spec capability_available?(String.t(), [term()], keyword()) :: boolean()
+  defp capability_available?(method, params, opts) do
+    case send_rpc(method, params, Keyword.delete(opts, :decode)) do
+      {:ok, _} ->
+        true
+
+      {:error, {tag, _}} when tag in @trace_capability_tags ->
+        false
+
+      _other ->
+        false
+    end
+  end
+
   api(:trace_trx, "Fetch parity-style traces for a transaction by transaction hash.",
     params: [
       trx_id: [
@@ -2310,7 +2389,34 @@ defmodule Onchain.RPC do
   )
 
   @doc """
-  RPC call to get a transaction receipt
+  Fetches OpenEthereum-style traces for one mined transaction (`trace_transaction`).
+
+  `trace_transaction` is not in `ethereum/execution-apis`. Checked 2026-10-02:
+  `main`'s `src/eth` has no trace namespace, and tag v1.0.0-beta.7
+  (commit `5aebdfdd`) publishes no `trace_*` method. Erigon documents the
+  method as OpenEthereum-compatible
+  (https://docs.erigon.tech/interacting-with-erigon/trace). reth documents it
+  as a Parity-style trace and leaves the `trace` namespace off unless
+  `--http.api` includes it (https://reth.rs/jsonrpc/trace,
+  https://reth.rs/jsonrpc/intro). Geth's JSON-RPC namespace list has no
+  `trace_*` (https://geth.ethereum.org/docs/interacting-with-geth/rpc).
+
+  Call `trace_available?/1` before this. A refusal is classified by
+  `send_rpc/3`, not by matching the message here.
+
+  Observed 2026-10-02 on Alchemy mainnet (`ETHEREUM_ALCHEMY_URL`), HTTP 400:
+
+      {"code":-32600,"message":"trace_transaction is not available on the Free tier - upgrade to Pay As You Go, or Enterprise for access."}
+
+  That is
+  `{:error, {:namespace_unavailable, %{code: -32600, message: "trace_transaction is not available on the Free tier - upgrade to Pay As You Go, or Enterprise for access."}}}`.
+
+  Observed the same day on Infura mainnet (`ETHEREUM_INFURA_URL`), HTTP 200:
+
+      {"code":-32601,"message":"The method trace_transaction does not exist/is not available"}
+
+  That is
+  `{:error, {:method_not_found, %{code: -32601, message: "The method trace_transaction does not exist/is not available"}}}`.
 
   ## Examples
 
@@ -2392,7 +2498,31 @@ defmodule Onchain.RPC do
   )
 
   @doc """
-  RPC to trace a transaction call speculatively.
+  Traces one hypothetical call with the OpenEthereum `trace_call` method.
+
+  `trace_call` is not in `ethereum/execution-apis` (no `trace_*` method on
+  `main` or in tag v1.0.0-beta.7, checked 2026-10-02). Erigon documents it
+  (https://docs.erigon.tech/interacting-with-erigon/trace, "OpenEthereum-compatible").
+  reth documents it as a Parity-style trace
+  (https://reth.rs/jsonrpc/trace). Geth's published namespace list does not
+  include it (https://geth.ethereum.org/docs/interacting-with-geth/rpc).
+
+  `trace_available?/1` is this method against the zero address. Branch on it
+  before calling. Classification is `send_rpc/3`'s refusal tag.
+
+  Observed 2026-10-02 on Alchemy mainnet (`ETHEREUM_ALCHEMY_URL`), HTTP 400:
+
+      {"code":-32600,"message":"trace_call is not available on the Free tier - upgrade to Pay As You Go, or Enterprise for access."}
+
+  That is
+  `{:error, {:namespace_unavailable, %{code: -32600, message: "trace_call is not available on the Free tier - upgrade to Pay As You Go, or Enterprise for access."}}}`.
+
+  Observed the same day on Infura mainnet (`ETHEREUM_INFURA_URL`), HTTP 200:
+
+      {"code":-32601,"message":"The method trace_call does not exist/is not available"}
+
+  That is
+  `{:error, {:method_not_found, %{code: -32601, message: "The method trace_call does not exist/is not available"}}}`.
 
   ## Examples
 
@@ -2547,7 +2677,31 @@ defmodule Onchain.RPC do
   )
 
   @doc """
-  RPC to trace many transaction calls speculatively.
+  Traces several hypothetical calls with the OpenEthereum `trace_callMany` method.
+
+  `trace_callMany` is not in `ethereum/execution-apis` (no `trace_*` method on
+  `main` or in tag v1.0.0-beta.7, checked 2026-10-02). Erigon documents it
+  (https://docs.erigon.tech/interacting-with-erigon/trace). reth documents it
+  as a Parity-style trace (https://reth.rs/jsonrpc/trace). Geth's published
+  namespace list does not include it
+  (https://geth.ethereum.org/docs/interacting-with-geth/rpc).
+
+  `trace_available?/1` probes the same namespace with one `trace_call`. A
+  refusal is classified by `send_rpc/3`.
+
+  Observed 2026-10-02 on Alchemy mainnet (`ETHEREUM_ALCHEMY_URL`), HTTP 400:
+
+      {"code":-32600,"message":"trace_callMany is not available on the Free tier - upgrade to Pay As You Go, or Enterprise for access."}
+
+  That is
+  `{:error, {:namespace_unavailable, %{code: -32600, message: "trace_callMany is not available on the Free tier - upgrade to Pay As You Go, or Enterprise for access."}}}`.
+
+  Observed the same day on Infura mainnet (`ETHEREUM_INFURA_URL`), HTTP 200:
+
+      {"code":-32601,"message":"The method trace_callMany does not exist/is not available"}
+
+  That is
+  `{:error, {:method_not_found, %{code: -32601, message: "The method trace_callMany does not exist/is not available"}}}`.
 
   ## Examples
 
@@ -2759,7 +2913,41 @@ defmodule Onchain.RPC do
   )
 
   @doc """
-  RPC to trace a transaction call speculatively via debug API.
+  Traces one hypothetical call with Geth's `debug_traceCall`.
+
+  `debug_traceCall` is not a tagged `execution-apis` method.
+  `src/debug/trace.yaml` exists only on `execution-apis` `main` (PR #762,
+  merged 2026-06-16) and in no tagged release. Checked 2026-10-02: the
+  contents API for tag v1.0.0-beta.7 (commit `5aebdfdd`, 2026-06-10) returns
+  404 for `src/debug/trace.yaml`. That tag does contain
+  `src/debug/getters.yaml` (`debug_getRaw*` and `debug_getBadBlocks`), so the
+  `src/debug` directory is present and the trace file is not. On `main`,
+  `trace.yaml` lists `debug_traceBlockByNumber`, `debug_traceBlockByHash`,
+  and `debug_traceTransaction` only — not `debug_traceCall`. No `debug_*`
+  trace method is tagged-standard, and this wrapper's method is not standard
+  on `main` either.
+
+  Geth documents `debug_traceCall`
+  (https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-debug).
+  Erigon documents it (https://docs.erigon.tech/interacting-with-erigon/debug).
+  reth documents it and leaves the `debug` namespace off unless `--http.api`
+  includes it (https://reth.rs/jsonrpc/debug). `trace_available?/1` does not
+  speak for this method; call `debug_trace_available?/1` first. A refusal is
+  classified by `send_rpc/3`.
+
+  Observed 2026-10-02 on Alchemy mainnet (`ETHEREUM_ALCHEMY_URL`), HTTP 400:
+
+      {"code":-32600,"message":"debug_traceCall is not available on the Free tier - upgrade to Pay As You Go, or Enterprise for access."}
+
+  That is
+  `{:error, {:namespace_unavailable, %{code: -32600, message: "debug_traceCall is not available on the Free tier - upgrade to Pay As You Go, or Enterprise for access."}}}`.
+
+  Observed the same day on Infura mainnet (`ETHEREUM_INFURA_URL`), HTTP 200:
+
+      {"code":-32601,"message":"The method debug_traceCall does not exist/is not available"}
+
+  That is
+  `{:error, {:method_not_found, %{code: -32601, message: "The method debug_traceCall does not exist/is not available"}}}`.
 
   ## Examples
 
