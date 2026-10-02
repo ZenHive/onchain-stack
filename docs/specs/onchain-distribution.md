@@ -1,7 +1,7 @@
 # Native distribution and Rust supply chain
 
 How the in-repo NIF crates are built, shipped and gated, and how in-family
-dependencies resolve for development versus publishing. Status is `draft`. Each rule's source follows it. DIST-5, DIST-8 and DIST-10 are
+dependencies resolve for development versus publishing. Status is `active`. Each rule's source follows it. DIST-5, DIST-8, DIST-10 and DIST-16 are
 release-time checks with no ExUnit test (see each rule); the rest are tagged tests.
 
 DIST-1: The precompiled target set is exactly aarch64/x86_64 Darwin, aarch64/x86_64 GNU/Linux and x86_64 musl at NIF 2.15; `Onchain.Precompiled.targets/0` matches `scripts/build-precompiled.sh`, and no Windows target is declared.
@@ -51,3 +51,7 @@ DIST-14: A missing `cargo-audit` binary fails the gate with its install command,
 
 DIST-15: onchain's `mix ci` runs `cargo test` and `cargo clippy --all-targets -- -D warnings` over `native/onchain_abi` with onchain_evm's lint policy (`unwrap_used` denied, test code exempt).
   Source: task 9044 (acceptance criterion 3).
+
+DIST-16: Every version of a native package (onchain, onchain_evm, onchain_tempo), including a pure-Elixir patch, has its `<pkg>-v<ver>` GitHub release with precompiled artifacts and a committed checksum file before it is published to Hex.
+  Source: root CLAUDE.md publish step 10 (0826fbb); onchain 0.16.1 release (checksums e2168e1); task 9055.
+  Verified by: the human release step in root CLAUDE.md; no automated test until task 9055.

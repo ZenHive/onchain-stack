@@ -864,7 +864,7 @@
   "specs": {
     "onchain_distribution": {
       "path": "docs/specs/onchain-distribution.md",
-      "status": "draft"
+      "status": "active"
     },
     "onchain_native": {
       "path": "docs/specs/onchain-native.md",
