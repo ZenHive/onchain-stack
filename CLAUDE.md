@@ -313,6 +313,13 @@ Never edit a package's copy of `agents_check`/`advisory_freshness` inline —
 there shouldn't be one; if you find one, it's drift from before this file
 existed and should be migrated to load `shared/mix_helpers.exs` instead.
 
+**Shared test helpers** live in `shared/test_support/` (today
+`Onchain.TraceCase`, used by onchain and onchain_aave). A package opts in by
+appending `shared_test_support()` to its `elixirc_paths(:test)`, which adds the
+directory only when it exists, so Hex tarballs (which never ship test code)
+are unaffected. Put a helper here once two packages carry identical copies;
+`rpc_case`/`signer_case` still differ per package and stay local.
+
 **Consolidated config, root-owned:** `.tool-versions`, `.mix_audit_ignore`
 (one shared entry, eight per-package symlinks — see the adjudication below),
 and the ExSlop/`.credo.exs` base policy now live once at the repo root instead

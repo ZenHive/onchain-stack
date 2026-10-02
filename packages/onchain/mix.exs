@@ -245,8 +245,16 @@ defmodule Onchain.MixProject do
   end
 
   defp elixirc_paths(:dev), do: ["lib", "dev"]
-  defp elixirc_paths(:test), do: ["lib", "dev", "test/support"]
+  defp elixirc_paths(:test), do: ["lib", "dev", "test/support" | shared_test_support()]
   defp elixirc_paths(_), do: ["lib"]
+
+  # Test helpers shared across packages live once in the monorepo's
+  # shared/test_support. Outside the checkout (e.g. an unpacked Hex tarball) the
+  # directory is absent and only this package's own test/support compiles.
+  defp shared_test_support do
+    path = Path.expand("../../shared/test_support", __DIR__)
+    if File.dir?(path), do: [path], else: []
+  end
 
   defp dialyzer do
     [
