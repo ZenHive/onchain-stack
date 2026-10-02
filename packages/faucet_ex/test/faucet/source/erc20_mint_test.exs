@@ -30,7 +30,7 @@ defmodule Faucet.Source.ERC20MintTest do
     {:ok, signer} = Onchain.Signer.address_from_key(@key)
     assert {:ok, <<selector::binary-size(4), args::binary>>} = ERC20Mint.calldata(@token, signer, 25_000_000)
 
-    assert selector == "mint(address,address,uint256)" |> Cartouche.Hash.keccak() |> binary_part(0, 4)
+    assert selector == "mint(address,address,uint256)" |> Onchain.Hash.keccak() |> binary_part(0, 4)
 
     assert {:ok, [token_bin, to_bin, 25_000_000]} =
              Onchain.ABI.decode_types("(address,address,uint256)", "0x" <> Base.encode16(args, case: :lower))

@@ -9,7 +9,7 @@ defmodule Faucet.ForkOverride do
   where `slot` is the mapping's declaration index in the contract. WETH9 uses
   slot 3; most OpenZeppelin ERC-20s use slot 0 — check the contract.
 
-  Needs the optional `onchain` dependency for keccak (`Cartouche.Hash`).
+  Needs the optional `onchain` dependency for keccak (`Onchain.Hash`).
 
   ## Example
 
@@ -76,12 +76,12 @@ defmodule Faucet.ForkOverride do
 
   @spec mapping_slot(String.t(), non_neg_integer()) :: String.t()
   def mapping_slot("0x" <> hex, slot) when byte_size(hex) == 40 and is_integer(slot) and slot >= 0 do
-    if !Code.ensure_loaded?(Cartouche.Hash) do
+    if !Code.ensure_loaded?(Onchain.Hash) do
       raise ArgumentError, "Faucet.ForkOverride needs the optional :onchain dependency for keccak256"
     end
 
     holder_bin = Base.decode16!(hex, case: :mixed)
-    digest = Cartouche.Hash.keccak(<<0::96>> <> holder_bin <> <<slot::256>>)
+    digest = Onchain.Hash.keccak(<<0::96>> <> holder_bin <> <<slot::256>>)
     "0x" <> Base.encode16(digest, case: :lower)
   end
 

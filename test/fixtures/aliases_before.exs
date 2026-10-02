@@ -1,4 +1,31 @@
 %{
+  "packages/faucet_ex/mix.exs" => %{
+    "agents.check" => ["&agents_check/1"],
+    "check.dispatch" => ["\"check.fast\""],
+    "check.fast" => ["\"format --check-formatted\"", "\"compile --warnings-as-errors\""],
+    "ci" => ["\"precommit.full\""],
+    "deps.audit.gated" => ["&advisory_freshness/1", "\"deps.audit --ignore-file .mix_audit_ignore\""],
+    "precommit" => [
+      "\"check.fast\"",
+      "\"credo --strict --ignore TagTODO,TagFIXME\"",
+      "\"doctor --raise\"",
+      "\"cmd env MIX_ENV=test mix test.json --quiet --cover --cover-threshold \#{@cover_threshold} --summary-only --exclude integration\"",
+      "\"sobelow --skip --exit low\""
+    ],
+    "precommit.full" => [
+      "\"check.fast\"",
+      "\"credo --strict --ignore TagTODO,TagFIXME\"",
+      "\"doctor --raise\"",
+      "\"ex_dna --max-clones 0\"",
+      "\"reach.check --dead-code --arch --smells\"",
+      "\"sobelow --skip --exit low\"",
+      "\"deps.audit.gated\"",
+      "\"cmd env MIX_ENV=test mix test.json --quiet --cover --cover-threshold \#{@cover_threshold} --exclude integration\"",
+      "\"cmd env MIX_ENV=dev mix dialyzer\"",
+      "\"agents.check\""
+    ],
+    "tidewave" => ["\"run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4038) end)'\""]
+  },
   "mix.exs" => %{
     "check.dispatch" => [
       "fn _ ->\n  Mix.raise(\n    \"check.dispatch runs per package, not at the monorepo root — \" <>\n      \"cd packages/<name> && mix check.dispatch for each package the task touches.\"\n  )\nend"

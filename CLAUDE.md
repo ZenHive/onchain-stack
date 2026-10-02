@@ -4,7 +4,8 @@
 
 Since **2026-08-27** the onchain library packages live in this one repo,
 `packages/<name>/`, absorbed with full git history from their former standalone
-checkouts. There are now seven packages: hieroglyph and cartouche were folded into onchain,
+checkouts. There are now eight packages: hieroglyph and cartouche were folded into onchain,
+and faucet_ex was absorbed on 2026-10-02,
 and onchain 0.16.0 renamed their `ABI.*` and `Cartouche.*` modules to `Onchain.*`. Each remaining package is its own Hex package with its own version,
 `CHANGELOG.md`, and publish cycle — the repo boundary changed, the release unit
 did not.
@@ -50,6 +51,7 @@ gotchas. Everything family-wide lives here, once.
 | onchain_js | `onchain_js` | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
 | onchain_solana | `onchain_solana` | Solana RPC, transactions, token programs, Ed25519 signing | — |
 | onchain_tempo | `onchain_tempo` | Tempo chain primitives (0x76 tx, TIP-20) | Rust (Rustler) |
+| faucet_ex | `faucet_ex` | Testnet funding for integration tests (CDP, Tempo, Solana, XRPL, ERC-20 mint, fork overrides) | — |
 
 **Standalone siblings** (not in `packages/`): `descripex`, `zen_websocket`
 (shared upstreams), `mpp` (leaf app) — see above.
@@ -57,7 +59,7 @@ gotchas. Everything family-wide lives here, once.
 The monorepo root itself (`mix.exs` at the top level) is **not a Hex package
 and ships no runtime code**. It exists to hold `mix onchain.bounds`
 (`lib/mix/tasks/onchain_bounds.ex`) and the serial `ci` alias that drives all
-seven packages.
+eight packages.
 
 ---
 
@@ -125,7 +127,8 @@ zen_websocket ─┴→ onchain ─┬→ onchain_aave
                            ├→ onchain_evm
                            ├→ onchain_js
                            ├→ onchain_solana
-                           └→ onchain_tempo → mpp (standalone)
+                           ├→ onchain_tempo → mpp (standalone)
+                           └→ faucet_ex (optional onchain; test-only dep of mpp, aave_sim)
 ```
 
 `onchain` owns the former `ABI.*` and `Cartouche.*` modules, renamed to
@@ -138,6 +141,7 @@ Edges (the `sibling/3` calls in each `mix.exs` remain the source of truth):
 - onchain → `descripex`, `zen_websocket`; no in-repo dependencies
 - onchain_aave / onchain_aerodrome → `onchain`, plus dev/test-only `onchain_evm`
 - onchain_evm / onchain_js / onchain_tempo / onchain_solana → `onchain`
+- faucet_ex → `onchain` (optional; only the EVM sources need it)
 - mpp (standalone) still needs a separate migration from its published
   `cartouche` dependency; its checkout is outside this task.
 
@@ -160,10 +164,10 @@ Canonical order when the whole stack moves:
 
 ```
 descripex ─┐
-zen_websocket ─┴→ onchain → {onchain_aave, onchain_aerodrome, onchain_evm, onchain_js, onchain_solana, onchain_tempo} → mpp
+zen_websocket ─┴→ onchain → {onchain_aave, onchain_aerodrome, onchain_evm, onchain_js, onchain_solana, onchain_tempo, faucet_ex} → mpp
 ```
 
-The six mid-tier siblings are mutually independent once `onchain` ships and
+The seven mid-tier siblings are mutually independent once `onchain` ships and
 can publish in any order. `mpp` is always last.
 
 **What the monorepo changed:** a cross-package edit (e.g. widening a bound in
@@ -257,7 +261,7 @@ cd ~/_DATA/code/onchain-stack && mix ci
 runs, in order:
 
 1. **`mix onchain.bounds`** — seconds of AST parsing; catches the one failure
-   class the monorepo introduces (see sibling/3 above) before spending seven
+   class the monorepo introduces (see sibling/3 above) before spending eight
    package gates discovering it downstream.
 2. **`elixir test/alias_separation_test.exs`** (via `mix cmd`) — the alias
    regression check; a failure aborts before any package gate runs.
@@ -299,7 +303,7 @@ running individual steps after an alias failure.
 
 **Shared gate helpers** live once at `shared/mix_helpers.exs`
 (`OnchainMonorepo.MixHelpers`, `agents_check/1` + `advisory_freshness/1` +
-`host_script/3`) instead of being copy-pasted into all seven `mix.exs` files
+`host_script/3`) instead of being copy-pasted into all eight `mix.exs` files
 (pre-monorepo, they drifted — only one package's copy carried an
 executable-bit guard). Every package loads it behind `Code.ensure_loaded?/1` +
 `File.exists?/1` — the file is **not** part of any published tarball (Hex
@@ -310,7 +314,7 @@ there shouldn't be one; if you find one, it's drift from before this file
 existed and should be migrated to load `shared/mix_helpers.exs` instead.
 
 **Consolidated config, root-owned:** `.tool-versions`, `.mix_audit_ignore`
-(one shared entry, seven per-package symlinks — see the adjudication below),
+(one shared entry, eight per-package symlinks — see the adjudication below),
 and the ExSlop/`.credo.exs` base policy now live once at the repo root instead
 of eight near-identical copies. There is no per-package override left: every
 `packages/<name>/.credo.exs` are symlinks to the root `.credo.exs`, so
@@ -404,7 +408,7 @@ finding is a false positive here. Filed upstream as
 `mirego/elixir-security-advisories#8` (grouping fix) and `#9` (the one-line
 `Dump.dump/1` patch), both open and unreviewed as of the last check. The
 single ignore entry lives at the **root** `.mix_audit_ignore`, symlinked into
-all seven packages, each of whose dep tree resolves `gun` (onchain_solana gained
+all eight packages, each of whose dep tree resolves `gun` (onchain_solana gained
 it when its cartouche edge became onchain → zen_websocket). Remove it once the importer fix lands
 and the mirror splits the advisory — never add any *other* advisory id to
 that file; every other finding it would report is real.
@@ -446,7 +450,7 @@ remains:
   `.reach.exs` key, so there was nothing to exclude). Restored 2026-09-16 under
   reach 2.8.4, verified green by running it.
 
-**`--dead-code` is on in six of seven packages; onchain is the exception.**
+**`--dead-code` is on in seven of eight packages; onchain is the exception.**
 The gate flag is `reach.check --dead-code --arch --smells` everywhere except
 onchain, which runs `--arch --smells`.
 
@@ -490,7 +494,7 @@ override — never in `deps/`.
 **`ex_ast`'s override is measured, not assumed.** `reach 2.8.2` declares
 `ex_ast ~> 0.12.0`, which would hold a package at 0.12.10 unless it declares
 `{:ex_ast, "~> 0.13", override: true, only: [:dev, :test], runtime: false}`.
-All seven packages carry that override today. It was withheld for five of them
+All eight packages carry that override today. It was withheld for five of them
 for a while on the theory that `ex_ast` 0.13's subset-pattern matching "could"
 make `reach`'s smell checks report fewer findings; running
 `mix reach.check --dead-code --arch --smells` under both 0.12.10 and 0.13.1 in
@@ -538,6 +542,9 @@ recognizable in the merged numbering:
 | onchain_js | +7000 |
 | onchain_tempo | +8000 |
 
+faucet_ex had no roadmap of its own when it was absorbed; its tasks are new
+root tasks with `target_repo = "faucet_ex"`.
+
 Every task carries a `target_repo` field naming which package it belongs to,
 and `touches` paths are `packages/<name>/…`-prefixed. Use the `tasks:rmap`
 skill for picking/scoring/creating tasks; it operates on this one file
@@ -581,7 +588,7 @@ root gets guidance instead of a silent "task not found" or a cheap green.
 ### MCP config
 
 `tidewave` points at onchain's package port 4007. `tidewave_all` points at the
-root aggregate on 4037, which loads all seven packages. The former hieroglyph
+root aggregate on 4037, which loads all eight packages. The former hieroglyph
 and cartouche package listeners are retired. The other packages retain their
 own ports; do not start or control an operator's running server.
 onchain_solana has no `mix tidewave` alias of its own: it is reachable only
@@ -655,7 +662,7 @@ analyzer; a green publish-parity report says nothing about that.
 
 ## After every task
 
-Applies uniformly across all seven packages now that the roadmap is
+Applies uniformly across all eight packages now that the roadmap is
 root-owned — update all affected docs as part of the task, not as a
 follow-up:
 
@@ -678,7 +685,7 @@ change warrants it.
   `mix.exs` *and* `mix hex.info <pkg>` / `mix hex.outdated` before any cascade
   decision — never trust a dated snapshot in this file or anywhere else.
 - **Stage path-scoped.** Never `git add -A` / `git commit -a` — with one
-  shared `.git` across all seven packages plus the root, this matters even
+  shared `.git` across all eight packages plus the root, this matters even
   more than it did in the standalone era. Stage explicit paths; verify
   `git diff --cached --name-only` before committing.
 - **Another session may be working in the same package (or a different one)

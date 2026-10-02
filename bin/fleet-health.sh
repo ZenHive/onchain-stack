@@ -10,7 +10,7 @@
 #
 #   ~/_DATA/code/onchain-stack            the monorepo root  (row: onchain-stack)
 #     packages/onchain  onchain_aave
-#     packages/onchain_aerodrome  onchain_evm  onchain_js  onchain_solana  onchain_tempo
+#     packages/onchain_aerodrome  onchain_evm  onchain_js  onchain_solana  onchain_tempo  faucet_ex
 #   ~/_DATA/code/descripex | zen_websocket | mpp   standalone repos, unchanged
 #
 # So the columns are split by what actually varies per row:
@@ -97,11 +97,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_ROW="onchain-stack"
 
 # The seven packages that live under $STACK_DIR/packages/.
-PACKAGES=(onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo)
+PACKAGES=(onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo faucet_ex)
 
 # Cascade order (upstream → downstream), same order publish-prep.sh uses, with
 # the monorepo root inserted ahead of the packages it contains.
-ALL_REPOS=(descripex zen_websocket "$ROOT_ROW" onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo mpp)
+ALL_REPOS=(descripex zen_websocket "$ROOT_ROW" onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo faucet_ex mpp)
 
 # The one toolchain the whole family builds on. In the monorepo there is now
 # exactly ONE `.tool-versions` for the seven packages — the root's — which is

@@ -24,16 +24,19 @@ defmodule Faucet.Test.FakeSource do
   end
 
   # The last element repeats forever so a script can end in a steady state.
+  @spec pop([term(), ...]) :: {term(), [term(), ...]}
   defp pop([only]), do: {only, [only]}
   defp pop([head | rest]), do: {head, rest}
 
   @doc false
+  @spec start([term(), ...], [term(), ...]) :: pid()
   def start(balances, funds \\ [{:ok, ["ref"]}]) do
     {:ok, agent} = Agent.start_link(fn -> %{balances: balances, funds: funds, calls: []} end)
     agent
   end
 
   @doc false
+  @spec calls(pid()) :: [tuple()]
   def calls(agent), do: agent |> Agent.get(& &1.calls) |> Enum.reverse()
 end
 

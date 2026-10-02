@@ -87,7 +87,7 @@ defmodule Faucet.Source.ERC20Mint do
     with :ok <- ensure_onchain(),
          {:ok, token_bin} <- Onchain.Address.validate(token),
          {:ok, to_bin} <- Onchain.Address.validate(to),
-         {:ok, hex} <- Onchain.ABI.encode_call(@signature, [token_bin, to_bin, amount]) do
+         {:ok, hex} <- Onchain.ABI.encode_hex_call(@signature, [token_bin, to_bin, amount]) do
       {:ok, Onchain.Hex.decode!(hex)}
     end
   end

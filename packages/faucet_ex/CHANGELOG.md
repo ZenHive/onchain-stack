@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-02
+
+Moved into the onchain-stack monorepo (`packages/faucet_ex`) with its history;
+the standalone `ZenHive/faucet_ex` repository is archived.
+
+### Changed
+
+- The optional `onchain` dependency now requires `~> 0.16`. onchain 0.16.0
+  folded `cartouche` into `Onchain.*`, so `Faucet.ForkOverride` hashes with
+  `Onchain.Hash.keccak/1` (0.1.0 called `Cartouche.Hash.keccak/1`, which no
+  longer exists) and `Faucet.Source.ERC20Mint` encodes calldata with
+  `Onchain.ABI.encode_hex_call/2`.
+- Docs and package links point at the monorepo; source tags are
+  `faucet_ex-v<version>`.
+
 ## [0.1.0] - 2026-09-23
 
 Initial extraction. Consolidates the faucet helpers that had grown separately

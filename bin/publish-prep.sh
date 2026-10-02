@@ -6,14 +6,14 @@
 # command for you to run.
 #
 # Layout since the monorepo migration:
-#   ~/_DATA/code/onchain-stack/packages/<pkg>   the seven in-repo packages
+#   ~/_DATA/code/onchain-stack/packages/<pkg>   the eight in-repo packages
 #     onchain onchain_aave onchain_aerodrome
-#     onchain_evm onchain_js onchain_solana onchain_tempo
+#     onchain_evm onchain_js onchain_solana onchain_tempo faucet_ex
 #   ~/_DATA/code/<repo>                          the three standalone repos
 #     descripex zen_websocket mpp
 # Each package is still its own Hex package with its own mix.exs, mix.lock and
 # CHANGELOG; only the checkout moved. The Hex package name equals the directory
-# name for all ten.
+# name for all eleven.
 #
 # THE MONOREPO'S ONE NEW FAILURE CLASS. In-family deps are declared as
 # `sibling(:name, "~> x.y")`. Inside the checkout (marker file
@@ -53,13 +53,13 @@ CODE_DIR="${ONCHAIN_CODE_DIR:-$HOME/_DATA/code}"
 
 # The seven packages that live inside the monorepo. Order matters only within
 # REPOS below; this list is membership, not sequence.
-PACKAGES=(onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo)
+PACKAGES=(onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo faucet_ex)
 
 # Cascade order (upstream → downstream). status prints in this order.
 # descripex + zen_websocket are shared upstreams (used beyond this family) — they
 # head the cascade but a release there has a wider blast radius. zen_websocket
 # feeds onchain directly. mpp is always last.
-REPOS=(descripex zen_websocket onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo mpp)
+REPOS=(descripex zen_websocket onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo faucet_ex mpp)
 
 c_red=$'\033[31m'; c_grn=$'\033[32m'; c_yel=$'\033[33m'; c_dim=$'\033[2m'; c_rst=$'\033[0m'
 # Colour only on a tty: the status table is routinely piped into a file or a

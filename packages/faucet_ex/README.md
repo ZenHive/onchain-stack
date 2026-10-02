@@ -21,9 +21,9 @@ sources. The loop never knows which provider it is driving.
 ```elixir
 def deps do
   [
-    {:faucet_ex, "~> 0.1", only: :test},
+    {:faucet_ex, "~> 0.2", only: :test},
     # Optional. Needed for ERC20Mint (signing), fresh keypairs and ForkOverride (keccak).
-    {:onchain, "~> 0.14", only: :test}
+    {:onchain, "~> 0.16", only: :test}
   ]
 end
 ```

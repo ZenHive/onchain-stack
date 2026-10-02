@@ -10,7 +10,7 @@ defmodule Faucet.ForkOverrideTest do
   test "mapping_slot/2 matches keccak(pad32(holder) ++ pad32(slot))" do
     expected =
       (<<0::96>> <> Base.decode16!(String.trim_leading(@user, "0x"), case: :mixed) <> <<3::256>>)
-      |> Cartouche.Hash.keccak()
+      |> Onchain.Hash.keccak()
       |> Base.encode16(case: :lower)
 
     assert ForkOverride.mapping_slot(@user, 3) == "0x" <> expected

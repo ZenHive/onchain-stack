@@ -1,8 +1,19 @@
+# Gate helpers shared by every package (`agents_check/1`, `advisory_freshness/1`)
+# live at the monorepo root in `shared/mix_helpers.exs`. That file is NOT part
+# of the published tarball, so the load is guarded and every call site degrades
+# to a loud skip — same rule as `sibling/3` below: nothing in this file may
+# assume the monorepo checkout.
+shared_mix_helpers = Path.expand("../../shared/mix_helpers.exs", __DIR__)
+
+if not Code.ensure_loaded?(OnchainMonorepo.MixHelpers) and File.exists?(shared_mix_helpers) do
+  Code.require_file(shared_mix_helpers)
+end
+
 defmodule Faucet.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
-  @source_url "https://github.com/ZenHive/faucet_ex"
+  @version "0.2.0"
+  @source_url "https://github.com/ZenHive/onchain-stack"
 
   # Coverage floor is a measured ratchet: set from the first full run of the
   # unit suite (`mix test.json --cover --exclude integration`), rounded down.
@@ -28,8 +39,8 @@ defmodule Faucet.MixProject do
       docs: [
         main: "Faucet",
         extras: ["README.md", "CHANGELOG.md"],
-        source_url: @source_url,
-        source_ref: "v#{@version}"
+        source_ref: "faucet_ex-v#{@version}",
+        source_url_pattern: "#{@source_url}/blob/faucet_ex-v#{@version}/packages/faucet_ex/%{path}#L%{line}"
       ]
     ]
   end
@@ -45,6 +56,26 @@ defmodule Faucet.MixProject do
     [extra_applications: [:logger, :crypto]]
   end
 
+  # In the monorepo checkout this resolves to an in-repo path dep; everywhere
+  # else the declared Hex requirement wins. The predicate is the root marker
+  # `.onchain-monorepo-root`, never the sibling's existence (a consumer's
+  # `deps/` unpacks every package side by side). `ONCHAIN_PUBLISH=1` forces the
+  # Hex branch, because `mix hex.publish` rejects path deps.
+  #
+  # Convention, parsed by `mix onchain.bounds` at the monorepo root: the call is
+  # a literal `sibling(:name, "<requirement>")` or
+  # `sibling(:name, "<requirement>", opts)`.
+  defp sibling(name, req, opts) do
+    monorepo? = File.exists?(Path.expand("../../.onchain-monorepo-root", __DIR__))
+    publishing? = System.get_env("ONCHAIN_PUBLISH") == "1"
+
+    if monorepo? and not publishing? do
+      {name, [path: Path.expand("../#{name}", __DIR__), override: true] ++ opts}
+    else
+      {name, req, opts}
+    end
+  end
+
   defp deps do
     [
       # Runtime: every adapter is HTTP/JSON-RPC over Req.
@@ -56,7 +87,7 @@ defmodule Faucet.MixProject do
       # `Faucet.ForkOverride`). Consumers funding Solana, XRPL or plain native
       # gas do not have to pull the EVM stack. Two-segment on purpose: the
       # committed lock already blocks a silent in-family upgrade.
-      {:onchain, "~> 0.14", optional: true},
+      sibling(:onchain, "~> 0.16", optional: true),
 
       # Self-describing APIs — full dep, macros expand at compile time.
       {:descripex, "~> 1.0"},
@@ -95,7 +126,7 @@ defmodule Faucet.MixProject do
       # OOM mitigation: direct deps only; tidewave/bandit's HTTP stack is not in
       # lib/'s call graph.
       plt_add_deps: :apps_direct,
-      plt_add_apps: [:mix, :crypto, :onchain, :cartouche],
+      plt_add_apps: [:mix, :crypto, :onchain],
       plt_local_path: "priv/plts",
       plt_core_path: "priv/plts",
       plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
@@ -152,43 +183,33 @@ defmodule Faucet.MixProject do
       name: "faucet_ex",
       files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md),
       licenses: ["MIT"],
-      links: %{"GitHub" => @source_url, "Docs" => "https://hexdocs.pm/faucet_ex"},
+      links: %{
+        "GitHub" => "#{@source_url}/tree/main/packages/faucet_ex",
+        "Docs" => "https://hexdocs.pm/faucet_ex"
+      },
       maintainers: ["ZenHive"]
     ]
   end
 
-  @spec agents_check([String.t()]) :: :ok
-  defp agents_check(_args), do: repo_script("bin/sync-agents-md.sh", ["--check"], "AGENTS.md freshness check")
+  # Shared with the other packages — see `shared/mix_helpers.exs` at the
+  # monorepo root. Resolved dynamically so a consumer evaluating this mix.exs
+  # out of the tarball (where that file does not exist) gets a skip, not a
+  # crash.
+  defp agents_check(args), do: shared_gate(:agents_check, args)
 
-  @spec advisory_freshness([String.t()]) :: :ok
-  defp advisory_freshness(_args), do: repo_script("bin/advisory-freshness.sh", [], "advisory-mirror freshness check")
+  defp advisory_freshness(args), do: shared_gate(:advisory_freshness, args)
 
-  # Both gates shell out to scripts tracked in this repo so any portable
-  # checkout runs them; a missing script fails the step rather than skipping.
-  @spec repo_script(String.t(), [String.t()], String.t()) :: :ok
-  defp repo_script(relative, args, label) do
-    expanded = Path.expand(relative, Path.dirname(Mix.Project.project_file()))
+  defp shared_gate(fun, args) do
+    mod = OnchainMonorepo.MixHelpers
 
-    cond do
-      not File.regular?(expanded) ->
-        Mix.raise("#{label}: #{expanded} not found (in-repo QA script required)")
+    if Code.ensure_loaded?(mod) do
+      apply(mod, fun, [args])
+    else
+      Mix.shell().info(
+        "[skip] #{fun}: shared/mix_helpers.exs not found (monorepo-root file, absent in a published tarball)."
+      )
 
-      not executable?(expanded) ->
-        Mix.raise("#{label}: #{expanded} exists but is not executable")
-
-      true ->
-        {_out, status} = System.cmd(expanded, args, into: IO.stream(:stdio, :line), stderr_to_stdout: true)
-        if status != 0, do: Mix.raise("#{label} failed (#{expanded} exited #{status})")
-    end
-
-    :ok
-  end
-
-  @spec executable?(String.t()) :: boolean()
-  defp executable?(path) do
-    case File.stat(path) do
-      {:ok, %File.Stat{mode: mode}} -> Bitwise.band(mode, 0o111) != 0
-      _ -> false
+      :ok
     end
   end
 end

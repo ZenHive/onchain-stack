@@ -1,7 +1,5 @@
 <!-- Auto-generated from CLAUDE.md by claude-marketplace/scripts/sync-agents-md.sh — do not edit manually -->
 
-# CLAUDE.md
-
 <!-- @-import: ~/.claude/includes/verification-policy.md -->
 ## Verification scope — focused runs, full post-merge QA
 
@@ -86,6 +84,31 @@ Overriding the user's discernible intent — deferring, building differently, sk
 - Before the trained pattern fires, check: clarity, or habit / wanting-to-please / fear-of-being-wrong? Only clarity earns a silent decision.
 - Surface ≠ block: "doing X instead of Y because Z — say if wrong", then proceed. Don't gate on a question.
 - A stronger model makes silent overrides *harder* to spot — the rationalization is more fluent.
+
+## Stack is chosen per idea — never by default
+
+The user is language-agnostic, has no Elixir preference and does not read most code. "The user's repos are Elixir" is never a reason.
+
+**Assume web, desktop and mobile will be wanted** unless the user explicitly rules them out. Never pick a stack that silently forecloses a platform.
+
+Decide in this order:
+1. **Platforms → UI stack.** Multi-platform → TypeScript (React + Expo + Tauri/Electron) or Flutter. Elixir/LiveView only for explicitly web-only. Per-platform native (SwiftUI, Compose, WinUI, GTK) only when OS integration is the product (widgets, background execution, share/system extensions, platform UX a cross-platform stack can't reach) **and** harness has the native verification loop for that platform. Reason: for agents the bottleneck is verification, not writing code — N native codebases mean N toolchains, N test frameworks and N reviews per feature, and WinUI/GTK are thin in training data.
+2. **Official SDKs.** Use maintained official libraries (ccxt, viem, alloy, go-ethereum, protocol SDKs) in their language. Never port them.
+3. **Known over own.** Product code sits directly on libraries AI agents know from training. Every library the user would own needs explicit approval, with the reason nothing known solves it stated in the task.
+4. **Backend by main workload:**
+   - multi-platform app → TypeScript end to end (chain via viem, exchanges via ccxt)
+   - many long-lived stateful connections → Elixir
+   - standalone integration service / worker with official SDKs in Go → Go
+   - bounded core: EVM simulation (revm), heavy compute, Tauri backend → Rust
+   - research / quant / ML → Python, not as default for long-running services
+   - one backend language per app; a second only for a bounded core
+5. **Maintenance cost.** Every library, package and publish is a permanent obligation.
+
+Existing Elixir apps keep their backend; new clients (mobile/desktop) attach via API (e.g. Ash JSON API) in the UI stack of rule 1. No rewrite without an oracle.
+
+State the stack and the deciding criterion. A Hex publish as "distribution bet" (`portfolio-strategy.md`) is not approval.
+
+Evidence (2026-09 audit): 21 Hex packages, no external dependents, ~99 releases in 90 days; ~62 in `onchain-stack` + `mpp`, which reimplement alloy/revm/viem and the official MPP SDKs. `bourse` (113k LOC) duplicates `ccxt` (official Rust + Go + TS for all 11 venues). LiveView Native is still pre-1.0 (0.4.0-rc.1, 2026-03), Android unfinished, online-only.
 
 ## Never start the Phoenix server
 
@@ -217,6 +240,15 @@ Never without explicit consent: `mix deps.clean` (incl. `--all`), `mix deps.unlo
 
 Instead: compile error → retry `mix compile` / `mix test`. Specific dep → `mix deps.compile <dep> --force`. Most "corrupt cache" issues are transient.
 
+## 🚨 NEVER PIN A DEPENDENCY TO GIT OR PATH — RELEASE IT
+
+A `github:` / `git:` / `path:` dependency in `mix.exs` (or the equivalent in `package.json`, `Cargo.toml`, `pyproject.toml`) is a rejection, not a solution. It applies to our own libraries above all: a library change needed by an app is a task in the **library's** repo, released through Hex (or the registry of its ecosystem) with a version bump, and then consumed as `{:lib, "~> x.y.z"}`. Pinning the app to a branch commit ships unreviewed library code through the app's review, freezes the app on a moving PR, and leaves a repo the operator has to remember to release later.
+
+- **Implementer:** the fix belongs in the library → stop and report "blocked on a `<lib>` release: needs `<change>`". Do not open a PR against the library from inside the app run and pin its head. Do not vendor the code into the app either.
+- **Reviewer:** a new `github:` / `git:` / `path:` dep on a package we maintain is a `reject` with that reason, regardless of how good the rest of the diff is. A new pin on a third-party package is a `reject` unless the task body names the pin and why no release exists.
+- **Only exceptions:** `in_umbrella: true` inside one umbrella, and a pin the task body explicitly authorizes with the upstream release it waits for.
+- **Precedent:** aave_sim task 148 pinned `bourse` to a branch head of its own open PR; the reviewer approved it, and the release still had not happened a week later.
+
 ## No scope-sequencing qualifiers in durable artifacts
 
 Never write "X first", "starting with X", "initially", "for now", "MVP: X" into repo descriptions, READMEs, moduledocs, code/config comments, commit messages, or vision one-liners. They metastasize and become unremovable. Sequencing lives in the roadmap only (milestones, task bodies, `out_of_scope`). Elsewhere describe what the system IS: "Coverage: Robinhood Chain tokenized equities", not "starting with Robinhood Chain".
@@ -257,130 +289,123 @@ Don't use without explicit user approval:
 - Never a silent workaround. Tempted to add a fallback/nil-guard for missing data → should it come from upstream? Then stop and report.
 - Must move on → leave a tracked TODO, not a silent gap.
 
-<!-- @-import: ~/.claude/includes/elixir-security-adjudications.md -->
-# Elixir Security Adjudications (host-specific)
+<!-- @-import: ~/.claude/includes/harness-guardrails.md -->
+## Harness Guardrails (eager)
 
-Two settled, host-specific security verdicts that every fresh agent otherwise
-re-derives from scratch. `@`-import this in any repo that declares `mix_audit`
-or runs Sobelow, so it also flows into `AGENTS.md` for the cross-family
-reviewers via `sync-agents-md.sh`.
+Always-on floor for repos that dispatch through harness. These rules fail by non-recognition — the moment they apply doesn't feel like a moment to look anything up — so they stay ambient. Everything else (loop, dispatch-vs-hand-build, verdict table, routing, landing mechanics, orchestrator loop) lives in the **`harness:harness-workflow` skill**: invoke it before planning, dispatching, reading a verdict or recovering a run. API surface: `harness:harness-driver`.
 
-## 🚨 ADJUDICATED: the cowlib / gun advisories are ALREADY DECIDED — do NOT re-investigate
+**🚨 Origin is the source of truth for what landed** — not a local `tasks.toml`, not an await return, not a transcript. Under auto-land the lander pushes from a detached worktree and `TargetSync` often skips your checkout (dirty tree, non-ff, self-host), so local status lags. Before concluding "didn't land": `git fetch origin <target>` and check `git log --oneline origin/<target>` for `task <id> -> done (shipped …)`. Misreading stale local status re-dispatches and **duplicate-lands shipped work**.
 
-**Read this before spending a single token on a `VULNERABLE!` line mentioning `gun`,
-`cowlib`, `GHSA-w4f7-4cxr-rv3c`, or `EEF-CVE-2026-4396x`/`-43971`.** This has been
-adjudicated repeatedly by many sessions — local Claude instances, and every harness
-implementer / reviewer / auditor that ran `mix deps.get` in a fresh worktree. Each one
-found the same unbudgeted alarm and redid the same analysis. **The verdict is below.
-Cite it; don't re-derive it.**
+**🚨 Settle ≠ landed.** `state: :done, verdict: approve` means *queued to land*; the serialized lander rebases and pushes afterwards (under `:pr`, `done --shipped-in` waits for the PR merge). Don't gate the next wave on approval — confirm the land on origin.
 
-**Where the noise comes from — two independent pipelines, don't confuse them:**
+**🚨 Never block on `dispatch-await*` for real runs.** The MCP idle timeout (Claude Code: 300 s) kills the call while the run keeps going. Arm one bounded background watcher that greps `$BASE..origin/<target>` (baseline is load-bearing — never the whole log) and has a deadline. Don't micromanage in-flight runs; `dispatch-status` is for diagnosing a run that isn't landing.
 
-| Source | Reports | Silenced by |
-|---|---|---|
-| **Hex core**, during `mix deps.get` / `deps.update` / `hex.audit` | OSV incl. the EEF-CVE program | `mix hex.config ignore_advisories "<ids>"` (global, `~/.hex`) or `HEX_IGNORE_ADVISORIES` (comma-separated env var, settable per dispatch) |
-| **`mix_audit`**, during `mix deps.audit` | mirego's GHSA mirror | per-repo `.mix_audit_ignore` (the marketplace hook reads it via `--ignore-file`) |
+**🚨 Recover, don't redo — committed work is paid for.** Before any reset-to-`pending` + re-dispatch, check `git log --oneline origin/<target>..harness/<run-id>`. Commits present ⇒ recover:
 
-Removing `mix_audit` does **not** silence the `mix deps.get` output — that is Hex, and
-every fresh harness worktree runs `deps.get`. That is precisely why every dispatched
-agent sees it.
+| Retained `harness/<run-id>` with commits | Primitive |
+|---|---|
+| Approved, unlanded (land-cap, conflict, lander crash) | `dispatch-reland` — zero agent tokens |
+| Good work, review-stage failure | `dispatch-rereview` |
+| Implement-stage incomplete / `:failed` | `dispatch-resume_failed` (`escalate: true` to re-route) |
+| Live `:held` run | `dispatch-resume` (question-held: `dispatch-steer` first) |
+| No commits, no retained branch | reset → `pending` + `dispatch-task` — the only full redo |
 
-**The verdict — cowlib 2.19.0 reached only via `gun` as a WebSocket client (the
-`zen_websocket` stack): not reachable.** Evidence is a call-graph fact, not a judgment
-call:
+Land conflict → repair worktree off `origin/<target>`, resolve, repoint the branch, `dispatch-reland`. Never hand-push to the target when a reland can land it.
 
-| Advisory | Vulnerable function | Reachability |
-|---|---|---|
-| `EEF-CVE-2026-43971` | `cow_link:link/1` | **0 references** in `deps/gun/src/` |
-| `EEF-CVE-2026-43966` (alias `GHSA-w4f7-4cxr-rv3c`, `CVE-2026-43966`) | `cow_http_struct_hd:escape_string/2` | **0 references** in `deps/gun/src/` |
-| `EEF-CVE-2026-43969` | `cow_cookie:cookie/1` | only from `gun_cookies.erl` — gun's **opt-in** cookie store; `zen_websocket` never sets `cookie_store` (the string `cookie` does not appear in its `lib/`) |
+<!-- @-import: ~/.claude/includes/onchain-workspace.md -->
+# Onchain Stack Workspace — Monorepo
 
-cowlib **2.19.0 is the latest release** — there is no fixed version to upgrade to, so
-reachability is the only available adjudication.
+Workspace layout for the onchain package family. **Since 2026-08-27 the eight
+library repos are one monorepo:** `~/_DATA/code/onchain-stack`, packages under
+`packages/<name>/`, absorbed with full git history. Each package remains its own
+Hex package with its own version, CHANGELOG, and publish cycle. Pairs with
+`harness-workflow.md` (loop shape); this file carries only the stack specifics.
 
-**The separate `gun 2.5.0` line is a mirror bug, already reported upstream.** gun's real
-vulnerable range is `< 2.4.0`; gun 2.5.0 is patched. The mirego importer groups by
-`ghsaId` alone, collapsing a two-package advisory into `packages/gun/…yml` carrying
-**cowboy's** `< 2.16.0` range, so gun 2.5.0 matches a range that was never gun's. There
-is no gun 2.16.x. Filed as **`mirego/elixir-security-advisories#8`** (issue + PR open);
-`zen_websocket/.mix_audit_ignore` carries the full write-up and the removal condition.
-That gun never calls `cow_http_struct_hd` at all corroborates it independently.
+The old standalone checkouts (`~/_DATA/code/hieroglyph`, `.../cartouche`, …) are
+retired — GitHub repos archived (never deleted; `ZenHive/onchain_evm` hosts NIF
+release assets). Do not work in them.
 
-**🚨 `bandit` is NOT in this adjudication — it has a real fix.** `EEF-CVE-2026-74836`
-(HIGH) and `EEF-CVE-2026-75484` on bandit 1.12.4 are genuine; **1.12.5 (2026-08-20) is
-the fix**. Bump the dependency; never add a bandit id to an ignore list. Blanket-ignoring
-"all the CVE noise" buries a HIGH — suppress **per id**, only after the reachability
-argument above has been made for that specific id.
+### Layout
 
-**What invalidates this verdict — re-adjudicate if any becomes true:** a repo takes
-`cowboy` as a **runtime** (not `only: :test`) dependency; gun's `cookie_store` option is
-enabled anywhere; gun is used as a general HTTP client with caller-supplied header
-values; or a new cowlib advisory appears that is not one of the three ids above.
+| Package (`packages/…`) | Hex package | Role | Native |
+|---|---|---|---|
+| hieroglyph | `hieroglyph` | ABI encode/decode (`ABI.*`) | yecc/leex |
+| cartouche | `cartouche` | Substrate: signing, tx encoding, raw RPC, crypto | — |
+| onchain | `onchain` | Core primitives: RPC, ABI, ERC, signing | — |
+| onchain_aave | `onchain_aave` | Aave V3 + V4 wrappers | — |
+| onchain_aerodrome | `onchain_aerodrome` | Aerodrome Finance (Base) bindings | — |
+| onchain_evm | `onchain_evm` | EVM sim, Solidity parse, trace, codegen | Rust (Rustler) |
+| onchain_js | `onchain_js` | npm packages on the BEAM (QuickBEAM) | Zig NIFs |
+| onchain_tempo | `onchain_tempo` | Tempo chain primitives (0x76 tx, TIP-20) | — |
 
-**Affected repos (13 declare `mix_audit`; 9 carry `gun` in the lock — `bourse_workbench` retired to the code-archive 2026-08-23):** `bourse`,
-`mpp`, `onchain`, `onchain_aave`, `onchain_aerodrome`, `onchain_evm`, `onchain_js`,
-`onchain_tempo`, `zen_websocket`. Suppression is inconsistent across them — most carry
-`.mix_audit_ignore`, bourse uses an `--ignore-advisory-ids` alias in
-`mix.exs`. Standardize on `.mix_audit_ignore` when you touch one.
+**Still standalone repos** (not absorbed): `descripex`, `zen_websocket` (shared
+upstreams, consumed beyond this family) and `mpp` (leaf app). They live at
+`~/_DATA/code/<name>` as before.
 
-**The meta-lesson this section encodes:** the analysis had in fact been done correctly —
-it lived in `zen_websocket/mix.exs` and `.mix_audit_ignore`, where no other repo's agent
-ever looks. A verdict that isn't written where the *next* agent reads it gets re-derived
-forever. Adjudicate once, then put it in `CLAUDE.md` (which flows into `AGENTS.md` for
-the cross-family reviewers) — not only in the repo that happened to notice.
+Dependency cascade (unchanged): hieroglyph → cartouche → onchain →
+{aave, aerodrome, evm, js, tempo}; descripex feeds everything, zen_websocket
+feeds onchain. Publish order stays upstream-first.
 
-## Suppressing Sobelow False Positives — Use `.sobelow-skips`, NOT Inline Comments
+### The sibling/3 mechanism (dual-mode deps)
 
-When the PostToolUse hook flags a Sobelow false positive (e.g. `Traversal.FileModule`
-on an operator-supplied CLI path, not web input), the **inline `# sobelow_skip
-["FindingType"]` comment does NOT suppress it** under this host's hook invocation —
-verified on tapakly 2026-06: comments placed correctly above both the `def` (with
-`@spec` between) and a bare `defp` still re-flagged at the same lines. The hook
-honors only the **hash-based `.sobelow-skips` file**, read via `mix sobelow --skip`.
+In-family deps are declared in each package's `mix.exs` as
+`sibling(:cartouche, "~> 0.7")`:
 
-The failure mode many instances hit: add inline comment → hook re-flags → add
-another → loop. Stop. The working mechanism:
+- **Path branch** — when the marker file `.onchain-monorepo-root` is found by
+  walking up from the package (i.e. inside the monorepo): resolves to
+  `{name, path: "../<name>", override: true, …}`. Day-to-day dev needs no Hex
+  round-trips.
+- **Hex branch** — no marker (a consumer's `deps/` layout), or
+  `ONCHAIN_PUBLISH=1` set: resolves to `{name, "~> x.y", …}`.
 
-1. **Confirm the finding is genuinely a false positive** (path is operator/CLI-derived
-   or a fixed dir + content hash, never untrusted/web input). Real traversal risk → fix the code.
-2. **Check the total outstanding count** — `mix sobelow --format compact`. `--mark-skip-all`
-   marks *every* current finding as skipped, so it's only safe when the outstanding set
-   IS exactly the false positives you intend to skip. Otherwise you'd silently bury a real one.
-3. **Generate the skip file:** `mix sobelow --mark-skip-all` → writes `.sobelow-skips`
-   (lines of `FindingType,file:line,HASH`).
-4. **Verify suppression with the flag the hook uses:** `mix sobelow --skip --format compact`
-   — a plain `mix sobelow` (no `--skip`) still prints them; that's expected, not a failure.
-5. **Commit `.sobelow-skips`** alongside the code (it's not gitignored — it's the
-   persisted project suppression record so CI / other devs don't re-flag).
+**Publish trap:** Hex ≥2.5 does NOT abort on path deps — it silently drops them
+from the tarball ("Dependencies excluded from the package"). Every publish runs
+with `ONCHAIN_PUBLISH=1` and greps `hex.build` output for that phrase
+(`bin/publish-prep.sh` does this). After publish-mode `deps.get`, restore the
+lock with `git checkout -- mix.lock`.
 
-**Line shifts INVALIDATE skips, and `--mark-skip-all` never prunes — regenerate, don't accumulate.**
-Each entry pins `FindingType,file:line,HASH`, and the line number feeds the hash:
-deleting or inserting lines *above* a suppressed finding re-reds the gate even though the
-flagged code never changed. Re-running `--mark-skip-all` leaves the dead entry behind
-forever — sobelow ≤0.14 appends a new generation; 0.15+ rewrites merged+deduped+sorted
-(`--legacy-skips` restores append) but still keeps entries with no live finding
-(observed ccxt_client 2026-07-22 under 0.14: 57 entries on file, 9 live findings —
-48 stale). The cadence: whenever a skip-related
-re-red appears (or an audit notices bloat), **regenerate wholesale** — confirm every
-currently-outstanding finding (`mix sobelow --no-skip --format compact`) is a genuine
-false positive per step 1, then `rm .sobelow-skips && mix sobelow --mark-skip-all`,
-verify zero with `--skip`, commit. Never regenerate while an unconfirmed finding is
-outstanding — that buries it.
+### Gates
 
-Pairs with `critical-rules.md` § FIX HOOK-FLAGGED ISSUES: suppression IS the fix for a
-documented false positive — but via the file, not a comment the hook ignores.
+- **Root gate:** `cd ~/_DATA/code/onchain-stack && mix ci` = `mix onchain.bounds`
+  (checks every literal `sibling/2,3` requirement against the sibling's live
+  `@version`) then each package's own `mix ci`, **strictly serial** (shared
+  advisory-mirror clone; parallel runs corrupt its `git pull --rebase`).
+- **Per-package:** unchanged — each package keeps its own `.reach.exs`,
+  `.doctor.exs`, sobelow config, coverage threshold. `cd packages/<name> && mix ci`
+  for focused work. Shared gate helpers: `shared/mix_helpers.exs`
+  (`OnchainMonorepo.MixHelpers`), loaded defensively so tarballs build without it.
+- **Roadmap:** one root rmap project (`roadmap/tasks.toml`). Old
+  per-package task IDs are offset: hieroglyph +1000, cartouche +2000, onchain
+  +3000, aave +4000, aerodrome +5000, evm +6000, js +7000, tempo +8000. Tasks
+  carry `target_repo`; `touches` paths are `packages/<name>/…`-prefixed.
+
+### Harness
+
+One registered project, `onchain_stack`, source `~/_DATA/code/onchain-stack`
+(server mirror `/data/postgresql/code/onchain-stack`), `check_command:
+"mix check.dispatch"` (at the root this deliberately raises — reviewers run it
+per package, `cd packages/<name>`), `target_branch: main`, warm paths for onchain_evm's Rust
+targets (`packages/onchain_evm/{native/*/target,priv/native}`). The eight
+per-repo harness registrations are retired with the repos. Write-set collision
+now happens naturally inside one repo — harness serializes overlapping waves.
+
+### Releases
+
+Per-package semver against the **published** Hex baseline; version bumps,
+CHANGELOG, and `mix hex.publish` (human, 2FA) all happen inside
+`packages/<name>/`. Tags in the monorepo are `<pkg>-v<ver>`. Cross-package
+cascades are now single-repo commits, but the Hex publish order is still
+upstream-first, one published version at a time.
+
+### Cross-References
+
+- `~/_DATA/code/onchain-stack/CLAUDE.md` — the coordination doc (cascade state,
+  operating rules, tooling)
+- `harness-workflow.md` — the portfolio implement→review→land contract
+- `onchain-workspace-delegation.md` — DORMANT pre-harness delegation workspace
 
 
-<!--
-  Selective-load: the eager floor is `critical-rules` (ambient guardrails) +
-  the verification policy + the security adjudications this repo's
-  `deps.audit.gated` and Sobelow steps need. Everything else is
-  skill-on-demand: `elixir:ex-unit-json`, `elixir:dialyzer-json`,
-  `elixir:agent-economy` (Descripex `api()`), `elixir:code-style`,
-  `workflow:rmap`, `workflow:git-worktrees`.
--->
-
----
+# FaucetEx
 
 ## Project overview
 
@@ -390,9 +415,10 @@ per-address `:global.trans/2` lock) over pluggable `Faucet.Source` adapters.
 Consumed `only: :test` by onchain-stack packages, mpp and aave_sim; it
 replaced four independent faucet helpers (see CHANGELOG 0.1.0).
 
-Remote: `git@github.com:ZenHive/faucet_ex.git`, default branch `main`.
-Standalone on purpose, like descripex and zen_websocket: it is consumed beyond
-the onchain family, so it does not live in the onchain-stack monorepo.
+Lives in the onchain-stack monorepo since 0.2.0 (absorbed with history; the
+standalone `ZenHive/faucet_ex` repo is archived). See the root `CLAUDE.md`
+for the family layout, the sibling/3 mechanism, the shared gates and the
+publish workflow; this file carries only what is specific to this package.
 
 ## Module layout
 
@@ -432,46 +458,20 @@ the onchain family, so it does not live in the onchain-stack monorepo.
 
 ## Toolchain & check commands
 
-Self-contained so it survives into `AGENTS.md` on regen.
-
-- Pin: `.tool-versions` (erlang 29.1, elixir 1.20.4-otp-29).
+- Toolchain pin and gate helpers come from the monorepo root
+  (`.tool-versions`, `shared/mix_helpers.exs`, root `.credo.exs` and
+  `.mix_audit_ignore` via symlinks).
 - **Dispatch check:** `mix check.dispatch` — format and compile only. Add
   focused tests for the changed behavior (`mix test.json test/path_test.exs`).
-- **Full post-merge QA:** `mix ci` (= `precommit.full`): format check, compile
-  `--warnings-as-errors`, `credo --strict`, `doctor --raise`,
-  `ex_dna --max-clones 0`, `reach.check --dead-code --arch --smells`,
-  `sobelow --skip --exit low`, `deps.audit.gated`, `test.json --cover
-  --cover-threshold <floor>` (MIX_ENV=test), `dialyzer` (MIX_ENV=dev),
-  `agents.check`. Check scheduling follows the imported verification policy.
-- `mix precommit` is the fast local subset (no clones, reach, audit, dialyzer).
-- **Coverage floor** lives in `@cover_threshold` in `mix.exs` and is a
+- **Full post-merge QA:** `mix ci` (= `precommit.full`). Same shape as the
+  other packages; coverage floor is `@cover_threshold` in `mix.exs`, a
   measured ratchet — raise it with real coverage, never pad it.
-- **`deps.audit.gated`** runs `bin/advisory-freshness.sh` first (vendored from
-  zen_websocket): `mix_audit` discards its own sync exit status, so a frozen
-  mirror would otherwise read as clean. Never run `mix ci` concurrently with
-  another repo's gate — they share the advisory clone.
-  `.mix_audit_ignore` carries exactly one entry, the adjudicated gun/cowboy
-  mirror-grouping false positive (`GHSA-w4f7-4cxr-rv3c`, see the imported
-  security adjudications); never add another id to it.
-- **`agents.check`** runs `bin/sync-agents-md.sh --check`; regenerate with
-  `bin/sync-agents-md.sh` after editing this file.
 - **Integration tests** are tagged `:integration` and excluded by default.
   They hit live providers and need credentials / funded keys; run them on
   purpose: `mix test --include integration`.
-- Tidewave MCP: `iex -S mix tidewave` on port **4038** (`.mcp.json`, registry
-  `~/.claude/tidewave-ports.md`).
+- Tidewave MCP: `iex -S mix tidewave` on port **4038**.
 
 ## After every task
 
-- `CHANGELOG.md` under `[Unreleased]`.
-- `README.md` when a source or public function is added.
-- This file's module layout when files are added, removed or renamed.
-- `bin/sync-agents-md.sh` to regenerate `AGENTS.md`.
-- `roadmap/tasks.toml` via the `workflow:rmap` skill.
-
-## Publish
-
-Human-gated (Hex 2FA). Terminal state for an agent is publish-ready: green
-`mix ci`, bumped `@version`, CHANGELOG section dated, committed and pushed.
-State the exact `mix hex.publish` command and stop. Tag `v<ver>` after the
-publish, by hand.
+Follow the root `CLAUDE.md` § "After every task"; update this file's module
+layout when files are added, removed or renamed.

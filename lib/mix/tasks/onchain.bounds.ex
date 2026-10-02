@@ -33,7 +33,7 @@ defmodule Mix.Tasks.Onchain.Bounds do
 
   use Mix.Task
 
-  @packages ~w(onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo)
+  @packages ~w(onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo faucet_ex)
 
   @doc "The package roster, in cascade order (upstream first)."
   @spec packages() :: [String.t()]

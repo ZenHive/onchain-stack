@@ -1,20 +1,10 @@
-# CLAUDE.md
-
 @~/.claude/includes/verification-policy.md
 
 @~/.claude/includes/critical-rules.md
-@~/.claude/includes/elixir-security-adjudications.md
+@~/.claude/includes/harness-guardrails.md
+@~/.claude/includes/onchain-workspace.md
 
-<!--
-  Selective-load: the eager floor is `critical-rules` (ambient guardrails) +
-  the verification policy + the security adjudications this repo's
-  `deps.audit.gated` and Sobelow steps need. Everything else is
-  skill-on-demand: `elixir:ex-unit-json`, `elixir:dialyzer-json`,
-  `elixir:agent-economy` (Descripex `api()`), `elixir:code-style`,
-  `workflow:rmap`, `workflow:git-worktrees`.
--->
-
----
+# FaucetEx
 
 ## Project overview
 
@@ -24,9 +14,10 @@ per-address `:global.trans/2` lock) over pluggable `Faucet.Source` adapters.
 Consumed `only: :test` by onchain-stack packages, mpp and aave_sim; it
 replaced four independent faucet helpers (see CHANGELOG 0.1.0).
 
-Remote: `git@github.com:ZenHive/faucet_ex.git`, default branch `main`.
-Standalone on purpose, like descripex and zen_websocket: it is consumed beyond
-the onchain family, so it does not live in the onchain-stack monorepo.
+Lives in the onchain-stack monorepo since 0.2.0 (absorbed with history; the
+standalone `ZenHive/faucet_ex` repo is archived). See the root `CLAUDE.md`
+for the family layout, the sibling/3 mechanism, the shared gates and the
+publish workflow; this file carries only what is specific to this package.
 
 ## Module layout
 
@@ -66,46 +57,20 @@ the onchain family, so it does not live in the onchain-stack monorepo.
 
 ## Toolchain & check commands
 
-Self-contained so it survives into `AGENTS.md` on regen.
-
-- Pin: `.tool-versions` (erlang 29.1, elixir 1.20.4-otp-29).
+- Toolchain pin and gate helpers come from the monorepo root
+  (`.tool-versions`, `shared/mix_helpers.exs`, root `.credo.exs` and
+  `.mix_audit_ignore` via symlinks).
 - **Dispatch check:** `mix check.dispatch` — format and compile only. Add
   focused tests for the changed behavior (`mix test.json test/path_test.exs`).
-- **Full post-merge QA:** `mix ci` (= `precommit.full`): format check, compile
-  `--warnings-as-errors`, `credo --strict`, `doctor --raise`,
-  `ex_dna --max-clones 0`, `reach.check --dead-code --arch --smells`,
-  `sobelow --skip --exit low`, `deps.audit.gated`, `test.json --cover
-  --cover-threshold <floor>` (MIX_ENV=test), `dialyzer` (MIX_ENV=dev),
-  `agents.check`. Check scheduling follows the imported verification policy.
-- `mix precommit` is the fast local subset (no clones, reach, audit, dialyzer).
-- **Coverage floor** lives in `@cover_threshold` in `mix.exs` and is a
+- **Full post-merge QA:** `mix ci` (= `precommit.full`). Same shape as the
+  other packages; coverage floor is `@cover_threshold` in `mix.exs`, a
   measured ratchet — raise it with real coverage, never pad it.
-- **`deps.audit.gated`** runs `bin/advisory-freshness.sh` first (vendored from
-  zen_websocket): `mix_audit` discards its own sync exit status, so a frozen
-  mirror would otherwise read as clean. Never run `mix ci` concurrently with
-  another repo's gate — they share the advisory clone.
-  `.mix_audit_ignore` carries exactly one entry, the adjudicated gun/cowboy
-  mirror-grouping false positive (`GHSA-w4f7-4cxr-rv3c`, see the imported
-  security adjudications); never add another id to it.
-- **`agents.check`** runs `bin/sync-agents-md.sh --check`; regenerate with
-  `bin/sync-agents-md.sh` after editing this file.
 - **Integration tests** are tagged `:integration` and excluded by default.
   They hit live providers and need credentials / funded keys; run them on
   purpose: `mix test --include integration`.
-- Tidewave MCP: `iex -S mix tidewave` on port **4038** (`.mcp.json`, registry
-  `~/.claude/tidewave-ports.md`).
+- Tidewave MCP: `iex -S mix tidewave` on port **4038**.
 
 ## After every task
 
-- `CHANGELOG.md` under `[Unreleased]`.
-- `README.md` when a source or public function is added.
-- This file's module layout when files are added, removed or renamed.
-- `bin/sync-agents-md.sh` to regenerate `AGENTS.md`.
-- `roadmap/tasks.toml` via the `workflow:rmap` skill.
-
-## Publish
-
-Human-gated (Hex 2FA). Terminal state for an agent is publish-ready: green
-`mix ci`, bumped `@version`, CHANGELOG section dated, committed and pushed.
-State the exact `mix hex.publish` command and stop. Tag `v<ver>` after the
-publish, by hand.
+Follow the root `CLAUDE.md` § "After every task"; update this file's module
+layout when files are added, removed or renamed.
