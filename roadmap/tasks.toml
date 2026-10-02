@@ -3780,7 +3780,7 @@ phase = 2000
 bundle = "cartouche_rpc_read_surface"
 target_repo = "onchain"
 milestone = "stack_read_surface_boundary"
-status = "pending"
+status = "in_progress"
 title = "eth_simulateV1 on Cartouche.RPC — the portable simulation entry point, keeping per-call failure, request rejection and unsupported distinct"
 scores = { d = 5, b = 7, u = 6 }
 depends_on = [2136, 2137]
@@ -3809,6 +3809,7 @@ Authority: the tagged execution-apis spec plus the live node.
 
 (2026-10-03) onchain 0.16.0 renamed Cartouche.* to Onchain.*: read `Cartouche.RPC` as `Onchain.RPC` and `packages/onchain/lib/cartouche/rpc.ex` as `packages/onchain/lib/onchain/rpc.ex` throughout; line numbers quoted above predate the rename. Dependencies 2136 and 2137 are done."""
 created_at = "2026-08-26"
+started_at = "2026-10-02"
 scored_at = "2026-09-29"
 
 [[task]]
