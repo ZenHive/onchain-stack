@@ -20,6 +20,9 @@ defmodule Mix.Tasks.Onchain.Manifest do
   readable diff when they differ. Wired into `mix ci` so a descripex
   upgrade or an `api()` edit cannot silently drift the artifact.
 
+  Static output uses the Unix epoch for `generated_at` and sorts map keys,
+  including the generated descripex contract blocks, for reproducible bytes.
+
   Uses `Onchain.ABI.__descripex_modules__/0` as the single source of truth for which
   modules to include. Output defaults to `api_manifest.json` in the project root.
   """
@@ -35,7 +38,13 @@ defmodule Mix.Tasks.Onchain.Manifest do
   def run(args) do
     {opts, positional} = OptionParser.parse!(args, strict: [check: :boolean])
     output_file = List.first(positional) || @default_output
-    manifest = Manifest.build(Onchain.ABI.__descripex_modules__())
+    modules = Onchain.ABI.__descripex_modules__()
+
+    manifest =
+      modules
+      |> Manifest.build()
+      |> Map.put(:generated_at, "1970-01-01T00:00:00Z")
+      |> Map.update!(:modules, &Enum.zip_with(modules, &1, fn module, entry -> canonical_module(module, entry) end))
 
     if opts[:check] do
       check!(output_file, manifest)
@@ -44,9 +53,51 @@ defmodule Mix.Tasks.Onchain.Manifest do
     end
   end
 
+  @spec canonical_module(module(), map()) :: map()
+  defp canonical_module(module, entry) do
+    {:docs_v1, _, _, _, _, _, docs} = Code.fetch_docs(module)
+
+    contracts =
+      for {{:function, name, arity}, _, _, _, %{hints: hints}} <- docs,
+          into: %{},
+          do: {{Atom.to_string(name), arity}, Map.delete(hints, :description)}
+
+    Map.update!(entry, :functions, fn functions ->
+      Enum.map(functions, fn function ->
+        case {function.description, Map.fetch(contracts, {function.name, function.arity})} do
+          {description, {:ok, contract}} when is_binary(description) ->
+            literal = inspect(contract, pretty: true, limit: :infinity, custom_options: [sort_maps: true])
+
+            # Descripex embeds unsorted inspect output at compile time. Use the
+            # doc hints (before runtime enrichment) to retain its shape.
+            description =
+              Regex.replace(~r/```elixir\n# descripex:contract\n.*?\n```/s, description, fn _ ->
+                "```elixir\n# descripex:contract\n#{literal}\n```"
+              end)
+
+            %{function | description: description}
+
+          _ ->
+            function
+        end
+      end)
+    end)
+  end
+
+  @spec ordered_json(term()) :: term()
+  defp ordered_json(map) when is_map(map) do
+    map
+    |> Enum.map(fn {key, value} -> {to_string(key), ordered_json(value)} end)
+    |> Enum.sort_by(&elem(&1, 0))
+    |> Jason.OrderedObject.new()
+  end
+
+  defp ordered_json(list) when is_list(list), do: Enum.map(list, &ordered_json/1)
+  defp ordered_json(value), do: value
+
   @spec write!(Path.t(), map()) :: :ok
   defp write!(output_file, manifest) do
-    File.write!(output_file, Jason.encode!(manifest, pretty: true))
+    File.write!(output_file, Jason.encode!(ordered_json(manifest), pretty: true))
     count = Enum.sum_by(manifest.modules, &length(&1.functions))
 
     Mix.shell().info("Generated #{output_file} (#{length(manifest.modules)} modules, #{count} entries)")

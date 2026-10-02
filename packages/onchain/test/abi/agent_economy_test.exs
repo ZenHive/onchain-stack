@@ -170,6 +170,66 @@ defmodule Onchain.ABI.AgentEconomyTest do
       end
     end
 
+    test "renders nested contract maps in deterministic key order" do
+      out = tmp_manifest()
+      on_exit(fn -> File.rm(out) end)
+      Manifest.run([out])
+
+      manifest = Jason.decode!(File.read!(out))
+      abi = Enum.find(manifest["modules"], &(&1["module"] == "Onchain.ABI"))
+      encode = Enum.find(abi["functions"], &(&1["name"] == "encode_hex_call"))
+
+      expected = ~S"""
+      Encode a function call to 0x-prefixed hex calldata.
+
+      ## Parameters
+
+        * `signature` - Function signature, e.g. "balanceOf(address)" (value)
+        * `params` - List of parameter values matching the signature (value)
+
+      ## Returns
+
+      0x-prefixed hex-encoded calldata (`{:ok, hex_string} | {:error, {:encode_error, reason}}`)
+
+      ```elixir
+      # descripex:contract
+      %{
+        params: %{
+          params: %{
+            description: "List of parameter values matching the signature",
+            kind: :value
+          },
+          signature: %{
+            description: "Function signature, e.g. \"balanceOf(address)\"",
+            kind: :value
+          }
+        },
+        returns: %{
+          description: "0x-prefixed hex-encoded calldata",
+          example: "0x70a08231...",
+          type: "{:ok, hex_string} | {:error, {:encode_error, reason}}"
+        }
+      }
+      ```
+      """
+
+      assert encode["description"] == String.trim(expected)
+    end
+
+    test "writes reproducible bytes with a stable timestamp and sorted JSON keys" do
+      out = tmp_manifest()
+      on_exit(fn -> File.rm(out) end)
+      Manifest.run([out])
+      original = File.read!(out)
+
+      assert original =~ ~s("generated_at": "1970-01-01T00:00:00Z")
+      assert String.starts_with?(original, "{\n  \"generated_at\":")
+      assert original =~ ~s("returns": {\n              "description":)
+
+      Manifest.run([out])
+      assert File.read!(out) == original
+    end
+
     test "--check passes when the committed manifest matches, ignoring generated_at" do
       out = tmp_manifest()
 
