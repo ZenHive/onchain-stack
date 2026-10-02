@@ -158,8 +158,11 @@ mix check.dispatch
 The live native test requires Moderato chain 42431, a working `tempo_fundAddress`
 faucet, `eth_call`, `eth_getTransactionCount`, `eth_sendRawTransaction`, and
 `eth_getTransactionReceipt`. Set `TEMPO_RPC_URL` to override the default.
-It fails on unavailable setup and records successful receipts plus a rejected
-malformed envelope in `priv/verification/0x76/native_live_evidence.json`.
+It fails on unavailable setup. A plain run only verifies. The tracked evidence
+files (`priv/verification/0x76/native_live_evidence.json` and
+`all_signatures_live_evidence.json`: successful receipts plus a rejected
+malformed envelope) are rewritten only with `ONCHAIN_TEMPO_RECORD_EVIDENCE=1`.
+Do that deliberately and commit the files with the encoding change they prove.
 
 See `docs/native-encoding-verification.md` for versioned parity and build evidence.
 

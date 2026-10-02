@@ -81,7 +81,7 @@ defmodule Onchain.Tempo.Integration.NativeEncodingTest do
       live_error: %{raw: "0x76ff", error: error}
     }
 
-    File.write!("priv/verification/0x76/native_live_evidence.json", Jason.encode!(evidence, pretty: true) <> "\n")
+    record_evidence("native_live_evidence.json", evidence)
   end
 
   # spec-tags: TEMPO-4, TEMPO-5
@@ -117,7 +117,16 @@ defmodule Onchain.Tempo.Integration.NativeEncodingTest do
       live_error: %{raw: "0x76ff", error: error}
     }
 
-    File.write!("priv/verification/0x76/all_signatures_live_evidence.json", Jason.encode!(evidence, pretty: true) <> "\n")
+    record_evidence("all_signatures_live_evidence.json", evidence)
+  end
+
+  # The evidence files are tracked, commit-bound proof of the shipped encoding.
+  # A plain live run only verifies; rewrite them deliberately, alongside the
+  # encoding change they prove, with ONCHAIN_TEMPO_RECORD_EVIDENCE=1.
+  defp record_evidence(file, evidence) do
+    if System.get_env("ONCHAIN_TEMPO_RECORD_EVIDENCE") == "1" do
+      File.write!("priv/verification/0x76/#{file}", Jason.encode!(evidence, pretty: true) <> "\n")
+    end
   end
 
   defp broadcast(raw, rpc) do
