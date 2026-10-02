@@ -14796,11 +14796,13 @@
         "`packages/onchain_tempo/mix.exs` declares faucet_ex `only: [:dev, :test]`; `ONCHAIN_PUBLISH=1 bin/publish-prep.sh check onchain_tempo` passes with no dependency excluded.",
         "`test/onchain/tempo/integration/moderato_test.exs` and `signing_invariants_test.exs` fund wallets through faucet_ex; the Moderato integration test funds a fresh wallet (`TEMPO_RPC_URL` set), output cited in the task outcome, and a missing endpoint fails loudly with the setup needed.",
         "`packages/onchain_tempo/CHANGELOG.md` records the removal as a breaking change in the 0.16-cycle release with a migration line pointing at `Faucet.Source.Tempo` / `Faucet.EVM.fresh_funded_wallet/3`; README points users at faucet_ex.",
+        "`Onchain.Tempo.RPC` sends its JSON-RPC requests through `Onchain.RPC.call/3` instead of its private Req client; the public functions keep their signatures and error shapes, pinned by the existing tests.",
+        "Hand-rolled hex encode/decode in packages/onchain_tempo/lib (transaction.ex, tip20.ex, rpc.ex) is replaced by `Onchain.Hex` / `Onchain.Address`; no `Base.encode16`/`Base.decode16` call remains there unless a comment names why the shared helper does not fit.",
         "Focused tests for the changed behaviour pass and `mix check.dispatch` is green in every touched package (full `mix ci` is post-merge QA)"
       ],
       "out_of_scope": [
         "Keeping a deprecated Onchain.Tempo.Faucet for a release cycle; mpp has already migrated (mpp/test/support/faucet_wallet.ex).",
-        "Changing the faucet_ex library in this repo; its Onchain.* migration is done and released in faucet_ex's own repo."
+        "Changing the faucet_ex library; its Onchain.* migration is done and released (faucet_ex 0.2.0)."
       ],
       "files_to_modify": [
         "packages/onchain_tempo/lib/onchain/tempo/faucet.ex",
@@ -14813,11 +14815,14 @@
         "packages/onchain_tempo/mix.exs",
         "packages/onchain_tempo/mix.lock",
         "packages/onchain_tempo/lib/onchain/tempo/faucet.ex",
+        "packages/onchain_tempo/lib/onchain/tempo/rpc.ex",
+        "packages/onchain_tempo/lib/onchain/tempo/transaction.ex",
+        "packages/onchain_tempo/lib/onchain/tempo/tip20.ex",
         "packages/onchain_tempo/test/",
         "packages/onchain_tempo/CHANGELOG.md",
         "packages/onchain_tempo/README.md"
       ],
-      "body": "`Onchain.Tempo.Faucet` (rpc_url/0, fund_address/2, fresh_funded_wallet/1, a private Req JSON-RPC client) was extracted into the standalone `faucet_ex` library on 2026-09-23 as `Faucet.Source.Tempo`, plus the chain-agnostic `Faucet.ensure_min_balance/4` and `Faucet.EVM.fresh_funded_wallet/3` (`~/_DATA/code/faucet_ex`, Hex 0.1.0). faucet_ex is the one copy every consumer is meant to use. Option names already match (`:rpc_url`, `:req_options`, `:fee_token`, `:timeout` — faucet_ex lib/faucet/source/tempo.ex:14-17, verified 2026-09-29).\n\n(2026-09-29 review, simplified) Delete `Onchain.Tempo.Faucet` outright in the 0.16 breaking release that 9036 prepares, instead of deprecating now and deleting later. The deprecate-first plan waited for mpp to migrate, and mpp already has: mpp/test/support/faucet_wallet.ex uses `Faucet.Source.Tempo` and `Faucet.EVM`, mpp/mix.exs declares faucet_ex `only: :test`, and no file in mpp references Onchain.Tempo.Faucet. Do not turn the module into a facade over faucet_ex; it is only a dev/test dependency here. Move this package's own tests onto faucet_ex, declared `only: [:dev, :test]`. Three files use the module today: test/onchain/tempo/faucet_test.exs (delete with the module), test/onchain/tempo/integration/moderato_test.exs and test/onchain/tempo/integration/signing_invariants_test.exs (move to faucet_ex).\n\nPreconditions: this lands after task 9036 (the Cartouche.* / ABI.* → Onchain.* rename). faucet_ex's optional onchain integration currently probes `Cartouche.Hash` (lib/faucet/fork_override.ex:79-84) and lists `:cartouche` in its PLT, so it silently degrades once the rename lands; a faucet_ex release that uses the renamed Onchain.* modules and admits onchain ~> 0.16 must be on Hex first. That migration is faucet_ex's own work, in its own repo.\n",
+      "body": "`Onchain.Tempo.Faucet` (rpc_url/0, fund_address/2, fresh_funded_wallet/1, a private Req JSON-RPC client) was extracted into the standalone `faucet_ex` library on 2026-09-23 as `Faucet.Source.Tempo`, plus the chain-agnostic `Faucet.ensure_min_balance/4` and `Faucet.EVM.fresh_funded_wallet/3` (`~/_DATA/code/faucet_ex`, Hex 0.1.0). faucet_ex is the one copy every consumer is meant to use. Option names already match (`:rpc_url`, `:req_options`, `:fee_token`, `:timeout` — faucet_ex lib/faucet/source/tempo.ex:14-17, verified 2026-09-29).\n\n(2026-09-29 review, simplified) Delete `Onchain.Tempo.Faucet` outright in the 0.16 breaking release that 9036 prepares, instead of deprecating now and deleting later. The deprecate-first plan waited for mpp to migrate, and mpp already has: mpp/test/support/faucet_wallet.ex uses `Faucet.Source.Tempo` and `Faucet.EVM`, mpp/mix.exs declares faucet_ex `only: :test`, and no file in mpp references Onchain.Tempo.Faucet. Do not turn the module into a facade over faucet_ex; it is only a dev/test dependency here. Move this package's own tests onto faucet_ex, declared `only: [:dev, :test]`. Three files use the module today: test/onchain/tempo/faucet_test.exs (delete with the module), test/onchain/tempo/integration/moderato_test.exs and test/onchain/tempo/integration/signing_invariants_test.exs (move to faucet_ex).\n\nPreconditions: this lands after task 9036 (the Cartouche.* / ABI.* → Onchain.* rename). faucet_ex's optional onchain integration currently probes `Cartouche.Hash` (lib/faucet/fork_override.ex:79-84) and lists `:cartouche` in its PLT, so it silently degrades once the rename lands; a faucet_ex release that uses the renamed Onchain.* modules and admits onchain ~> 0.16 must be on Hex first. That migration is faucet_ex's own work, in its own repo.\n\n(2026-10-02) Unblocked and widened. faucet_ex 0.2.0 is on Hex and uses the renamed Onchain.* modules; faucet_ex now lives in this monorepo (packages/faucet_ex), so declare it through `sibling(:faucet_ex, \"~> 0.2\", only: [:dev, :test])`. onchain_tempo 0.13.0 and 0.13.1 shipped with `Onchain.Tempo.Faucet` still present, so the deletion is a breaking change in onchain_tempo 0.14.0, not 0.13.x; record it there in the CHANGELOG. Two cleanups ride along because they touch the same package and the same release: (1) `Onchain.Tempo.RPC` (lib/onchain/tempo/rpc.ex) still carries its own Req JSON-RPC client; route it through `Onchain.RPC.call/3` (packages/onchain/lib/onchain/rpc.ex). (2) transaction.ex (`to_hex_data`, `to_hex_quantity`, `decode_hex`) and tip20.ex hand-roll hex with `Base.encode16`/`decode16`; use `Onchain.Hex` / `Onchain.Address`. Keep the TEMPO-* spec behaviour (docs/specs/onchain-tempo-native.md) byte-identical — encoding output must not change.\n",
       "created_at": "2026-09-23",
       "scored_at": "2026-09-29",
       "cross_repo": []
@@ -14844,17 +14849,24 @@
       "assignee": "codex",
       "model": "gpt-6-astra",
       "acceptance_criteria": [
-        "`packages/onchain_aave/mix.exs` declares faucet_ex as a Hex requirement with `only: [:dev, :test]`, at a version built against onchain 0.16; with `ONCHAIN_PUBLISH=1`, `mix deps.get && mix hex.build` in packages/onchain_aave prints no \"excluded from the package\" line (grep the output), and `git checkout -- mix.lock` restores the dev lock afterwards",
+        "`packages/onchain_aave/mix.exs` declares faucet_ex through `sibling(:faucet_ex, \"~> 0.3\", only: [:dev, :test])`; with `ONCHAIN_PUBLISH=1`, `mix deps.get && mix hex.build` in packages/onchain_aave prints no \"excluded from the package\" line (grep the output), and `git checkout -- mix.lock` restores the dev lock afterwards",
         "`Onchain.Aave.Faucet` and its public API are unchanged, and nothing under `packages/onchain_aave/lib/` references faucet_ex",
         "Both copies of `faucet_mint_if_needed/6` are gone; both write integration tests fund through `Faucet.ensure_min_balance!/4` with `Faucet.Source.ERC20Mint` and still pass with `--include integration` against Sepolia (cite the run)",
         "The WETH slot-3 `state_overrides` literals in the three fork-simulation tests are generated by `Faucet.ForkOverride.native/3` + `erc20/5`; a unit assertion pins that the generated map equals the previous literal for one known holder",
+        "faucet_ex 0.3.0: `Faucet.EVM.wait_receipt/2` returns `{:ok, receipt}` (the decoded status-0x1 receipt map) instead of `:ok`; `wait_receipts/2` and every in-repo caller are updated, the `api()` hint and @spec match, and packages/faucet_ex/CHANGELOG.md records it as a breaking change under 0.3.0",
+        "`wait_for_receipt/2` and its polling helpers are gone from packages/onchain_aave/test/support/signer_case.ex; its callers use `Faucet.EVM.wait_receipt/2`",
         "Focused tests for the changed behaviour pass and `mix check.dispatch` is green in every touched package (full `mix ci` is post-merge QA)"
       ],
       "out_of_scope": [
         "Deprecating, delegating or removing `Onchain.Aave.Faucet`",
-        "Migrating faucet_ex itself to onchain 0.16 — a follow-up in the faucet_ex repo"
+        "Adopting faucet_ex 0.3 in mpp and aave_sim (standalone repos); note the breaking `wait_receipt` return in the delivery so the operator can file follow-ups there",
+        "Publishing faucet_ex 0.3.0 to Hex (human 2FA step); hand over the command"
       ],
       "files_to_modify": [
+        "packages/faucet_ex/lib/faucet/evm.ex",
+        "packages/faucet_ex/mix.exs",
+        "packages/faucet_ex/CHANGELOG.md",
+        "packages/onchain_aave/test/support/signer_case.ex",
         "packages/onchain_aave/mix.exs",
         "packages/onchain_aave/test/onchain/aave/pool_write_integration_test.exs",
         "packages/onchain_aave/test/onchain/aave/debt_token_write_integration_test.exs",
@@ -14863,6 +14875,11 @@
         "packages/onchain_aave/test/onchain/aave/v4/deployed_integration_test.exs"
       ],
       "touches": [
+        "packages/faucet_ex/lib/faucet/evm.ex",
+        "packages/faucet_ex/test/",
+        "packages/faucet_ex/mix.exs",
+        "packages/faucet_ex/CHANGELOG.md",
+        "packages/onchain_aave/test/support/signer_case.ex",
         "packages/onchain_aave/mix.exs",
         "packages/onchain_aave/mix.lock",
         "packages/onchain_aave/test/onchain/aave/pool_write_integration_test.exs",
@@ -14872,7 +14889,7 @@
         "packages/onchain_aave/test/onchain/aave/v4/deployed_integration_test.exs",
         "packages/onchain_aave/CHANGELOG.md"
       ],
-      "body": "Two faucet-shaped duplicates live in this package's tests (read 2026-09-23): a `faucet_mint_if_needed/6` balance-then-mint helper copied into `pool_write_integration_test.exs` and `debt_token_write_integration_test.exs`, and a WETH9 balance storage-slot override map (`keccak256(pad32(holder) ++ pad32(3))`) hand-copied into `pool_interest_rate_mode_integration_test.exs`, `simulation_integration_test.exs` and `v4/deployed_integration_test.exs`. Both exist once in the standalone faucet_ex library (Hex 0.1.0, published 2026-09-23; source `~/_DATA/code/faucet_ex`): `Faucet.ensure_min_balance!/4` with `Faucet.Source.ERC20Mint`, and `Faucet.ForkOverride` (`native/3`, `erc20/5`, `mapping_slot/2`).\n\nMake the tests consumers of faucet_ex as a test-only dependency. The public `Onchain.Aave.Faucet` module stays as it is: Hex consumers never receive a dev/test dependency, so delegating `lib/` code to faucet_ex would turn a working `mint/4` into an error for every one of them. It also resolves `:faucet` per network (Sepolia and, since 0.6.0, Base Sepolia), which a single default address would lose.\n\nOrdering: faucet_ex 0.1.0 references `Cartouche.Hash` (lib/faucet/fork_override.ex) and declares `onchain ~> 0.14` as optional; task 9036 renames Cartouche.* to Onchain.*. This task runs after 9036 and after faucet_ex has published a release built against onchain 0.16. (2026-09-29 review) External precondition, not expressible as a roadmap dependency: a faucet_ex release on Hex whose `onchain` requirement admits 0.16 and that references Onchain.* instead of Cartouche.Hash. Check `mix hex.info faucet_ex` before starting; if that release does not exist, stop and report rather than pinning a path or git dep. Remember the publish trap in the root CLAUDE.md: an `only: [:dev, :test]` dependency is still packaged as written, so it must be a Hex requirement, never a path.\n",
+      "body": "Two faucet-shaped duplicates live in this package's tests (read 2026-09-23): a `faucet_mint_if_needed/6` balance-then-mint helper copied into `pool_write_integration_test.exs` and `debt_token_write_integration_test.exs`, and a WETH9 balance storage-slot override map (`keccak256(pad32(holder) ++ pad32(3))`) hand-copied into `pool_interest_rate_mode_integration_test.exs`, `simulation_integration_test.exs` and `v4/deployed_integration_test.exs`. Both exist once in the standalone faucet_ex library (Hex 0.1.0, published 2026-09-23; source `~/_DATA/code/faucet_ex`): `Faucet.ensure_min_balance!/4` with `Faucet.Source.ERC20Mint`, and `Faucet.ForkOverride` (`native/3`, `erc20/5`, `mapping_slot/2`).\n\nMake the tests consumers of faucet_ex as a test-only dependency. The public `Onchain.Aave.Faucet` module stays as it is: Hex consumers never receive a dev/test dependency, so delegating `lib/` code to faucet_ex would turn a working `mint/4` into an error for every one of them. It also resolves `:faucet` per network (Sepolia and, since 0.6.0, Base Sepolia), which a single default address would lose.\n\nOrdering: faucet_ex 0.1.0 references `Cartouche.Hash` (lib/faucet/fork_override.ex) and declares `onchain ~> 0.14` as optional; task 9036 renames Cartouche.* to Onchain.*. This task runs after 9036 and after faucet_ex has published a release built against onchain 0.16. (2026-09-29 review) External precondition, not expressible as a roadmap dependency: a faucet_ex release on Hex whose `onchain` requirement admits 0.16 and that references Onchain.* instead of Cartouche.Hash. Check `mix hex.info faucet_ex` before starting; if that release does not exist, stop and report rather than pinning a path or git dep. Remember the publish trap in the root CLAUDE.md: an `only: [:dev, :test]` dependency is still packaged as written, so it must be a Hex requirement, never a path.\n\n(2026-10-02) Unblocked and widened. Task 9036 is done, faucet_ex 0.2.0 (Onchain.* modules, onchain ~> 0.16) is on Hex, and faucet_ex now lives in this monorepo at packages/faucet_ex, so the precondition check above is satisfied and the dependency goes through `sibling/3` (path locally, Hex requirement under ONCHAIN_PUBLISH=1). One more duplicate rides along: packages/onchain_aave/test/support/signer_case.ex hand-rolls `wait_for_receipt/2` (poll eth_getTransactionReceipt, return the receipt). faucet_ex's `Faucet.EVM.wait_receipt/2` polls the same thing but returns bare `:ok`, which is why the copy survives — callers need the receipt (logs, gasUsed). Change faucet_ex to return `{:ok, receipt}` as a 0.3.0 breaking release, then delete the copy. A revert stays `{:error, {:reverted, receipt}}`. Ordering for publish: faucet_ex 0.3.0 must be on Hex before onchain_aave publishes with the `~> 0.3` requirement.\n",
       "created_at": "2026-09-23",
       "scored_at": "2026-09-29",
       "cross_repo": []
@@ -16610,6 +16627,59 @@
         "packages/onchain_tempo/native/onchain_tempo"
       ],
       "body": "tempo-primitives 1.11.0 emits the fee-payer-service `0x00` marker (`encode_for_fee_payer_service`) but its consensus RLP decoder rejects it. The onchain_tempo NIF (`native/onchain_tempo/src/lib.rs`, the adapter commented near the top) therefore walks the RLP headers positionally to find and rewrite that single field before calling the upstream decoder. This hand-rolled scan is the last piece of encoding logic we own; it breaks silently if upstream reorders or adds 0x76 fields. Proposed by the task 9052 reviewer.\n\nCheck whether a newer tempo-primitives release accepts its own marker on decode (upstream changelog / source). If yes: bump the pin, delete the adapter, decode directly. If no release does yet: file/locate the upstream issue and record the link in the task, leaving the adapter in place — do not reimplement more parsing.\n",
+      "created_at": "2026-10-02",
+      "scored_at": "2026-10-02",
+      "cross_repo": []
+    },
+    {
+      "id": "9054",
+      "phase": 0,
+      "bundle": "monorepo_root_gates",
+      "target_repo": "onchain-stack",
+      "status": "pending",
+      "title": "Centralize the per-package mix.exs gate aliases, docs and dialyzer config in shared/mix_helpers.exs and fix the drift it exposes",
+      "scores": {
+        "d": 4,
+        "b": 5,
+        "u": 5
+      },
+      "eff": 1.25,
+      "dep_layer": 0,
+      "unlocks": 0,
+      "markers": [],
+      "depends_on": [],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "`OnchainMonorepo.MixHelpers` (shared/mix_helpers.exs) exposes the alias fragments every package repeats today (format/compile/credo/doctor/reach/sobelow/deps.audit.gated/agents.check/hex.audit steps of `precommit.full`, and `check.dispatch`) plus the common docs and dialyzer keyword defaults; each package's mix.exs composes them and keeps only package-specific steps (cargo, foundry PATH, coverage threshold, MIX_ENV choice)",
+        "Every package's mix.exs still evaluates when shared/mix_helpers.exs is absent (the existing `Code.ensure_loaded?/1` + `File.exists?/1` guard): `ONCHAIN_PUBLISH=1 mix hex.build` in one package succeeds and the unpacked tarball's mix.exs compiles in a scratch dir without the monorepo root (cite the run)",
+        "All eight packages define `\"deps.audit\": [\"deps.audit --ignore-file .mix_audit_ignore\"]` (today faucet_ex, onchain, onchain_js and onchain_tempo lack it); `grep -c '\"deps.audit\":' packages/*/mix.exs` reports 1 everywhere",
+        "No package passes `--summary-only` to test.json (faucet_ex still does at mix.exs:147, absorbed after task 9004 swept the others)",
+        "onchain_solana's sobelow step uses the same flag form as the other seven, or a comment states why its `.sobelow-conf` (`exit: \"Low\", skip: false`) form is kept; either way sobelow still exits nonzero on a seeded finding (cite the probe, then remove it)",
+        "`elixir test/alias_separation_test.exs` passes; if the expanded alias graph changes, the baseline fixture is updated in the same commit with each step difference named in the delivery",
+        "Focused checks: `mix check.dispatch` green in all eight packages; the root CLAUDE.md § Shared gate helpers and AGENTS.md (sync-agents-md.sh) describe the new helper surface"
+      ],
+      "out_of_scope": [
+        "Changing what any gate checks (thresholds, analyzer flags beyond the named drift, reach/sobelow config files)",
+        "Running full `mix ci` across packages — post-merge QA, serial only",
+        "shared/test_support (test-helper dedupe) — done separately on 2026-10-02"
+      ],
+      "touches": [
+        "shared/mix_helpers.exs",
+        "packages/faucet_ex/mix.exs",
+        "packages/onchain/mix.exs",
+        "packages/onchain_aave/mix.exs",
+        "packages/onchain_aerodrome/mix.exs",
+        "packages/onchain_evm/mix.exs",
+        "packages/onchain_js/mix.exs",
+        "packages/onchain_solana/mix.exs",
+        "packages/onchain_tempo/mix.exs",
+        "test/alias_separation_test.exs",
+        "test/fixtures/",
+        "CLAUDE.md",
+        "AGENTS.md"
+      ],
+      "body": "The eight package mix.exs files carry near-identical `aliases/0`, `docs/0` and `dialyzer/0` blocks. shared/mix_helpers.exs already proved the pattern for agents_check/advisory_freshness/cargo (one copy, loaded behind a guard, never shipped), and the copies have drifted again (read 2026-10-02):\n\n- `deps.audit` alias with `--ignore-file .mix_audit_ignore` exists in onchain_aave, onchain_aerodrome, onchain_evm and onchain_solana, and is missing in faucet_ex, onchain, onchain_js and onchain_tempo. Premise unverified — confirm before building on it: whether bare `deps.audit` in those four still honours the root `.mix_audit_ignore` symlink by default; if it does not, their gates are red on the adjudicated gun/cowlib entry or rely on something else, and the delivery must say which.\n- faucet_ex passes `--summary-only` to test.json (packages/faucet_ex/mix.exs:147); task 9004 removed it everywhere else before faucet_ex was absorbed.\n- onchain_solana runs `sobelow --config` (.sobelow-conf `[exit: \"Low\", skip: false]`) while the rest run `sobelow --skip --exit low`. The config form does exit on Low, so this is divergence, not a hole — unify or document.\n\nMove the shared parts into helper functions that return alias lists / keyword lists, composed in each mix.exs. A Hex consumer evaluates a package's mix.exs without the monorepo root, so the guarded fallback must leave a working project definition (published packages need only `project/0`, `deps/0`, `package/0`, `docs/0` to evaluate; dev-only aliases may degrade to a loud skip as agents_check does today). Keep `def cli` env pins per package. The root alias regression check (test/alias_separation_test.exs) is the contract for the expanded graph.",
       "created_at": "2026-10-02",
       "scored_at": "2026-10-02",
       "cross_repo": []

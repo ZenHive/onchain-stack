@@ -116,6 +116,7 @@
 | Task 9024 | ✅ | 🎁 **monorepo_root_gates** · Wire elixir test/alias_separation_test.exs into the root mix ci alias [D:2/B:5/U:5 → Eff:2.5] 🎯 |
 | Task 9027 | ⛔ | 🎁 **monorepo_root_gates** · Make AGENTS freshness reproducible on harness nodes without stale workspace imports [D:3/B:5/U:6 → Eff:1.83] 🚀 |
 | Task 9037 | ✅ | 🎁 **monorepo_root_gates** · Declare onchain_solana's direct public_key application dependency [D:1/B:4/U:5 → Eff:4.5] 🎯 |
+| Task 9054 | ⬜ | 🎁 **monorepo_root_gates** · Centralize the per-package mix.exs gate aliases, docs and dialyzer config in shared/mix_helpers.exs and fix the drift it exposes [D:4/B:5/U:5 → Eff:1.25] 📋 |
 <!-- TASKS:END -->
 
 ---
