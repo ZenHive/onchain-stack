@@ -3901,7 +3901,7 @@ phase = 2000
 bundle = "cartouche_rpc_correctness"
 target_repo = "onchain"
 milestone = "stack_read_surface_boundary"
-status = "in_progress"
+status = "done"
 title = "Portability @docs and a capability probe for the trace_* / debug_traceCall surface"
 scores = { d = 3, b = 7, u = 7 }
 depends_on = [2136, 2137]
@@ -3921,9 +3921,16 @@ trace_* is the OpenEthereum/Parity namespace, inherited by Erigon and implemente
 
 
 (2026-10-03) onchain 0.16.0 renamed Cartouche.* to Onchain.*: read `Cartouche.RPC` as `Onchain.RPC` and `packages/onchain/lib/cartouche/rpc.ex` as `packages/onchain/lib/onchain/rpc.ex` throughout; line numbers quoted above predate the rename. Dependencies 2136 and 2137 are done."""
+implemented = "Landed by grok via merge-train; reviewer-approved (run run-1790982430911-a274ab29, 6f8205fe7ec59dacbaf9f714dfd0a6aada0284da)."
+delivered_by = "grok"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1790982430911-a274ab29"
 created_at = "2026-08-26"
 started_at = "2026-10-02"
 scored_at = "2026-09-29"
+done_at = "2026-10-02"
+shipped_in = "6f8205fe7ec59dacbaf9f714dfd0a6aada0284da"
 
 [[task]]
 id = 2136
