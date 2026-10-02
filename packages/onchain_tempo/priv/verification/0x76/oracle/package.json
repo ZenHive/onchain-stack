@@ -1,0 +1,1 @@
+{"private":true,"type":"module","scripts":{"generate":"node generate.mjs"},"dependencies":{"ox":"1.8.5"}}

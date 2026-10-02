@@ -22,7 +22,7 @@ defmodule Onchain.Tempo.Transaction.BuilderTest do
       assert tx.chain_id == @chain_id
 
       # Explicit :gas_limit is honored verbatim (gas_limit is field index 3).
-      assert Onchain.Tempo.Codec.integer(tx.fields["transaction"]["gas"]) == 500_000
+      assert tx.gas_limit == 500_000
 
       assert {:ok, match} =
                Transaction.find_payment_call(tx, @token,
@@ -123,7 +123,7 @@ defmodule Onchain.Tempo.Transaction.BuilderTest do
   describe "build_fee_payer_multicall/1" do
     test "builds a fee-payer multicall with placeholder fields" do
       token_bin = Base.decode16!("20c0000000000000000000000000000000000000", case: :lower)
-      calls = [[token_bin, <<>>, Base.decode16!("a9059cbb", case: :lower)]]
+      calls = [%{to: token_bin, value: 0, input: Base.decode16!("a9059cbb", case: :lower)}]
 
       opts = [
         private_key: @private_key,
@@ -158,7 +158,7 @@ defmodule Onchain.Tempo.Transaction.BuilderTest do
         nonce: 0
       ]
 
-      assert {:error, "invalid calls: each call must be [to, value, input] binaries"} =
+      assert {:error, "invalid calls: each call must have a 20-byte to, non-negative value, and binary input"} =
                Builder.build_fee_payer_multicall(opts)
     end
   end

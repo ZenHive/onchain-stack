@@ -12,7 +12,7 @@ Built on [onchain](https://hex.pm/packages/onchain).
 ```elixir
 def deps do
   [
-    {:onchain_tempo, "~> 0.12"}
+    {:onchain_tempo, "~> 0.13"}
   ]
 end
 ```
@@ -40,7 +40,50 @@ tx.chain_id  #=> 42431
 tx.calls     #=> [%{to: <<...>>, value: 0, input: <<...>>}]
 ```
 
-`Transaction.sender/1` normalizes high-s signatures to low-s before recovery,
+Version 0.13 removes `tx.fields`. Read and update named struct fields, then call
+`Transaction.serialize/1`. `raw` retains the original broadcast hex;
+`serialize/1` returns hex for the current fields. `signing_hash/1`, `hash/1`, and `sender/1` return `{:ok, binary}`.
+Decode, serialization, hashing, fee-payer cosigning and recovery support
+Secp256k1, P-256, WebAuthn, and keychain V1/V2. Our builders sign with
+Secp256k1 keys. Keychain recovery verifies the inner signature, but callers
+must separately check access-key authorization on-chain.
+
+Signatures are `{:secp256k1, %{r: integer, s: integer, y_parity: 0 | 1}}`,
+`{:p256, %{r: binary, s: binary, pub_key_x: binary, pub_key_y: binary, pre_hash: boolean}}`,
+`{:webauthn, %{r: binary, s: binary, pub_key_x: binary, pub_key_y: binary, webauthn_data: binary}}`,
+or `{:keychain, 1 | 2, user_address_binary, primitive_signature}`.
+Key authorizations are typed maps with atom keys; see `t:Onchain.Tempo.Transaction.key_authorization/0`.
+Multicall builders accept `%{to: address_binary, value: integer, input: binary}` calls.
+
+### Migration from 0.11 and 0.12
+
+0.12 changed `fields` from positional RLP to an internal serde map without
+documenting the break, and restricted signatures to Secp256k1. 0.13 replaces
+both representations with named fields and restores all supported signatures.
+The 0.12 keys below lived under `fields["transaction"]` unless stated otherwise.
+Addresses/data now use binaries, quantities use integers, and absent optionals
+use `nil`. A fee-payer placeholder is `:placeholder`.
+
+| 0.11 RLP index (zero-based) | 0.12 serde key | 0.13 field |
+|---|---|---|
+| 0 | `chainId` | `chain_id` |
+| 1 | `maxPriorityFeePerGas` | `max_priority_fee_per_gas` |
+| 2 | `maxFeePerGas` | `max_fee_per_gas` |
+| 3 | `gas` | `gas_limit` |
+| 4 | `calls` | `calls` |
+| 5 | `accessList` | `access_list` |
+| 6 | `nonceKey` | `nonce_key` |
+| 7 | `nonce` | `nonce` |
+| 8 | `validBefore` | `valid_before` |
+| 9 | `validAfter` | `valid_after` |
+| 10 | `feeToken` | `fee_token` |
+| 11 | `feePayerSignature` / `fields["placeholder"]` | `fee_payer_signature` |
+| 12 | `aaAuthorizationList` | `tempo_authorization_list` |
+| 13 when present, before signature | `keyAuthorization` | `key_authorization` |
+| Last | `fields["signature"]` | `signature` |
+| Original envelope | `raw` | `raw` |
+
+`Transaction.sender/1` normalizes high-s Secp256k1 signatures to low-s before recovery,
 so equivalent complement-s encodings recover the same sender. It preserves
 the original envelope; successful recovery does not imply broadcast acceptance.
 

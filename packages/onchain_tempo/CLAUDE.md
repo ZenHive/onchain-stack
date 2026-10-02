@@ -95,7 +95,7 @@ exception to its rule 2** — and the exception has to be stated, not assumed:
 - **Signing uses the local secp256k1 backend directly** — `tempo-primitives` supplies the digest; `Onchain.Signer.Secp256k1.sign_payload/2` returns the signature and recovery bit. Sender recovery is native, with high-s normalization. `Onchain.Signer` handles EIP-1559 only.
 - **TIP20 owns all selectors** — Single source of truth, eliminates duplication.
 - **RPC uses plain errors** — `{:error, "message"}` not wrapped error structs.
-- **Encoding belongs to tempo-primitives** — The separate `onchain_tempo` NIF owns transaction decoding, signing payloads, fee-payer hashes, and serialization. `Transaction.fields` is an internal named map, not a positional RLP list. ExRLP remains only in independent verification tests.
+- **Encoding belongs to tempo-primitives** — The separate `onchain_tempo` NIF owns transaction decoding, signing payloads, fee-payer hashes, and serialization. `Transaction` exposes typed named fields and signature unions; `Codec` is the internal JSON boundary. No public serde map or positional RLP field list is retained. ExRLP remains only in independent verification tests.
 
 ### Dependencies
 
@@ -140,15 +140,17 @@ The initial Tempo artifacts/checksum are not published by this change.
 
 The native decoder adapts only the fee-payer-service `0x00` marker before
 calling the upstream decoder: 1.11.0 emits this marker but its consensus
-RLP decoder rejects it. All encodings come from upstream. Secp256k1 remains
-the only sender signature supported. Malformed signatures, incomplete calls,
+RLP decoder rejects it. All encodings come from upstream. Our signing remains Secp256k1-only. Decode, serialize, signing/transaction hashes,
+fee-payer cosigning and sender recovery support all upstream signature types,
+including P-256, WebAuthn and keychain V1/V2. Keychain recovery does not prove
+on-chain authorization. Malformed signatures, incomplete calls,
 and invalid validity windows now fail during decoding.
 
 Focused verification (set `ONCHAIN_BUILD=1` if core release assets are unavailable):
 
 ```bash
 cargo test --locked --manifest-path native/onchain_tempo/Cargo.toml
-mix test test/onchain/tempo/transaction_test.exs test/onchain/tempo/transaction test/onchain/tempo/verification/native_test.exs test/onchain/tempo/verification/differential_test.exs test/onchain/tempo/verification/property_test.exs
+mix test test/onchain/tempo/verification/all_signatures_test.exs test/onchain/tempo/transaction_test.exs test/onchain/tempo/transaction test/onchain/tempo/verification/native_test.exs test/onchain/tempo/verification/differential_test.exs test/onchain/tempo/verification/property_test.exs
 mix test test/onchain/tempo/integration/native_encoding_test.exs --include integration
 mix check.dispatch
 ```
@@ -160,3 +162,19 @@ It fails on unavailable setup and records successful receipts plus a rejected
 malformed envelope in `priv/verification/0x76/native_live_evidence.json`.
 
 See `docs/native-encoding-verification.md` for versioned parity and build evidence.
+
+## 0.13 typed transaction contract
+
+`fields` is removed. Use named integer quantities, binary addresses/data,
+`:placeholder` for fee sponsorship, and typed atom-key maps for key authorizations.
+`signature` is a tagged primitive or `{:keychain, version, user_address, inner}`.
+The README carries the 0.11/0.12 migration table. Keep the upstream-field parity
+test when adding fields or bumping tempo-primitives.
+
+The ox oracle is pinned in `priv/verification/0x76/oracle/package-lock.json`.
+Run `npm ci --prefix priv/verification/0x76/oracle` and then
+`npm run generate --prefix priv/verification/0x76/oracle` to regenerate vectors.
+The live native test uses Node.js plus that install to produce a fresh P-256
+transaction and records `all_signatures_live_evidence.json`. Setup failures fail
+loudly. `MIX_ENV=test mix run scripts/check-transaction-coverage.exs` grades
+Transaction's 95% floor with focused tests.

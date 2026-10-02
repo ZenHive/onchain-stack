@@ -17,11 +17,11 @@ defmodule Onchain.Tempo.Verification.NativeTest do
 
     for {_name, vector} <- capture["cases"] do
       assert {:ok, tx} = Transaction.deserialize(vector["serialized"])
-      assert {:ok, prepared} = Codec.run("prepare", tx.fields)
+      assert {:ok, prepared} = Codec.run("prepare", Codec.request(tx))
       assert prepared["payload"] == vector["unsigned"]
       assert prepared["hash"] == vector["signing_hash"]
       assert Codec.hex(Hash.keccak(Codec.bytes(tx.raw))) == vector["tx_hash"]
-      assert {:ok, raw} = Codec.run("serialize", tx.fields)
+      assert {:ok, raw} = Codec.run("serialize", Codec.request(tx))
       assert raw == vector["serialized"]
       assert {:ok, cosigned} = Transaction.cosign_fee_payer(tx, fee_key, Codec.bytes(@token))
       assert cosigned.raw == vector["cosigned"]
@@ -44,12 +44,12 @@ defmodule Onchain.Tempo.Verification.NativeTest do
                rpc_url: "http://localhost",
                nonce: 7,
                gas_limit: 500_000,
-               key_authorization: vector["key_authorization"]
+               key_authorization: elem(Transaction.deserialize(vector["serialized"]), 1).key_authorization
              )
 
     assert raw == vector["serialized"]
     assert {:ok, tx} = Transaction.deserialize(raw)
-    assert {:ok, prepared} = Codec.run("prepare", tx.fields)
+    assert {:ok, prepared} = Codec.run("prepare", Codec.request(tx))
     assert prepared == %{"payload" => vector["unsigned"], "hash" => vector["signing_hash"]}
     assert {:ok, sender} = Transaction.sender(tx)
     assert Codec.hex(sender) == vector["sender"]
@@ -70,29 +70,32 @@ defmodule Onchain.Tempo.Verification.NativeTest do
 
     assert cosigned.raw == vector["cosigned"]
     assert {:ok, ^sender} = Transaction.sender(cosigned)
-    assert {:ok, payer} = Codec.run("fee_payer", Map.put(cosigned.fields, "sender", Codec.hex(sender)))
+    assert {:ok, payer} = Codec.run("fee_payer", Map.put(Codec.request(cosigned), "sender", Codec.hex(sender)))
     assert payer == vector["fee_payer"]
-    assert {:ok, hash} = Codec.run("fee_hash", Map.put(cosigned.fields, "sender", Codec.hex(sender)))
+    assert {:ok, hash} = Codec.run("fee_hash", Map.put(Codec.request(cosigned), "sender", Codec.hex(sender)))
     assert hash == vector["fee_payer_hash"]
 
-    changed = put_in(tx.fields, ["transaction", "keyAuthorization"], nil)
+    changed = put_in(Codec.request(tx), ["transaction", "keyAuthorization"], nil)
     assert {:ok, changed_payload} = Codec.run("prepare", changed)
     refute changed_payload["hash"] == prepared["hash"]
   end
 
   # spec-tags: TEMPO-4
-  test "the native boundary rejects non-Secp256k1 authorization requests" do
+  test "key hashes accept all supported access key types" do
     vector = load(@fixture)
     assert {:ok, tx} = Transaction.deserialize(vector["serialized"])
-    fields = put_in(tx.fields, ["transaction", "keyAuthorization", "keyType"], "p256")
-    assert {:error, "Only Secp256k1 key authorizations are supported"} = Codec.run("prepare", fields)
+
+    for key_type <- [:secp256k1, :p256, :webauthn] do
+      assert {:ok, hash} = Transaction.key_authorization_hash(%{tx.key_authorization | key_type: key_type})
+      assert byte_size(hash) == 32
+    end
   end
 
   test "native numeric widths reject overflow without truncating fields" do
     assert {:ok, tx} = Transaction.deserialize(Vectors.case!("self_paid_transfer")["serialized"])
 
     for {field, bits} <- [{"chainId", 64}, {"gas", 64}, {"nonce", 64}, {"maxFeePerGas", 128}, {"nonceKey", 256}] do
-      fields = put_in(tx.fields, ["transaction", field], Codec.quantity(Bitwise.bsl(1, bits)))
+      fields = put_in(Codec.request(tx), ["transaction", field], Codec.quantity(Bitwise.bsl(1, bits)))
       assert {:error, reason} = Codec.run("prepare", fields)
       assert is_binary(reason)
     end
@@ -103,7 +106,7 @@ defmodule Onchain.Tempo.Verification.NativeTest do
     assert {:error, "missing operation"} = Native.transaction_json("{}")
     assert {:error, "missing raw"} = Codec.run("decode", %{})
     assert {:ok, tx} = Transaction.deserialize(Vectors.case!("self_paid_transfer")["serialized"])
-    assert {:error, "unknown operation"} = Codec.run("unknown", tx.fields)
+    assert {:error, "unknown operation"} = Codec.run("unknown", Codec.request(tx))
 
     for raw <- ["0x76", "0x76c0", tx.raw <> "00"] do
       assert {:error, reason} = Transaction.deserialize(raw)

@@ -56,7 +56,7 @@ defmodule Onchain.Tempo.Transaction.BuilderEstimateTest do
 
   defp gas_limit_of(tx_hex) do
     {:ok, tx} = Transaction.deserialize(tx_hex)
-    Onchain.Tempo.Codec.integer(tx.fields["transaction"]["gas"])
+    tx.gas_limit
   end
 
   describe "gas estimation when :gas_limit is omitted" do
@@ -81,7 +81,7 @@ defmodule Onchain.Tempo.Transaction.BuilderEstimateTest do
       with_plug(&stub_plug/1, fn ->
         calldata = Base.decode16!("a9059cbb", case: :lower)
         token_bin = Base.decode16!("20c0000000000000000000000000000000000000", case: :lower)
-        calls = [[token_bin, <<>>, calldata], [token_bin, <<>>, calldata]]
+        calls = [%{to: token_bin, value: 0, input: calldata}, %{to: token_bin, value: 0, input: calldata}]
 
         opts =
           estimate_opts()

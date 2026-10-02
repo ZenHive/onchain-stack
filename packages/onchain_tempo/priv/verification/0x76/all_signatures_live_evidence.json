@@ -1,0 +1,21 @@
+{
+  "success": {
+    "raw": "0x76f9011282a5bf843b9aca008505d21dba00831e8480f85ef85c9420c000000000000000000000000000000000000080b844a9059cbb000000000000000000000000bd478c3013cbdf18d6627aff0687a63d3912bae00000000000000000000000000000000000000000000000000000000000000001c0808080809420c000000000000000000000000000000000000080c0b88201367f95af4bb941be75c4a224016e893cd134972d0fd9abe2033307c5f724839219aa4bdd0a51a3ea47fa895d1c92b44ac3f364656086c0c676827bba5d9133c73d601ef14357d45696fe934f3ef944898126aa5f9cdbd15ed9aeb7cc361bc0bdc9bbbdc38ab044f3e9492fa80595ba36fe583cfc1b520cdd4b35c7675dac346801",
+    "status": 1,
+    "signature": "p256",
+    "hash": "0x7e40f972600a8d50fe06ef4c3a6cffa1acf3495fc2d7ab767d4c7bbdb7031b5d",
+    "recovered_sender": "0xbd478c3013cbdf18d6627aff0687a63d3912bae0"
+  },
+  "chain_id": 42431,
+  "recorded_at": "2026-10-02T03:53:59.616781Z",
+  "endpoint": "https://rpc.moderato.tempo.xyz",
+  "tempo_primitives": "1.11.0",
+  "live_error": {
+    "error": "RPC error: %{\"code\" => -32602, \"message\" => \"failed to decode signed transaction\"}",
+    "raw": "0x76ff"
+  },
+  "oracle": {
+    "version": "1.8.5",
+    "package": "ox"
+  }
+}

@@ -6,23 +6,80 @@ defmodule Onchain.Tempo.Transaction do
   alias Onchain.Tempo.TIP20
 
   @enforce_keys [:chain_id, :calls, :raw]
-  defstruct [:chain_id, :calls, :fields, :raw]
+  defstruct [
+    :chain_id,
+    :fee_token,
+    :max_priority_fee_per_gas,
+    :max_fee_per_gas,
+    :gas_limit,
+    :calls,
+    :access_list,
+    :nonce_key,
+    :nonce,
+    :fee_payer_signature,
+    :valid_before,
+    :valid_after,
+    :key_authorization,
+    :tempo_authorization_list,
+    :signature,
+    :raw
+  ]
 
-  @typedoc """
-  A parsed Tempo Transaction with verification-relevant fields.
-
-  `raw` is the full serialized transaction as a hex string ("0x76...") with
-  0x prefix, suitable for direct JSON-RPC broadcast.
-  """
+  @type secp_signature :: %{r: non_neg_integer(), s: non_neg_integer(), y_parity: 0 | 1}
+  @type p256_signature :: %{r: binary(), s: binary(), pub_key_x: binary(), pub_key_y: binary(), pre_hash: boolean()}
+  @type webauthn_signature :: %{
+          r: binary(),
+          s: binary(),
+          pub_key_x: binary(),
+          pub_key_y: binary(),
+          webauthn_data: binary()
+        }
+  @type primitive_signature ::
+          {:secp256k1, secp_signature()} | {:p256, p256_signature()} | {:webauthn, webauthn_signature()}
+  @type signature :: primitive_signature() | {:keychain, 1 | 2, binary(), primitive_signature()}
+  @type key_type :: :secp256k1 | :p256 | :webauthn
+  @type token_limit :: %{token: binary(), limit: non_neg_integer(), period: non_neg_integer()}
+  @type selector_rule :: %{selector: binary(), recipients: [binary()]}
+  @type call_scope :: %{target: binary(), selector_rules: [selector_rule()]}
+  @type key_authorization :: %{
+          chain_id: non_neg_integer(),
+          key_type: key_type(),
+          key_id: binary(),
+          expiry: pos_integer() | nil,
+          limits: [token_limit()] | nil,
+          allowed_calls: [call_scope()] | nil,
+          witness: binary() | nil,
+          is_admin: boolean(),
+          account: binary() | nil,
+          signature: primitive_signature() | nil
+        }
+  @type authorization :: %{
+          chain_id: non_neg_integer(),
+          address: binary(),
+          nonce: non_neg_integer(),
+          signature: signature()
+        }
+  @type access :: %{address: binary(), storage_keys: [binary()]}
+  @type call :: %{to: binary() | nil, value: non_neg_integer(), input: binary()}
+  @typedoc "Named transaction fields. Addresses and data are binaries; raw is broadcast-ready hex."
   @type t :: %__MODULE__{
           chain_id: non_neg_integer(),
+          fee_token: binary() | nil,
+          max_priority_fee_per_gas: non_neg_integer(),
+          max_fee_per_gas: non_neg_integer(),
+          gas_limit: non_neg_integer(),
           calls: [call()],
-          fields: map(),
+          access_list: [access()],
+          nonce_key: non_neg_integer(),
+          nonce: non_neg_integer(),
+          fee_payer_signature: secp_signature() | :placeholder | nil,
+          valid_before: pos_integer() | nil,
+          valid_after: pos_integer() | nil,
+          key_authorization: key_authorization() | nil,
+          tempo_authorization_list: [authorization()],
+          signature: signature(),
           raw: String.t()
         }
-
-  @typedoc "A single call within the transaction's batch."
-  @type call :: %{to: binary(), value: non_neg_integer(), input: binary()}
 
   # Calldata sizes used in pattern match guards (4-byte selector + ABI-encoded args).
   # transfer: 4 + 32 (address) + 32 (uint256) = 68 → 64 bytes after selector
@@ -63,9 +120,8 @@ defmodule Onchain.Tempo.Transaction do
   @spec deserialize(String.t()) :: {:ok, t()} | {:error, String.t()}
   def deserialize(hex) when is_binary(hex) do
     with {:ok, binary} <- decode_hex(hex),
-         {:ok, %{"transaction" => transaction} = fields} <- Codec.run("decode", %{"raw" => Codec.hex(binary)}) do
-      calls = native_calls(transaction["calls"])
-      {:ok, %__MODULE__{chain_id: Codec.integer(transaction["chainId"]), calls: calls, fields: fields, raw: hex}}
+         {:ok, result} <- Codec.run("decode", %{"raw" => Codec.hex(binary)}) do
+      {:ok, Codec.decoded(result, hex)}
     end
   end
 
@@ -150,8 +206,8 @@ defmodule Onchain.Tempo.Transaction do
   server-side fee sponsorship.
   """
   @spec has_fee_payer_placeholder?(t()) :: boolean()
-  def has_fee_payer_placeholder?(%__MODULE__{fields: fields}) do
-    fields["placeholder"] == true
+  def has_fee_payer_placeholder?(%__MODULE__{fee_payer_signature: signature}) do
+    signature == :placeholder
   end
 
   @doc """
@@ -161,8 +217,8 @@ defmodule Onchain.Tempo.Transaction do
   server to choose the fee payment token.
   """
   @spec fee_token_empty?(t()) :: boolean()
-  def fee_token_empty?(%__MODULE__{fields: fields}) do
-    is_nil(fields["transaction"]["feeToken"])
+  def fee_token_empty?(%__MODULE__{fee_token: token}) do
+    is_nil(token)
   end
 
   @doc """
@@ -184,21 +240,16 @@ defmodule Onchain.Tempo.Transaction do
     * `{:error, reason}` — on signing or recovery failure
   """
   @spec cosign_fee_payer(t(), binary(), binary()) :: {:ok, t()} | {:error, String.t()}
-  def cosign_fee_payer(%__MODULE__{fields: fields} = tx, fee_payer_key, fee_token)
+  def cosign_fee_payer(%__MODULE__{} = tx, fee_payer_key, fee_token)
       when is_binary(fee_payer_key) and byte_size(fee_payer_key) == 32 and is_binary(fee_token) and
              byte_size(fee_token) == 20 do
-    transaction = Map.put(fields["transaction"], "feeToken", Codec.hex(fee_token))
+    request = Codec.request(%{tx | fee_token: fee_token})
 
     with {:ok, sender_address} <- sender(tx),
-         {:ok, hash} <- Codec.run("fee_hash", %{"transaction" => transaction, "sender" => Codec.hex(sender_address)}),
+         {:ok, hash} <- Codec.run("fee_hash", Map.put(request, "sender", Codec.hex(sender_address))),
          {:ok, sig} <- Secp256k1Signer.sign_payload(Codec.bytes(hash), fee_payer_key),
-         transaction =
-           Map.put(transaction, "feePayerSignature", %{
-             "r" => Codec.quantity(sig.r),
-             "s" => Codec.quantity(sig.s),
-             "yParity" => Codec.quantity(sig.recid)
-           }),
-         {:ok, raw} <- Codec.run("serialize", %{"transaction" => transaction, "signature" => fields["signature"]}) do
+         signed = %{tx | fee_token: fee_token, fee_payer_signature: %{r: sig.r, s: sig.s, y_parity: sig.recid}},
+         {:ok, raw} <- serialize(signed) do
       deserialize(raw)
     end
   end
@@ -211,15 +262,19 @@ defmodule Onchain.Tempo.Transaction do
   and `fee_payer_signature` (`<<0x00>>`) — the fee payer fills those in
   afterward — so they are reset before the signing payload is reconstructed.
 
-  High-s encodings are accepted: `s` and the recovery bit are flipped together
+  Keychain recovery verifies the inner signature and returns the root account.
+  It does not establish that the access key is authorized on-chain; callers must
+  check the AccountKeychain precompile for that authorization.
+
+  High-s Secp256k1 encodings are accepted: `s` and the recovery bit are flipped together
   to BIP-62 low-s form before recovery, so a complement-s envelope returns the
   same address. The original `raw` is not rewritten.
 
   Returns `{:ok, address_binary}` or `{:error, reason}`.
   """
   @spec sender(t()) :: {:ok, binary()} | {:error, String.t()}
-  def sender(%__MODULE__{fields: %{"transaction" => _, "signature" => _} = fields}) do
-    with {:ok, address} <- Codec.run("sender", fields), do: {:ok, Codec.bytes(address)}
+  def sender(%__MODULE__{signature: signature} = tx) when not is_nil(signature) do
+    with {:ok, address} <- Codec.run("sender", Codec.request(tx)), do: {:ok, Codec.bytes(address)}
   end
 
   def sender(_), do: {:error, "Transaction missing fields required to recover sender"}
@@ -240,11 +295,34 @@ defmodule Onchain.Tempo.Transaction do
   Returns `{:ok, request_map}` or `{:error, reason}`.
   """
   @spec simulate_request(t()) :: {:ok, map()} | {:error, String.t()}
-  def simulate_request(%__MODULE__{calls: calls, fields: fields} = tx) do
+  def simulate_request(%__MODULE__{calls: calls} = tx) do
     with {:ok, sender_addr} <- sender(tx),
          {:ok, {head_calls, tail}} <- pop_tail_call(calls) do
-      {:ok, build_simulate_request(sender_addr, head_calls, tail, fields)}
+      {:ok, build_simulate_request(sender_addr, head_calls, tail, tx)}
     end
+  end
+
+  @doc "Serialize the named fields through tempo-primitives."
+  @spec serialize(t()) :: {:ok, String.t()} | {:error, String.t()}
+  def serialize(%__MODULE__{} = tx), do: Codec.run("serialize", Codec.request(tx))
+
+  @doc "Return the native signing digest as 32 bytes."
+  @spec signing_hash(t()) :: {:ok, binary()} | {:error, String.t()}
+  def signing_hash(%__MODULE__{} = tx) do
+    with {:ok, %{"hash" => hash}} <- Codec.run("prepare", Codec.request(tx)), do: {:ok, Codec.bytes(hash)}
+  end
+
+  @doc "Return the transaction hash computed by tempo-primitives."
+  @spec hash(t()) :: {:ok, binary()} | {:error, String.t()}
+  def hash(%__MODULE__{} = tx) do
+    with {:ok, hash} <- Codec.run("hash", Codec.request(tx)), do: {:ok, Codec.bytes(hash)}
+  end
+
+  @doc "Return the signing digest for a typed key authorization."
+  @spec key_authorization_hash(key_authorization()) :: {:ok, binary()} | {:error, String.t()}
+  def key_authorization_hash(authorization) do
+    with {:ok, hash} <- Codec.run("key_hash", %{"authorization" => Codec.authorization(authorization)}),
+         do: {:ok, Codec.bytes(hash)}
   end
 
   # --- Private: simulation helpers ---
@@ -252,36 +330,33 @@ defmodule Onchain.Tempo.Transaction do
   defp pop_tail_call([]), do: {:error, "Cannot simulate a transaction with no calls"}
   defp pop_tail_call(calls), do: {:ok, {Enum.take(calls, length(calls) - 1), List.last(calls)}}
 
-  defp build_simulate_request(sender_addr, head_calls, tail, fields) do
-    transaction = fields["transaction"]
-
+  defp build_simulate_request(sender_addr, head_calls, tail, tx) do
     %{
       "from" => to_hex_data(sender_addr),
       "to" => to_hex_data(tail.to),
       "value" => to_hex_quantity(tail.value),
       "input" => to_hex_data(tail.input),
       "calls" => Enum.map(head_calls, &call_to_request/1),
-      "gas" => transaction["gas"],
-      "nonce" => transaction["nonce"],
-      "maxFeePerGas" => transaction["maxFeePerGas"],
-      "maxPriorityFeePerGas" => transaction["maxPriorityFeePerGas"],
-      "chainId" => transaction["chainId"],
+      "gas" => to_hex_quantity(tx.gas_limit),
+      "nonce" => to_hex_quantity(tx.nonce),
+      "maxFeePerGas" => to_hex_quantity(tx.max_fee_per_gas),
+      "maxPriorityFeePerGas" => to_hex_quantity(tx.max_priority_fee_per_gas),
+      "chainId" => to_hex_quantity(tx.chain_id),
       "type" => "0x76",
-      "feeToken" => transaction["feeToken"] || "0x"
+      "feeToken" => to_hex_data(tx.fee_token)
     }
-    |> maybe_put_quantity("nonceKey", Codec.integer(transaction["nonceKey"]))
-    |> maybe_put_quantity("validBefore", optional_integer(transaction["validBefore"]))
+    |> maybe_put_quantity("nonceKey", tx.nonce_key)
+    |> maybe_put_quantity("validBefore", tx.valid_before || 0)
   end
 
   defp call_to_request(%{to: to, value: value, input: input}) do
     %{"to" => to_hex_data(to), "value" => to_hex_quantity(value), "input" => to_hex_data(input)}
   end
 
-  defp optional_integer(nil), do: 0
-  defp optional_integer(value), do: Codec.integer(value)
-
   defp maybe_put_quantity(map, _key, 0), do: map
   defp maybe_put_quantity(map, key, value), do: Map.put(map, key, to_hex_quantity(value))
+
+  defp to_hex_data(nil), do: "0x"
 
   defp to_hex_data(bin) when is_binary(bin), do: "0x" <> Base.encode16(bin, case: :lower)
 
@@ -340,16 +415,6 @@ defmodule Onchain.Tempo.Transaction do
       {:ok, binary} -> {:ok, binary}
       :error -> {:error, "Invalid hex encoding"}
     end
-  end
-
-  defp native_calls(calls) do
-    Enum.map(calls, fn call ->
-      %{
-        to: if(call["to"], do: Codec.bytes(call["to"]), else: <<>>),
-        value: Codec.integer(call["value"]),
-        input: Codec.bytes(call["input"])
-      }
-    end)
   end
 
   # --- Private: call matching ---

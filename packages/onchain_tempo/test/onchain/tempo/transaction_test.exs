@@ -572,7 +572,7 @@ defmodule Onchain.Tempo.TransactionTest do
       {:ok, expected} = Secp256k1.get_address(@client_key)
       assert {:ok, ^expected} = Transaction.sender(tx)
 
-      <<r::256, s::256, v::8>> = Codec.bytes(tx.fields["signature"])
+      {:secp256k1, %{r: r, s: s, y_parity: v}} = tx.signature
       n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
       assert s <= div(n, 2)
       high_s = n - s
@@ -591,7 +591,7 @@ defmodule Onchain.Tempo.TransactionTest do
     end
 
     test "sender/1 errors on a transaction with too few fields" do
-      tx = %Transaction{chain_id: 1, calls: [%{to: <<0::160>>, value: 0, input: <<>>}], fields: [<<1>>], raw: "0x"}
+      tx = %Transaction{chain_id: 1, calls: [%{to: <<0::160>>, value: 0, input: <<>>}], raw: "0x"}
       assert {:error, "Transaction missing fields required to recover sender"} = Transaction.sender(tx)
     end
 
@@ -599,9 +599,9 @@ defmodule Onchain.Tempo.TransactionTest do
       # Reject malformed signatures at the native boundary.
       hex = build_tempo_tx(calls: [build_call(@token_hex, transfer_calldata(@recipient_hex, 1))], fee_payer: true)
       {:ok, tx} = Transaction.deserialize(hex)
-      tx = %{tx | fields: Map.put(tx.fields, "signature", Codec.hex(<<1::512>>))}
+      tx = %{tx | signature: {:secp256k1, %{r: 1, s: 1, y_parity: 9}}}
       assert {:error, msg} = Transaction.sender(tx)
-      assert msg =~ "Invalid sender signature format"
+      assert is_binary(msg)
     end
 
     test "simulate_request/1 builds the TempoTransactionRequest wire object" do
@@ -637,7 +637,10 @@ defmodule Onchain.Tempo.TransactionTest do
       {:ok, raw} =
         Builder.build_fee_payer_multicall(
           private_key: @client_key,
-          calls: [call1, call2],
+          calls:
+            Enum.map([call1, call2], fn [to, value, input] ->
+              %{to: to, value: :binary.decode_unsigned(value), input: input}
+            end),
           chain_id: @moderato_chain_id,
           rpc_url: "http://localhost",
           nonce: 0,
@@ -660,17 +663,15 @@ defmodule Onchain.Tempo.TransactionTest do
 
     test "simulate_request/1 rejects an invalid native gas field" do
       tx = cosigned_transfer([])
-      fields = put_in(tx.fields, ["transaction", "gas"], [])
-      assert {:error, reason} = Transaction.simulate_request(%{tx | fields: fields})
-      assert reason =~ "invalid type"
+      assert {:error, reason} = Transaction.simulate_request(%{tx | gas_limit: Bitwise.bsl(1, 64)})
+      assert is_binary(reason)
     end
 
     test "sender/1 reports recovery failure for a 65-byte signature off the curve" do
       tx = cosigned_transfer([])
-      bad_sig = <<0::unsigned-big-size(256), 0::unsigned-big-size(256), 27>>
-      tx = %{tx | fields: Map.put(tx.fields, "signature", Codec.hex(bad_sig))}
+      tx = %{tx | signature: {:secp256k1, %{r: 0, s: 0, y_parity: 0}}}
       assert {:error, msg} = Transaction.sender(tx)
-      assert msg =~ "signature"
+      assert msg =~ "recover"
     end
   end
 

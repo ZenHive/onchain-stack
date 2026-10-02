@@ -3,7 +3,7 @@ use alloy_primitives::{Address, Signature, U256, hex};
 use alloy_rlp::Header;
 use rustler::types::atom::Atom;
 use serde_json::{Value, json};
-use tempo_primitives::transaction::{KeyAuthorization, SignatureType};
+use tempo_primitives::transaction::KeyAuthorization;
 use tempo_primitives::{
     AASigned, TempoSignature, TempoTransaction, transaction::PrimitiveSignature,
 };
@@ -14,23 +14,17 @@ mod atoms {
 
 type Result<T> = std::result::Result<T, String>;
 
-fn signature(value: &Value) -> Result<Signature> {
-    let bytes =
-        hex::decode(value.as_str().ok_or("missing signature")?).map_err(|e| e.to_string())?;
-    if bytes.len() != 65 {
-        return Err("Invalid sender signature format: expected 65 bytes (r, s, v)".into());
+fn signature(value: &Value) -> Result<TempoSignature> {
+    if let Some(value) = value.as_str() {
+        let bytes = hex::decode(value).map_err(|e| e.to_string())?;
+        TempoSignature::from_bytes(&bytes).map_err(str::to_string)
+    } else {
+        serde_json::from_value(value.clone()).map_err(|e| e.to_string())
     }
-    Signature::try_from(bytes.as_slice()).map_err(|e| e.to_string())
 }
 
 fn transaction(value: &Value) -> Result<TempoTransaction> {
     let tx: TempoTransaction = serde_json::from_value(value.clone()).map_err(|e| e.to_string())?;
-    if let Some(auth) = &tx.key_authorization
-        && (auth.key_type != SignatureType::Secp256k1
-            || !matches!(auth.signature, PrimitiveSignature::Secp256k1(_)))
-    {
-        return Err("Only Secp256k1 key authorizations are supported".into());
-    }
     Ok(tx)
 }
 
@@ -62,12 +56,6 @@ fn decode(bytes: &[u8]) -> Result<(AASigned, bool)> {
     if !input.is_empty() {
         return Err("trailing transaction bytes".into());
     }
-    if !matches!(
-        signed.signature(),
-        TempoSignature::Primitive(PrimitiveSignature::Secp256k1(_))
-    ) {
-        return Err("Only Secp256k1 sender signatures are supported".into());
-    }
     let sig = signed.signature().clone();
     let mut tx = signed.strip_signature();
     if placeholder {
@@ -83,15 +71,12 @@ fn execute(request: Value) -> Result<Value> {
             .map_err(|e| e.to_string())?;
         let (signed, placeholder) = decode(&bytes)?;
         return Ok(
-            json!({"transaction": signed.tx(), "signature": hex::encode_prefixed(signed.signature().to_bytes()), "placeholder": placeholder}),
+            json!({"transaction": signed.tx(), "signature": signed.signature(), "placeholder": placeholder}),
         );
     }
     if operation == "key_hash" {
         let authorization: KeyAuthorization =
             serde_json::from_value(request["authorization"].clone()).map_err(|e| e.to_string())?;
-        if authorization.key_type != SignatureType::Secp256k1 {
-            return Err("Only Secp256k1 access keys are supported".into());
-        }
         return Ok(json!(authorization.signature_hash()));
     }
     let tx = transaction(&request["transaction"])?;
@@ -102,7 +87,7 @@ fn execute(request: Value) -> Result<Value> {
             Ok(json!({"payload": hex::encode_prefixed(payload), "hash": tx.signature_hash()}))
         }
         "serialize" => {
-            let signed = tx.into_signed(signature(&request["signature"])?.into());
+            let signed = tx.into_signed(signature(&request["signature"])?);
             let mut bytes = Vec::new();
             if request["placeholder"].as_bool() == Some(true) {
                 signed.encode_for_fee_payer_service(&mut bytes);
@@ -111,11 +96,24 @@ fn execute(request: Value) -> Result<Value> {
             }
             Ok(json!(hex::encode_prefixed(bytes)))
         }
+        "hash" => {
+            let signed = tx.into_signed(signature(&request["signature"])?);
+            if request["placeholder"].as_bool() == Some(true) {
+                let mut bytes = Vec::new();
+                signed.encode_for_fee_payer_service(&mut bytes);
+                Ok(json!(alloy_primitives::keccak256(bytes)))
+            } else {
+                Ok(json!(signed.hash()))
+            }
+        }
         "sender" => {
-            let sig = signature(&request["signature"])?;
-            let normalized = sig.normalize_s().unwrap_or(sig);
-            let sender = normalized
-                .recover_address_from_prehash(&tx.signature_hash())
+            let mut sig = signature(&request["signature"])?;
+            // Preserve the documented high-s secp256k1 recovery contract.
+            if let TempoSignature::Primitive(PrimitiveSignature::Secp256k1(ref mut inner)) = sig {
+                *inner = inner.normalize_s().unwrap_or(*inner);
+            }
+            let sender = sig
+                .recover_signer(&tx.signature_hash())
                 .map_err(|e| e.to_string())?;
             Ok(json!(sender))
         }
@@ -155,6 +153,58 @@ mod tests {
     const OX: &str = include_str!("../../../priv/verification/0x76/ox_vectors.json");
     const KEY: &str =
         include_str!("../../../priv/verification/0x76/tempo_primitives_key_authorization.json");
+
+    // spec-tags: TEMPO-2, TEMPO-4, TEMPO-5
+    #[test]
+    fn independent_all_signature_vectors() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../../priv/verification/0x76/all_signatures.json"
+        ))
+        .unwrap();
+        for (name, vector) in fixture["cases"].as_object().unwrap() {
+            let (signed, placeholder) =
+                decode(&hex::decode(vector["serialized"].as_str().unwrap()).unwrap()).unwrap();
+            assert!(placeholder, "{name}");
+            let mut request = json!({"transaction": signed.tx(), "signature": signed.signature(), "placeholder": placeholder});
+            for (operation, expected) in [
+                ("serialize", "serialized"),
+                ("sender", "sender"),
+                ("hash", "tx_hash"),
+            ] {
+                request["operation"] = json!(operation);
+                assert_eq!(
+                    execute(request.clone()).unwrap(),
+                    vector[expected],
+                    "{name}: {operation}"
+                );
+            }
+            assert_eq!(
+                signed.signature_hash().to_string(),
+                vector["signing_hash"],
+                "{name}"
+            );
+            let mut tx = signed.strip_signature();
+            tx.fee_token = Some(fixture["fee_token"].as_str().unwrap().parse().unwrap());
+            let sender = vector["sender"].as_str().unwrap().parse().unwrap();
+            assert_eq!(
+                tx.fee_payer_signature_hash(sender).to_string(),
+                vector["fee_payer_hash"],
+                "{name}"
+            );
+            if let Some(auth) = &tx.key_authorization {
+                assert_eq!(
+                    auth.signature_hash().to_string(),
+                    vector["key_hash"],
+                    "{name}"
+                );
+                tx.key_authorization = None;
+                assert_ne!(
+                    tx.fee_payer_signature_hash(sender).to_string(),
+                    vector["fee_payer_hash"]
+                );
+            }
+        }
+    }
 
     #[test]
     fn canonical_vectors_round_trip_through_tempo_primitives() {

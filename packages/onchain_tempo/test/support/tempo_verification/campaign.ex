@@ -48,8 +48,8 @@ defmodule Onchain.Tempo.Verification.Campaign do
         canary?: true,
         surface: :transaction,
         file: @tx_rel,
-        replace: "chain_id: Codec.integer(transaction[\"chainId\"]), calls: calls, fields: fields",
-        with: "chain_id: Codec.integer(transaction[\"gas\"]), calls: calls, fields: fields",
+        replace: "{:ok, Codec.decoded(result, hex)}",
+        with: "{:ok, %{Codec.decoded(result, hex) | chain_id: 0}}",
         class: :field_index
       },
       %Mutant{
@@ -57,10 +57,8 @@ defmodule Onchain.Tempo.Verification.Campaign do
         canary?: true,
         surface: :transaction,
         file: @tx_rel,
-        replace:
-          ~s|transaction = Map.put(fields["transaction"], "feeToken", Codec.hex(fee_token))\n\n    with {:ok, sender_address} <- sender(tx),\n         {:ok, hash} <- Codec.run("fee_hash", %{"transaction" => transaction, "sender" => Codec.hex(sender_address)}),|,
-        with:
-          ~s|transaction = Map.put(fields["transaction"], "feeToken", Codec.hex(fee_token))\n\n    with {:ok, sender_address} <- sender(tx),\n         {:ok, hash} <- Codec.run("fee_hash", %{"transaction" => fields["transaction"], "sender" => Codec.hex(sender_address)}),|,
+        replace: ~s|Codec.run("fee_hash", Map.put(request, "sender", Codec.hex(sender_address)))|,
+        with: ~s|Codec.run("fee_hash", Map.put(Codec.request(tx), "sender", Codec.hex(sender_address)))|,
         class: :signing_domain
       },
       %Mutant{
@@ -108,8 +106,8 @@ defmodule Onchain.Tempo.Verification.Campaign do
         canary?: false,
         surface: :transaction,
         file: @tx_rel,
-        replace: ~s{Map.put(fields["transaction"], "feeToken", Codec.hex(fee_token))},
-        with: ~s{Map.put(fields["transaction"], "feePayerSignature", Codec.hex(fee_token))},
+        replace: "signed = %{tx | fee_token: fee_token,",
+        with: "signed = %{tx | fee_token: nil,",
         class: :field_index
       },
       %Mutant{
@@ -117,8 +115,8 @@ defmodule Onchain.Tempo.Verification.Campaign do
         canary?: false,
         surface: :transaction,
         file: @tx_rel,
-        replace: "\"yParity\" => Codec.quantity(sig.recid)",
-        with: "\"yParity\" => Codec.quantity(sig.r)",
+        replace: "y_parity: sig.recid",
+        with: "y_parity: sig.r",
         class: :field_index
       },
       %Mutant{
@@ -126,8 +124,8 @@ defmodule Onchain.Tempo.Verification.Campaign do
         canary?: false,
         surface: :builder,
         file: @builder_rel,
-        replace: ~s{"nonceKey" => Codec.quantity(nonce_key),\n        "nonce" => Codec.quantity(nonce),},
-        with: ~s{"nonceKey" => Codec.quantity(nonce),\n        "nonce" => Codec.quantity(nonce_key),},
+        replace: "nonce_key: nonce_key,\n        nonce: nonce,",
+        with: "nonce_key: nonce,\n        nonce: nonce_key,",
         class: :field_order
       },
       %Mutant{
@@ -144,8 +142,8 @@ defmodule Onchain.Tempo.Verification.Campaign do
         canary?: false,
         surface: :codec,
         file: @codec_rel,
-        replace: "hex(<<sig.r::256, sig.s::256, sig.recid + 27>>)",
-        with: "hex(<<sig.s::256, sig.r::256, sig.recid + 27>>)",
+        replace: "%{r: sig.r, s: sig.s, y_parity: sig.recid}",
+        with: "%{r: sig.s, s: sig.r, y_parity: sig.recid}",
         class: :signature_recovery
       },
       %Mutant{
@@ -163,8 +161,8 @@ defmodule Onchain.Tempo.Verification.Campaign do
         canary?: false,
         surface: :native,
         file: @native_rel,
-        replace: ".recover_address_from_prehash(&tx.signature_hash())",
-        with: ".recover_address_from_prehash(&alloy_primitives::B256::ZERO)",
+        replace: ".recover_signer(&tx.signature_hash())",
+        with: ".recover_signer(&alloy_primitives::B256::ZERO)",
         class: :signature_recovery
       }
     ]
@@ -518,8 +516,8 @@ defmodule Onchain.Tempo.Verification.Campaign do
 
   @spec lanes_from_tx(term()) :: [term()]
   defp lanes_from_tx(tx) do
-    nonce_key = Codec.integer(tx.fields["transaction"]["nonceKey"])
-    nonce = Codec.integer(tx.fields["transaction"]["nonce"])
+    nonce_key = tx.nonce_key
+    nonce = tx.nonce
 
     case {nonce_key, nonce} do
       {2, 5} -> []
@@ -550,7 +548,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
   defp key_auth_signing_mismatches(tx, vector) do
     expected = vector["signing_hash"]
 
-    case Codec.run("prepare", %{"transaction" => tx.fields["transaction"]}) do
+    case Codec.run("prepare", %{"transaction" => Codec.request(tx)["transaction"]}) do
       {:ok, %{"hash" => ^expected}} -> []
       {:ok, %{"hash" => hash}} -> [{:key_auth_signing_hash, hash, expected}]
       other -> [{:key_auth_signing_hash_error, other}]
@@ -559,7 +557,7 @@ defmodule Onchain.Tempo.Verification.Campaign do
 
   @spec key_auth_fee_hash_mismatches(term(), map(), binary()) :: [term()]
   defp key_auth_fee_hash_mismatches(tx, vector, fee_token) do
-    transaction = Map.put(tx.fields["transaction"], "feeToken", Codec.hex(fee_token))
+    transaction = Map.put(Codec.request(tx)["transaction"], "feeToken", Codec.hex(fee_token))
 
     with {:ok, sender} <- Transaction.sender(tx),
          {:ok, hash} <- Codec.run("fee_hash", %{"transaction" => transaction, "sender" => Codec.hex(sender)}) do

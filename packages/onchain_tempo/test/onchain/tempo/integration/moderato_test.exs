@@ -135,7 +135,7 @@ defmodule Onchain.Tempo.Integration.ModeratoTest do
   defp cosigned_transfer_with_memo(wallet, rpc, opts) do
     memo = :crypto.strong_rand_bytes(32)
     calldata = TIP20.transfer_with_memo_calldata(wallet.address_bin, 1, memo)
-    call = [@path_usd, <<>>, calldata]
+    call = %{to: @path_usd, value: 0, input: calldata}
 
     build_opts =
       then([private_key: wallet.private_key, calls: [call], chain_id: @chain_id, rpc_url: rpc], fn base ->

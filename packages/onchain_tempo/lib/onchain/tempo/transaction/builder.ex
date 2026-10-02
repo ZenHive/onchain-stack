@@ -3,6 +3,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
   alias Onchain.Signer.Secp256k1
   alias Onchain.Tempo.Codec
   alias Onchain.Tempo.TIP20
+  alias Onchain.Tempo.Transaction
 
   # Default fee parameters for testnet transfers.
   # Moderato base fee is 20 gwei minimum — use 25 gwei for headroom.
@@ -37,7 +38,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
       call via `eth_estimateGas`, summed, with a 1.25× safety headroom
     * `:valid_before` — Unix timestamp (default 0 = no expiry)
     * `:valid_after` — Unix timestamp (default 0)
-    * `:key_authorization` — signed Secp256k1 authorization in tempo-primitives JSON form
+    * `:key_authorization` — typed `Transaction.key_authorization()` with a primitive signature
 
   ## Returns
 
@@ -59,26 +60,27 @@ defmodule Onchain.Tempo.Transaction.Builder do
          {:ok, sender_address} <- Secp256k1.get_address(private_key),
          {:ok, nonce} <- resolve_nonce(opts, sender_address, rpc_url),
          calldata = TIP20.transfer_calldata(recipient, amount),
-         call = [token, <<>>, calldata],
+         call = %{to: token, value: 0, input: calldata},
          {:ok, gas_limit} <- resolve_gas_limit(opts, [call], sender_address, rpc_url) do
-      transaction = %{
-        "chainId" => Codec.quantity(chain_id),
-        "maxPriorityFeePerGas" => Codec.quantity(@default_max_priority_fee_per_gas),
-        "maxFeePerGas" => Codec.quantity(@default_max_fee_per_gas),
-        "gas" => Codec.quantity(gas_limit),
-        "calls" => Enum.map([call], &native_call/1),
-        "accessList" => [],
-        "nonceKey" => Codec.quantity(nonce_key),
-        "nonce" => Codec.quantity(nonce),
-        "validBefore" => optional_quantity(valid_before),
-        "validAfter" => optional_quantity(valid_after),
-        "feeToken" => Codec.hex(fee_token),
-        "feePayerSignature" => nil,
-        "aaAuthorizationList" => [],
-        "keyAuthorization" => Keyword.get(opts, :key_authorization)
+      transaction = %Transaction{
+        raw: nil,
+        chain_id: chain_id,
+        max_priority_fee_per_gas: @default_max_priority_fee_per_gas,
+        max_fee_per_gas: @default_max_fee_per_gas,
+        gas_limit: gas_limit,
+        calls: [call],
+        access_list: [],
+        nonce_key: nonce_key,
+        nonce: nonce,
+        valid_before: optional_quantity(valid_before),
+        valid_after: optional_quantity(valid_after),
+        fee_token: fee_token,
+        fee_payer_signature: nil,
+        tempo_authorization_list: [],
+        key_authorization: Keyword.get(opts, :key_authorization)
       }
 
-      Codec.sign(transaction, private_key, false)
+      Codec.sign(transaction, private_key)
     end
   end
 
@@ -88,7 +90,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
   ## Options (required)
 
     * `:private_key` — hex-encoded secp256k1 private key (with or without 0x prefix)
-    * `:calls` — non-empty list of RLP-ready `[to, value, input]` call tuples
+    * `:calls` — non-empty list of `Transaction.call()` maps
     * `:chain_id` — Tempo chain ID (integer)
     * `:rpc_url` — RPC endpoint for nonce fetching
     * `:fee_token` — TIP-20 token address (hex) used for fee payment
@@ -101,7 +103,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
       call via `eth_estimateGas`, summed, with a 1.25× safety headroom
     * `:valid_before` — Unix timestamp (default 0 = no expiry)
     * `:valid_after` — Unix timestamp (default 0)
-    * `:key_authorization` — signed Secp256k1 authorization in tempo-primitives JSON form
+    * `:key_authorization` — typed `Transaction.key_authorization()` with a primitive signature
 
   ## Returns
 
@@ -121,24 +123,25 @@ defmodule Onchain.Tempo.Transaction.Builder do
          {:ok, sender_address} <- Secp256k1.get_address(private_key),
          {:ok, nonce} <- resolve_nonce(opts, sender_address, rpc_url),
          {:ok, gas_limit} <- resolve_gas_limit(opts, calls, sender_address, rpc_url) do
-      transaction = %{
-        "chainId" => Codec.quantity(chain_id),
-        "maxPriorityFeePerGas" => Codec.quantity(@default_max_priority_fee_per_gas),
-        "maxFeePerGas" => Codec.quantity(@default_max_fee_per_gas),
-        "gas" => Codec.quantity(gas_limit),
-        "calls" => Enum.map(calls, &native_call/1),
-        "accessList" => [],
-        "nonceKey" => Codec.quantity(nonce_key),
-        "nonce" => Codec.quantity(nonce),
-        "validBefore" => optional_quantity(valid_before),
-        "validAfter" => optional_quantity(valid_after),
-        "feeToken" => Codec.hex(fee_token),
-        "feePayerSignature" => nil,
-        "aaAuthorizationList" => [],
-        "keyAuthorization" => Keyword.get(opts, :key_authorization)
+      transaction = %Transaction{
+        raw: nil,
+        chain_id: chain_id,
+        max_priority_fee_per_gas: @default_max_priority_fee_per_gas,
+        max_fee_per_gas: @default_max_fee_per_gas,
+        gas_limit: gas_limit,
+        calls: calls,
+        access_list: [],
+        nonce_key: nonce_key,
+        nonce: nonce,
+        valid_before: optional_quantity(valid_before),
+        valid_after: optional_quantity(valid_after),
+        fee_token: fee_token,
+        fee_payer_signature: nil,
+        tempo_authorization_list: [],
+        key_authorization: Keyword.get(opts, :key_authorization)
       }
 
-      Codec.sign(transaction, private_key, false)
+      Codec.sign(transaction, private_key)
     end
   end
 
@@ -166,33 +169,34 @@ defmodule Onchain.Tempo.Transaction.Builder do
          {:ok, sender_address} <- Secp256k1.get_address(private_key),
          {:ok, nonce} <- resolve_nonce(opts, sender_address, rpc_url),
          calldata = TIP20.transfer_calldata(recipient, amount),
-         call = [token, <<>>, calldata],
+         call = %{to: token, value: 0, input: calldata},
          {:ok, gas_limit} <- resolve_gas_limit(opts, [call], sender_address, rpc_url) do
-      transaction = %{
-        "chainId" => Codec.quantity(chain_id),
-        "maxPriorityFeePerGas" => Codec.quantity(@default_max_priority_fee_per_gas),
-        "maxFeePerGas" => Codec.quantity(@default_max_fee_per_gas),
-        "gas" => Codec.quantity(gas_limit),
-        "calls" => Enum.map([call], &native_call/1),
-        "accessList" => [],
-        "nonceKey" => Codec.quantity(nonce_key),
-        "nonce" => Codec.quantity(nonce),
-        "validBefore" => optional_quantity(valid_before),
-        "validAfter" => optional_quantity(valid_after),
-        "feeToken" => nil,
-        "feePayerSignature" => %{"r" => "0x0", "s" => "0x0", "yParity" => "0x0"},
-        "aaAuthorizationList" => [],
-        "keyAuthorization" => Keyword.get(opts, :key_authorization)
+      transaction = %Transaction{
+        raw: nil,
+        chain_id: chain_id,
+        max_priority_fee_per_gas: @default_max_priority_fee_per_gas,
+        max_fee_per_gas: @default_max_fee_per_gas,
+        gas_limit: gas_limit,
+        calls: [call],
+        access_list: [],
+        nonce_key: nonce_key,
+        nonce: nonce,
+        valid_before: optional_quantity(valid_before),
+        valid_after: optional_quantity(valid_after),
+        fee_token: nil,
+        fee_payer_signature: :placeholder,
+        tempo_authorization_list: [],
+        key_authorization: Keyword.get(opts, :key_authorization)
       }
 
-      Codec.sign(transaction, private_key, true)
+      Codec.sign(transaction, private_key)
     end
   end
 
   @doc """
   Build and sign a fee-payer transaction with arbitrary calls.
 
-  Accepts a `:calls` list of `[to, value, input]` RLP-ready tuples. Sets fee payer
+  Accepts a `:calls` list of `Transaction.call()` maps. Sets fee payer
   placeholder and empty fee token, same as `build_fee_payer_transfer/1`.
   """
   @spec build_fee_payer_multicall(keyword()) :: {:ok, String.t()} | {:error, term()}
@@ -207,35 +211,30 @@ defmodule Onchain.Tempo.Transaction.Builder do
          {:ok, sender_address} <- Secp256k1.get_address(private_key),
          {:ok, nonce} <- resolve_nonce(opts, sender_address, rpc_url),
          {:ok, gas_limit} <- resolve_gas_limit(opts, calls, sender_address, rpc_url) do
-      transaction = %{
-        "chainId" => Codec.quantity(chain_id),
-        "maxPriorityFeePerGas" => Codec.quantity(@default_max_priority_fee_per_gas),
-        "maxFeePerGas" => Codec.quantity(@default_max_fee_per_gas),
-        "gas" => Codec.quantity(gas_limit),
-        "calls" => Enum.map(calls, &native_call/1),
-        "accessList" => [],
-        "nonceKey" => Codec.quantity(nonce_key),
-        "nonce" => Codec.quantity(nonce),
-        "validBefore" => optional_quantity(valid_before),
-        "validAfter" => optional_quantity(valid_after),
-        "feeToken" => nil,
-        "feePayerSignature" => %{"r" => "0x0", "s" => "0x0", "yParity" => "0x0"},
-        "aaAuthorizationList" => [],
-        "keyAuthorization" => Keyword.get(opts, :key_authorization)
+      transaction = %Transaction{
+        raw: nil,
+        chain_id: chain_id,
+        max_priority_fee_per_gas: @default_max_priority_fee_per_gas,
+        max_fee_per_gas: @default_max_fee_per_gas,
+        gas_limit: gas_limit,
+        calls: calls,
+        access_list: [],
+        nonce_key: nonce_key,
+        nonce: nonce,
+        valid_before: optional_quantity(valid_before),
+        valid_after: optional_quantity(valid_after),
+        fee_token: nil,
+        fee_payer_signature: :placeholder,
+        tempo_authorization_list: [],
+        key_authorization: Keyword.get(opts, :key_authorization)
       }
 
-      Codec.sign(transaction, private_key, true)
+      Codec.sign(transaction, private_key)
     end
   end
 
-  # --- Private helpers ---
-
-  defp native_call([to, value, input]) do
-    %{"to" => Codec.hex(to), "value" => Codec.quantity(:binary.decode_unsigned(value)), "input" => Codec.hex(input)}
-  end
-
   defp optional_quantity(0), do: nil
-  defp optional_quantity(value), do: Codec.quantity(value)
+  defp optional_quantity(value), do: value
 
   defp require_opt(opts, key, transform) do
     case Keyword.fetch(opts, key) do
@@ -282,12 +281,12 @@ defmodule Onchain.Tempo.Transaction.Builder do
     from_hex = hex(sender_address)
 
     calls
-    |> Enum.reduce_while({:ok, 0}, fn [to, value, input], {:ok, acc} ->
+    |> Enum.reduce_while({:ok, 0}, fn %{to: to, value: value, input: input}, {:ok, acc} ->
       params = %{
         from: from_hex,
         to: hex(to),
         data: hex(input),
-        value: :binary.decode_unsigned(value)
+        value: value
       }
 
       case Onchain.RPC.eth_estimate_gas(params, rpc_url: rpc_url) do
@@ -345,11 +344,15 @@ defmodule Onchain.Tempo.Transaction.Builder do
   defp validate_calls([_ | _] = calls) do
     if Enum.all?(
          calls,
-         &match?([to, value, input] when is_binary(to) and is_binary(value) and is_binary(input), &1)
+         &match?(
+           %{to: to, value: value, input: input}
+           when is_binary(to) and byte_size(to) == 20 and is_integer(value) and value >= 0 and is_binary(input),
+           &1
+         )
        ) do
       {:ok, calls}
     else
-      {:error, "invalid calls: each call must be [to, value, input] binaries"}
+      {:error, "invalid calls: each call must have a 20-byte to, non-negative value, and binary input"}
     end
   end
 

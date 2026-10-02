@@ -9,6 +9,7 @@ for path <- [
       "test/onchain/tempo/transaction/builder_test.exs",
       "test/onchain/tempo/transaction/builder_estimate_test.exs",
       "test/onchain/tempo/verification/native_test.exs",
+      "test/onchain/tempo/verification/all_signatures_test.exs",
       "test/onchain/tempo/verification/differential_test.exs",
       "test/onchain/tempo/verification/property_test.exs"
     ],
