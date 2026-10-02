@@ -2930,8 +2930,9 @@ defmodule Onchain.RPC do
   Geth documents `debug_traceCall`
   (https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-debug).
   Erigon documents it (https://docs.erigon.tech/interacting-with-erigon/debug).
-  reth documents it and leaves the `debug` namespace off unless `--http.api`
-  includes it (https://reth.rs/jsonrpc/debug). `trace_available?/1` does not
+  reth documents it (https://reth.rs/jsonrpc/debug) and leaves the `debug`
+  namespace off unless `--http.api` includes it (https://reth.rs/jsonrpc/intro).
+  `trace_available?/1` does not
   speak for this method; call `debug_trace_available?/1` first. A refusal is
   classified by `send_rpc/3`.
 

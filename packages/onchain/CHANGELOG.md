@@ -6,6 +6,10 @@ Completed roadmap tasks.
 
 ## v0.16.1 (2026-10-03)
 
+### Added
+
+- `Onchain.RPC.trace_available?/1` and `Onchain.RPC.debug_trace_available?/1` probe `trace_call` and `debug_traceCall` through `send_rpc/3`. `trace_transaction`, `trace_call`, `trace_callMany`, and `debug_traceCall` are absent from tagged execution-apis. Alchemy mainnet refuses them with `-32600` "...not available on the Free tier"; Infura mainnet with `-32601` "The method ... does not exist/is not available" (observed 2026-10-02).
+
 ### Fixed
 
 - `Onchain.Signer.Secp256k1.public_key/1` normalizes ex_secp256k1 failures to `{:error, atom()}`. ex_secp256k1 0.8 specs a bare atom, so Dialyzer in consumers concluded the function never returns `{:error, _}` and flagged their error branches. Reported by mpp.

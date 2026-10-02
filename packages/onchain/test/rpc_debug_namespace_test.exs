@@ -9,22 +9,15 @@ defmodule Onchain.RPC.DebugNamespaceTest do
 
   ## Why this is not part of the `:integration` suite
 
-  The archive node this stack points at serves the `trace_*` namespace but has
-  `debug_*` disabled as a deliberate security decision: `debug_traceCall` and
-  `debug_traceTransaction` do unbounded work per request, so they are a DoS
-  vector on any endpoint that is reachable beyond the host itself (ours is
-  reached through an SSH tunnel, not loopback-only). With the namespace off the
-  node answers `-32601 Method not found`, so this test cannot pass there and
-  would otherwise sit permanently red inside `mix integration` — which trains
-  everyone to stop reading a red suite.
+  A `debug_traceCall` with struct logs does unbounded work per request, so
+  this module stays opt-in. On 2026-10-02 the archive node at
+  `http://127.0.0.1:8545` served `debug_traceCall`: this test passes there,
+  and `rpc_trace_portability_test.exs` pins `debug_trace_available?/1`.
 
   It is not merged into the integration module with an extra tag because
   `ExUnit.Filters.eval/4` checks `include` before `exclude`: under
   `--only integration` a test tagged both would still run. A separate module
   with a distinct moduletag is the only shape that actually keeps it out.
-
-  Re-enabling `debug_*` on a node (a second, loopback-only port or an IPC
-  endpoint is the usual way) is all this needs to go green again.
 
   The decode path stays covered without a live node: opcode/atom handling is
   unit-tested in `test/debug_trace_atom_safety_test.exs`.
