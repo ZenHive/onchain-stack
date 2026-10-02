@@ -5795,7 +5795,7 @@
       "bundle": "cartouche_rpc_correctness",
       "target_repo": "onchain",
       "milestone": "stack_read_surface_boundary",
-      "status": "pending",
+      "status": "in_progress",
       "title": "Portability @docs and a capability probe for the trace_* / debug_traceCall surface",
       "scores": {
         "d": 3,
@@ -5836,6 +5836,7 @@
       ],
       "body": "Verified against ethereum/execution-apis main: the trace_* namespace is absent from the spec, and src/debug/trace.yaml carries debug_traceBlockByNumber, debug_traceBlockByHash and debug_traceTransaction but not debug_traceCall. Cartouche.RPC ships four non-standard reads: trace_trx -> trace_transaction (packages/onchain/lib/cartouche/rpc.ex:1435), trace_call (:1586), trace_call_many (:1790) and debug_trace_call (:1872).\n\nThe README caveat already exists: packages/onchain/docs/cartouche/README.md:117 lists all four as absent from execution-apis. What is still missing: none of the four @docs says so, no provider refusal has been observed, and there is no probe, so a consumer only finds out deep in a pipeline.\n\ntrace_* is the OpenEthereum/Parity namespace, inherited by Erigon and implemented by reth (our archive node serves it, which is why every trace test is green here). Verify each client claim against that client's own documentation before writing it into a @doc, and cite what you checked. The probe follows Onchain.Trace.available?/1 (packages/onchain_evm/lib/onchain/trace.ex:218) and classifies refusals through task 2137's shared transport rather than string-matching.\n\n(2026-09-29 review) \"src/debug/trace.yaml carries debug_traceBlockByNumber, debug_traceBlockByHash and debug_traceTransaction\" is true on main only. The v1.0.0-beta.7 tag has no src/debug directory (GitHub contents API returns 404 at that ref). By node-portability rule 1, every debug_* method is therefore untagged too, not only debug_traceCall.\n\n\n(2026-10-03) onchain 0.16.0 renamed Cartouche.* to Onchain.*: read `Cartouche.RPC` as `Onchain.RPC` and `packages/onchain/lib/cartouche/rpc.ex` as `packages/onchain/lib/onchain/rpc.ex` throughout; line numbers quoted above predate the rename. Dependencies 2136 and 2137 are done.",
       "created_at": "2026-08-26",
+      "started_at": "2026-10-02",
       "scored_at": "2026-09-29",
       "cross_repo": []
     },
