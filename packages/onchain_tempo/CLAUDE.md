@@ -134,7 +134,8 @@ commonware dependency is added to the core ABI NIF.
 `Onchain.Precompiled` supplies the shared targets and release naming.
 `ONCHAIN_TEMPO_BUILD=1` forces a source build; a checkout without a checksum
 also builds locally. Release assets belong under `onchain_tempo-v<VERSION>`.
-Run `scripts/build-precompiled.sh`, upload the artifacts, then generate and
+Run `scripts/build-precompiled.sh`, have the human create the release with the
+artifacts (never an agent; root CLAUDE.md publish step 10), then generate and
 commit `checksum-Elixir.Onchain.Tempo.Native.exs` before publishing Hex.
 The initial Tempo artifacts/checksum are not published by this change.
 

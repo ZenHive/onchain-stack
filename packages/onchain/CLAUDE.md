@@ -317,7 +317,9 @@ exact release revision):
 # Use an empty OUT_DIR; the script rejects stale artifact directories.
 OUT_DIR="$PWD/artifacts/precompiled/release" scripts/build-precompiled.sh
 # Produces aarch64/x86_64 Darwin, aarch64/x86_64 GNU/Linux, x86_64 musl.
-# After the operator publishes the package-scoped GitHub release assets:
+# Human step, never run by an agent (public tag + binaries; root CLAUDE.md publish step 10):
+#   gh release create onchain-v<ver> artifacts/precompiled/release/*.tar.gz --target <release sha> ...
+# After the human confirms the release:
 mix rustler_precompiled.download Onchain.ABI.Native --all --print
 # Commit checksum-Elixir.Onchain.ABI.Native.exs, then verify packaging:
 ONCHAIN_PUBLISH=1 mix deps.get

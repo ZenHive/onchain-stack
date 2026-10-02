@@ -678,15 +678,28 @@ analyzer; a green publish-parity report says nothing about that.
    not the local tree.
 8. Update `CHANGELOG.md` (and `README.md`/`SKILL.md` if surface changed).
 9. Commit path-scoped to `packages/<name>/...`, push.
-10. **Hand off to the human:** state the exact `mix hex.publish` command
+10. **Native packages only (onchain, onchain_evm, onchain_tempo): the
+    precompiled-NIF GitHub release is a human step too.** RustlerPrecompiled
+    downloads from `…/releases/download/<pkg>-v<ver>`, so every version,
+    including a pure-Elixir patch, needs that release before Hex. Build the
+    artifacts from the pushed release commit (`scripts/build-precompiled.sh`
+    into an empty `OUT_DIR`), then hand the human the exact
+    `gh release create <pkg>-v<ver> <artifacts> --target <sha> …` command.
+    Never run `gh release create`/`upload` yourself: it creates a public tag
+    and public binaries, the same class as `hex.publish`. After the human
+    confirms it, run `mix rustler_precompiled.download <Native> --all --print`
+    and commit the checksum file. Only then go to step 11. Task 9055 folds
+    this into one script.
+11. **Hand off to the human:** state the exact `mix hex.publish` command
    (run from inside `packages/<name>`) and that 2FA is required. Do **not**
    run it yourself.
-11. After the human confirms, `mix hex.info <pkg>` should show the new
+12. After the human confirms, `mix hex.info <pkg>` should show the new
     version before starting the next downstream package.
-12. Tag: once the human confirms the publish, the agent cuts and pushes
+13. Tag: once the human confirms the publish, the agent cuts and pushes
     `git tag -a <pkg>-v<ver> <published-commit> -m "<pkg> <ver>"` itself — do
-    not hand this back. A missing tag says nothing about whether a version
-    shipped — tags lag, they don't gate.
+    not hand this back. For a native package the step-10 release already
+    created the tag; leave it alone. A missing tag says nothing about whether a
+    version shipped — tags lag, they don't gate.
 
 ---
 
@@ -734,7 +747,8 @@ change warrants it.
   their work.
 - **No Co-Authored-By footers.** Title-only commit messages (`<scope>:
   <description>`).
-- **Publish is human-gated (2FA), always.** Your terminal state is
+- **Publish is human-gated (2FA), always**, and so is a native package's
+  GitHub release (publish step 10). Your terminal state is
   *publish-ready* — green suite, bumped version, updated CHANGELOG, committed,
   pushed. Never assume a package is on Hex because the local tree looks done.
 - **Never edit anything under any package's `deps/`.** See the reach #36
