@@ -1,11 +1,43 @@
 # Changelog
 
+## v0.13.0 (2026-10-02)
+
+### Breaking
+
+- **`Onchain.Tempo.Transaction` is a named struct.** `fields` is removed. Decode, serialize, signing hash, transaction hash, fee-payer cosign and sender recovery go through tempo-primitives for every signature type it supports. Our builders still sign with Secp256k1 keys only.
+- Signature values are `{:secp256k1, %{r, s, y_parity}}`, `{:p256, %{r, s, pub_key_x, pub_key_y, pre_hash}}`, `{:webauthn, %{r, s, pub_key_x, pub_key_y, webauthn_data}}`, or `{:keychain, 1 | 2, user_address, inner}`. Key authorizations are atom-key maps (`t:Onchain.Tempo.Transaction.key_authorization/0`). Addresses and calldata are binaries, quantities are integers, and a fee-payer sponsorship request is `fee_payer_signature: :placeholder` with `fee_token: nil`.
+- Keychain recovery verifies the inner signature and returns the root account. It does not prove the access key is authorized on-chain.
+
+### Migration
+
+| 0.11 RLP index (zero-based) | 0.12 serde key | 0.13 field |
+|---|---|---|
+| 0 | `chainId` | `chain_id` |
+| 1 | `maxPriorityFeePerGas` | `max_priority_fee_per_gas` |
+| 2 | `maxFeePerGas` | `max_fee_per_gas` |
+| 3 | `gas` | `gas_limit` |
+| 4 | `calls` | `calls` |
+| 5 | `accessList` | `access_list` |
+| 6 | `nonceKey` | `nonce_key` |
+| 7 | `nonce` | `nonce` |
+| 8 | `validBefore` | `valid_before` |
+| 9 | `validAfter` | `valid_after` |
+| 10 | `feeToken` | `fee_token` |
+| 11 | `feePayerSignature` / `fields["placeholder"]` | `fee_payer_signature` |
+| 12 | `aaAuthorizationList` | `tempo_authorization_list` |
+| 13 when present, before signature | `keyAuthorization` | `key_authorization` |
+| Last | `fields["signature"]` | `signature` |
+| Original envelope | `raw` | `raw` |
+
+0.12 keys lived under `fields["transaction"]` unless stated otherwise. Read and update the named fields, then call `Transaction.serialize/1`. There is no compatibility shim.
+
 ## v0.12.0 (2026-10-01)
 
 ### Changed
 
-- Requires onchain `~> 0.16`, where `ABI.*` and `Cartouche.*` are renamed to `Onchain.*` (onchain's CHANGELOG has the full module map). Calls into the core now use the new names; this package's own public API is unchanged.
+- Requires onchain `~> 0.16`, where `ABI.*` and `Cartouche.*` are renamed to `Onchain.*` (onchain's CHANGELOG has the full module map). Calls into the core now use the new names.
 - **0x76 transaction encoding runs in an onchain_tempo NIF built on `tempo-primitives`** (task 9033), with byte parity for `key_authorization`. The NIF ships precompiled through `Onchain.Precompiled`.
+- **Note, corrected in 0.13.0:** `Transaction.fields` changed from the 0.11 positional RLP list to the tempo-primitives serde map without a changelog entry, and the NIF rejected every non-Secp256k1 sender signature and key authorization (`"Only Secp256k1 sender signatures are supported"`). 0.11.0 decoded those envelopes. Both are regressions relative to 0.11.0.
 
 ## v0.11.0 (2026-09-29)
 

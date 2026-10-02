@@ -57,10 +57,9 @@ the focused run above is the implementation evidence, not reviewer approval.
 
 TEMPO-4 now distinguishes our Secp256k1 signing from all-type reading, hashing,
 cosigning and recovery. TEMPO-5 and TEMPO-6 are added and tagged in tests.
-The harness instruction forbids CHANGELOG edits: the operator still needs to
-copy the README migration table into a 0.13.0 entry and annotate 0.12.0's
-undocumented fields-shape change and signature restriction before publishing.
-No Hex publish, release upload or checksum change is part of this work.
+CHANGELOG 0.13.0 records the named-field migration, and the 0.12.0 entry notes
+the undocumented `fields` shape change and the Secp256k1-only signature
+regression. No Hex publish, release upload or checksum change is part of this work.
 
 ## Task 9033 — 0.12 historical evidence
 

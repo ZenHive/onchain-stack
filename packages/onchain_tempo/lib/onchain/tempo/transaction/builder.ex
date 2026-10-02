@@ -148,9 +148,9 @@ defmodule Onchain.Tempo.Transaction.Builder do
   @doc """
   Build and sign a TIP-20 transfer with fee payer placeholder.
 
-  Same as `build_signed_transfer/1` but sets `fee_payer_signature` to `<<0x00>>`
-  (placeholder) and `fee_token` to `<<>>` (empty), signaling the server should
-  co-sign as fee payer.
+  Same as `build_signed_transfer/1` but sets `fee_payer_signature` to
+  `:placeholder` and `fee_token` to `nil`. That encodes as the `0x00` fee-payer
+  marker and an empty fee token, signaling the server should co-sign as fee payer.
 
   Accepts the same options as `build_signed_transfer/1`. The `:fee_token` option
   is ignored (always empty for fee payer mode).
