@@ -16510,7 +16510,7 @@
       },
       "eff": 1.5,
       "dep_layer": 0,
-      "unlocks": 0,
+      "unlocks": 1,
       "markers": [
         "security"
       ],
@@ -16571,6 +16571,47 @@
           "op": "add"
         }
       ],
+      "cross_repo": []
+    },
+    {
+      "id": "9053",
+      "phase": 9100,
+      "bundle": "onchain_core_consolidation",
+      "target_repo": "onchain_tempo",
+      "status": "pending",
+      "title": "onchain_tempo: drop the positional fee-payer 0x00 adapter once tempo-primitives decodes its own marker",
+      "scores": {
+        "d": 4,
+        "b": 6,
+        "u": 3
+      },
+      "eff": 1.13,
+      "dep_layer": 1,
+      "unlocks": 0,
+      "markers": [
+        "parallel",
+        "security"
+      ],
+      "depends_on": [
+        9052
+      ],
+      "assignee": "codex",
+      "model": "gpt-6-astra",
+      "acceptance_criteria": [
+        "Either the positional 0x00 adapter is removed from lib.rs and decoding of fee-payer-placeholder transactions goes straight through the upstream decoder, or the task records an upstream issue/link proving no release accepts the marker yet",
+        "If removed: the fee_payer_placeholder vector, all_signatures vectors and the Rust/Elixir differential tests stay green against the bumped tempo-primitives",
+        "If removed: a live Moderato sponsored transfer (native_encoding_test, without ONCHAIN_TEMPO_RECORD_EVIDENCE) still lands with status 1",
+        "CHANGELOG and package CLAUDE.md Native build section no longer describe the adapter once it is gone"
+      ],
+      "out_of_scope": [
+        "Publishing new precompiled NIF assets (release step, human-gated)"
+      ],
+      "touches": [
+        "packages/onchain_tempo/native/onchain_tempo"
+      ],
+      "body": "tempo-primitives 1.11.0 emits the fee-payer-service `0x00` marker (`encode_for_fee_payer_service`) but its consensus RLP decoder rejects it. The onchain_tempo NIF (`native/onchain_tempo/src/lib.rs`, the adapter commented near the top) therefore walks the RLP headers positionally to find and rewrite that single field before calling the upstream decoder. This hand-rolled scan is the last piece of encoding logic we own; it breaks silently if upstream reorders or adds 0x76 fields. Proposed by the task 9052 reviewer.\n\nCheck whether a newer tempo-primitives release accepts its own marker on decode (upstream changelog / source). If yes: bump the pin, delete the adapter, decode directly. If no release does yet: file/locate the upstream issue and record the link in the task, leaving the adapter in place — do not reimplement more parsing.\n",
+      "created_at": "2026-10-02",
+      "scored_at": "2026-10-02",
       "cross_repo": []
     }
   ]
