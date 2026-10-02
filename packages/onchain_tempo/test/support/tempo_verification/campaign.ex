@@ -410,8 +410,12 @@ defmodule Onchain.Tempo.Verification.Campaign do
   end
 
   @spec rename_defmodule(String.t(), :transaction | :builder, module()) :: String.t()
+  # Codec still builds `%Onchain.Tempo.Transaction{}`, so the renamed mutant must
+  # pattern-match that struct rather than its own `__MODULE__` struct.
   defp rename_defmodule(source, :transaction, module) do
-    String.replace(source, "defmodule Onchain.Tempo.Transaction do", "defmodule #{inspect(module)} do", global: false)
+    source
+    |> String.replace("defmodule Onchain.Tempo.Transaction do", "defmodule #{inspect(module)} do", global: false)
+    |> String.replace("%__MODULE__{", "%Onchain.Tempo.Transaction{")
   end
 
   defp rename_defmodule(source, :builder, module) do
