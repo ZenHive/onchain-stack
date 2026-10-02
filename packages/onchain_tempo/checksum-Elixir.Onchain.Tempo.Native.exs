@@ -1,7 +1,7 @@
 %{
-  "libonchain_tempo-v0.12.0-nif-2.15-aarch64-apple-darwin.so.tar.gz" => "sha256:19ddf543f92eb49f35cbf025397a310692c7a51279255bf05d0d31560c86b542",
-  "libonchain_tempo-v0.12.0-nif-2.15-aarch64-unknown-linux-gnu.so.tar.gz" => "sha256:5630ad7dec62f8dc564b51bb5883e15dbbb376fb7b97172414a79129bc825bd9",
-  "libonchain_tempo-v0.12.0-nif-2.15-x86_64-apple-darwin.so.tar.gz" => "sha256:8d10e51c7dc60fe9c624114d4a8924fe6b2ee2a345f15b30da230839ba634d40",
-  "libonchain_tempo-v0.12.0-nif-2.15-x86_64-unknown-linux-gnu.so.tar.gz" => "sha256:d38033446a9719031a9de6e002164595dbaa625c6bdeee51349ffcda514719b6",
-  "libonchain_tempo-v0.12.0-nif-2.15-x86_64-unknown-linux-musl.so.tar.gz" => "sha256:00b2c870193b90e9d51ce6d3312df464eefef3e88b3473b227e848d7c744cd59",
+  "libonchain_tempo-v0.13.0-nif-2.15-aarch64-apple-darwin.so.tar.gz" => "sha256:12057c24557fa4b1e49179a0d70b3a6db248034a21ef77864bcc8f625b773592",
+  "libonchain_tempo-v0.13.0-nif-2.15-aarch64-unknown-linux-gnu.so.tar.gz" => "sha256:cf230097c4e6772800775990a467753cb8166618dd323bdf3baae3be512dc4e6",
+  "libonchain_tempo-v0.13.0-nif-2.15-x86_64-apple-darwin.so.tar.gz" => "sha256:4d2adbf0f840981ef47ace4f242c440aa3a17753774b0d8f14f69ddee8f8f5fb",
+  "libonchain_tempo-v0.13.0-nif-2.15-x86_64-unknown-linux-gnu.so.tar.gz" => "sha256:09f9710e1f9a37f2aa2f2cbd9273268827ccf4be96a29ce98681d27bd714710f",
+  "libonchain_tempo-v0.13.0-nif-2.15-x86_64-unknown-linux-musl.so.tar.gz" => "sha256:9a733f8a78df3588782b81b7115e87a4c6a5f27057f491c14b337519f9e7c286",
 }
