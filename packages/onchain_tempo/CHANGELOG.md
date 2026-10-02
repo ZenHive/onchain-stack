@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `Onchain.Tempo.Transaction.t()` admits `nil` for `signature` and `raw`. `Transaction.Builder` assembles unsigned transactions before signing, so the 0.13.0 type let Dialyzer conclude that every builder function never returns `{:ok, _}` and flag consumers' success branches. Reported by mpp.
+
 ## v0.13.0 (2026-10-02)
 
 ### Breaking

@@ -61,7 +61,7 @@ defmodule Onchain.Tempo.Transaction do
         }
   @type access :: %{address: binary(), storage_keys: [binary()]}
   @type call :: %{to: binary() | nil, value: non_neg_integer(), input: binary()}
-  @typedoc "Named transaction fields. Addresses and data are binaries; raw is broadcast-ready hex."
+  @typedoc "Named transaction fields. Addresses and data are binaries; raw is broadcast-ready hex. Builder-assembled transactions carry nil signature and raw until signed."
   @type t :: %__MODULE__{
           chain_id: non_neg_integer(),
           fee_token: binary() | nil,
@@ -77,8 +77,8 @@ defmodule Onchain.Tempo.Transaction do
           valid_after: pos_integer() | nil,
           key_authorization: key_authorization() | nil,
           tempo_authorization_list: [authorization()],
-          signature: signature(),
-          raw: String.t()
+          signature: signature() | nil,
+          raw: String.t() | nil
         }
 
   # Calldata sizes used in pattern match guards (4-byte selector + ABI-encoded args).
