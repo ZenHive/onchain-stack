@@ -1,7 +1,8 @@
 # Native distribution and Rust supply chain
 
 How the in-repo NIF crates are built, shipped and gated, and how in-family
-dependencies resolve for development versus publishing. Status is `active`. Each rule's source follows it.
+dependencies resolve for development versus publishing. Status is `draft`. Each rule's source follows it. DIST-5, DIST-8 and DIST-10 are
+release-time checks with no ExUnit test (see each rule); the rest are tagged tests.
 
 DIST-1: The precompiled target set is exactly aarch64/x86_64 Darwin, aarch64/x86_64 GNU/Linux and x86_64 musl at NIF 2.15; `Onchain.Precompiled.targets/0` matches `scripts/build-precompiled.sh`, and no Windows target is declared.
   Source: packages/onchain/lib/onchain/precompiled.ex; task 9031 (five targets).
@@ -17,6 +18,7 @@ DIST-4: With the `.onchain-monorepo-root` marker present and `ONCHAIN_PUBLISH` n
 
 DIST-5: A fresh clone with an empty rustler_precompiled cache and no build environment variable compiles at the repo root and in all seven packages.
   Source: task 9043 (acceptance criterion 1; broken since c9c7256).
+  Verified by: a fresh-clone compile; no automated test.
 
 DIST-6: Core onchain refuses to compile on a host outside the shipped target set.
   Source: Onchain.Precompiled.opts/1.
@@ -26,12 +28,14 @@ DIST-7: `ONCHAIN_BUILD=1` force-builds onchain's crate and `ONCHAIN_EVM_BUILD=1`
 
 DIST-8: onchain's published tarball declares rustler optional, ships `checksum-Elixir.Onchain.ABI.Native.exs`, and compiles in a fresh consumer without cargo on PATH.
   Source: task 9031 (acceptance criterion 4); task 9043 (acceptance criterion 2); packages/onchain/CLAUDE.md (publish-time verification).
+  Verified by: bin/publish-prep.sh check onchain plus a fresh-consumer compile; no ExUnit test.
 
 DIST-9: `sibling/2,3` resolves an in-family dependency to its path only when the `.onchain-monorepo-root` marker exists and `ONCHAIN_PUBLISH` is not `1`, never by the sibling directory's existence.
   Source: root CLAUDE.md § The sibling/3 mechanism; packages/*/mix.exs `sibling/3`.
 
 DIST-10: Every publish step runs with `ONCHAIN_PUBLISH=1` and aborts when `mix hex.build` output contains "excluded from the package".
   Source: root CLAUDE.md § The publish trap (onchain_aave 0.3.0 incident); bin/publish-prep.sh.
+  Verified by: bin/publish-prep.sh (aborts on "excluded from the package"); no ExUnit test.
 
 DIST-11: Every `sibling(:name, "req")` requirement admits that sibling's in-repo `@version`.
   Source: root CLAUDE.md (`mix onchain.bounds`); lib/mix/tasks/onchain.bounds.ex.

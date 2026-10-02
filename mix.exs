@@ -77,7 +77,13 @@ defmodule OnchainStack.MixProject do
       # to discover it afterwards.
       # Then the alias regression check (plain `elixir`, no deps bootstrap): it
       # proves check.dispatch stays cheap and full QA stays complete.
-      ci: ["onchain.bounds", "cmd elixir test/alias_separation_test.exs", &packages_ci/1],
+      # The DIST spec test (also plain `elixir`) checks sibling/3, bounds and the crate split.
+      ci: [
+        "onchain.bounds",
+        "cmd elixir test/alias_separation_test.exs",
+        "cmd elixir test/dist_spec_test.exs",
+        &packages_ci/1
+      ],
       # Harness registers `check_command: "mix check.dispatch"` free-text, and a
       # reviewer that runs it at the ROOT must not get a silent "task not found"
       # or — worse — a cheap green. Fail loudly with the actual instruction:
