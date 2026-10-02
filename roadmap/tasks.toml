@@ -3786,7 +3786,7 @@ scores = { d = 5, b = 7, u = 6 }
 depends_on = [2136, 2137]
 acceptance_criteria = ["Cartouche.RPC gains eth_simulateV1 modelling blockStateCalls with state and block overrides, and decoding per-call results including logs and per-call error objects into structs", "The request surface covers the spec'd shape — blockStateCalls, stateOverrides, blockOverrides, returnFullTransactions, traceTransfers, validation — as structs per repo conventions", "A live test pins one real multi-call simulation success (e.g. a funded transfer via a state override) and one real per-call failure (a reverting call inside a successful response, asserting status 0x0 and the per-call error code) and one real request rejection (a -380xx JSON-RPC error, e.g. nonce too low under validation: true), each exactly as the node reports it", "Succeeded, per-call failure (CallResultFailure), request rejection (-38010..-38015 and the other codes execute.yaml lists) and method-unsupported stay distinguishable in the return type; unsupported comes from task 2137's shared refusal classification (-32601), not a new classifier", "@doc names eth_simulateV1 as carried by the tagged spec since v1.0.0-beta.5 and contrasts it with the privileged trace_callMany / debug_traceCall path (task 2135)", "Behaviour is verified on >=1 hosted endpoint via the task-2136 seam as well as the archive node — a real result or its real refusal, never a skip", "Focused tests for the changed behaviour pass and `mix check.dispatch` is green in every touched package (full `mix ci` is post-merge QA)"]
 out_of_scope = ["A convenience simulation DSL or bundle-builder on top of the raw surface — the raw spec'd surface is the deliverable", "Deprecating or changing trace_call / trace_call_many / debug_trace_call — task 2135 owns their portability contract; they stay", "Refactoring onchain_tempo's AA-specific simulate/3 — it is a domain caller, not a duplicate wrapper; see the body"]
-files_to_modify = ["packages/onchain/lib/cartouche/rpc.ex"]
+files_to_modify = ["packages/onchain/lib/onchain/rpc.ex"]
 touches = ["packages/onchain/test/", "packages/onchain/CHANGELOG.md"]
 assignee = "grok"
 model = "grok-4.7"
@@ -3805,7 +3805,9 @@ What it does reveal is a second transport escape: it builds its own `do_rpc_requ
 Success plus these three outcomes must stay distinguishable in the return type. Collapsing any two of them is what makes a fail-open caller unsafe.
 
 Authority: the tagged execution-apis spec plus the live node.
-"""
+
+
+(2026-10-03) onchain 0.16.0 renamed Cartouche.* to Onchain.*: read `Cartouche.RPC` as `Onchain.RPC` and `packages/onchain/lib/cartouche/rpc.ex` as `packages/onchain/lib/onchain/rpc.ex` throughout; line numbers quoted above predate the rename. Dependencies 2136 and 2137 are done."""
 created_at = "2026-08-26"
 scored_at = "2026-09-29"
 
@@ -3905,8 +3907,8 @@ scores = { d = 3, b = 7, u = 7 }
 depends_on = [2136, 2137]
 acceptance_criteria = ["trace_trx, trace_call, trace_call_many and debug_trace_call each carry a @doc naming the method as absent from execution-apis, which clients serve it, and the error a common hosted endpoint returns — recorded verbatim from an observed response", "A capability probe following the Onchain.Trace.available?/1 shape lets a consumer branch before calling; it classifies through 2137's refusal tags", "A live test pins the probe's answer on the privileged node and the observed refusal from >=1 hosted endpoint; it flunks with exact export instructions when an endpoint env var is absent, never skips", "docs/cartouche/README.md's trace row replaces 'have not been probed' with the observed refusal", "Focused tests for the changed behaviour pass and `mix check.dispatch` is green in every touched package (full `mix ci` is post-merge QA)", "The @doc of every debug_* wrapper in packages/onchain states that src/debug/trace.yaml exists only on execution-apis main and in no tagged release (v1.0.0-beta.7 has no src/debug), so no debug_* method is presented as tagged-standard"]
 out_of_scope = ["Removing or reimplementing the trace wrappers", "eth_simulateV1 (task 2132)", "base_fee/1 (task 2127)"]
-files_to_modify = ["packages/onchain/lib/cartouche/rpc.ex"]
-touches = ["packages/onchain/test/", "packages/onchain/docs/cartouche/README.md", "packages/onchain/CHANGELOG.md", "packages/onchain/lib/cartouche/rpc.ex"]
+files_to_modify = ["packages/onchain/lib/onchain/rpc.ex"]
+touches = ["packages/onchain/test/", "packages/onchain/docs/cartouche/README.md", "packages/onchain/CHANGELOG.md", "packages/onchain/lib/onchain/rpc.ex"]
 assignee = "grok"
 model = "grok-4.7"
 body = """Verified against ethereum/execution-apis main: the trace_* namespace is absent from the spec, and src/debug/trace.yaml carries debug_traceBlockByNumber, debug_traceBlockByHash and debug_traceTransaction but not debug_traceCall. Cartouche.RPC ships four non-standard reads: trace_trx -> trace_transaction (packages/onchain/lib/cartouche/rpc.ex:1435), trace_call (:1586), trace_call_many (:1790) and debug_trace_call (:1872).
@@ -3916,7 +3918,9 @@ The README caveat already exists: packages/onchain/docs/cartouche/README.md:117 
 trace_* is the OpenEthereum/Parity namespace, inherited by Erigon and implemented by reth (our archive node serves it, which is why every trace test is green here). Verify each client claim against that client's own documentation before writing it into a @doc, and cite what you checked. The probe follows Onchain.Trace.available?/1 (packages/onchain_evm/lib/onchain/trace.ex:218) and classifies refusals through task 2137's shared transport rather than string-matching.
 
 (2026-09-29 review) "src/debug/trace.yaml carries debug_traceBlockByNumber, debug_traceBlockByHash and debug_traceTransaction" is true on main only. The v1.0.0-beta.7 tag has no src/debug directory (GitHub contents API returns 404 at that ref). By node-portability rule 1, every debug_* method is therefore untagged too, not only debug_traceCall.
-"""
+
+
+(2026-10-03) onchain 0.16.0 renamed Cartouche.* to Onchain.*: read `Cartouche.RPC` as `Onchain.RPC` and `packages/onchain/lib/cartouche/rpc.ex` as `packages/onchain/lib/onchain/rpc.ex` throughout; line numbers quoted above predate the rename. Dependencies 2136 and 2137 are done."""
 created_at = "2026-08-26"
 scored_at = "2026-09-29"
 
