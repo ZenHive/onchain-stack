@@ -16501,7 +16501,7 @@
       "bundle": "onchain_core_consolidation",
       "target_repo": "onchain_tempo",
       "milestone": "onchain_core_consolidation",
-      "status": "in_progress",
+      "status": "done",
       "title": "onchain_tempo 0.13.0: every Tempo signature type through tempo-primitives, typed public Transaction struct",
       "scores": {
         "d": 6,
@@ -16546,10 +16546,17 @@
         "packages/onchain_tempo/mix.exs",
         "docs/specs/onchain-tempo-native.md"
       ],
+      "shipped_in": "9c7724afee33885e33b522aa81e9e968256b2a68",
       "body": "onchain_tempo 0.12.0 (task 9033, moved 0x76 encoding onto tempo-primitives) shipped two regressions that block mpp's migration to onchain 0.16 (235 of 2664 mpp tests fail on mpp branch wip/onchain-0.16, commit 49ee77a):\n\n1. Signature-type restriction in OUR wrapper, not in tempo-primitives. native/onchain_tempo/src/lib.rs rejects every non-Secp256k1 case: decode fails with \"Only Secp256k1 sender signatures are supported\" for keychain V1/V2, P-256 and WebAuthn sender signatures; transaction() rejects non-Secp256k1 key_authorization; key_hash rejects non-Secp256k1 access keys; serialize/sender assume a 65-byte secp256k1 signature. 0.11.0 decoded these transactions (it handled the envelope as opaque RLP). tempo-primitives' TempoSignature / PrimitiveSignature / KeyAuthorization already model all of them; the wrapper must pass them through, not filter them. Real Tempo traffic carries these types (mpp's access-key and P-256 flows are live-tested on Moderato).\n\n2. Undocumented public-API break. Onchain.Tempo.Transaction.fields went from the 0.11 RLP field list to the tempo-primitives serde/JSON codec map (camelCase keys, internal shape) while task 9033's acceptance criteria promised an unchanged public API, and the 0.12.0 CHANGELOG does not mention it. Neither form is a good public contract: RLP indices break silently when Tempo inserts a field (mpp reads them positionally at ~25 sites in lib/mpp/methods/tempo*.ex), and the serde map is an implementation detail of a Rust crate that can change on any crate bump.\n\nDecided architecture (operator-approved 2026-10-02; do not reopen):\n- tempo-primitives is the single source of truth for bytes: decode, encode, signing hash, tx hash, fee-payer preimage, cosign and sender recovery go through it for EVERY signature type it supports. The Elixir side never re-derives bytes.\n- The public surface is a typed %Onchain.Tempo.Transaction{} with named fields (chain_id, nonce_key, nonce, gas fields, fee_token, calls, access_list, valid_before, valid_after, key_authorization, fee_payer_signature, signature, raw — finalize the exact set from tempo-primitives' TempoTransaction) and a typed signature union, e.g. {:secp256k1, sig} | {:p256, ...} | {:webauthn, ...} | {:keychain, version, user_address, inner}. key_authorization is likewise typed (key type, key id, limits/expiry, signature). JSON <-> struct conversion happens exactly once, at the NIF boundary. The serde map and RLP indices are not public API; drop `fields` (0.13 is a breaking minor anyway).\n- Our own signing stays Secp256k1 (we only hold secp256k1 keys); everything that READS, re-serializes, hashes, cosigns as fee payer or recovers the sender must accept all types.\n- Ship as 0.13.0 with no compatibility shim; mpp migrates once onto named fields.\n\nIndependent oracle: priv/verification/0x76 already grades against ox (Tempo's TypeScript SDK) vectors; extend that with ox-generated vectors for the new signature types rather than only round-tripping through the same crate under test.\n",
       "created_at": "2026-10-02",
       "started_at": "2026-10-02",
+      "done_at": "2026-10-02",
       "scored_at": "2026-10-02",
+      "implemented": "Landed by codex via merge-train; reviewer-approved (run run-1790911751995-719af4ec, 9c7724afee33885e33b522aa81e9e968256b2a68).",
+      "delivered_by": "codex",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1790911751995-719af4ec",
       "spec_changes": [
         {
           "rule": "TEMPO-4",

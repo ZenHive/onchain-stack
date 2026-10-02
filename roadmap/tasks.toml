@@ -10704,7 +10704,7 @@ phase = 9100
 bundle = "onchain_core_consolidation"
 target_repo = "onchain_tempo"
 milestone = "onchain_core_consolidation"
-status = "in_progress"
+status = "done"
 title = "onchain_tempo 0.13.0: every Tempo signature type through tempo-primitives, typed public Transaction struct"
 scores = { d = 6, b = 9, u = 9 }
 markers = ["security"]
@@ -10728,7 +10728,14 @@ Decided architecture (operator-approved 2026-10-02; do not reopen):
 
 Independent oracle: priv/verification/0x76 already grades against ox (Tempo's TypeScript SDK) vectors; extend that with ox-generated vectors for the new signature types rather than only round-tripping through the same crate under test.
 """
+implemented = "Landed by codex via merge-train; reviewer-approved (run run-1790911751995-719af4ec, 9c7724afee33885e33b522aa81e9e968256b2a68)."
+delivered_by = "codex"
+verified = true
+verified_by = "cursor"
+verification_ref = "harness-run:run-1790911751995-719af4ec"
 created_at = "2026-10-02"
 started_at = "2026-10-02"
 scored_at = "2026-10-02"
+done_at = "2026-10-02"
+shipped_in = "9c7724afee33885e33b522aa81e9e968256b2a68"
 spec_changes = [{ rule = "TEMPO-4", op = "change" }, { rule = "TEMPO-5", op = "add" }, { rule = "TEMPO-6", op = "add" }]
