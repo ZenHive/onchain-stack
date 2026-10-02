@@ -4,6 +4,12 @@ Completed roadmap tasks.
 
 ---
 
+## Unreleased
+
+### Fixed
+
+- `Onchain.Signer.Secp256k1.public_key/1` normalizes ex_secp256k1 failures to `{:error, atom()}`. ex_secp256k1 0.8 specs a bare atom, so Dialyzer in consumers concluded the function never returns `{:error, _}` and flagged their error branches. Reported by mpp.
+
 ## Unreleased — v0.16.0 (single breaking release: ABI.* and Cartouche.* become Onchain.*)
 
 ### Added

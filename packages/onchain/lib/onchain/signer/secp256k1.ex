@@ -31,7 +31,13 @@ defmodule Onchain.Signer.Secp256k1 do
   @impl true
   @spec public_key(binary()) :: {:ok, binary()} | {:error, atom()}
   def public_key(private_key) do
-    ExSecp256k1.create_public_key(private_key)
+    # ExSecp256k1 0.8 returns {:error, atom} at runtime but specs a bare atom;
+    # accept both so callers and Dialyzer see the tagged contract.
+    case ExSecp256k1.create_public_key(private_key) do
+      {:ok, public_key} -> {:ok, public_key}
+      {:error, reason} -> {:error, reason}
+      reason when is_atom(reason) -> {:error, reason}
+    end
   end
 
   @doc ~S"""
