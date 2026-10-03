@@ -5629,7 +5629,7 @@
       "bundle": "cartouche_rpc_read_surface",
       "target_repo": "onchain",
       "milestone": "stack_read_surface_boundary",
-      "status": "in_progress",
+      "status": "done",
       "title": "eth_simulateV1 on Cartouche.RPC — the portable simulation entry point, keeping per-call failure, request rejection and unsupported distinct",
       "scores": {
         "d": 5,
@@ -5667,10 +5667,17 @@
         "packages/onchain/test/",
         "packages/onchain/CHANGELOG.md"
       ],
+      "shipped_in": "f513e50f351cf4ca10ddf825cb13b696392cb8c0",
       "body": "`eth_simulateV1` entered the execution-apis spec at tag `v1.0.0-beta.5` (2026-06-03, `src/eth/execute.yaml`) — verified by walking the tags directly, beta.1 through beta.7 — and it IS present in the vendored local spec. It is squarely cartouche's under the stack boundary, and it is the portable answer to the privileged `trace_callMany` / `debug_traceCall` pair cartouche already wraps.\n\nClient support is real and was verified against each client's own source, not from memory: geth (`internal/ethapi/api.go`, `BlockChainAPI.SimulateV1`), reth (`crates/rpc/rpc-eth-api/src/core.rs`, with the tracking issue closed as implemented), erigon (`rpc/jsonrpc/eth_simulation.go`, and its rpcdaemon README lists it supported) and nethermind (`EthRpcModule.cs`). So the premise the earlier version of this task flagged as unverified is now confirmed for the archive node's client — but confirm the node's live answer anyway before building on it, because a client implementing a method and an endpoint serving it are different facts.\n\n**One existing caller, and it is NOT a duplicate to delete.** onchain_tempo calls `eth_simulateV1` at lib/onchain/tempo/rpc.ex:128, but it is a domain consumer, not a competing wrapper: it builds a single AA-folded 0x76 call, interprets the result as success / revert / unsupported for a fee-payer gas-drain guard, and carries an empirically-verified note that `tempo_simulateV1` is not deployed on Tempo mainnet or Moderato. That is exactly the layering the boundary prescribes — the chain-specific package re-presents the node method for its domain. It stays.\n\nWhat it does reveal is a second transport escape: it builds its own `do_rpc_request/4` directly on Req + Jason rather than going through the shared transport, mirroring why `Onchain.HTTP` exists. Worth noting, out of scope here.\n\n(2026-09-29 review) Failures arrive at two different layers, and the decode must keep them apart (execution-apis v1.0.0-beta.7 src/eth/execute.yaml `errors:` and src/schemas/execute.yaml `CallResultFailure`:172):\n- Per-call failure. A revert or EVM error inside one call is not a JSON-RPC error. The request succeeds, and that call's result carries `status: \"0x0\"`, `returnData`, `gasUsed` and an `error {code, message, data}` object.\n- Request rejection. `-38010`..`-38015` (nonce too low or too high, baseFeePerGas too low, intrinsic gas, insufficient funds, …) and the other codes execute.yaml lists are a JSON-RPC error on the whole request, typically under `validation: true`. onchain_tempo's `-38013` handling is this layer, not a per-call failure.\n- Method unsupported (`-32601`). This comes from task 2137's shared refusal classification, which is also where onchain_tempo's `-32601` -> `:unsupported` shape should come from.\nSuccess plus these three outcomes must stay distinguishable in the return type. Collapsing any two of them is what makes a fail-open caller unsafe.\n\nAuthority: the tagged execution-apis spec plus the live node.\n\n\n(2026-10-03) onchain 0.16.0 renamed Cartouche.* to Onchain.*: read `Cartouche.RPC` as `Onchain.RPC` and `packages/onchain/lib/cartouche/rpc.ex` as `packages/onchain/lib/onchain/rpc.ex` throughout; line numbers quoted above predate the rename. Dependencies 2136 and 2137 are done.",
       "created_at": "2026-08-26",
       "started_at": "2026-10-02",
+      "done_at": "2026-10-03",
       "scored_at": "2026-09-29",
+      "implemented": "Landed by grok via merge-train; reviewer-approved (run run-1790984821637-15917e61, f513e50f351cf4ca10ddf825cb13b696392cb8c0).",
+      "delivered_by": "grok",
+      "verified": true,
+      "verified_by": "cursor",
+      "verification_ref": "harness-run:run-1790984821637-15917e61",
       "cross_repo": []
     },
     {
