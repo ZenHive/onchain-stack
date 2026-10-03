@@ -8,6 +8,7 @@ Completed roadmap tasks.
 
 ### Added
 
+- `Onchain.RPC.eth_simulate_v1/2` calls `eth_simulateV1` (tagged execution-apis since v1.0.0-beta.5). Success is `{:ok, [Onchain.RPC.Simulate.BlockResult]}`. A per-call revert stays in that result as `CallFailure` (`status` 0 and an `error` with code, message, and optional data). A validation rejection such as `-38010` stays `{:error, %{code, message}}`. Method unsupported stays `{:error, {:method_not_found, map}}` from `send_rpc/3`. Observed 2026-10-03: the archive node and Alchemy mainnet serve the method; Infura mainnet returns `-32601`.
 - `Onchain.RPC.trace_available?/1` and `Onchain.RPC.debug_trace_available?/1` probe `trace_call` and `debug_traceCall` through `send_rpc/3`. `trace_transaction`, `trace_call`, `trace_callMany`, and `debug_traceCall` are absent from tagged execution-apis. Alchemy mainnet refuses them with `-32600` "...not available on the Free tier"; Infura mainnet with `-32601` "The method ... does not exist/is not available" (observed 2026-10-02).
 
 ### Fixed

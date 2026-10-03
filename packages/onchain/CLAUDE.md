@@ -136,7 +136,7 @@ lib/onchain/
   decimal.ex        # to_decimal/2, to_basis_points/1, div_pow10/2
   fees.ex           # suggest_fees/2 — EIP-1559 fee recommendation over Onchain.FeeHistory.t()
   rpc.ex            # Onchain.RPC: the one RPC module (formerly Cartouche.RPC; the 0.15 Onchain.RPC aliases are gone). Next-block base fee is base_fee/1 via eth_feeHistory. Node refusals are classified on send_rpc/3 (:method_not_found / :namespace_unavailable / :unavailable). eth_getStorageAt and EIP-1186 eth_getProof are eth_get_storage_at/3 and eth_get_proof/3
-  rpc/proof.ex, rpc/trace.ex  # eth_getProof and trace_* result structs (Onchain.RPC.Trace, not onchain_evm's Onchain.Trace)
+  rpc/proof.ex, rpc/simulate.ex, rpc/trace.ex  # eth_getProof, eth_simulateV1, and trace_* result structs (Onchain.RPC.Trace, not onchain_evm's Onchain.Trace)
   rpc/codegen.ex    # the one defrpc/2 macro, checked against Onchain.RPC.Specs, plus defrpc_bang/2
   rpc/helpers.ex    # shared RPC helpers; parse_block_response/1, parse_transaction_map/1; do_rpc enriches revert maps with :data hex for decode_error/2. parse_log/1 is removed; receipt and subscription logs decode through Onchain.Filter.Log
   erc20.ex          # reads + writes, plus ERC20.Call and ERC20.CallData

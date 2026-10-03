@@ -74,7 +74,7 @@ defmodule Onchain.RPC.Simulate do
             return_data: binary(),
             gas_used: non_neg_integer(),
             max_used_gas: non_neg_integer() | nil,
-            logs: [Log.t()]
+            logs: [FilterLog.t()]
           }
   end
 
@@ -96,7 +96,7 @@ defmodule Onchain.RPC.Simulate do
             return_data: binary(),
             gas_used: non_neg_integer(),
             max_used_gas: non_neg_integer() | nil,
-            logs: [Log.t()],
+            logs: [FilterLog.t()],
             error: CallError.t()
           }
   end
