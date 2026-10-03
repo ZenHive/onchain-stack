@@ -195,10 +195,10 @@ defmodule Onchain.MixProject do
         "format --check-formatted",
         "compile --warnings-as-errors"
       ],
-      # Comprehensive gate — the `mix ci` target. Coverage floor 70 matches the family convention already encoded
-      # in .github/workflows/harness.yml (measured baseline: 79.04%). reach's
-      # analysis scope (see .reach.exs) includes the `dev` root in addition to
-      # `lib`/`src` — do not narrow it.
+      # Comprehensive gate — the `mix ci` target. onchain.coverage preserves
+      # the separate library and signer floors after consolidation. Reach's
+      # scope (see .reach.exs) includes lib, dev, sol/src and test/support —
+      # do not narrow it.
       #
       # `--summary-only` is deliberately OMITTED from the test.json step below:
       # the flag is in ex_unit_json's `retry_disqualified_opts?/1` list, so it

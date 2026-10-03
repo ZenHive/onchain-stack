@@ -262,6 +262,11 @@ defmodule Onchain.RPC.Simulate do
   @typedoc "A decoded call, either success or a per-call failure."
   @type call_result :: BlockResult.call_result()
 
+  # Call results require status, returnData and gasUsed; success also requires
+  # logs, failure requires error. Elixir types cannot name literal string keys.
+  @typep raw_call :: %{required(String.t()) => String.t() | [map()] | raw_error() | nil}
+  @typep raw_error :: %{required(String.t()) => integer() | String.t() | nil}
+
   @doc """
   JSON-RPC error codes listed on `eth_simulateV1` in execution-apis v1.0.0-beta.7.
 
@@ -516,7 +521,7 @@ defmodule Onchain.RPC.Simulate do
     }
   end
 
-  @spec deserialize_call(map()) :: call_result()
+  @spec deserialize_call(raw_call()) :: call_result()
   defp deserialize_call(%{"status" => status} = call) do
     case Hex.decode_hex_number!(status) do
       1 -> deserialize_success(call)
@@ -525,7 +530,7 @@ defmodule Onchain.RPC.Simulate do
     end
   end
 
-  @spec deserialize_success(map()) :: CallSuccess.t()
+  @spec deserialize_success(raw_call()) :: CallSuccess.t()
   defp deserialize_success(call) do
     %CallSuccess{
       status: 1,
@@ -536,7 +541,7 @@ defmodule Onchain.RPC.Simulate do
     }
   end
 
-  @spec deserialize_failure(map()) :: CallFailure.t()
+  @spec deserialize_failure(raw_call()) :: CallFailure.t()
   defp deserialize_failure(call) do
     %CallFailure{
       status: 0,
@@ -548,7 +553,7 @@ defmodule Onchain.RPC.Simulate do
     }
   end
 
-  @spec deserialize_error(map()) :: CallError.t()
+  @spec deserialize_error(raw_error()) :: CallError.t()
   defp deserialize_error(%{"code" => code, "message" => message} = error) when is_integer(code) and is_binary(message) do
     %CallError{code: code, message: message, data: decode_optional_bytes(error["data"])}
   end

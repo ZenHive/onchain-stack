@@ -13,9 +13,12 @@ This is the canonical policy for **when** checks run. Project command catalogs d
 | Implementation | Format changed code, compile where relevant, and add/run focused tests for the changed behavior and regression. |
 | Reviewer | Independently assess the diff and acceptance criteria; run focused checks for affected behavior and relevant integration boundaries. The reviewer remains the acceptance gate. |
 | Post-merge audit + QA | On the landed revision, run the full project suite, coverage and applicable analyzers: Dialyzer, Reach, Sobelow, Credo, Doctor, clone detection and language-specific equivalents. Review the integrated surface against roadmap intent and domain invariants. |
+| Scheduled (nightly / idle compute) | Project-defined long runs on the target branch: benchmarks compared against a stored baseline, property/fuzz/stress runs. Store results per revision; a regression against the baseline becomes a finding or task. Never a gate. Long runs belong here, not in implementer or reviewer runs. |
 
 - **Commit, push, PR creation, reviewer handoff, branch switch, rebase, merge and `deps.get` are not by themselves reasons to run full QA.** Do not run full-project gates on every small change or every implementer/reviewer run. No project exception, including aave_sim.
 - **Choose checks by changed behavior and risk.** Signing, money, authorization, crypto and external-provider changes still require their relevant security, boundary and live integration tests before acceptance. Missing credentials or failed checks are reported honestly, never converted into a green result. Preserve tests and thresholds; change when they run.
+- **Depth scales with blast radius.** The acceptance bar is "as confident as if hand-written". Back-office UI gets focused checks; persisted formats, money, authorization, distribution/protocol paths and hot paths get deeper review plus benchmark or fuzz evidence. The task names its blast radius (`task-writing.md` § Blast Radius).
+- **Running systems are evidence.** To diagnose, agents may read a staging runtime (remsh, `fly ssh console`, tracing, process/mailbox inspection). Any write or state change on a shared environment needs operator approval; production is read-only unless explicitly authorized.
 - **Broaden only for a named reason:** explicit request/acceptance criterion, or concrete evidence that focused checks cannot resolve a cross-module regression. State that reason and run the smallest additional check that resolves it. “To be safe” or an alias name is not a reason.
 - **Coverage belongs to full QA.** Keep project thresholds (at least 80% standard / 95% critical unless a documented project baseline applies). Do not demand a whole-module coverage uplift before an unrelated edit. Add meaningful tests for the behavior being changed.
 - **Inspect aliases before using them.** If `check.dispatch`, `precommit`, `ci`, a registered hint or an inherited hook bundles full tests/coverage/analyzers, use the explicit scoped commands for the run and report the configuration mismatch. Do not claim the alias became lightweight merely because the instructions changed.
@@ -329,11 +332,11 @@ sobelow). This file carries only what's specific to this package.
 ## Toolchain & check commands (read before judging a build)
 
 Full post-merge QA: **`mix ci`** (= `mix precommit.full`), same shape as every
-other package (root `CLAUDE.md` § Gates), with two package-specific notes:
+other package (root `CLAUDE.md` § Gates), with these package-specific notes:
 
-- **Gate flag is `reach.check --dead-code --arch --smells`** (shared with
-  hieroglyph, onchain and onchain_evm; the other four are not on `--dead-code`
-  yet — root `CLAUDE.md` § Adjudicated findings says why). It spent 2026-08 to
+- **Gate flag is `reach.check --dead-code --arch --smells`**, as in every
+  package except onchain, whose dead-code pass times out (see root `CLAUDE.md`
+  § Adjudicated findings). It spent 2026-08 to
   2026-09 on `--arch` only, because reach ≤ 2.8.2 crashed its whole smell pass
   on the JavaScript nodes the QuickBEAM plugin contributes (`source: nil`, and
   `plugins:` is not a `.reach.exs` key, so there was nothing to exclude).

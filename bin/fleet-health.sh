@@ -5,7 +5,7 @@
 # retired deps, known vulnerabilities, open GitHub issues/PRs, and open
 # Dependabot security alerts.
 #
-# THE LAYOUT, and why rows no longer all mean the same thing. Seven of the
+# THE LAYOUT, and why rows no longer all mean the same thing. Eight of the
 # packages now live inside ONE git repo:
 #
 #   ~/_DATA/code/onchain-stack            the monorepo root  (row: onchain-stack)
@@ -25,9 +25,9 @@
 #                        mix.lock lives) plus a package-scoped dirty count.
 #                        Their GIT ahead/behind, TOOLCH and GitHub cells read
 #                        `-`: those facts belong to the onchain-stack row and
-#                        repeating one number seven times would imply seven
-#                        independent measurements. It also means seven fewer
-#                        `git fetch`es and 24 fewer gh API calls per sweep.
+#                        repeating one number eight times would imply eight
+#                        independent measurements. It also avoids repeated
+#                        `git fetch`es and gh API calls per sweep.
 #   external rows      — everything, exactly as before.
 #
 # Only the onchain-stack row and the three external rows fetch, so no two probes
@@ -35,7 +35,7 @@
 #
 # There is no CI column and no code-scanning column: the family removed its
 # GitHub Actions workflows on 2026-08-22 and `mix ci` is the whole gate, run
-# locally before a push. A `gh run list` against a repo with no workflows
+# locally for full post-merge QA. A `gh run list` against a repo with no workflows
 # returns an empty list, which would render as a reassuring `ok` — an absent
 # gate must not look like a passing one, so the column is gone rather than
 # always-green. Dependabot ALERTS stay: they come from the dependency graph,
@@ -93,10 +93,10 @@ GH_ORG="${ONCHAIN_GH_ORG:-ZenHive}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # The monorepo root's own row. Not a Hex package; it is where git, the toolchain
-# pin and the GitHub state for all seven packages actually live.
+# pin and the GitHub state for all eight packages actually live.
 ROOT_ROW="onchain-stack"
 
-# The seven packages that live under $STACK_DIR/packages/.
+# The eight packages that live under $STACK_DIR/packages/.
 PACKAGES=(onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo faucet_ex)
 
 # Cascade order (upstream → downstream), same order publish-prep.sh uses, with
@@ -104,7 +104,7 @@ PACKAGES=(onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_
 ALL_REPOS=(descripex zen_websocket "$ROOT_ROW" onchain onchain_aave onchain_aerodrome onchain_evm onchain_js onchain_solana onchain_tempo faucet_ex mpp)
 
 # The one toolchain the whole family builds on. In the monorepo there is now
-# exactly ONE `.tool-versions` for the seven packages — the root's — which is
+# exactly ONE `.tool-versions` for the eight packages — the root's — which is
 # the layout this column always wanted: a per-package pin could not diverge
 # without someone adding a file that has no reason to exist. The three external
 # repos each still carry their own, and those are what the column watches for
@@ -160,7 +160,7 @@ fi
 
 # ------------------------------------------------------------------- layout
 
-# One of the seven in-monorepo packages?
+# One of the eight in-monorepo packages?
 is_package() {
   local p
   for p in "${PACKAGES[@]}"; do [ "$p" = "$1" ] && return 0; done
@@ -252,7 +252,7 @@ probe_repo() {
   local toolchain="-"
 
   # A package is a directory inside a repo, not a repo — it has no `.git`.
-  # Testing for one would report all seven as missing.
+  # Testing for one would report all eight as missing.
   local present=0
   if [ "$kind" = package ]; then
     [ -d "$dir" ] && [ -f "$dir/mix.exs" ] && present=1
@@ -304,7 +304,7 @@ probe_repo() {
   # --- toolchain ------------------------------------------------------------
   # Only rows that own a `.tool-versions`: the monorepo root and the three
   # external repos. A package carrying its own pin would be the drift, not the
-  # measurement — the root file is the runtime `mix ci` uses for all seven.
+  # measurement — the root file is the runtime `mix ci` uses for all eight.
   if [ "$kind" != package ]; then
     local tv="$dir/.tool-versions"
     local tv_erl="" tv_ex="" pin_bad=0
@@ -343,7 +343,7 @@ probe_repo() {
   # --- hex.outdated / hex.audit --------------------------------------------
   # Skipped on the monorepo root row: the root project is analyzer-only
   # (credo/ex_slop/styler) and ships no runtime code, so its dep state says
-  # nothing about the family. The seven package rows each run in their own
+  # nothing about the family. The eight package rows each run in their own
   # directory, where that package's mix.lock is.
   #
   # In-family siblings resolve as PATH deps here (no ONCHAIN_PUBLISH), and
@@ -392,7 +392,7 @@ probe_repo() {
 
   # --- deps.audit -----------------------------------------------------------
   # Same row split as hex above. `.mix_audit_ignore` is a SYMLINK to the root
-  # file in six of the seven packages — `[ -f ]` follows symlinks, so the same
+  # file in all eight packages — `[ -f ]` follows symlinks, so the same
   # test keeps working; a broken link correctly reads as absent and falls back
   # to a bare audit rather than passing mix_audit a path it cannot open.
   if [ "$DO_AUDIT" = 1 ] && [ "$kind" != root ]; then
@@ -422,8 +422,8 @@ probe_repo() {
   # --- GitHub ---------------------------------------------------------------
   # Package rows make no gh calls at all: their issues, PRs and Dependabot
   # alerts are the monorepo's, already counted once on the onchain-stack row.
-  # Seven repeats of the same three API calls would cost seven times the rate
-  # limit to print the same number seven times.
+  # Eight repeats of the same three API calls would cost eight times the rate
+  # limit to print the same number eight times.
   if [ "$DO_GH" = 1 ] && [ "$kind" != package ]; then
     local slug; slug="$(gh_slug "$dir")"
 
@@ -447,7 +447,7 @@ probe_repo() {
     # used to arrive here too, via a code-scanning upload; they now surface
     # only where they always mattered, in `mix ci`'s own sobelow step.
     #
-    # On the monorepo row an alert may name any of the seven packages' locks —
+    # On the monorepo row an alert may name any of the eight packages' locks —
     # the detail lines below carry the package name, so read them, don't guess.
     case "$dependabot" in ''|0|'?') ;; *) status=fail ;; esac
 
@@ -594,7 +594,7 @@ printf '%sdrift = pin disagrees · none = no .tool-versions at all · own = a pa
 printf '%scarries its own pin, shadowing the root for that package alone.%s\n' "$c_dim" "$c_rst"
 printf '%sALERTS is Dependabot only, and no column here says whether `mix ci` passes —%s\n' "$c_dim" "$c_rst"
 printf '%snothing runs it for you. Run `mix ci` at the monorepo root; it iterates the%s\n' "$c_dim" "$c_rst"
-printf '%sseven packages serially (one shared advisory clone — never parallelise it),%s\n' "$c_dim" "$c_rst"
+printf '%seight packages serially (one shared advisory clone — never parallelise it),%s\n' "$c_dim" "$c_rst"
 printf '%sand run it in descripex / zen_websocket / mpp separately.%s\n' "$c_dim" "$c_rst"
 
 printf '\n'
