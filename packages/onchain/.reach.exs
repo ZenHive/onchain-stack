@@ -16,7 +16,7 @@
 #     test contracts that mimic that old surface.
 #
 [
-  # Keep all hand-written sources; exclude only generated yecc/leex Erlang.
+  # Keep all hand-written runtime, development and test-support sources.
   checks: [source_paths: ["lib", "dev", "sol/src", "test/support"]],
   smells: [
     # `--smells` is advisory unless strict is set (reach 2.8.2 config.ex

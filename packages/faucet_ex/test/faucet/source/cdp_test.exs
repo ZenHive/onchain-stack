@@ -89,7 +89,7 @@ defmodule Faucet.Source.CDPTest do
     Req.Test.stub(:cdp_never, fn _ -> flunk("provider must not be called") end)
 
     assert {:error, {:missing_credential, "CDP_API_KEY_ID", hint}} =
-             CDP.fund(@address, opts(:cdp_never, api_key_id: nil, api_key_secret: "x"))
+             CDP.fund(@address, opts(:cdp_never, api_key_id: "", api_key_secret: "x"))
 
     assert hint =~ "portal.cdp.coinbase.com"
 

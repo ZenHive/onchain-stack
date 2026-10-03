@@ -108,11 +108,13 @@ defmodule AliasSeparationTest do
   test "root dispatch still fails and full QA still delegates to all packages serially" do
     source = File.read!(Path.join(@root, "mix.exs"))
     aliases = AliasGraph.read!(source)
-    assert aliases == Map.fetch!(@before, "mix.exs")
+    baseline = Map.fetch!(@before, "mix.exs")
+    assert Map.delete(aliases, "ci") == Map.delete(baseline, "ci")
 
     assert aliases["ci"] == [
              inspect("onchain.bounds"),
              inspect("cmd elixir test/alias_separation_test.exs"),
+             inspect("cmd elixir test/dist_spec_test.exs"),
              "&packages_ci/1"
            ]
 

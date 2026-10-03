@@ -265,7 +265,9 @@ runs, in order:
    package gates discovering it downstream.
 2. **`elixir test/alias_separation_test.exs`** (via `mix cmd`) — the alias
    regression check; a failure aborts before any package gate runs.
-3. Each package's own `mix ci`, **strictly serial** — `packages_ci/1` in the
+3. **`elixir test/dist_spec_test.exs`** (via `mix cmd`) — checks the monorepo
+   dependency boundary, version bounds and native crate separation.
+4. Each package's own `mix ci`, **strictly serial** — `packages_ci/1` in the
    root `mix.exs` shells into `packages/<name>` with `MIX_ENV`/`MIX_TARGET`
    cleared (so the package's own `def cli` env pins apply, not whatever the
    root process inherited) and raises on the first non-zero exit.

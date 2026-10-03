@@ -139,7 +139,8 @@ defmodule Onchain.Tempo.Verification.MutationTest do
   defp ledger_path, do: Application.app_dir(:onchain_tempo, @ledger_rel)
 
   defp nif_digest do
-    path = Path.join(:code.priv_dir(:onchain_tempo), "native/onchain_tempo.so")
-    :crypto.hash(:sha256, File.read!(path))
+    paths = :onchain_tempo |> :code.priv_dir() |> Path.join("native/*.so") |> Path.wildcard()
+    assert paths != [], "expected a source-built or precompiled Tempo NIF"
+    Map.new(paths, &{&1, :crypto.hash(:sha256, File.read!(&1))})
   end
 end

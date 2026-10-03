@@ -37,12 +37,12 @@ defmodule OnchainAaveTest do
              "or to @not_discoverable here if they are internal"
   end
 
-  # `elixirc_paths(:test)` compiles test/support into the application, so its
+  # `elixirc_paths(:test)` compiles local and shared test support into the application, so its
   # case templates show up in the module list. Detect them by source path rather
   # than by name, so a new support module needs no edit here.
   defp test_support?(module) do
     compile_info = module.module_info(:compile)
     source = compile_info |> Keyword.get(:source, ~c"") |> to_string()
-    String.contains?(source, "/test/support/")
+    String.contains?(source, ["/test/support/", "/shared/test_support/"])
   end
 end

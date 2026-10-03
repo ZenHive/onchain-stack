@@ -453,8 +453,9 @@ users run Alchemy, Infura, or a pruned Geth. What is specific to this repo:
 - **`Onchain.RPC.base_fee/1` is the worked example.** It reads the final
   `baseFeePerGas` from `eth_feeHistory(1, "latest", [])`. `eth_baseFee` is on
   execution-apis `main` since 2026-06-15 and in no tagged release; Alchemy and
-  Infura mainnet refuse it. `Onchain.RPC.base_fee/1` (the pending-header read)
-  is removed. Verbatim refusals and the same-batch equality check are in
+  Infura mainnet refuse it. The former pending-header implementation
+  and its bang wrapper were removed before the surviving Cartouche API was
+  renamed to `Onchain.RPC` in 0.16.0. Verbatim refusals and the same-batch equality check are in
   `docs/base-fee-portability.md`. A non-obvious portability decision still gets
   a `NOTE (portability):` comment naming the method, who serves it, and the
   consumer-visible error.

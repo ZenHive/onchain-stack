@@ -62,26 +62,27 @@ defmodule Mix.Tasks.Onchain.Manifest do
           into: %{},
           do: {{Atom.to_string(name), arity}, Map.delete(hints, :description)}
 
-    Map.update!(entry, :functions, fn functions ->
-      Enum.map(functions, fn function ->
-        case {function.description, Map.fetch(contracts, {function.name, function.arity})} do
-          {description, {:ok, contract}} when is_binary(description) ->
-            literal = inspect(contract, pretty: true, limit: :infinity, custom_options: [sort_maps: true])
+    Map.update!(entry, :functions, &Enum.map(&1, fn function -> canonical_function(function, contracts) end))
+  end
 
-            # Descripex embeds unsorted inspect output at compile time. Use the
-            # doc hints (before runtime enrichment) to retain its shape.
-            description =
-              Regex.replace(~r/```elixir\n# descripex:contract\n.*?\n```/s, description, fn _ ->
-                "```elixir\n# descripex:contract\n#{literal}\n```"
-              end)
+  @spec canonical_function(map(), map()) :: map()
+  defp canonical_function(function, contracts) do
+    case {function.description, Map.fetch(contracts, {function.name, function.arity})} do
+      {description, {:ok, contract}} when is_binary(description) ->
+        literal = inspect(contract, pretty: true, limit: :infinity, custom_options: [sort_maps: true])
 
-            %{function | description: description}
+        # Descripex embeds unsorted inspect output at compile time. Use the
+        # doc hints (before runtime enrichment) to retain its shape.
+        description =
+          Regex.replace(~r/```elixir\n# descripex:contract\n.*?\n```/s, description, fn _ ->
+            "```elixir\n# descripex:contract\n#{literal}\n```"
+          end)
 
-          _ ->
-            function
-        end
-      end)
-    end)
+        %{function | description: description}
+
+      _ ->
+        function
+    end
   end
 
   @spec ordered_json(term()) :: term()

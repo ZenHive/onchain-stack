@@ -1,5 +1,9 @@
 # Base fee consolidation — Task 2127
 
+This record uses the pre-0.16.0 names. The surviving
+`Cartouche.RPC.base_fee/1` is now `Onchain.RPC.base_fee/1`; the removal below
+refers to the older pending-header implementation.
+
 ## Decision (2026-10-01)
 
 Keep `Cartouche.RPC.base_fee/1`, implemented with

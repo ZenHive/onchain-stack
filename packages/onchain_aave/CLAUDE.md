@@ -42,7 +42,7 @@ the fast local loop (no dialyzer, no coverage).
 - Pure Elixir, no native deps
 - All dependencies resolve from hex.pm — no path or git deps outside the
   monorepo's own sibling/3 mechanism, so the package is publishable as-is:
-  `sibling(:onchain, "~> 0.12")`
+  `sibling(:onchain, "~> 0.16")`
 
 ## Node Portability
 

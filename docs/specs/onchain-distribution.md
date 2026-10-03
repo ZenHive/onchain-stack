@@ -16,7 +16,7 @@ DIST-3: A Hex-installed package never source-builds because its checksum file is
 DIST-4: With the `.onchain-monorepo-root` marker present and `ONCHAIN_PUBLISH` not `1`, core source-builds its NIF even when checksums are committed and declares Rustler non-optional; onchain_evm's crates keep downloading when their checksums exist.
   Source: task 9043 (1ead589); Onchain.Precompiled; packages/onchain/CLAUDE.md.
 
-DIST-5: A fresh clone with an empty rustler_precompiled cache and no build environment variable compiles at the repo root and in all seven packages.
+DIST-5: A fresh clone with an empty rustler_precompiled cache and no build environment variable compiles at the repo root and in all eight packages.
   Source: task 9043 (acceptance criterion 1; broken since c9c7256).
   Verified by: a fresh-clone compile; no automated test.
 

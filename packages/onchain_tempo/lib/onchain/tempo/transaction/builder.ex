@@ -59,8 +59,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
          {:ok, valid_after} <- optional_opt(opts, :valid_after, 0, &validate_uint(:valid_after, &1)),
          {:ok, sender_address} <- Secp256k1.get_address(private_key),
          {:ok, nonce} <- resolve_nonce(opts, sender_address, rpc_url),
-         calldata = TIP20.transfer_calldata(recipient, amount),
-         call = %{to: token, value: 0, input: calldata},
+         call = transfer_call(token, recipient, amount),
          {:ok, gas_limit} <- resolve_gas_limit(opts, [call], sender_address, rpc_url) do
       transaction = %Transaction{
         raw: nil,
@@ -168,8 +167,7 @@ defmodule Onchain.Tempo.Transaction.Builder do
          {:ok, valid_after} <- optional_opt(opts, :valid_after, 0, &validate_uint(:valid_after, &1)),
          {:ok, sender_address} <- Secp256k1.get_address(private_key),
          {:ok, nonce} <- resolve_nonce(opts, sender_address, rpc_url),
-         calldata = TIP20.transfer_calldata(recipient, amount),
-         call = %{to: token, value: 0, input: calldata},
+         call = transfer_call(token, recipient, amount),
          {:ok, gas_limit} <- resolve_gas_limit(opts, [call], sender_address, rpc_url) do
       transaction = %Transaction{
         raw: nil,
@@ -340,6 +338,11 @@ defmodule Onchain.Tempo.Transaction.Builder do
 
   defp validate_non_empty_binary(_key, value) when is_binary(value) and byte_size(value) > 0, do: {:ok, value}
   defp validate_non_empty_binary(key, _value), do: {:error, "invalid #{key}: expected non-empty string"}
+
+  @spec transfer_call(binary(), binary(), non_neg_integer()) :: Transaction.call()
+  defp transfer_call(token, recipient, amount) do
+    %{to: token, value: 0, input: TIP20.transfer_calldata(recipient, amount)}
+  end
 
   defp validate_calls([_ | _] = calls) do
     if Enum.all?(

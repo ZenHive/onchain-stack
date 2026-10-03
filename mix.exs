@@ -3,7 +3,7 @@ defmodule OnchainStack.MixProject do
 
   # The monorepo root is NOT a Hex package and ships no runtime code. It exists
   # for two things: to hold `mix onchain.bounds` (lib/mix/tasks/), and to own the
-  # `ci` alias that drives the seven packages under `packages/`.
+  # `ci` alias that drives the eight packages under `packages/`.
   def project do
     [
       app: :onchain_stack,
@@ -22,16 +22,16 @@ defmodule OnchainStack.MixProject do
   def application, do: [extra_applications: [:logger]]
 
   # The root project ships no runtime code, so the Hex entries here are
-  # analyzer-only. The root `.credo.exs` is the family-wide policy: all seven
+  # analyzer-only. The root `.credo.exs` is the family-wide policy: all eight
   # `packages/<name>/.credo.exs` are symlinks to it, and it governs the root's
   # own `lib/mix/tasks/` too.
   #
-  # The seven packages are pulled in as path deps for exactly one reason: the
+  # The eight packages are pulled in as path deps for exactly one reason: the
   # `tidewave` alias below. Tidewave serves whatever is loaded in the node it
   # runs in, and an empty root project has nothing to inspect — with the path
-  # deps, one server sees all seven packages' modules at once and a single
+  # deps, one server sees all eight packages' modules at once and a single
   # `project_eval` can cross package boundaries (an aerodrome binding against
-  # cartouche signing, say), which no per-package server can do.
+  # onchain signing, say), which no per-package server can do.
   defp deps do
     aggregate_packages() ++
       [
@@ -49,7 +49,7 @@ defmodule OnchainStack.MixProject do
   # package is picked up by existing here, not by being remembered.
   #
   # `only: :dev` keeps this off `MIX_ENV=test`, which is what the root `ci`
-  # alias runs under — the gate must not pay to compile seven packages it only
+  # alias runs under — the gate must not pay to compile eight packages it only
   # ever shells into. `override: true` makes the top-level declaration win over
   # every nested `sibling/3` path branch instead of diverging against it: each
   # package resolves its in-family deps to `../<name>` relative to its own
@@ -73,7 +73,7 @@ defmodule OnchainStack.MixProject do
       ],
       # Bounds first: it is seconds of AST parsing and it catches the one failure
       # class the monorepo introduces — a Hex requirement that has rotted because
-      # locally the path dep always wins. No point spending seven package gates
+      # locally the path dep always wins. No point spending eight package gates
       # to discover it afterwards.
       # Then the alias regression check (plain `elixir`, no deps bootstrap): it
       # proves check.dispatch stays cheap and full QA stays complete.
@@ -99,7 +99,7 @@ defmodule OnchainStack.MixProject do
     ]
   end
 
-  # SERIAL, and not negotiable: all seven packages run `deps.audit.gated` against
+  # SERIAL, and not negotiable: all eight packages run `deps.audit.gated` against
   # ONE shared mix_audit clone at ~/.local/share/elixir-security-advisories-mirego,
   # and `advisory-freshness.sh` does a `git pull --rebase` in it. Concurrent runs
   # interleave into one FETCH_HEAD and fail with `fatal: Cannot rebase onto
