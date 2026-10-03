@@ -74,6 +74,7 @@
                    "lib/onchain/recovery_bit.ex",
                    "lib/onchain/rpc.ex",
                    "lib/onchain/rpc/proof.ex",
+                   "lib/onchain/rpc/simulate.ex",
                    "lib/onchain/signature.ex",
                    "lib/onchain/signer.ex",
                    "lib/onchain/signer/",

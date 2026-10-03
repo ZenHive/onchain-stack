@@ -123,6 +123,7 @@ defmodule Onchain.RPC do
   alias Onchain.Filter.Log, as: FilterLog
   alias Onchain.RPC.Helpers
   alias Onchain.RPC.Proof
+  alias Onchain.RPC.Simulate
   alias Onchain.RPC.Trace
   alias Onchain.Signer.Default
   alias Onchain.Transaction
@@ -2998,6 +2999,73 @@ defmodule Onchain.RPC do
       [to_call_params(trx, from), block_number],
       Keyword.put(opts, :decode, &Onchain.DebugTrace.deserialize/1)
     )
+  end
+
+  api(:eth_simulate_v1, "Simulate blocks of calls with eth_simulateV1.",
+    params: [
+      payload: [
+        kind: :value,
+        description: "`Onchain.RPC.Simulate.Payload` of blockStateCalls, overrides, and the spec flags."
+      ],
+      opts: [
+        kind: :value,
+        default: [],
+        description: ~s{`:block` (default `"latest"`) and `send_rpc/3` options. Tag, integer, or hex quantity.}
+      ]
+    ],
+    returns: %{
+      type: :ok_error_tuple,
+      description: "`{:ok, [BlockResult]}`, a raw `%{code, message}` rejection, or `{:method_not_found, map}`."
+    }
+  )
+
+  @doc """
+  Simulates blocks of calls with `eth_simulateV1`.
+
+  `eth_simulateV1` has been carried by the tagged `ethereum/execution-apis` spec
+  since v1.0.0-beta.5 (2026-06-03, `src/eth/execute.yaml`). It is the portable
+  simulation entry point. `trace_call_many/2` (`trace_callMany`) and
+  `debug_trace_call/2` (`debug_traceCall`) are the privileged trace path of
+  task 2135: neither method is in a tagged spec, and hosted endpoints often
+  refuse that namespace. This function does not replace them.
+
+  `:block` is the second parameter and defaults to `"latest"`. The payload is
+  `Onchain.RPC.Simulate.Payload`.
+
+  A succeeded response, a per-call failure, a request rejection, and method
+  unsupported stay distinguishable:
+
+  * Succeeded: `{:ok, [%Onchain.RPC.Simulate.BlockResult{}]}` whose calls are
+    `CallSuccess` (`status` `1`, wire `0x1`).
+  * Per-call failure (`CallResultFailure`): still `{:ok, blocks}`. That call is
+    a `CallFailure` with `status` `0` (wire `0x0`), `return_data`, `gas_used`,
+    and `error` (`code`, `message`, optional `data`). It is not a JSON-RPC error.
+    Code `3` is an execution revert. Code `-32015` inside this object is a VM
+    execution error. The same `-32015` on the request is the rejection below.
+  * Request rejection: `{:error, %{code: code, message: message}}`.
+    execution-apis v1.0.0-beta.7 lists `-32000`, `-32602`, `-32005`, `-32015`,
+    `-32016`, `-32603`, `-38010` through `-38015`, and `-38020` through
+    `-38026`. `Onchain.RPC.Simulate.request_error_codes/0` returns that list.
+    These codes are not retagged.
+  * Method unsupported: `{:error, {:method_not_found, map}}` for `-32601`, and
+    for Alchemy's `-32600` "is not available" wording. The tag comes from
+    `send_rpc/3`, not from a simulate-specific classifier.
+
+  Observed 2026-10-02. reth v2.6.0 on the archive node and Alchemy mainnet
+  agree: a funded transfer with `traceTransfers: true` returns status `0x1`
+  and transfer logs from `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`; a DAI
+  `transfer` with no balance returns status `0x0` and per-call error code `3`
+  inside a successful response; nonce `0` under `validation: true` returns
+  `-38010`. Infura mainnet returns `-32601`,
+  `"The method eth_simulateV1 does not exist/is not available"`.
+  """
+  @spec eth_simulate_v1(Simulate.Payload.t(), keyword()) ::
+          {:ok, [Simulate.BlockResult.t()]} | {:error, term()}
+  def eth_simulate_v1(%Simulate.Payload{} = payload, opts \\ []) do
+    with {:ok, block} <- Helpers.normalize_block(Keyword.get(opts, :block, "latest")),
+         {:ok, params} <- Simulate.encode(payload) do
+      send_rpc("eth_simulateV1", [params, block], Keyword.put(opts, :decode, &Simulate.deserialize/1))
+    end
   end
 
   defrpc(:gas_price,
