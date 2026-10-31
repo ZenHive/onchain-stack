@@ -46,9 +46,13 @@ graph below) but are edited in their own checkouts.
 
 **The old standalone checkouts of the eight absorbed packages are retired** —
 GitHub repos archived, never deleted (`ZenHive/onchain_evm` still hosts NIF
-release assets other tooling may reference). Do not work in
-`~/_DATA/code/hieroglyph`, `~/_DATA/code/cartouche`, etc. — they are stale forks
-of history now living here.
+release assets other tooling may reference). Their local checkouts were
+removed; git bundles of every local branch are on the mac mini under
+`code-archive/onchain-stack-premerge-bundles/` (faucet_ex's added 2026-10-31,
+after a sweep session committed to the stale `~/_DATA/code/faucet_ex`). If a
+`~/_DATA/code/<absorbed package>` directory ever reappears, it is a stale fork:
+work in `packages/<name>/` here, and depend on Hex or `sibling/3`, never a
+path to the old checkout.
 
 This document is self-contained on purpose: it must be readable by **any** agent
 (Claude, Codex, Cursor, Grok). After editing it, regenerate `AGENTS.md`:
