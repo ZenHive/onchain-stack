@@ -49,8 +49,11 @@ defmodule Faucet.TopUp do
         {:error, {:budget_exhausted, %{balance: balance, required: minimum, requests: used}}}
 
       {:ok, balance} ->
-        with :ok <- request_round(source, address, balance, minimum, opts) do
-          loop(source, address, minimum, opts, budget, used + 1)
+        case request_round(source, address, balance, minimum, opts) do
+          :ok -> loop(source, address, minimum, opts, budget, used + 1)
+          # A reverted dispense spends one request; only the last one is fatal.
+          {:error, {:reverted, _}} when used + 1 < budget -> loop(source, address, minimum, opts, budget, used + 1)
+          {:error, _} = error -> error
         end
 
       {:error, _} = error ->

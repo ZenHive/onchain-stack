@@ -59,8 +59,15 @@ defmodule Faucet.Test.ConfirmingSource do
   @impl true
   def wait_confirmed(refs, address, opts) do
     Agent.get_and_update(Keyword.fetch!(opts, :agent), fn state ->
-      result = Map.get(state, :confirm, :ok)
-      {result, Map.update!(state, :calls, &[{:wait_confirmed, refs, address} | &1])}
+      # `:confirm` is one result, or a script whose last element repeats.
+      {result, rest} =
+        case Map.get(state, :confirm, :ok) do
+          [only] -> {only, [only]}
+          [head | tail] -> {head, tail}
+          single -> {single, single}
+        end
+
+      {result, state |> Map.put(:confirm, rest) |> Map.update!(:calls, &[{:wait_confirmed, refs, address} | &1])}
     end)
   end
 end

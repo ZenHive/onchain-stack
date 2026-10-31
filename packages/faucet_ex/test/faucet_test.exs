@@ -56,6 +56,26 @@ defmodule FaucetTest do
       assert {:error, {:reverted, _}} = Faucet.ensure_min_balance(ConfirmingSource, @address, 100, agent: agent)
     end
 
+    test "a reverted dispense spends one request and the loop continues" do
+      agent = FakeSource.start([{:ok, 0}, {:ok, 0}, {:ok, 100}], [{:ok, ["0xa"]}, {:ok, ["0xb"]}])
+      Agent.update(agent, &Map.put(&1, :confirm, [{:error, {:reverted, %{"status" => "0x0"}}}, :ok]))
+
+      assert {:ok, 100} = Faucet.ensure_min_balance(ConfirmingSource, @address, 100, agent: agent, max_requests: 3)
+
+      assert [{:wait_confirmed, ["0xa"], _}, {:wait_confirmed, ["0xb"], _}] =
+               agent |> FakeSource.calls() |> Enum.filter(&match?({:wait_confirmed, _, _}, &1))
+    end
+
+    test "a revert on the last allowed request is surfaced" do
+      agent = FakeSource.start([{:ok, 0}], [{:ok, ["0xhash"]}])
+      Agent.update(agent, &Map.put(&1, :confirm, {:error, {:reverted, %{"status" => "0x0"}}}))
+
+      assert {:error, {:reverted, _}} =
+               Faucet.ensure_min_balance(ConfirmingSource, @address, 100, agent: agent, max_requests: 2)
+
+      assert 2 = agent |> FakeSource.calls() |> Enum.count(&match?({:wait_confirmed, _, _}, &1))
+    end
+
     test "times out when the balance never moves" do
       agent = FakeSource.start([{:ok, 0}])
 

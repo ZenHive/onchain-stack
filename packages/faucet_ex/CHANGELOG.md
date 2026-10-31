@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-31
+
+### Fixed
+
+- `Faucet.ensure_min_balance/4` no longer aborts on a reverted dispense. A
+  `{:reverted, receipt}` confirmation spends one request and the loop
+  re-reads the balance; the revert is returned only when it was the last
+  request `:max_requests` allows. Reported from a CDP Sepolia top-up that
+  needed seven manual re-runs.
+
 ## [0.2.0] - 2026-10-02
 
 Moved into the onchain-stack monorepo (`packages/faucet_ex`) with its history;
