@@ -113,8 +113,8 @@ ALL_REPOS=(descripex zen_websocket "$ROOT_ROW" onchain onchain_aave onchain_aero
 # Bumping the family toolchain means editing these two lines AND four
 # `.tool-versions` files (the monorepo root plus descripex, zen_websocket, mpp);
 # the TOOLCHAIN column is what makes forgetting one visible instead of silent.
-CANON_ERLANG="${ONCHAIN_CANON_ERLANG:-29.0.3}"
-CANON_ELIXIR="${ONCHAIN_CANON_ELIXIR:-1.20.2-otp-29}"
+CANON_ERLANG="${ONCHAIN_CANON_ERLANG:-29.1}"
+CANON_ELIXIR="${ONCHAIN_CANON_ELIXIR:-1.20.4-otp-29}"
 
 DO_FETCH=1
 DO_GH=1
