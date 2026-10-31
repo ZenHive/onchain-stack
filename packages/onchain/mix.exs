@@ -74,7 +74,7 @@ defmodule Onchain.MixProject do
       {:stream_data, "~> 1.4", only: :test, runtime: false},
       {:meck, "~> 1.2.0", only: [:dev, :test], runtime: false},
       {:muex, "~> 0.9", only: [:dev, :test], runtime: false},
-      {:decimal, "~> 3.1.1"},
+      {:decimal, "~> 3.1"},
       # Two-segment on purpose: the three-segment cap turned every descripex
       # minor into a forced nine-repo release cascade, while the committed
       # `mix.lock` already blocks a silent in-family upgrade — a new descripex
