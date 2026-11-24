@@ -442,24 +442,24 @@ stated.
 different ranges — cowboy `< 2.16.0`, gun `< 2.4.0` — but the mirego mirror's
 importer groups by `ghsaId` alone, so both collapse into one `gun` advisory
 file carrying **cowboy's** range, and no `cowboy` file is written at all. This
-repo resolves gun 2.6.0 (above gun's real fix) and cowlib 2.20.0, so the
+repo resolves gun 2.8.0 (above gun's real fix) and cowlib 2.22.0, so the
 finding is a false positive here. Filed upstream as
 `mirego/elixir-security-advisories#8` (grouping fix) and `#9` (the one-line
-`Dump.dump/1` patch), both open and unreviewed as of the last check. The
+`Dump.dump/1` patch), both still open on 2026-11-25 with the mirror clone at
+upstream tip. The
 single ignore entry lives at the **root** `.mix_audit_ignore`, symlinked into
 all eight packages, each of whose dep tree resolves `gun` (onchain_solana gained
 it when its cartouche edge became onchain → zen_websocket). Remove it once the importer fix lands
 and the mirror splits the advisory — never add any *other* advisory id to
 that file; every other finding it would report is real.
 
-Separately: **cowlib carries two EEF-CVE advisories with no fixed release**
-(`-43966`/`-43969`; OSV lists no `fixed` version as of 2026-10-01). 2.20.0
-fixed `-43971`, and this repo resolves 2.20.0. The remaining two are unpatched
-upstream, not drift, and arrive transitively through `gun`. `mix hex.audit`
-ignores exactly those two ids through the per-user Hex config
-(`ignore_advisories` in `~/.hex/hex.config`) on the dev host and for the
-harness user on blockwatch-one. Drop them there once OSV records a fix and the
-lock picks it up.
+Separately: **every cowlib EEF-CVE now has a fixed release, and this repo
+locks it.** cowlib 2.22.0 fixes `-43966` and `-113431` (OSV, verified
+2026-11-25); 2.21.0 fixed `-43969`, 2.20.0 fixed `-43971`. The per-user Hex
+ignore on the dev host (`ignore_advisories` in `~/.hex/hex.config`) was
+removed on 2026-11-25. If `hex.audit` reports a cowlib id again, bump cowlib;
+do not re-add an ignore. The harness user on blockwatch-one may still carry the
+old `-43966` ignore; it is now inert and can be dropped there.
 
 **`mix deps.audit` (the gate) and `mix hex.audit` do not see the same
 advisories — run both when asked about security, trust only the first for the
