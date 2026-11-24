@@ -1,0 +1,53 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "*",
+        "files": [
+          "deps/credo/.template.debug.html"
+        ],
+        "createdAt": "2026-11-18T05:15:06.642Z",
+        "reason": "claude: third-party credo template under deps/, never edited (repo rule)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "deps/credo/.template.debug.html"
+        ],
+        "createdAt": "2026-11-18T05:15:06.661Z",
+        "reason": "claude: third-party credo template under deps/, never edited (repo rule)"
+      },
+      {
+        "rule": "overused-font",
+        "value": "*",
+        "files": [
+          "packages/onchain_js/deps/credo/.template.debug.html"
+        ],
+        "createdAt": "2026-11-18T05:15:06.677Z",
+        "reason": "claude: third-party credo template under deps/, never edited (repo rule)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "packages/onchain_js/deps/credo/.template.debug.html"
+        ],
+        "createdAt": "2026-11-18T05:15:06.692Z",
+        "reason": "claude: third-party credo template under deps/, never edited (repo rule)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "packages/onchain_js/doc/api-reference.html"
+        ],
+        "createdAt": "2026-11-18T05:15:06.707Z",
+        "reason": "claude: ExDoc-generated output, not hand-authored UI"
+      }
+    ]
+  }
+}

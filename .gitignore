@@ -16,3 +16,6 @@ erl_crash.dump
 # harness run artifacts (never committed)
 /.harness/
 /.cursor/rules/harness-operational.mdc
+
+# impeccable hook cache (config.json is tracked)
+/.impeccable/hook.cache.json
