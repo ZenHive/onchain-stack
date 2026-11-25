@@ -101,12 +101,19 @@ tests fail if a new public function lands without one.
 
 - Install at build time only: `mix npm.install <pkg>@<range>` edits
   `package.json` and `npm.lock`; `mix npm.ci` reproduces `node_modules/`
-  (gitignored) and fails on a stale lock. No public function may install at
-  runtime.
+  (gitignored) at the locked versions. npm_ex 0.7.6's frozen check compares
+  package names only, not ranges: after editing a range in `package.json`,
+  run `mix npm.update <pkg>` (plain `mix npm.install` says "Already up to
+  date") and commit the lock. No public function may
+  install at runtime.
 - Entry scripts import from npm and assign callables to `globalThis`;
   `OnchainJs.Script.load/3` stubs browser globals, bundles, and evaluates.
   `Runtime.start_link(script:)` runs before stubs can be applied, so prefer
   `load/3` for browser bundles.
+- Bare imports resolve only by Node-style ancestor walk from each importer.
+  QuickBEAM 0.11.3's `:node_modules` bundler option changes labels, not
+  resolution, so `OnchainJs.Script` rejects it; releases put entry scripts
+  below the directory holding `node_modules/` (e.g. `priv/js/` + `priv/node_modules/`).
 - Neither the manifest nor `node_modules/` ships to Hex; consumers supply
   their own (README "Loading npm packages").
 

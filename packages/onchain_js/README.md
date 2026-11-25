@@ -47,6 +47,8 @@ npm packages are installed at **build time**, never at runtime. Nothing in this 
    mix npm.ci                              # in every build: reproduce node_modules/ from npm.lock
    ```
 
+   `mix npm.ci` installs exactly the locked versions. npm_ex 0.7.6 does not check that they still satisfy the ranges in `package.json`, and `mix npm.install` reports "Already up to date" for the same reason. After changing a range, run `mix npm.update <pkg>` to re-resolve, then commit the new `npm.lock`.
+
 2. Write an entry script that imports from npm and puts what Elixir should call on `globalThis`:
 
    ```javascript
@@ -65,7 +67,7 @@ npm packages are installed at **build time**, never at runtime. Nothing in this 
    {:ok, "4e03657a" <> _} = OnchainJs.Runtime.call(rt, "keccak256Hex", ["abc"])
    ```
 
-`OnchainJs.Script.load/3` applies the browser stubs (`self`, `window`, `navigator`, `location`) before the bundle runs, which `Runtime.start_link(script: path)` cannot do. It finds `node_modules/` by walking up from the entry script. In a Mix release the source tree is gone, so copy `node_modules/` and your entry scripts into the release and pass `node_modules: path`. Failures come back tagged with the underlying message: `{:bundle_error, entry, reason}` (unreadable file, unresolved import, parse error) or `{:eval_error, entry, %QuickBEAM.JSError{}}` (the script threw, for example a missing browser global).
+`OnchainJs.Script.load/3` applies the browser stubs (`self`, `window`, `navigator`, `location`) before the bundle runs, which `Runtime.start_link(script: path)` cannot do. Bare imports resolve the way Node resolves them, by walking up from the importing file to the first ancestor directory with a matching `node_modules/<package>`, so `node_modules/` must sit in the entry script's directory or above it. There is no path override; `node_modules:` is rejected with `{:bundle_error, entry, {:unsupported_option, :node_modules}}`. In a Mix release the source tree is gone, so ship both under your app's `priv/`, as `priv/node_modules/` and `priv/js/app.js`, and load `Application.app_dir(:my_app, "priv/js/app.js")`. Failures come back tagged with the underlying message: `{:bundle_error, entry, reason}` (unreadable file, unresolved import, parse error) or `{:eval_error, entry, %QuickBEAM.JSError{}}` (the script threw, for example a missing browser global).
 
 Hex does not ship this package's own `package.json`, `npm.lock` or `node_modules/`. Those exist only for its tests, so a consuming app always supplies its own.
 

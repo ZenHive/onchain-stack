@@ -16,22 +16,26 @@ defmodule OnchainJs.Script do
   runtime is still initialising, so there is no point at which
   `OnchainJs.Runtime.apply_browser_stubs/1` can run first. A browser bundle
   that touches `self`/`window` at module top level fails there. `load/3`
-  starts from an already running runtime, applies the stubs, then evaluates,
-  and it accepts an explicit `:node_modules` directory, which `:script` does
-  not.
+  starts from an already running runtime, applies the stubs, then evaluates.
 
   ## Where things live
 
   * **Manifest and lock** — `package.json` and `npm.lock` sit at the root of
     the Mix project that owns the scripts (for this package:
     `packages/onchain_js/`). `mix npm.install <pkg>` adds a dependency;
-    `mix npm.ci` reproduces `node_modules/` exactly from `npm.lock` and fails
-    if the lock no longer matches the manifest.
+    `mix npm.ci` reproduces `node_modules/` with exactly the versions in
+    `npm.lock`. npm_ex 0.7.6 checks only that the lock and the manifest name
+    the same packages, not that a locked version still satisfies the
+    manifest's range (plain `mix npm.install` reports "Already up to date"
+    too), so after changing a range run `mix npm.update <pkg>` and commit
+    the new lock.
   * **`node_modules/`** — next to the manifest, never committed.
   * **Entry scripts** — plain ES modules that `import` from npm and assign the
-    functions Elixir will call onto `globalThis`. Without `:node_modules`,
-    the directory is found by walking up from the entry script's directory,
-    the way Node resolves packages.
+    functions Elixir will call onto `globalThis`. Every bare import is
+    resolved the way Node does it: by walking up from the importing file's
+    directory to the first ancestor that contains `node_modules/<package>`.
+    So `node_modules/` must sit in the entry script's directory or one of
+    its ancestors; there is no override.
 
   ## What a consuming application must do
 
@@ -40,8 +44,16 @@ defmodule OnchainJs.Script do
   own `package.json` (at its project root), run `mix npm.install` once and
   commit `package.json` plus `npm.lock`, and run `mix npm.ci` in every build
   (CI, Docker image, release build). In a Mix release the source tree is not
-  present at runtime, so copy `node_modules/` and the entry scripts into the
-  release (for example under `priv/`) and pass `:node_modules` explicitly.
+  present at runtime, so ship both under the app's `priv/`, with the scripts
+  below the directory that holds `node_modules/` (e.g. `priv/node_modules/`
+  and `priv/js/app.js`), and load
+  `Application.app_dir(:my_app, "priv/js/app.js")`.
+
+  The `:node_modules` option of `QuickBEAM.JS.bundle_file/2` is rejected
+  here: in QuickBEAM 0.11.3 it only changes the file labels inside the
+  bundle, while every bare import still resolves through the ancestor walk
+  (`QuickBEAM.JS.PackageResolver.package_root/2`), so it would look like an
+  override without being one.
 
   ## Errors
 
@@ -76,8 +88,8 @@ defmodule OnchainJs.Script do
         kind: :value,
         default: [],
         description:
-          "`:node_modules` — explicit node_modules/ directory (default: walk up from the entry's directory). " <>
-            "Other options are passed to `QuickBEAM.JS.bundle_file/2` (`:minify`, `:define`, ...)."
+          "Passed to `QuickBEAM.JS.bundle_file/2` (`:minify`, `:define`, ...). " <>
+            "`:node_modules` is rejected: packages resolve from the entry's ancestor node_modules/ directories."
       ]
     ],
     returns: %{
@@ -85,7 +97,9 @@ defmodule OnchainJs.Script do
       description: "The bundled JavaScript source, or the bundler's reason tagged with the entry path"
     },
     errors: [
-      bundle_error: "Entry unreadable, import unresolved, parse failure, or OXC bundle failure; reason is unwrapped"
+      bundle_error:
+        "Entry unreadable, import unresolved, parse failure, OXC bundle failure, " <>
+          "or `{:unsupported_option, :node_modules}`; reason is unwrapped"
     ],
     composes_with: [:load]
   )
@@ -100,6 +114,14 @@ defmodule OnchainJs.Script do
   def bundle(entry, opts \\ []) when is_binary(entry) and is_list(opts) do
     entry = Path.expand(entry)
 
+    if Keyword.has_key?(opts, :node_modules) do
+      {:error, {:bundle_error, entry, {:unsupported_option, :node_modules}}}
+    else
+      do_bundle(entry, opts)
+    end
+  end
+
+  defp do_bundle(entry, opts) do
     case QuickBEAM.JS.bundle_file(entry, opts) do
       {:ok, js} when is_binary(js) -> {:ok, js}
       {:ok, other} -> {:error, {:bundle_error, entry, {:unexpected_bundle_output, other}}}
@@ -116,7 +138,7 @@ defmodule OnchainJs.Script do
         default: [],
         description:
           "`:browser_stubs` (default `true`) — run `Runtime.apply_browser_stubs/1` first; " <>
-            "`:timeout` (ms, default 30000) — evaluation timeout; `:node_modules` and bundler options as in `bundle/2`."
+            "`:timeout` (ms, default 30000) — evaluation timeout; bundler options as in `bundle/2`."
       ]
     ],
     returns: %{

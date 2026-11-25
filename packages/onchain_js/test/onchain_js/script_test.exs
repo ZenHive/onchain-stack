@@ -68,11 +68,34 @@ defmodule OnchainJs.ScriptTest do
       assert String.starts_with?(expected, "a9059cbb")
     end
 
-    test "an explicit :node_modules directory resolves the same package", %{rt: rt} do
-      assert :ok = Script.load(rt, entry("keccak.js"), node_modules: @node_modules)
+    test "a release-style priv/ layout outside the project resolves from its own node_modules", %{rt: rt} do
+      # Disjoint from this project: the ancestor walk can only find the copy.
+      root = Path.join(System.tmp_dir!(), "onchain_js_release_#{System.unique_integer([:positive])}")
+      on_exit(fn -> File.rm_rf!(root) end)
+
+      js = Path.join(root, "priv/js/keccak.js")
+      File.mkdir_p!(Path.dirname(js))
+      File.cp!(entry("keccak.js"), js)
+
+      assert {:error, {:bundle_error, ^js, {:module_not_found, "@noble/hashes/sha3.js", _}}} =
+               Script.load(rt, js)
+
+      File.cp_r!(@node_modules, Path.join(root, "priv/node_modules"))
+
+      assert :ok = Script.load(rt, js)
 
       assert {:ok, "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"} =
                Runtime.call(rt, "keccak256Hex", [""])
+    end
+
+    test "a :node_modules override is rejected rather than silently ignored", %{rt: rt} do
+      path = entry("keccak.js")
+
+      assert {:error, {:bundle_error, ^path, {:unsupported_option, :node_modules}}} =
+               Script.load(rt, path, node_modules: @node_modules)
+
+      assert {:error, {:bundle_error, ^path, {:unsupported_option, :node_modules}}} =
+               Script.bundle(path, node_modules: "node_modules")
     end
 
     test "a missing browser global surfaces the JS ReferenceError", %{rt: rt} do

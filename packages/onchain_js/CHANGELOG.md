@@ -8,8 +8,8 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ### Added
 
-- **`OnchainJs.Script`** — `bundle/2` bundles an entry script and the npm packages it imports from `node_modules/` (via `QuickBEAM.JS.bundle_file/2`); `load/3` applies the browser stubs, bundles and evaluates it in a runtime. Failures are tagged and keep the underlying bundler/JS error: `{:bundle_error, entry, reason}`, `{:eval_error, entry, %QuickBEAM.JSError{}}`, `{:stub_error, reason}`. Nothing installs at runtime.
-- Committed `package.json` + `npm.lock` (npm_ex), pinning `@noble/hashes` 2.4.0 for the integration test that loads it from `node_modules/` and checks Keccak-256 vectors. Run `mix npm.ci` before `mix test.json --include integration`.
+- **`OnchainJs.Script`** — `bundle/2` bundles an entry script and the npm packages it imports from `node_modules/` (via `QuickBEAM.JS.bundle_file/2`); `load/3` applies the browser stubs, bundles and evaluates it in a runtime. Failures are tagged and keep the underlying bundler/JS error: `{:bundle_error, entry, reason}`, `{:eval_error, entry, %QuickBEAM.JSError{}}`, `{:stub_error, reason}`. Nothing installs at runtime. Packages resolve from `node_modules/` in the entry's directory or an ancestor; a `:node_modules` override is rejected with `{:unsupported_option, :node_modules}` because QuickBEAM 0.11.3 does not honour it for resolution.
+- Committed `package.json` + `npm.lock` (npm_ex), pinning `@noble/hashes` 2.4.0 for the integration test that loads it from `node_modules/` and checks Keccak-256 vectors. Run `mix npm.ci` before `mix test.json --include integration`. `mix npm.ci` reproduces the locked versions but does not detect a range edit in `package.json`; re-resolve with `mix npm.update <pkg>`.
 - README "Loading npm packages": where the manifest, lock, `node_modules/` and entry scripts live, and what a consuming app must supply.
 
 ### Fixed
