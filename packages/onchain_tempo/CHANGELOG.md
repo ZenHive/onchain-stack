@@ -5,6 +5,7 @@
 ### Changed
 
 - Requires `rustler_precompiled ~> 0.10` (was `~> 0.9`). 0.9.x overwrote an already-loaded NIF file in place instead of removing it first, and on Linux a second extraction of the same artifact made the first VM segfault (exit 139) when it halted. Fixed upstream in rustler_precompiled 0.10.0. The committed lock already resolves 0.10.1.
+- Native: `native/onchain_tempo/Cargo.lock` refreshed for RUSTSEC-2026-0387 on the 0.7 line (crypto-bigint 0.7.5 → 0.7.11), RUSTSEC-2026-0385 (ctutils 0.4.8) and RUSTSEC-2026-0386 (tokio 1.54.1). No Cargo.toml change; published precompiled NIFs pick this up at the next release. RUSTSEC-2026-0387 still matches crypto-bigint 0.5.5 (alloy-consensus/alloy-primitives → k256 0.13 → elliptic-curve 0.13), which has no fixed 0.5.x release.
 
 ## v0.13.1 (2026-10-02)
 
