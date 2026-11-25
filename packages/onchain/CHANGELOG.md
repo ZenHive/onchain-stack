@@ -10,6 +10,10 @@ Completed roadmap tasks.
 
 - Requires `rustler_precompiled ~> 0.10` (was `~> 0.9`). 0.9.x overwrote an already-loaded NIF file in place instead of removing it first. On Linux, a second extraction of the same artifact, e.g. a dev and a test compile sharing a path dependency's `priv/`, made the first VM segfault (exit 139) when it halted. Fixed upstream in rustler_precompiled 0.10.0. The committed lock already resolves 0.10.1.
 
+### Tests
+
+- `test/abi/public_error_contract_test.exs` pins the wrong-argument-type contract of `Onchain.ABI.decode_error/3`, `Onchain.ABI.get_abi_item/3`, `Onchain.ABI.Event.encode_event_topics/2` and `Onchain.ABI.TypeEncoder.encode_packed/2` (`FunctionClauseError`), observed at the pre-alloy commit `e669099f`. These were the public-guard survivors of the stopped muex campaign; `docs/abi-verification-ledger.md` §7 records the stop. No library code changed.
+
 ## v0.17.0 (2026-10-31)
 
 ### Added

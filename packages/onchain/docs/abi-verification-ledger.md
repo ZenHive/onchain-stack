@@ -214,7 +214,41 @@ Recorded in `CHANGELOG.md` as fixes.
 
 ---
 
-## 7. Re-running
+## 7. muex campaign (task 46) — stopped, with its public-API findings pinned
+
+A muex campaign over the handwritten codec (`lib/abi.ex`, `lib/abi/*.ex`) ran
+under **muex 0.9.0** (Elixir 1.20.2 / OTP 29, all 18 mutators, no filtering).
+Its known-answer check reproduced the §4 corpus (8/8 agree). The survivor
+disposition was **stopped** before it produced a result: task 9031 replaced the
+mutated codec bodies with the alloy NIF (`ac9ce9f5`), so dispositioning
+survivors inside deleted code records nothing durable. No mutation score,
+survivor count or false-kill rate is claimed here; the unmeasured draft of this
+section was deleted. The campaign's scripts and handoff, including what was
+and was not measured, are in `.mutation/hieroglyph/STATUS.md`.
+
+What outlives the swap are four survivors on guards of **public** heads that a
+caller reaches with a wrong argument type. They are now killed by
+`test/abi/public_error_contract_test.exs`. The expected outcome of each test was
+observed by running the call at **`e669099f`** (9031's benchmark baseline; its
+`packages/onchain/lib` is identical to the parent of the 9031 delivery commit
+`c9c7256`), where the functions were still `ABI.*`, and the same calls return
+the same outcome on the current facades.
+
+| Campaign survivor (`Guard: replace guard with true`) | Current function | Wrong argument | Outcome at `e669099f` | Outcome with the guard removed |
+|---|---|---|---|---|
+| `lib/abi.ex:687` | `Onchain.ABI.decode_error/3` | definitions `"NotFound()"` or `nil` instead of a list | `FunctionClauseError` | `Protocol.UndefinedError` |
+| `lib/abi.ex:1136` | `Onchain.ABI.get_abi_item/3` | name `:transfer`; a bare selector instead of a list | `FunctionClauseError` | `{:error, :not_found}`; `Protocol.UndefinedError` |
+| `lib/abi/event.ex:139` | `Onchain.ABI.Event.encode_event_topics/2` | a bare address or `nil` instead of a list | `FunctionClauseError` | `ArgumentError` |
+| `lib/abi/type_encoder.ex:349` | `Onchain.ABI.TypeEncoder.encode_packed/2` | scalar values or a bare type map instead of lists | `FunctionClauseError` | `ArgumentError` |
+
+The last column was measured by replacing each guard with `when true` in the
+current tree, one at a time, and running the file: both of that guard's tests
+fail, and the other six pass. A failure of this file after a codec or facade
+change is a regression in that change, not a test to relax.
+
+---
+
+## 8. Re-running
 
     MIX_ENV=test mix test.json test/abi/ethers_corpus_test.exs test/abi/abi_spec_test.exs
     MIX_ENV=test mix hieroglyph.mutants          # both columns, exits non-zero on a surprise

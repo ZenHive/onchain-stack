@@ -1,7 +1,34 @@
-# Task 46 — where this stands
+# Task 46 — stopped, not completed
 
-Roadmap task 46 is **not complete**. This file is the handoff: what is settled,
-what is not, and what the next session must not mistake for a result.
+**The survivor disposition was stopped on 2026-11-25 (task 1046) and will not
+be resumed.** Task 9031 replaced the mutated codec bodies — the handwritten
+`ABI.TypeEncoder` / `ABI.TypeDecoder` value codecs and the yecc/leex parser —
+with the alloy NIF (shipped in `ac9ce9f5`). Dispositioning survivors inside
+code that no longer exists produces no durable record.
+
+What was measured, and nothing more:
+
+* The campaign ran under **muex 0.9.0** (Elixir 1.20.2 / OTP 29, all 18
+  mutators, `--no-filter --no-optimize --no-tce`) against the pre-9031 tree.
+  The lock has moved since (0.11.2 when task 1046 was filed, 0.13.1 now); the
+  campaign was not re-run on either.
+* Known answer: 8/8 corpus sites agree, 0 disagreements. The Oeditus/muex#20
+  gate reports `survived=2`.
+* The authoritative v3 re-grade input holds 1272 mutants; 229 of them were
+  graded before the stop (`results/auth-v3-partial.log`, not
+  committed). Two v3 runs over the same 11 inputs agree exactly
+  (`results/verified-unrev.json`). The campaign's 2748 reported kills were
+  never sampled for false kills.
+* No survivor count, score or false-kill rate was produced, and none is
+  claimed. The unmeasured ledger draft (`ledger-section-7-draft.md`) was
+  deleted rather than inserted; it survives in git history (last present at
+  `5beef7c`).
+
+The part that outlives the swap is the public-API finding below ("Open work"):
+task 1046 pinned the four public guards as tests in
+`test/abi/public_error_contract_test.exs`, with expected outcomes observed at
+`e669099f`. Everything after this section is the original handoff, kept as
+history; its "Next session" list is void.
 
 ## Acceptance criteria
 
@@ -10,8 +37,8 @@ what is not, and what the next session must not mistake for a result.
 | 1 | Oeditus/muex#20 reproduction reports `survived=2` on the installed muex, recorded with the version | **done** |
 | 2 | Task-44 corpus known answer reproduced, disagreements investigated first | **done** — 8/8 agree, 0 disagreements |
 | 3 | Campaign over `lib/abi/*.ex`, all 18 mutators, no filtering or sampling, from a committed script | **done** — `.mutation/run.sh` |
-| 4 | Every survivor dispositioned in writing; none unclassified | **blocked on the re-grade below** |
-| 5 | Ledger gains a campaign section: version, mutator set, per-module counts, each survivor disposition | drafted, not inserted — `.mutation/ledger-section-7-draft.md` |
+| 4 | Every survivor dispositioned in writing; none unclassified | **stopped** — the codec bodies were replaced by 9031 |
+| 5 | Ledger gains a campaign section: version, mutator set, per-module counts, each survivor disposition | **stopped** — the draft was deleted unmeasured; the ledger's §7 records the stop |
 | 6 | `mix ci` passes, touched modules stay at or above current coverage | **not run** |
 
 ## The one thing that must be redone first
@@ -39,7 +66,7 @@ belong in a published library's history. **They are not disposition input.** `di
 raises rather than falling back, so there is no silent path back to the bad
 numbers.
 
-## Next session, in order
+## Next session, in order (void since the stop above)
 
 1. Re-run the authoritative re-grade. ~95 minutes for 1272 mutants; run it in
    the background and do not run `mix` against the main tree while it holds the
@@ -80,6 +107,10 @@ numbers.
   and are killable by tests pinning `FunctionClauseError`. Those tests are worth
   writing; they pin a public error contract. Size the work off the v3 survivor
   list, not off the v2 one.
+  **Done by task 1046:** `test/abi/public_error_contract_test.exs` kills
+  `lib/abi.ex:687`, `lib/abi.ex:1136`, `lib/abi/event.ex:139` and
+  `lib/abi/type_encoder.ex:349` (all `Guard: replace guard with true`, campaign
+  line numbers) against the current `Onchain.ABI.*` facades.
 * `lib/abi.ex:1240` carries a dead `Enum.filter(& &1)` over a list that cannot
   contain a falsy element (ledger group `vestigial-filter`). It should be
   deleted, as its own rmap task — a measurement task must not quietly edit
