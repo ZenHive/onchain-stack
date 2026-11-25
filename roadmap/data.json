@@ -14658,7 +14658,7 @@
       "phase": 0,
       "bundle": "monorepo_root_gates",
       "target_repo": "onchain_stack",
-      "status": "pending",
+      "status": "done",
       "title": "mix ci in onchain_aave and onchain_aerodrome exits 139 after every gate is already green",
       "scores": {
         "d": 4,
@@ -14691,9 +14691,12 @@
         "packages/onchain_aave/mix.exs",
         "packages/onchain_aerodrome/mix.exs"
       ],
+      "shipped_in": "923940dc1d7854b7ef3ddc55273d33a00528e612",
       "body": "Root `mix ci` fails in packages/onchain_aave with Mix.raise(... exited 139), and packages/onchain_aerodrome also exits 139, after every configured check has already printed green: doctor, advisory freshness, deps.audit, coverage (aave 408 passed / 100%; aerodrome 172 passed / 82.25%, both over threshold 65) and dialyzer with 0 errors. The last Mix step is agents.check (skipped on hosts without the renderer, see 9027); then the Mix VM dies with SIGSEGV. Reproduced independently on OTP 29.1 / Elixir 1.20.4 at 1975218, 1c0b4f9 and 4990119 with unchanged locks (.audit/1c0b4f9.md, .audit/4990119.md). No crash workaround or NIF change has been tried.\n\npackages/onchain_evm's own `mix ci` returns 0 (298 tests, 28+7 Rust tests, clean clippy), as do the other packages. aave and aerodrome are the two packages that pull `sibling(:onchain_evm, \"~> 0.6\", only: [:dev, :test])` and load the precompiled NIF into a consumer VM.\n\nLeads, not proven causes: (a) NIF teardown at VM halt in a consumer VM; (b) the Mix env split — the aave and aerodrome `def cli` (mix.exs:39-46 / 37-44) do not pin `ci` / `precommit.full` to :test, unlike onchain_evm, onchain and onchain_solana, so the parent Mix process stays in :dev and dialyzer analyzes _build/dev beams. onchain_js and onchain_tempo also lack that pin and exit 0, so the env split alone is not sufficient; (c) rustler_precompiled's copy of the NIF into the consumer _build.\n\nThis matters beyond two packages: task 9031 moves a precompiled NIF into core onchain, which every package loads. If (a) is the cause, the crash spreads to all seven packages.\n\nDo not swallow the 139. The gates were green; the process still failed, and root `packages_ci/1` raises on any non-zero, so the family `mix ci` cannot pass while this stands.\n",
       "created_at": "2026-09-21",
+      "done_at": "2026-11-25",
       "scored_at": "2026-09-29",
+      "implemented": "Root cause: rustler_precompiled 0.9.0 download_or_reuse_nif_file/2 removed '<file>.tar.gz' instead of the .so, so :erl_tar.extract overwrote the mapped libonchain_evm/libonchain_solidity .so in place (same inode, ls -li) in the shared path-dep packages/onchain_evm/priv (aave/aerodrome _build priv symlinks there) while the dev mix ci parent still had it mapped; the MIX_ENV=test child re-extracted. Core dump on Ubuntu noble aarch64 (Docker hexpm/elixir:1.20.4-erlang-29.1.2-ubuntu-noble-20261024.1): #0 0x0 #1 _dl_call_fini(libonchain_evm-v0.7.1-nif-2.15-aarch64-unknown-linux-gnu.so) #2 _dl_fini #3 __run_exit_handlers #4 exit. Repro at 4990119 (rustler_precompiled 0.9.0), packages/onchain_aave: 'mix deps.get && mix do compile + cmd env MIX_ENV=test mix compile' -> 139 on Linux aarch64 and emulated x86_64 (ERL_FLAGS='+JMsingle true'); controls (compile alone, cmd true, cmd sleep 45, delete-then-write) -> 0; same revision with only rustler_precompiled 0.10.1 -> 0. Upstream 0.10.0 CHANGELOG records the fix. HEAD locks 0.10.1 since 832949a: macOS Darwin 27.2.0 arm64 OTP 29.1/Elixir 1.20.4 cold mix ci aave 0 (408 tests, 100%), aerodrome 0 (172, 82.25%); Linux Docker aarch64 + x86_64 at HEAD aave mix ci 0. Fix: rustler_precompiled floor ~> 0.10 in onchain, onchain_evm, onchain_tempo mix.exs + CHANGELOG. Not verified on the harness node itself (blockwatch-one Ubuntu 24.04.5, kernel 6.8.0-149, x86_64; read-only access cannot run the harness toolchain). onchain_evm mix ci exits 1 at cargo audit (14 pre-existing RUSTSEC advisories in native/onchain_evm/Cargo.lock), unrelated to this change; root mix ci end-to-end therefore not yet green. Codex review (herdr): diagnosis and floor change confirmed; requested evidence recording (this note) and cargo-audit follow-up.",
       "cross_repo": []
     },
     {

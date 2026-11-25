@@ -9671,7 +9671,7 @@ id = "9023"
 phase = 0
 bundle = "monorepo_root_gates"
 target_repo = "onchain_stack"
-status = "pending"
+status = "done"
 title = "mix ci in onchain_aave and onchain_aerodrome exits 139 after every gate is already green"
 scores = { d = 4, b = 7, u = 6 }
 acceptance_criteria = ["`cd packages/onchain_aave && mix ci` and `cd packages/onchain_aerodrome && mix ci` return exit 0 on a cold worktree after all existing steps, with no SIGSEGV (139) on VM halt", "`cd packages/onchain_evm && mix ci` still returns 0 — do not 'fix' the consumers by making the NIF owner's own gate red", "The diagnosis names the crashing site (NIF unload vs Mix env split vs rustler_precompiled copy into the consumer _build) with a reproducing command; a workaround that swallows 139 is not acceptable", "If the cause is NIF teardown, the fix also holds for the core onchain NIF introduced by task 9031: every package that loads it exits 0 on halt", "Root `mix ci` walks all seven packages without Mix.raise on a consumer 139", "The reproduction and the fix are pinned to a named host and OS (the harness node's distribution, kernel and CPU arch, plus OTP 29.1 / Elixir 1.20.4) and also run on the macOS dev machine; the outcome states whether the 139 reproduces on each, because all recorded 139s (.audit/1975218.md, 1c0b4f9.md, 4990119.md) come from harness-node runs"]
@@ -9689,8 +9689,11 @@ This matters beyond two packages: task 9031 moves a precompiled NIF into core on
 
 Do not swallow the 139. The gates were green; the process still failed, and root `packages_ci/1` raises on any non-zero, so the family `mix ci` cannot pass while this stands.
 """
+implemented = "Root cause: rustler_precompiled 0.9.0 download_or_reuse_nif_file/2 removed '<file>.tar.gz' instead of the .so, so :erl_tar.extract overwrote the mapped libonchain_evm/libonchain_solidity .so in place (same inode, ls -li) in the shared path-dep packages/onchain_evm/priv (aave/aerodrome _build priv symlinks there) while the dev mix ci parent still had it mapped; the MIX_ENV=test child re-extracted. Core dump on Ubuntu noble aarch64 (Docker hexpm/elixir:1.20.4-erlang-29.1.2-ubuntu-noble-20261024.1): #0 0x0 #1 _dl_call_fini(libonchain_evm-v0.7.1-nif-2.15-aarch64-unknown-linux-gnu.so) #2 _dl_fini #3 __run_exit_handlers #4 exit. Repro at 4990119 (rustler_precompiled 0.9.0), packages/onchain_aave: 'mix deps.get && mix do compile + cmd env MIX_ENV=test mix compile' -> 139 on Linux aarch64 and emulated x86_64 (ERL_FLAGS='+JMsingle true'); controls (compile alone, cmd true, cmd sleep 45, delete-then-write) -> 0; same revision with only rustler_precompiled 0.10.1 -> 0. Upstream 0.10.0 CHANGELOG records the fix. HEAD locks 0.10.1 since 832949a: macOS Darwin 27.2.0 arm64 OTP 29.1/Elixir 1.20.4 cold mix ci aave 0 (408 tests, 100%), aerodrome 0 (172, 82.25%); Linux Docker aarch64 + x86_64 at HEAD aave mix ci 0. Fix: rustler_precompiled floor ~> 0.10 in onchain, onchain_evm, onchain_tempo mix.exs + CHANGELOG. Not verified on the harness node itself (blockwatch-one Ubuntu 24.04.5, kernel 6.8.0-149, x86_64; read-only access cannot run the harness toolchain). onchain_evm mix ci exits 1 at cargo audit (14 pre-existing RUSTSEC advisories in native/onchain_evm/Cargo.lock), unrelated to this change; root mix ci end-to-end therefore not yet green. Codex review (herdr): diagnosis and floor change confirmed; requested evidence recording (this note) and cargo-audit follow-up."
 created_at = "2026-09-21"
 scored_at = "2026-09-29"
+done_at = "2026-11-25"
+shipped_in = "923940dc1d7854b7ef3ddc55273d33a00528e612"
 
 [[task]]
 id = "9024"
