@@ -2215,7 +2215,7 @@
       "phase": 1005,
       "bundle": "hieroglyph_peer_parity",
       "target_repo": "onchain",
-      "status": "pending",
+      "status": "done",
       "title": "Pin the public ABI error contracts the muex campaign left unkilled, as tests that outlive the alloy swap",
       "scores": {
         "d": 2,
@@ -2248,10 +2248,16 @@
         "packages/onchain/.mutation/hieroglyph/",
         "packages/onchain/docs/abi-verification-ledger.md"
       ],
+      "shipped_in": "d0a34bbd9c7a8d45cb543bc3144afb8a61eecf94",
       "body": "The muex campaign over the handwritten ABI codec is mostly done: its scripts and handoff are in packages/onchain/.mutation/hieroglyph/ (STATUS.md; muex 0.11.2 is locked in packages/onchain/mix.lock, and 0.9.0 fixed Oeditus/muex #20/#23/#24). It will not be finished as a campaign. 9031, now in progress, replaces the handwritten encoder, decoder and yecc/leex parser with the alloy NIF. ABI.TypeEncoder and ABI.TypeDecoder stay only as facades with unchanged public functions and exception behaviour (9031 body, 'Answered 2026-09-29'). Dispositioning survivors inside codec bodies that are about to be deleted produces no durable record.\n\nThe part of the campaign that survives the swap is its public-API findings. STATUS.md ('Open work this task uncovered') records survivors on guards of **public** heads that a caller can reach with a wrong argument type, and that no test pins: `ABI.decode_error/3`, `ABI.get_abi_item/3`, `ABI.Event.encode_event_topics/2`, `ABI.TypeEncoder.encode_packed/2`. Tests pinning those error contracts are exactly what 9031's 'existing ABI tests pass unchanged' criterion needs, so a behaviour change in the facades gets caught. Land them against the current tree. If 9031 lands first, they must pass against the facades too, and a failure then is a 9031 regression, not a test to relax.\n\n(2026-09-29 review) Whichever task lands first, the expected outcome of each test is established by running the call at the pre-9031 commit (e669099f, the baseline 9031's benchmarks use). Reading the expected value off the current tree after 9031 would ratify the facade instead of pinning the old contract.\n\nAuthority: the current public behaviour of these functions as documented in their @doc/@spec. Tests assert the exception module, not message wording.\n",
       "created_at": "2026-08-23",
       "started_at": "2026-08-27",
+      "done_at": "2026-11-25",
       "scored_at": "2026-09-29",
+      "implemented": "packages/onchain/test/abi/public_error_contract_test.exs: 8 tests pin FunctionClauseError for wrong-type args to Onchain.ABI.decode_error/3, get_abi_item/3, Event.encode_event_topics/2, TypeEncoder.encode_packed/2, expected outcomes probed at 9031 benchmark baseline e669099f (lib identical to swap parent 358658e; swap c9c7256). Kills campaign survivors lib/abi.ex:687, lib/abi.ex:1136, lib/abi/event.ex:139, lib/abi/type_encoder.ex:349 (guard->true): removing each guard fails exactly its 2 tests. STATUS.md + abi-verification-ledger.md section 7 record the stop (muex 0.9.0 campaign, measured figures only); ledger-section-7-draft.md deleted.",
+      "verified": true,
+      "verified_by": "codex",
+      "verification_ref": "herdr codex review, APPROVE after re-review",
       "cross_repo": []
     },
     {

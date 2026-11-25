@@ -167,7 +167,7 @@
 | Task 1043 | ✅ | 🎁 **hieroglyph_agent_economy** · SKILL.md for AI-agent consumers of the ABI library [D:3/B:6/U:6 → Eff:2.0?] 🎯 |
 | Task 1044 | ✅ | 🎁 **hieroglyph_peer_parity** · 🔒 Independent-oracle + planted-mutant verification for the ABI wire format [D:5/B:8/U:6 → Eff:1.4?] 📋 |
 | Task 1045 `[CX]` | ✅ | 🎁 **hieroglyph_agent_economy** · Gate api_manifest.json freshness in mix ci [D:2/B:6/U:5 → Eff:2.75?] 🎯 |
-| Task 1046 | ⬜ | 🎁 **hieroglyph_peer_parity** · 🔒 Pin the public ABI error contracts the muex campaign left unkilled, as tests that outlive the alloy swap [D:2/B:5/U:6 → Eff:2.75?] 🎯 |
+| Task 1046 | ✅ | 🎁 **hieroglyph_peer_parity** · 🔒 Pin the public ABI error contracts the muex campaign left unkilled, as tests that outlive the alloy swap [D:2/B:5/U:6 → Eff:2.75?] 🎯 |
 <!-- TASKS:END -->
 
 ---

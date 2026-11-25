@@ -1632,7 +1632,7 @@ id = 1046
 phase = 1005
 bundle = "hieroglyph_peer_parity"
 target_repo = "onchain"
-status = "pending"
+status = "done"
 title = "Pin the public ABI error contracts the muex campaign left unkilled, as tests that outlive the alloy swap"
 scores = {d = 2, b = 5, u = 6}
 markers = ["security"]
@@ -1653,9 +1653,15 @@ The part of the campaign that survives the swap is its public-API findings. STAT
 
 Authority: the current public behaviour of these functions as documented in their @doc/@spec. Tests assert the exception module, not message wording.
 """
+implemented = "packages/onchain/test/abi/public_error_contract_test.exs: 8 tests pin FunctionClauseError for wrong-type args to Onchain.ABI.decode_error/3, get_abi_item/3, Event.encode_event_topics/2, TypeEncoder.encode_packed/2, expected outcomes probed at 9031 benchmark baseline e669099f (lib identical to swap parent 358658e; swap c9c7256). Kills campaign survivors lib/abi.ex:687, lib/abi.ex:1136, lib/abi/event.ex:139, lib/abi/type_encoder.ex:349 (guard->true): removing each guard fails exactly its 2 tests. STATUS.md + abi-verification-ledger.md section 7 record the stop (muex 0.9.0 campaign, measured figures only); ledger-section-7-draft.md deleted."
+verified = true
+verified_by = "codex"
+verification_ref = "herdr codex review, APPROVE after re-review"
 created_at = "2026-08-23"
 started_at = "2026-08-27"
 scored_at = "2026-09-29"
+done_at = "2026-11-25"
+shipped_in = "d0a34bbd9c7a8d45cb543bc3144afb8a61eecf94"
 
 [[task]]
 id = 2001
