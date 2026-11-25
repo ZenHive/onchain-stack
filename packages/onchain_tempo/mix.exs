@@ -86,7 +86,10 @@ defmodule OnchainTempo.MixProject do
       # stale floor understated what actually resolves here.
       {:req, "~> 0.6 or ~> 0.7"},
       {:jason, "~> 1.4"},
-      {:rustler_precompiled, "~> 0.9"},
+      # 0.9.x extracts over an already-loaded NIF in place instead of unlinking
+      # it first; on Linux the truncation drops the relocated pages and the VM
+      # segfaults in `_dl_fini` at halt (fixed upstream in 0.10.0).
+      {:rustler_precompiled, "~> 0.10"},
       {:rustler, "~> 0.38", optional: true, runtime: false},
       # Two-segment on purpose: the three-segment cap turned every descripex
       # minor into a forced nine-repo release cascade, while the committed

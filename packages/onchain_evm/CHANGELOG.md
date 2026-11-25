@@ -4,6 +4,12 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- Requires `rustler_precompiled ~> 0.10` (was `~> 0.9`). 0.9.x overwrote an already-loaded NIF file in place instead of removing it first. In a consumer that compiles this package in two environments (dev, then a test child sharing the path dependency's `priv/`), the first VM segfaulted at halt on Linux (exit 139). This was the onchain_aave and onchain_aerodrome `mix ci` crash. Fixed upstream in rustler_precompiled 0.10.0. The committed lock already resolves 0.10.1.
+
 ## [0.8.0] — 2026-10-01
 
 ### Changed

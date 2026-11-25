@@ -4,6 +4,12 @@ Completed roadmap tasks.
 
 ---
 
+## Unreleased
+
+### Changed
+
+- Requires `rustler_precompiled ~> 0.10` (was `~> 0.9`). 0.9.x overwrote an already-loaded NIF file in place instead of removing it first. On Linux, a second extraction of the same artifact, e.g. a dev and a test compile sharing a path dependency's `priv/`, made the first VM segfault (exit 139) when it halted. Fixed upstream in rustler_precompiled 0.10.0. The committed lock already resolves 0.10.1.
+
 ## v0.17.0 (2026-10-31)
 
 ### Added

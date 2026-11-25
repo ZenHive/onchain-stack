@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Requires `rustler_precompiled ~> 0.10` (was `~> 0.9`). 0.9.x overwrote an already-loaded NIF file in place instead of removing it first, and on Linux a second extraction of the same artifact made the first VM segfault (exit 139) when it halted. Fixed upstream in rustler_precompiled 0.10.0. The committed lock already resolves 0.10.1.
+
 ## v0.13.1 (2026-10-02)
 
 ### Fixed

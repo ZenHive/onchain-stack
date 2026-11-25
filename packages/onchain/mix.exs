@@ -64,7 +64,10 @@ defmodule Onchain.MixProject do
 
   defp deps do
     [
-      {:rustler_precompiled, "~> 0.9"},
+      # 0.9.x extracts over an already-loaded NIF in place instead of unlinking
+      # it first; on Linux the truncation drops the relocated pages and the VM
+      # segfaults in `_dl_fini` at halt (fixed upstream in 0.10.0).
+      {:rustler_precompiled, "~> 0.10"},
       {:rustler, "~> 0.38", optional: not monorepo?(), runtime: false},
       {:ex_keccak, "~> 0.7.8"},
       {:ex_secp256k1, "~> 0.8.0"},
