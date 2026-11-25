@@ -8427,19 +8427,19 @@ depends_on = [9031]
 id = 7001
 phase = 7001
 bundle = "onchain_js_foundation"
-milestone = "onchain_js_v0_3"
-title = "onchain_js: committed npm manifest and a proven bundle-load path"
-status = "pending"
 target_repo = "onchain_js"
+milestone = "onchain_js_v0_3"
+status = "done"
+title = "onchain_js: committed npm manifest and a proven bundle-load path"
 scores = {d = 2, b = 7, u = 8}
-domains = ["quickbeam", "javascript", "otp"]
 acceptance_criteria = ["packages/onchain_js has a committed package.json and npm.lock produced by `mix npm.install`; installing from a clean checkout reproduces the same resolved versions", "An integration test loads a real npm package from node_modules through QuickBEAM's `:script` bundling (via `OnchainJs.Runtime.start_link/1` or a thin helper) and calls one of its exported functions, asserting the returned value's domain meaning, not merely that a call succeeded", "A script that fails to load (missing package, syntax error, missing browser global) returns a tagged error carrying the underlying JS/bundler message; nothing is swallowed", "Where the manifest, lock, node_modules and entry scripts live, and what a consuming app must do to supply them, is documented in the module docs and README", "No public function installs npm packages at runtime", "If a helper is added: Every public function added here is `Descripex`-annotated with `api()` (params carry `kind`/`description`, `:exchange_data` params carry `source`, and a `returns` is declared); the module is added to `OnchainJs`'s `Descripex.Discoverable` list and to `@annotated` in `test/onchain_js/descripex_test.exs`, whose contract tests must pass.", "Focused tests for the changed behaviour pass and `mix check.dispatch` is green in every touched package (full `mix ci` is post-merge QA)"]
 out_of_scope = ["Wrappers for any specific library (solc, Uniswap, DeFiSaver, aave math-utils) — tasks 7002-7006.", "Runtime pooling / concurrency (`QuickBEAM.Pool`, `ContextPool`) — deferred until a real consumer shows the single-runtime path is too slow.", "Re-implementing the runtime lifecycle, browser stubs or supervisor — already shipped."]
-touches = ["packages/onchain_js/package.json", "packages/onchain_js/npm.lock", "packages/onchain_js/lib/onchain_js/runtime.ex", "packages/onchain_js/test/onchain_js/runtime_test.exs", "packages/onchain_js/README.md"]
 files_to_modify = ["packages/onchain_js/lib/onchain_js/runtime.ex", "packages/onchain_js/test/onchain_js/runtime_test.exs", "packages/onchain_js/README.md", "packages/onchain_js/CHANGELOG.md"]
+touches = ["packages/onchain_js/package.json", "packages/onchain_js/npm.lock", "packages/onchain_js/lib/onchain_js/runtime.ex", "packages/onchain_js/test/onchain_js/runtime_test.exs", "packages/onchain_js/README.md"]
+domains = ["quickbeam", "javascript", "otp"]
 assignee = "cursor"
-model = "grok-4.7-high"
 linear_id = "INE-51"
+model = "grok-4.7-high"
 body = """The runtime half of the original foundation task is done (verified 2026-09-29 by reading lib/ and test/): `OnchainJs.Runtime.start_link/1`, `eval`, `call`, `stop` and `apply_browser_stubs/1` exist in lib/onchain_js/runtime.ex, `OnchainJs.RuntimeSupervisor` is in the application tree, and runtime_test.exs covers the lifecycle. What is missing is the npm half: there is no package.json or npm.lock in the package, and no test has ever loaded a real npm package. Every one of tasks 7002-7007 starts by loading one.
 
 The mechanism already exists upstream — do not build a runtime installer. npm_ex (the `npm` Hex dep, 0.7.6 in mix.lock) installs at build time: `mix npm.install <pkg>` reads package.json, resolves with PubGrub, writes npm.lock and links node_modules/ without Node.js. QuickBEAM's `:script` option resolves imports from node_modules/ and bundles them with OXC at runtime startup (QuickBEAM README, "npm packages"; `QuickBEAM.JS.bundle_file/1` for programmatic use), and `Runtime.start_link/1` already forwards `:script` (runtime.ex:63, :84). Installing packages from the registry at request time would also be a supply-chain hole.
@@ -8448,7 +8448,13 @@ So this task is: commit the manifest and lock, decide and document where they an
 
 Dispatch trigger: this defines the loading contract 7002-7007 build on, and it needs live evidence against the real npm registry.
 """
+implemented = "onchain_js commits package.json + npm.lock (@noble/hashes 2.4.0). New OnchainJs.Script bundle/2 + load/3 (bundles via QuickBEAM.JS, applies browser stubs before eval, tagged errors bundle_error/eval_error/stub_error; :node_modules option rejected because QuickBEAM resolves bare imports by walking up from the importer). Integration tests assert Ethereum keccak256 vectors and the ERC-20 transfer selector a9059cbb, plus a disjoint release-layout test (priv/js entry, priv/node_modules). Docs: README loading section, release layout, lock semantics (npm.ci reproduces lock; range edits need mix npm.update)."
+verified = true
+verified_by = "codex"
+verification_ref = "herdr codex review, APPROVE after fixes"
 scored_at = "2026-09-29"
+done_at = "2026-11-25"
+shipped_in = "eaee073831f4cefe0e171daf244b3ee9992f02a5"
 
 [[task]]
 id = 7002

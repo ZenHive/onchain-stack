@@ -60,7 +60,7 @@
 - **target_version:** 0.3.0
 - **status:** ⬜ pending
 - **hypothesis:** Proves an npm Ethereum library can be installed, loaded and driven from Elixir through QuickBEAM with no Node.js on the host — solc-js is the first consumer that has to work for real.
-- **pinned tasks:** 0/2 done
+- **pinned tasks:** 1/2 done
 
 ### onchain_js_v0_4 — [onchain_js] The JS library shelf
 
@@ -664,7 +664,7 @@
 <!-- TASKS:BEGIN phase=7001 -->
 | Task | Status | Notes |
 |------|--------|-------|
-| Task 7001 | ⬜ | 🎁 **onchain_js_foundation** · 🚀 **onchain_js_v0_3** · onchain_js: committed npm manifest and a proven bundle-load path [D:2/B:7/U:8 → Eff:3.75?] 🎯 |
+| Task 7001 | ✅ | 🎁 **onchain_js_foundation** · 🚀 **onchain_js_v0_3** · onchain_js: committed npm manifest and a proven bundle-load path [D:2/B:7/U:8 → Eff:3.75?] 🎯 |
 <!-- TASKS:END -->
 
 ### Phase 7002: Ethereum JS Tools

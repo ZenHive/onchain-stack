@@ -12824,7 +12824,7 @@
       "bundle": "onchain_js_foundation",
       "target_repo": "onchain_js",
       "milestone": "onchain_js_v0_3",
-      "status": "pending",
+      "status": "done",
       "title": "onchain_js: committed npm manifest and a proven bundle-load path",
       "scores": {
         "d": 2,
@@ -12871,8 +12871,14 @@
         "javascript",
         "otp"
       ],
+      "shipped_in": "eaee073831f4cefe0e171daf244b3ee9992f02a5",
       "body": "The runtime half of the original foundation task is done (verified 2026-09-29 by reading lib/ and test/): `OnchainJs.Runtime.start_link/1`, `eval`, `call`, `stop` and `apply_browser_stubs/1` exist in lib/onchain_js/runtime.ex, `OnchainJs.RuntimeSupervisor` is in the application tree, and runtime_test.exs covers the lifecycle. What is missing is the npm half: there is no package.json or npm.lock in the package, and no test has ever loaded a real npm package. Every one of tasks 7002-7007 starts by loading one.\n\nThe mechanism already exists upstream — do not build a runtime installer. npm_ex (the `npm` Hex dep, 0.7.6 in mix.lock) installs at build time: `mix npm.install <pkg>` reads package.json, resolves with PubGrub, writes npm.lock and links node_modules/ without Node.js. QuickBEAM's `:script` option resolves imports from node_modules/ and bundles them with OXC at runtime startup (QuickBEAM README, \"npm packages\"; `QuickBEAM.JS.bundle_file/1` for programmatic use), and `Runtime.start_link/1` already forwards `:script` (runtime.ex:63, :84). Installing packages from the registry at request time would also be a supply-chain hole.\n\nSo this task is: commit the manifest and lock, decide and document where they and the entry scripts live (and how a consuming app, which does not get this repo's node_modules from Hex, supplies them), add a thin documented load helper only if `start_link(script: ...)` is not already enough, and prove the path end-to-end with one real package.\n\nDispatch trigger: this defines the loading contract 7002-7007 build on, and it needs live evidence against the real npm registry.\n",
+      "done_at": "2026-11-25",
       "scored_at": "2026-09-29",
+      "implemented": "onchain_js commits package.json + npm.lock (@noble/hashes 2.4.0). New OnchainJs.Script bundle/2 + load/3 (bundles via QuickBEAM.JS, applies browser stubs before eval, tagged errors bundle_error/eval_error/stub_error; :node_modules option rejected because QuickBEAM resolves bare imports by walking up from the importer). Integration tests assert Ethereum keccak256 vectors and the ERC-20 transfer selector a9059cbb, plus a disjoint release-layout test (priv/js entry, priv/node_modules). Docs: README loading section, release layout, lock semantics (npm.ci reproduces lock; range edits need mix npm.update).",
+      "verified": true,
+      "verified_by": "codex",
+      "verification_ref": "herdr codex review, APPROVE after fixes",
       "cross_repo": []
     },
     {
