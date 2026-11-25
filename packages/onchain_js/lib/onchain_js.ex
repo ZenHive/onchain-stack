@@ -20,5 +20,5 @@ defmodule OnchainJs do
   function listings, and `OnchainJs.describe/2` for full function details.
   """
 
-  use Descripex.Discoverable, modules: [OnchainJs.Runtime]
+  use Descripex.Discoverable, modules: [OnchainJs.Runtime, OnchainJs.Script]
 end

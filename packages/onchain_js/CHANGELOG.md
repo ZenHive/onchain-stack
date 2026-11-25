@@ -4,6 +4,18 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`OnchainJs.Script`** — `bundle/2` bundles an entry script and the npm packages it imports from `node_modules/` (via `QuickBEAM.JS.bundle_file/2`); `load/3` applies the browser stubs, bundles and evaluates it in a runtime. Failures are tagged and keep the underlying bundler/JS error: `{:bundle_error, entry, reason}`, `{:eval_error, entry, %QuickBEAM.JSError{}}`, `{:stub_error, reason}`. Nothing installs at runtime.
+- Committed `package.json` + `npm.lock` (npm_ex), pinning `@noble/hashes` 2.4.0 for the integration test that loads it from `node_modules/` and checks Keccak-256 vectors. Run `mix npm.ci` before `mix test.json --include integration`.
+- README "Loading npm packages": where the manifest, lock, `node_modules/` and entry scripts live, and what a consuming app must supply.
+
+### Fixed
+
+- The Descripex contract test now loads each annotated module before `function_exported?/3`, which otherwise reports `false` for a not-yet-loaded module.
+
 ## v0.5.0 — onchain 0.16 namespace (2026-10-01)
 
 ### Changed

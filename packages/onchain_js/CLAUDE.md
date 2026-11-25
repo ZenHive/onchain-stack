@@ -87,6 +87,9 @@ lib/
     application.ex                # Supervision tree
     runtime.ex                    # QuickBEAM runtime wrapper, Descripex-annotated
     runtime_supervisor.ex         # DynamicSupervisor for runtimes
+    script.ex                     # Bundle entry script + npm imports, load into a runtime
+package.json, npm.lock            # npm_ex manifest + lock (committed; test-only deps)
+test/support/js/                  # Entry scripts used by script_test.exs
 ```
 
 Every public function in an agent-facing module carries a `Descripex` `api()`
@@ -94,12 +97,26 @@ declaration, and the module is registered in `OnchainJs`'s `Discoverable` list
 and in `@annotated` in `test/onchain_js/descripex_test.exs` — those contract
 tests fail if a new public function lands without one.
 
+## npm packages
+
+- Install at build time only: `mix npm.install <pkg>@<range>` edits
+  `package.json` and `npm.lock`; `mix npm.ci` reproduces `node_modules/`
+  (gitignored) and fails on a stale lock. No public function may install at
+  runtime.
+- Entry scripts import from npm and assign callables to `globalThis`;
+  `OnchainJs.Script.load/3` stubs browser globals, bundles, and evaluates.
+  `Runtime.start_link(script:)` runs before stubs can be applied, so prefer
+  `load/3` for browser bundles.
+- Neither the manifest nor `node_modules/` ships to Hex; consumers supply
+  their own (README "Loading npm packages").
+
 ## Testing
 
 - Unit tests for pure functions
 - Integration tests are **excluded by default** (`ExUnit.start(exclude: [:integration])` in test_helper.exs)
 - `mix test.json --quiet` runs only unit tests
-- Integration tests tagged `@tag :integration` require QuickBEAM runtime
+- Integration tests tagged `@tag :integration` require QuickBEAM runtime;
+  `script_test.exs` also needs `mix npm.ci` first
 
 ### Quick Commands
 

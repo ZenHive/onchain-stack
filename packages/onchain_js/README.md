@@ -36,6 +36,39 @@ end
 
 QuickBEAM embeds QuickJS-NG as a Zig NIF. Each runtime is a GenServer with a persistent JavaScript context. npm_ex manages package installation without Node.js.
 
+## Loading npm packages
+
+npm packages are installed at **build time**, never at runtime. Nothing in this library contacts the npm registry.
+
+1. Declare the packages in a `package.json` at your project root and install them with npm_ex. Commit `package.json` and `npm.lock`; `node_modules/` stays untracked.
+
+   ```bash
+   mix npm.install @noble/hashes@^2.4.0   # adds to package.json, writes npm.lock
+   mix npm.ci                              # in every build: reproduce node_modules/ from npm.lock
+   ```
+
+2. Write an entry script that imports from npm and puts what Elixir should call on `globalThis`:
+
+   ```javascript
+   // priv/js/keccak.js
+   import { keccak_256 } from "@noble/hashes/sha3.js";
+   import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
+
+   globalThis.keccak256Hex = (text) => bytesToHex(keccak_256(utf8ToBytes(text)));
+   ```
+
+3. Bundle and load it into a runtime, then call it:
+
+   ```elixir
+   {:ok, rt} = OnchainJs.Runtime.start_link()
+   :ok = OnchainJs.Script.load(rt, "priv/js/keccak.js")
+   {:ok, "4e03657a" <> _} = OnchainJs.Runtime.call(rt, "keccak256Hex", ["abc"])
+   ```
+
+`OnchainJs.Script.load/3` applies the browser stubs (`self`, `window`, `navigator`, `location`) before the bundle runs, which `Runtime.start_link(script: path)` cannot do. It finds `node_modules/` by walking up from the entry script. In a Mix release the source tree is gone, so copy `node_modules/` and your entry scripts into the release and pass `node_modules: path`. Failures come back tagged with the underlying message: `{:bundle_error, entry, reason}` (unreadable file, unresolved import, parse error) or `{:eval_error, entry, %QuickBEAM.JSError{}}` (the script threw, for example a missing browser global).
+
+Hex does not ship this package's own `package.json`, `npm.lock` or `node_modules/`. Those exist only for its tests, so a consuming app always supplies its own.
+
 ## Discovery
 
 The API describes itself, so an agent can learn how to call it without reading the source:
@@ -52,6 +85,7 @@ Parameters are tagged by kind: `:value` is something you supply, `:exchange_data
 
 ```bash
 mix test.json --quiet                          # Unit tests
+mix npm.ci                                     # Install node_modules/ from npm.lock (integration tests need it)
 mix test.json --quiet --include integration    # Integration tests (requires QuickBEAM)
 ```
 

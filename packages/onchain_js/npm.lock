@@ -1,0 +1,21 @@
+{
+  "lockfileVersion": 1,
+  "packages": {
+    "@noble/hashes": {
+      "dependencies": {},
+      "has_install_script": false,
+      "integrity": "sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==",
+      "optional_dependencies": {},
+      "tarball": "https://registry.npmjs.org/@noble/hashes/-/hashes-2.4.0.tgz",
+      "version": "2.4.0"
+    }
+  },
+  "policy": {
+    "allow_registry_redirects": false,
+    "allowed_registries": [
+      "https://registry.npmjs.org"
+    ],
+    "block_exotic_subdeps": true,
+    "exotic_deps": []
+  }
+}

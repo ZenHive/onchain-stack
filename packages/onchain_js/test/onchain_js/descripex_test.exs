@@ -10,7 +10,7 @@ defmodule OnchainJs.DescripexTest do
 
   use ExUnit.Case, async: true
 
-  @annotated [OnchainJs.Runtime]
+  @annotated [OnchainJs.Runtime, OnchainJs.Script]
 
   # Public functions that carry `@doc false` and are therefore outside the
   # agent-facing surface: OTP callbacks and descripex's own introspection.
@@ -33,7 +33,7 @@ defmodule OnchainJs.DescripexTest do
   describe "api() coverage" do
     test "every annotated module exposes __api__/0" do
       for module <- @annotated do
-        assert function_exported?(module, :__api__, 0),
+        assert Code.ensure_loaded?(module) and function_exported?(module, :__api__, 0),
                "#{inspect(module)} is listed as annotated but has no __api__/0"
       end
     end
@@ -99,6 +99,9 @@ defmodule OnchainJs.DescripexTest do
 
       call = OnchainJs.Runtime.__api__(:call)
       assert call.param_order == [:runtime, :fn_name, :args, :opts]
+
+      load = OnchainJs.Script.__api__(:load)
+      assert load.param_order == [:runtime, :entry, :opts]
     end
   end
 
@@ -115,6 +118,14 @@ defmodule OnchainJs.DescripexTest do
 
       for name <- ~w(start_link eval call stop apply_browser_stubs) do
         assert rendered =~ name, "describe(:runtime) does not mention #{name}"
+      end
+    end
+
+    test "describe/1 lists the script loader's functions" do
+      rendered = inspect(OnchainJs.describe(:script), limit: :infinity)
+
+      for name <- ~w(bundle load) do
+        assert rendered =~ name, "describe(:script) does not mention #{name}"
       end
     end
 
@@ -146,7 +157,7 @@ defmodule OnchainJs.DescripexTest do
       tools = Descripex.MCP.tools(@annotated)
       names = Enum.map(tools, & &1.name)
 
-      assert length(names) == length(OnchainJs.Runtime.__api__())
+      assert length(names) == @annotated |> Enum.map(&length(&1.__api__())) |> Enum.sum()
       assert Enum.any?(names, &(&1 =~ "eval"))
     end
   end
