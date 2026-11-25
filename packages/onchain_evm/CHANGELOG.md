@@ -9,6 +9,7 @@ Completed roadmap tasks. For upcoming work, see [ROADMAP.md](ROADMAP.md).
 ### Changed
 
 - Requires `rustler_precompiled ~> 0.10` (was `~> 0.9`). 0.9.x overwrote an already-loaded NIF file in place instead of removing it first. In a consumer that compiles this package in two environments (dev, then a test child sharing the path dependency's `priv/`), the first VM segfaulted at halt on Linux (exit 139). This was the onchain_aave and onchain_aerodrome `mix ci` crash. Fixed upstream in rustler_precompiled 0.10.0. The committed lock already resolves 0.10.1.
+- Native: `native/onchain_evm/Cargo.lock` refreshed for RUSTSEC-2026-0338/0340/0343/0523/0524 (quinn-proto 0.11.19), 0538 (quinn-udp 0.5.16), 0346/0347/0348/0349 (rustls 0.23.46), 0382 (rustls-webpki 0.103.17), 0383 (webpki-root-certs 1.0.12), 0592 (url 2.5.9) and 0386 (tokio 1.54.1). No Cargo.toml change; published precompiled NIFs pick this up at the next release. RUSTSEC-2026-0387 (crypto-bigint 0.5.5 via alloy/revm → k256 0.13 → elliptic-curve 0.13) remains: no fixed 0.5.x release exists and no alloy/revm release has moved to k256 0.14.
 
 ## [0.8.0] — 2026-10-01
 
