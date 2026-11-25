@@ -3,7 +3,8 @@
 **The survivor disposition was stopped on 2026-11-25 (task 1046) and will not
 be resumed.** Task 9031 replaced the mutated codec bodies — the handwritten
 `ABI.TypeEncoder` / `ABI.TypeDecoder` value codecs and the yecc/leex parser —
-with the alloy NIF (shipped in `ac9ce9f5`). Dispositioning survivors inside
+with the alloy NIF (swap commit `c9c7256`; `ac9ce9f5` is its follow-up
+offset optimisation). Dispositioning survivors inside
 code that no longer exists produces no durable record.
 
 What was measured, and nothing more:

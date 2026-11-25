@@ -3,13 +3,15 @@ defmodule Onchain.ABI.PublicErrorContractTest do
   Wrong-argument-type contracts of four public ABI heads.
 
   Each expected outcome was observed by running the same call at e669099f,
-  the last commit before task 9031 replaced the handwritten codec with the
-  alloy NIF, where these functions were still `ABI.*`. A failure here after a
+  task 9031's benchmark baseline, where these functions were still `ABI.*`.
+  Its packages/onchain/lib is identical to 358658e, the parent of the commit
+  that swapped the handwritten codec for the alloy NIF (c9c7256). A failure here after a
   codec or facade change is a behaviour regression, not a test to relax.
 
   The describe names cite the muex campaign survivor each test kills
-  (`.mutation/hieroglyph/`, file:line of the campaign tree, which is the
-  e669099f tree). Every one is `Guard: replace guard with true`.
+  (`.mutation/hieroglyph/`, file:line as the campaign reported it). Every one
+  is `Guard: replace guard with true`, and at e669099f the same guard sits at
+  that file:line.
   """
   use ExUnit.Case, async: true
 
@@ -47,19 +49,21 @@ defmodule Onchain.ABI.PublicErrorContractTest do
     test "a single definition string instead of a list raises FunctionClauseError" do
       revert_data = ABI.encode("NotFound()", [])
 
-      assert_raise FunctionClauseError, fn -> ABI.decode_error(revert_data, opaque("NotFound()")) end
+      assert_raise FunctionClauseError, fn -> ABI.decode_error(revert_data, opaque("NotFound()"), []) end
     end
 
     test "nil definitions raise FunctionClauseError" do
       revert_data = ABI.encode("NotFound()", [])
 
-      assert_raise FunctionClauseError, fn -> ABI.decode_error(revert_data, opaque(nil)) end
+      assert_raise FunctionClauseError, fn -> ABI.decode_error(revert_data, opaque(nil), []) end
     end
   end
 
   describe "get_abi_item/3 is_list/is_binary guard (muex survivor lib/abi.ex:1136)" do
     test "an atom name raises FunctionClauseError instead of answering :not_found" do
-      assert_raise FunctionClauseError, fn -> ABI.get_abi_item(transfer_abi(), opaque(:transfer), nil) end
+      abi = transfer_abi()
+
+      assert_raise FunctionClauseError, fn -> ABI.get_abi_item(abi, opaque(:transfer), nil) end
     end
 
     test "a bare selector instead of a list raises FunctionClauseError" do

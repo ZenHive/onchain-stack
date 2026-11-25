@@ -220,7 +220,7 @@ A muex campaign over the handwritten codec (`lib/abi.ex`, `lib/abi/*.ex`) ran
 under **muex 0.9.0** (Elixir 1.20.2 / OTP 29, all 18 mutators, no filtering).
 Its known-answer check reproduced the §4 corpus (8/8 agree). The survivor
 disposition was **stopped** before it produced a result: task 9031 replaced the
-mutated codec bodies with the alloy NIF (`ac9ce9f5`), so dispositioning
+mutated codec bodies with the alloy NIF (swap commit `c9c7256`), so dispositioning
 survivors inside deleted code records nothing durable. No mutation score,
 survivor count or false-kill rate is claimed here; the unmeasured draft of this
 section was deleted. The campaign's scripts and handoff, including what was
@@ -230,9 +230,11 @@ What outlives the swap are four survivors on guards of **public** heads that a
 caller reaches with a wrong argument type. They are now killed by
 `test/abi/public_error_contract_test.exs`. The expected outcome of each test was
 observed by running the call at **`e669099f`** (9031's benchmark baseline; its
-`packages/onchain/lib` is identical to the parent of the 9031 delivery commit
-`c9c7256`), where the functions were still `ABI.*`, and the same calls return
-the same outcome on the current facades.
+`packages/onchain/lib` is identical to `358658e`, the parent of the swap
+commit `c9c7256`), where the functions were still `ABI.*`, and the same calls
+return the same outcome on the current facades. The survivor column is
+file:line as the campaign reported it; at `e669099f` the same guard sits at
+that file:line.
 
 | Campaign survivor (`Guard: replace guard with true`) | Current function | Wrong argument | Outcome at `e669099f` | Outcome with the guard removed |
 |---|---|---|---|---|
